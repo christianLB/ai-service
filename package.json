@@ -1,0 +1,29 @@
+{
+  "name": "ai-service",
+  "version": "1.0.0",
+  "description": "Construir un microservicio `ai-service` autohosteado en Docker que orquesta la automatización financiera y operativa de mi stack personal, con capacidades de:",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "axios": "^1.10.0",
+    "express": "^5.1.0",
+    "openai": "^5.8.2",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.7",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  }
+}
