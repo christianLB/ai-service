@@ -1,20 +1,227 @@
 version: '3.8'
+
+networks:
+  ai-service-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: /home/k2600x/dev/ai-service-data/postgres
+  redis-data:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: /home/k2600x/dev/ai-service-data/redis
+  n8n-data:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: /home/k2600x/dev/ai-service-data/n8n
+  grafana-data:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: /home/k2600x/dev/ai-service-data/grafana
+  prometheus-data:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: /home/k2600x/dev/ai-service-data/prometheus
+
 services:
-  ai-service:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file: .env
-    depends_on:
-      - n8n
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ultra_secure_password_2025
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache Redis
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass redis_secure_password_2025 --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "redis_secure_password_2025", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Servicio n8n
   n8n:
-    image: n8nio/n8n
+    image: n8nio/n8n:latest
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=user
-      - N8N_BASIC_AUTH_PASSWORD=pass
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=n8n_admin_2025
       - N8N_HOST=n8n
       - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=ai_user
+      - DB_POSTGRESDB_PASSWORD=ultra_secure_password_2025
     ports:
       - "5678:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    networks:
+      - ai-service-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus para métricas
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+
+  # Grafana para dashboards
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana_admin_password_2025
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3001:3000"
+    networks:
+      - ai-service-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Servicio AI principal
+  ai-service:
+    build: 
+      context: .
+      target: production
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_service
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=ultra_secure_password_2025
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - N8N_API_URL=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - LOG_LEVEL=info
+    ports:
+      - "3000:3000"
+    volumes:
+      - /home/k2600x/dev/ai-service-data/workflows:/app/data/workflows
+      - /home/k2600x/dev/ai-service-data/documents:/app/data/documents
+      - /home/k2600x/dev/ai-service-data/knowledge:/app/data/knowledge
+      - /home/k2600x/dev/ai-service-data/logs:/app/logs
+    networks:
+      - ai-service-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      n8n:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Servicio de desarrollo (opcional)
+  ai-service-dev:
+    build: 
+      context: .
+      target: development
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_service
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=ultra_secure_password_2025
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - N8N_API_URL=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - LOG_LEVEL=debug
+    ports:
+      - "3010:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /home/k2600x/dev/ai-service-data/workflows:/app/data/workflows
+      - /home/k2600x/dev/ai-service-data/documents:/app/data/documents
+      - /home/k2600x/dev/ai-service-data/knowledge:/app/data/knowledge
+      - /home/k2600x/dev/ai-service-data/logs:/app/logs
+    networks:
+      - ai-service-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - dev
