@@ -3,6 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { GoCardlessService } from '../services/financial/gocardless.service';
 import { FinancialDatabaseService } from '../services/financial/database.service';
 import { FinancialSchedulerService } from '../services/financial/scheduler.service';
+import { FinancialReportingService } from '../services/financial/reporting.service';
 
 const router = Router();
 
@@ -10,6 +11,7 @@ const router = Router();
 let goCardlessService: GoCardlessService;
 let databaseService: FinancialDatabaseService;
 let schedulerService: FinancialSchedulerService;
+let reportingService: FinancialReportingService;
 
 // Initialize services with config
 const initializeServices = () => {
@@ -21,17 +23,26 @@ const initializeServices = () => {
       redirectUri: process.env.GO_REDIRECT_URI || 'https://localhost:3000/callback'
     };
 
+    // Validate required environment variables
+    const requiredEnvVars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD'];
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}. Please set them in .env.local`);
+    }
+
     const dbConfig = {
-      host: process.env.POSTGRES_HOST || 'localhost',
-      port: parseInt(process.env.POSTGRES_PORT || '5432'),
-      database: process.env.POSTGRES_DB || 'ai_service',
-      user: process.env.POSTGRES_USER || 'postgres',
-      password: process.env.POSTGRES_PASSWORD || 'postgres'
+      host: process.env.POSTGRES_HOST!,
+      port: parseInt(process.env.POSTGRES_PORT!),
+      database: process.env.POSTGRES_DB!,
+      user: process.env.POSTGRES_USER!,
+      password: process.env.POSTGRES_PASSWORD!
     };
 
     databaseService = new FinancialDatabaseService(dbConfig);
     goCardlessService = new GoCardlessService(config, databaseService);
     schedulerService = new FinancialSchedulerService(goCardlessService, databaseService);
+    reportingService = new FinancialReportingService(databaseService.pool);
   }
 };
 
@@ -486,6 +497,620 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
       status: 'unhealthy',
       error: error instanceof Error ? error.message : 'Health check failed',
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ============================================================================
+// CATEGORIZATION & AI
+// ============================================================================
+
+/**
+ * GET /api/financial/categories
+ * Get all categories with optional filtering by type
+ */
+router.get('/categories', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { type } = req.query;
+    const categories = await reportingService.getCategories(type as any);
+    
+    res.json({
+      success: true,
+      data: categories,
+      count: categories.length
+    });
+  } catch (error) {
+    console.error('Get categories failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get categories',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/categories/:id/subcategories
+ * Get subcategories for a specific category
+ */
+router.get('/categories/:id/subcategories', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { id } = req.params;
+    const subcategories = await reportingService.getSubcategories(id);
+    
+    res.json({
+      success: true,
+      data: subcategories,
+      count: subcategories.length
+    });
+  } catch (error) {
+    console.error('Get subcategories failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get subcategories',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/categorize/auto
+ * Auto-categorize uncategorized transactions using AI
+ */
+router.post('/categorize/auto', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { transactionIds } = req.body;
+    const categorizedCount = await reportingService.autoCategorizeTransactions(transactionIds);
+    
+    res.json({
+      success: true,
+      data: {
+        categorizedCount,
+        message: `Successfully categorized ${categorizedCount} transactions`
+      }
+    });
+  } catch (error) {
+    console.error('Auto-categorization failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Auto-categorization failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/transactions/:id/categorize
+ * Manually categorize a specific transaction
+ */
+router.post('/transactions/:id/categorize', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { id } = req.params;
+    const { categoryId, subcategoryId, notes } = req.body;
+    
+    const categorization = await reportingService.categorizeTransaction(
+      id,
+      categoryId,
+      subcategoryId,
+      'manual',
+      undefined,
+      undefined,
+      notes
+    );
+    
+    res.json({
+      success: true,
+      data: categorization,
+      message: 'Transaction categorized successfully'
+    });
+  } catch (error) {
+    console.error('Manual categorization failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Manual categorization failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/transactions/categorized
+ * Get categorized transactions with advanced filtering
+ */
+router.get('/transactions/categorized', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const {
+      startDate,
+      endDate,
+      categoryId,
+      subcategoryId,
+      accountId,
+      currency,
+      page = '1',
+      limit = '50'
+    } = req.query;
+
+    const params = {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      categoryId: categoryId as string,
+      subcategoryId: subcategoryId as string,
+      accountId: accountId as string,
+      currency: currency as string,
+      limit: parseInt(limit as string),
+      offset: (parseInt(page as string) - 1) * parseInt(limit as string)
+    };
+
+    const result = await reportingService.getCategorizedTransactions(params);
+    
+    res.json({
+      success: true,
+      data: {
+        transactions: result.transactions,
+        pagination: {
+          total: result.total,
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          hasNext: result.total > params.offset + params.limit,
+          hasPrev: params.offset > 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get categorized transactions failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get categorized transactions',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================================
+// REPORTING & ANALYTICS
+// ============================================================================
+
+/**
+ * GET /api/financial/reports/comprehensive
+ * Generate comprehensive financial report
+ */
+router.get('/reports/comprehensive', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const {
+      startDate,
+      endDate,
+      currency = 'EUR',
+      categoryId,
+      subcategoryId,
+      accountId
+    } = req.query;
+
+    const params = {
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      currency: currency as string,
+      categoryId: categoryId as string,
+      subcategoryId: subcategoryId as string,
+      accountId: accountId as string
+    };
+
+    const report = await reportingService.generateReport(params);
+    
+    res.json({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    console.error('Generate report failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate report',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/metrics/realtime
+ * Get real-time financial metrics and dashboard data
+ */
+router.get('/metrics/realtime', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const {
+      period = 'month',
+      currency = 'EUR',
+      includeProjections = 'false',
+      includeTrends = 'true'
+    } = req.query;
+
+    const params = {
+      period: period as any,
+      currency: currency as string,
+      includeProjections: includeProjections === 'true',
+      includeTrends: includeTrends === 'true'
+    };
+
+    const metrics = await reportingService.getRealtimeMetrics(params);
+    
+    res.json({
+      success: true,
+      data: metrics
+    });
+  } catch (error) {
+    console.error('Get realtime metrics failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get realtime metrics',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/analytics/monthly-summary
+ * Get monthly category summaries for a date range
+ */
+router.get('/analytics/monthly-summary', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const {
+      startDate,
+      endDate,
+      currency = 'EUR'
+    } = req.query;
+
+    if (!startDate || !endDate) {
+      res.status(400).json({
+        success: false,
+        error: 'startDate and endDate are required'
+      });
+      return;
+    }
+
+    const summary = await reportingService.getMonthlyCategorySummary(
+      new Date(startDate as string),
+      new Date(endDate as string),
+      currency as string
+    );
+    
+    res.json({
+      success: true,
+      data: summary,
+      count: summary.length
+    });
+  } catch (error) {
+    console.error('Get monthly summary failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get monthly summary',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/insights/accounts
+ * Get account insights with 30-day activity metrics
+ */
+router.get('/insights/accounts', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const insights = await reportingService.getAccountInsights();
+    
+    res.json({
+      success: true,
+      data: insights,
+      count: insights.length
+    });
+  } catch (error) {
+    console.error('Get account insights failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get account insights',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================================
+// QUICK REPORTS FOR DASHBOARD
+// ============================================================================
+
+/**
+ * GET /api/financial/dashboard/overview
+ * Get dashboard overview with key metrics
+ */
+router.get('/dashboard/overview', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { currency = 'EUR' } = req.query;
+    
+    // Get current month metrics
+    const metrics = await reportingService.getRealtimeMetrics({ 
+      currency: currency as string 
+    });
+    
+    // Get account insights
+    const accountInsights = await reportingService.getAccountInsights();
+    
+    // Get categories for quick access
+    const categories = await reportingService.getCategories();
+    
+    res.json({
+      success: true,
+      data: {
+        metrics: {
+          currentMonth: metrics.currentMonth,
+          trends: metrics.trends,
+          topExpenseCategories: metrics.topExpenseCategories.slice(0, 5)
+        },
+        accounts: {
+          total: accountInsights.length,
+          totalBalance: accountInsights.reduce((sum, acc) => 
+            sum + parseFloat(acc.balance), 0
+          ).toFixed(2),
+          insights: accountInsights.slice(0, 3) // Top 3 accounts
+        },
+        categories: {
+          income: categories.filter(c => c.type === 'income').length,
+          expense: categories.filter(c => c.type === 'expense').length,
+          transfer: categories.filter(c => c.type === 'transfer').length
+        },
+        recentTransactions: metrics.recentTransactions.slice(0, 10),
+        alerts: metrics.alerts,
+        lastUpdated: metrics.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Get dashboard overview failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get dashboard overview',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/dashboard/quick-stats
+ * Get quick financial statistics for widgets
+ */
+router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { currency = 'EUR', period = 'month' } = req.query;
+    
+    const now = new Date();
+    const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const previousEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    
+    // Get current and previous period for comparison
+    const [currentReport, previousReport] = await Promise.all([
+      reportingService.generateReport({
+        startDate: currentStart,
+        endDate: currentEnd,
+        currency: currency as string
+      }),
+      reportingService.generateReport({
+        startDate: previousStart,
+        endDate: previousEnd,
+        currency: currency as string
+      })
+    ]);
+    
+    // Calculate changes
+    const incomeChange = previousReport.summary.totalIncome !== '0' 
+      ? ((parseFloat(currentReport.summary.totalIncome) - parseFloat(previousReport.summary.totalIncome)) / parseFloat(previousReport.summary.totalIncome)) * 100
+      : 0;
+      
+    const expenseChange = previousReport.summary.totalExpenses !== '0'
+      ? ((parseFloat(currentReport.summary.totalExpenses) - parseFloat(previousReport.summary.totalExpenses)) / parseFloat(previousReport.summary.totalExpenses)) * 100
+      : 0;
+    
+    res.json({
+      success: true,
+      data: {
+        current: {
+          income: currentReport.summary.totalIncome,
+          expenses: currentReport.summary.totalExpenses,
+          net: currentReport.summary.netAmount,
+          transactions: currentReport.summary.transactionCount
+        },
+        previous: {
+          income: previousReport.summary.totalIncome,
+          expenses: previousReport.summary.totalExpenses,
+          net: previousReport.summary.netAmount,
+          transactions: previousReport.summary.transactionCount
+        },
+        changes: {
+          income: incomeChange,
+          expenses: expenseChange,
+          net: previousReport.summary.netAmount !== '0' 
+            ? ((parseFloat(currentReport.summary.netAmount) - parseFloat(previousReport.summary.netAmount)) / Math.abs(parseFloat(previousReport.summary.netAmount))) * 100
+            : 0
+        },
+        period: {
+          current: { start: currentStart, end: currentEnd },
+          previous: { start: previousStart, end: previousEnd }
+        },
+        currency: currency as string,
+        generatedAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Get quick stats failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get quick stats',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================================
+// DASHBOARD INTEGRATION
+// ============================================================================
+
+/**
+ * GET /api/financial/dashboard/overview
+ * Get comprehensive dashboard data for web interface
+ */
+router.get('/dashboard/overview', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    // Current month calculations
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    
+    // Get current month metrics
+    const currentMetricsQuery = `
+        SELECT 
+            COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END), 0) as income,
+            COALESCE(SUM(CASE WHEN t.amount < 0 THEN ABS(t.amount) ELSE 0 END), 0) as expenses,
+            COUNT(*) as transaction_count
+        FROM financial.transactions t
+        WHERE t.date >= $1 AND t.date <= $2 AND t.status = 'confirmed'
+    `;
+    
+    const [currentResult, previousResult] = await Promise.all([
+        databaseService.pool.query(currentMetricsQuery, [currentMonthStart, currentMonthEnd]),
+        databaseService.pool.query(currentMetricsQuery, [previousMonthStart, previousMonthEnd])
+    ]);
+    
+    const current = currentResult.rows[0];
+    const previous = previousResult.rows[0];
+    
+    const currentIncome = parseFloat(current.income);
+    const currentExpenses = parseFloat(current.expenses);
+    const currentBalance = currentIncome - currentExpenses;
+    
+    const previousIncome = parseFloat(previous.income);
+    const previousExpenses = parseFloat(previous.expenses);
+    const previousBalance = previousIncome - previousExpenses;
+    
+    // Calculate trends
+    const incomeChange = previousIncome > 0 ? ((currentIncome - previousIncome) / previousIncome) * 100 : 0;
+    const expenseChange = previousExpenses > 0 ? ((currentExpenses - previousExpenses) / previousExpenses) * 100 : 0;
+    const balanceChange = previousBalance !== 0 ? ((currentBalance - previousBalance) / Math.abs(previousBalance)) * 100 : 0;
+    
+    // Get top expense categories
+    const topCategoriesQuery = `
+        SELECT 
+            c.name as category_name,
+            SUM(ABS(t.amount)) as amount
+        FROM financial.transactions t
+        JOIN financial.transaction_categorizations tc ON t.id = tc.transaction_id
+        JOIN financial.categories c ON tc.category_id = c.id
+        WHERE t.date >= $1 AND t.date <= $2 
+            AND t.amount < 0 
+            AND t.status = 'confirmed'
+            AND c.type = 'expense'
+        GROUP BY c.id, c.name
+        ORDER BY amount DESC
+        LIMIT 5
+    `;
+    
+    const topCategoriesResult = await databaseService.pool.query(topCategoriesQuery, [currentMonthStart, currentMonthEnd]);
+    
+    // Get recent transactions
+    const recentTransactionsQuery = `
+        SELECT 
+            t.id,
+            t.description,
+            t.counterparty_name,
+            t.amount,
+            t.date,
+            c.name as category_name,
+            c.type as category_type
+        FROM financial.transactions t
+        LEFT JOIN financial.transaction_categorizations tc ON t.id = tc.transaction_id
+        LEFT JOIN financial.categories c ON tc.category_id = c.id
+        WHERE t.status = 'confirmed'
+        ORDER BY t.date DESC
+        LIMIT 10
+    `;
+    
+    const recentTransactionsResult = await databaseService.pool.query(recentTransactionsQuery);
+    
+    // Get account balances
+    const accountsQuery = `
+        SELECT 
+            COUNT(*) as total_accounts,
+            SUM(balance) as total_balance
+        FROM financial.accounts
+        WHERE is_active = true
+    `;
+    
+    const accountsResult = await databaseService.pool.query(accountsQuery);
+    const accounts = accountsResult.rows[0];
+    
+    // Build dashboard response
+    res.json({
+      success: true,
+      data: {
+        metrics: {
+          currentMonth: {
+            income: currentIncome.toFixed(2),
+            expenses: currentExpenses.toFixed(2),
+            balance: currentBalance.toFixed(2),
+            transactionCount: parseInt(current.transaction_count)
+          },
+          trends: {
+            incomeChange: parseFloat(incomeChange.toFixed(1)),
+            expenseChange: parseFloat(expenseChange.toFixed(1)),
+            balanceChange: parseFloat(balanceChange.toFixed(1))
+          },
+          topExpenseCategories: topCategoriesResult.rows.map(row => ({
+            categoryName: row.category_name,
+            amount: parseFloat(row.amount).toFixed(2)
+          }))
+        },
+        accounts: {
+          total: parseInt(accounts.total_accounts),
+          totalBalance: parseFloat(accounts.total_balance).toFixed(2)
+        },
+        recentTransactions: recentTransactionsResult.rows.map(row => ({
+          id: row.id,
+          counterpartyName: row.counterparty_name || 'Transferencia',
+          description: row.description ? row.description.substring(0, 50) + '...' : 'N/A',
+          amount: parseFloat(row.amount).toFixed(2),
+          date: row.date.toISOString(),
+          categoryName: row.category_name
+        })),
+        alerts: [],
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard overview failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch dashboard data',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

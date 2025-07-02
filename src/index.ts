@@ -1,3 +1,14 @@
+// Load environment variables from .env.local if it exists
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+
+const envLocalPath = path.join(__dirname, '../.env.local');
+if (fs.existsSync(envLocalPath)) {
+  dotenv.config({ path: envLocalPath });
+  console.log('📁 Environment variables loaded from .env.local');
+}
+
 import express from 'express';
 import flowGen from './routes/flow-gen';
 import flowUpdate from './routes/flow-update';
@@ -13,6 +24,9 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Servir archivos estáticos
+app.use('/public', express.static(path.join(__dirname, '../public')));
+
 // Middleware de métricas (debe ir antes de las rutas)
 app.use(metricsService.createApiMetricsMiddleware());
 
@@ -27,6 +41,16 @@ app.use((req, res, next) => {
   });
   
   next();
+});
+
+// Main route redirect to dashboard
+app.get('/', (_req: express.Request, res: express.Response) => {
+  res.redirect('/dashboard');
+});
+
+// Dashboard redirect
+app.get('/dashboard', (_req: express.Request, res: express.Response) => {
+  res.redirect('/public/financial-dashboard.html');
 });
 
 // Health check endpoint
@@ -86,8 +110,9 @@ app.use('*', (req: express.Request, res: express.Response) => {
     path: req.originalUrl,
     available_endpoints: [
       'GET /status',
+      'GET /dashboard - Financial Dashboard',
       'POST /api/flow-gen',
-      'POST /api/flow-update',
+      'POST /api/flow-update', 
       'POST /api/flow-test',
       'GET /api/flows',
       'GET /api/flows/:id',
@@ -98,6 +123,13 @@ app.use('*', (req: express.Request, res: express.Response) => {
       'POST /api/financial/complete-setup',
       'GET /api/financial/accounts',
       'GET /api/financial/transactions',
+      'GET /api/financial/categories',
+      'GET /api/financial/transactions/categorized',
+      'POST /api/financial/categorize/auto',
+      'GET /api/financial/reports/comprehensive',
+      'GET /api/financial/metrics/realtime',
+      'GET /api/financial/dashboard/overview',
+      'GET /api/financial/dashboard/quick-stats',
       'POST /api/financial/sync',
       'GET /api/financial/sync-status',
       'GET /api/financial/health'
@@ -174,6 +206,7 @@ async function startServer() {
     // Iniciar servidor
     const server = app.listen(port, () => {
       logger.info(`🚀 AI Service listening on port ${port}`);
+      logger.info(`🏦 Financial Dashboard at http://localhost:${port}/dashboard`);
       logger.info(`📊 Metrics available at http://localhost:${port}/api/metrics`);
       logger.info(`🏥 Health check at http://localhost:${port}/status`);
       logger.info(`📈 Performance dashboard at http://localhost:${port}/api/performance`);
