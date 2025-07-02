@@ -2,6 +2,7 @@ import express from 'express';
 import flowGen from './routes/flow-gen';
 import flowUpdate from './routes/flow-update';
 import flowTest from './routes/flow-test';
+import financialRoutes from './routes/financial';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
@@ -60,6 +61,7 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
 app.use('/api', flowGen);
 app.use('/api', flowUpdate);
 app.use('/api', flowTest);
+app.use('/api/financial', financialRoutes);
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -91,7 +93,14 @@ app.use('*', (req: express.Request, res: express.Response) => {
       'GET /api/flows/:id',
       'GET /api/metrics',
       'GET /api/metrics/json',
-      'GET /api/performance'
+      'GET /api/performance',
+      'POST /api/financial/setup-bbva',
+      'POST /api/financial/complete-setup',
+      'GET /api/financial/accounts',
+      'GET /api/financial/transactions',
+      'POST /api/financial/sync',
+      'GET /api/financial/sync-status',
+      'GET /api/financial/health'
     ]
   });
 });
