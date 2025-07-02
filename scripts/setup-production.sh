@@ -2,6 +2,16 @@
 set -e
 
 echo "🚀 Configurando AI Service para Producción Real..."
+echo ""
+echo "📋 REQUIRED ENVIRONMENT VARIABLES:"
+echo "   POSTGRES_PASSWORD - Database password"
+echo "   REDIS_PASSWORD - Redis password"
+echo "   OPENAI_API_KEY - OpenAI API key"
+echo "   N8N_API_KEY - n8n API key"
+echo ""
+echo "   These should be set in your environment or .env.local file"
+echo "   before running this script."
+echo ""
 
 # 1. Verificar estructura de directorios
 echo "📁 Verificando estructura de volúmenes persistentes..."
@@ -124,22 +134,22 @@ POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 POSTGRES_DB=ai_service
 POSTGRES_USER=ai_user
-POSTGRES_PASSWORD=ultra_secure_password_2025
-DATABASE_URL=postgresql://ai_user:ultra_secure_password_2025@postgres:5432/ai_service
+POSTGRES_PASSWORD=\${POSTGRES_PASSWORD}
+DATABASE_URL=postgresql://ai_user:\${POSTGRES_PASSWORD}@postgres:5432/ai_service
 
 # === CACHE ===
 REDIS_HOST=redis
 REDIS_PORT=6379
-REDIS_PASSWORD=redis_secure_password_2025
+REDIS_PASSWORD=\${REDIS_PASSWORD}
 
 # === AI INTEGRATIONS (REAL) ===
-OPENAI_API_KEY=sk-your-real-openai-key-here
-CLAUDE_API_KEY=sk-ant-your-real-claude-key-here
-GEMINI_API_KEY=your-real-gemini-key-here
+OPENAI_API_KEY=\${OPENAI_API_KEY}
+CLAUDE_API_KEY=\${CLAUDE_API_KEY}
+GEMINI_API_KEY=\${GEMINI_API_KEY}
 
 # === N8N INTEGRATION ===
 N8N_API_URL=http://n8n:5678
-N8N_API_KEY=your-n8n-api-key-here
+N8N_API_KEY=\${N8N_API_KEY}
 N8N_WEBHOOK_URL=http://localhost:5678
 
 # === MONITORING ===

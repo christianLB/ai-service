@@ -32,12 +32,20 @@ class DatabaseService {
   private initialized = false;
 
   constructor() {
+    // Validate required environment variables
+    const requiredEnvVars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD'];
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}. Please set them in .env.local`);
+    }
+
     this.pool = new Pool({
-      host: process.env.POSTGRES_HOST || 'localhost',
-      port: parseInt(process.env.POSTGRES_PORT || '5432'),
-      database: process.env.POSTGRES_DB || 'ai_service',
-      user: process.env.POSTGRES_USER || 'postgres',
-      password: process.env.POSTGRES_PASSWORD || 'postgres',
+      host: process.env.POSTGRES_HOST!,
+      port: parseInt(process.env.POSTGRES_PORT!),
+      database: process.env.POSTGRES_DB!,
+      user: process.env.POSTGRES_USER!,
+      password: process.env.POSTGRES_PASSWORD!,
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
