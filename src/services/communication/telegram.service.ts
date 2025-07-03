@@ -31,6 +31,7 @@ export class TelegramService {
       { command: 'gastos', description: 'Gastos por categoría' },
       { command: 'reporte', description: 'Generar reporte' },
       { command: 'sync', description: 'Sincronizar datos bancarios' },
+      { command: 'setup', description: 'Configurar conexión bancaria' },
       { command: 'dashboard', description: 'Enlace al dashboard' }
     ]);
   }
@@ -111,6 +112,15 @@ export class TelegramService {
         case '/sync':
           await this.handleSyncCommand(chatId);
           break;
+        case '/setup':
+          await this.handleSetupCommand(chatId);
+          break;
+        case '/setup_bbva':
+          await this.handleSetupBBVACommand(chatId);
+          break;
+        case '/complete_setup':
+          await this.handleCompleteSetupCommand(chatId, params);
+          break;
         case '/dashboard':
           await this.handleDashboardCommand(chatId);
           break;
@@ -150,7 +160,8 @@ Usa /help para ver todos los comandos disponibles.
 /balance - Balance actual de cuentas
 /gastos [categoría] - Gastos por categoría
 /reporte [periodo] - Generar reporte (daily/weekly/monthly)
-/sync - Forzar sincronización bancaria
+/sync - Sincronizar transacciones bancarias
+/setup - Configurar conexión bancaria
 
 <b>⚙️ Sistema:</b>
 /status - Estado del sistema AI
@@ -276,18 +287,222 @@ ${summary.lastSync.toLocaleString()}
 
   private async handleSyncCommand(chatId: string): Promise<void> {
     try {
-      await this.sendMessage(chatId, '🔄 Iniciando sincronización bancaria...');
+      await this.sendMessage(chatId, '🔄 Verificando cuentas bancarias...');
       
-      // Por ahora simulamos la sincronización
-      // En el futuro se conectará con el servicio real de GoCardless
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Verificar si hay cuentas configuradas
+      const accounts = await this.financialService.getAccounts();
+      const bankAccounts = accounts.filter((acc: any) => acc.type === 'bank_account' && acc.is_active);
       
-      await this.sendMessage(chatId, '✅ Sincronización completada exitosamente');
+      if (bankAccounts.length === 0) {
+        // No hay cuentas, iniciar proceso de configuración
+        await this.sendMessage(chatId, `
+❌ <b>No hay cuentas bancarias configuradas</b>
+
+Para conectar tu banco necesitas:
+
+1️⃣ Primero, ejecuta el comando /setup para iniciar la configuración
+2️⃣ Te enviaré un enlace para autorizar el acceso a tu banco
+3️⃣ Una vez autorizado, podrás sincronizar tus transacciones
+
+¿Deseas configurar tu banco ahora? Usa /setup
+        `);
+        return;
+      }
+      
+      // Hay cuentas, realizar sincronización
+      await this.sendMessage(chatId, `
+📊 <b>Sincronizando ${bankAccounts.length} cuenta(s) bancaria(s)...</b>
+
+Esto puede tomar unos momentos...
+      `);
+      
+      try {
+        // Llamar al endpoint de sync
+        const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          const { accountsSynced, transactionsSynced } = result.data;
+          
+          await this.sendMessage(chatId, `
+✅ <b>Sincronización completada</b>
+
+📊 Resumen:
+• Cuentas sincronizadas: ${accountsSynced}
+• Nuevas transacciones: ${transactionsSynced}
+
+Usa /balance para ver tu saldo actualizado
+Usa /gastos para ver tus gastos por categoría
+          `);
+        } else {
+          throw new Error(result.error || 'Error en sincronización');
+        }
+      } catch (error: any) {
+        logger.error('Error en sincronización:', error);
+        await this.sendMessage(chatId, `
+⚠️ <b>Error en sincronización</b>
+
+${error.message}
+
+Intenta nuevamente en unos minutos o contacta soporte.
+        `);
+      }
     } catch (error) {
-      await this.sendMessage(chatId, '❌ Error en sincronización bancaria');
+      logger.error('Error en comando sync:', error);
+      await this.sendMessage(chatId, '❌ Error procesando sincronización');
     }
   }
 
+  private async handleSetupCommand(chatId: string): Promise<void> {
+    try {
+      await this.sendMessage(chatId, `
+🏦 <b>Configuración de Conexión Bancaria</b>
+
+Vamos a conectar tu banco usando GoCardless (Open Banking seguro).
+
+📋 <b>Bancos soportados:</b>
+• BBVA
+• Santander
+• CaixaBank
+• ING
+• Y más de 2000 bancos europeos
+
+Para comenzar, necesito que elijas tu banco. Por ejemplo:
+• Para BBVA: /setup_bbva
+• Para otro banco: Contacta soporte
+
+⚠️ <b>Importante:</b> Este proceso te redirigirá al sitio web de tu banco para autorizar el acceso de forma segura.
+      `);
+    } catch (error) {
+      logger.error('Error en comando setup:', error);
+      await this.sendMessage(chatId, '❌ Error mostrando opciones de configuración');
+    }
+  }
+  
+  private async handleSetupBBVACommand(chatId: string): Promise<void> {
+    try {
+      await this.sendMessage(chatId, '🏦 Iniciando configuración con BBVA...');
+      
+      // Llamar al endpoint de setup BBVA
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/setup-bbva`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data.requisition) {
+        const { requisition } = result.data;
+        
+        // Guardar requisition ID para este usuario (por ahora en memoria)
+        // TODO: Persistir esto en base de datos con el chat_id del usuario
+        
+        await this.sendMessage(chatId, `
+✅ <b>Proceso de autorización iniciado</b>
+
+🔗 <b>Enlace de autorización:</b>
+${requisition.link}
+
+📋 <b>Instrucciones:</b>
+1. Haz clic en el enlace anterior
+2. Serás redirigido al sitio web de BBVA
+3. Inicia sesión con tus credenciales bancarias
+4. Autoriza el acceso a tus datos financieros
+5. Una vez completado, vuelve aquí
+
+⏱️ <b>Este enlace expira en 30 minutos</b>
+
+Cuando hayas completado la autorización, usa el comando:
+/complete_setup ${requisition.id}
+        `);
+      } else {
+        throw new Error(result.error || 'Error iniciando configuración');
+      }
+    } catch (error: any) {
+      logger.error('Error en setup BBVA:', error);
+      await this.sendMessage(chatId, `
+❌ <b>Error configurando BBVA</b>
+
+${error.message}
+
+Posibles causas:
+• Las credenciales de GoCardless no están configuradas
+• Error de conexión con el servicio
+
+Contacta al administrador del sistema.
+      `);
+    }
+  }
+  
+  private async handleCompleteSetupCommand(chatId: string, requisitionId?: string): Promise<void> {
+    try {
+      if (!requisitionId) {
+        await this.sendMessage(chatId, `
+❌ <b>Falta el ID de requisición</b>
+
+Uso correcto: /complete_setup [requisition_id]
+
+El ID te fue proporcionado cuando iniciaste la configuración.
+        `);
+        return;
+      }
+      
+      await this.sendMessage(chatId, '🔄 Verificando autorización...');
+      
+      // Llamar al endpoint de complete setup
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/complete-setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requisitionId })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const { accountsSaved } = result.data;
+        
+        await this.sendMessage(chatId, `
+✅ <b>¡Configuración completada exitosamente!</b>
+
+🏦 Se han conectado ${accountsSaved} cuenta(s) bancaria(s).
+
+Ahora puedes:
+• /sync - Sincronizar tus transacciones
+• /balance - Ver tu balance actual
+• /gastos - Ver análisis de gastos
+• /dashboard - Acceder al dashboard web
+
+🎉 ¡Tu sistema financiero está listo!
+        `);
+        
+        // Iniciar una sincronización automática
+        await this.sendMessage(chatId, '🔄 Iniciando primera sincronización...');
+        setTimeout(() => this.handleSyncCommand(chatId), 1000);
+        
+      } else {
+        throw new Error(result.error || 'Error completando configuración');
+      }
+    } catch (error: any) {
+      logger.error('Error en complete setup:', error);
+      await this.sendMessage(chatId, `
+❌ <b>Error completando configuración</b>
+
+${error.message}
+
+Posibles causas:
+• El proceso de autorización no se completó
+• El ID de requisición es inválido
+• La autorización expiró
+
+Intenta iniciar el proceso nuevamente con /setup_bbva
+      `);
+    }
+  }
+  
   private async handleDashboardCommand(chatId: string): Promise<void> {
     const dashboardUrl = process.env.DASHBOARD_URL || 'http://localhost:3000/dashboard';
     
