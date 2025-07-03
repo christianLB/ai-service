@@ -2,22 +2,35 @@
 
 echo "🚀 Starting AI Service..."
 
+# Function to load environment file
+load_env_file() {
+    local env_file=$1
+    echo "📋 Loading environment variables from $env_file..."
+    
+    # Read file line by line and export variables
+    while IFS='=' read -r key value; do
+        # Skip empty lines and comments
+        case "$key" in
+            ''|\#*) continue ;;
+        esac
+        
+        # Remove quotes if present
+        value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+        
+        # Export the variable
+        export "$key=$value"
+        echo "  ✓ Set $key"
+    done < "$env_file"
+}
+
 # Check for environment file in mounted config directory
 if [ -f "/config/.env.production" ]; then
     echo "✅ Found .env.production in /config"
-    echo "📋 Loading environment variables..."
-    # Use set -a to export all variables
-    set -a
-    . /config/.env.production
-    set +a
+    load_env_file "/config/.env.production"
     echo "✅ Environment loaded successfully"
 elif [ -f "/config/production.env" ]; then
     echo "✅ Found production.env in /config"
-    echo "📋 Loading environment variables..."
-    # Use set -a to export all variables
-    set -a
-    . /config/production.env
-    set +a
+    load_env_file "/config/production.env"
     echo "✅ Environment loaded successfully"
 else
     echo "⚠️  WARNING: No environment file found in /config/"
