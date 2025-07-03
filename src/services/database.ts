@@ -1,6 +1,7 @@
 import { Pool, PoolClient } from 'pg';
 import { logger } from '../utils/log';
 import { v4 as uuidv4 } from 'uuid';
+import { migrateFinancialSchema } from './database-migrations';
 
 interface WorkflowRecord {
   id: string;
@@ -143,30 +144,22 @@ class DatabaseService {
       // Create schema
       await client.query(`CREATE SCHEMA IF NOT EXISTS financial`);
       
-      // Check if we need to migrate old schema
+      // Check if we need to migrate
       const result = await client.query(`
-        SELECT COUNT(*) as count 
-        FROM information_schema.columns 
-        WHERE table_schema = 'financial' 
-        AND table_name = 'transactions' 
-        AND column_name = 'currency'
+        SELECT 
+          EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'financial' 
+            AND table_name = 'transactions' 
+            AND column_name = 'currency'
+          ) as needs_migration
       `);
       
-      if (result.rows[0].count > 0) {
-        // Old schema exists, check if it has data
-        const dataCheck = await client.query(`
-          SELECT COUNT(*) as count FROM financial.transactions
-        `);
-        
-        if (dataCheck.rows[0].count === 0) {
-          // No data, safe to drop and recreate
-          logger.info('Migrating financial schema to new structure...');
-          await client.query(`DROP SCHEMA financial CASCADE`);
-          await client.query(`CREATE SCHEMA financial`);
-        } else {
-          logger.warn('Financial schema has data, skipping migration. Manual intervention required.');
-          return;
-        }
+      if (result.rows[0].needs_migration) {
+        // Run migration
+        logger.info('Detected old financial schema, running migration...');
+        await migrateFinancialSchema(client);
+        return;
       }
       
       // Create currencies table
