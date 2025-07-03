@@ -28,7 +28,7 @@ interface ExecutionRecord {
 }
 
 class DatabaseService {
-  private pool: Pool;
+  public pool: Pool;  // Changed from private to public for health check statistics
   private initialized = false;
 
   constructor() {
@@ -384,14 +384,29 @@ class DatabaseService {
   }
 
   async healthCheck(): Promise<boolean> {
+    let client;
     try {
-      const client = await this.pool.connect();
+      // Add timeout to prevent hanging connections
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Health check timeout')), 5000)
+      );
+      
+      const connectPromise = this.pool.connect();
+      client = await Promise.race([connectPromise, timeoutPromise]) as PoolClient;
+      
       await client.query('SELECT 1');
-      client.release();
       return true;
-    } catch (error) {
-      logger.error('Database health check failed:', error);
+    } catch (error: any) {
+      logger.error('Database health check failed:', error.message);
       return false;
+    } finally {
+      if (client) {
+        try {
+          client.release();
+        } catch (releaseError: any) {
+          logger.error('Error releasing client in health check:', releaseError.message);
+        }
+      }
     }
   }
 }
