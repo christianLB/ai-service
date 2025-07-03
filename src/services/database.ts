@@ -61,11 +61,27 @@ class DatabaseService {
     if (this.initialized) return;
 
     try {
+      // Log connection details (without password)
+      logger.info('Attempting database connection:', {
+        host: process.env.POSTGRES_HOST,
+        port: process.env.POSTGRES_PORT,
+        database: process.env.POSTGRES_DB,
+        user: process.env.POSTGRES_USER,
+        NODE_ENV: process.env.NODE_ENV
+      });
+      
       await this.createTables();
       this.initialized = true;
       logger.info('Database service initialized successfully');
     } catch (error: any) {
       logger.error('Database initialization failed:', error.message);
+      logger.error('Full error:', error);
+      logger.error('Database config:', {
+        host: process.env.POSTGRES_HOST,
+        port: process.env.POSTGRES_PORT,
+        database: process.env.POSTGRES_DB,
+        user: process.env.POSTGRES_USER
+      });
       throw error;
     }
   }
