@@ -57,28 +57,54 @@ app.get('/dashboard', (_req: express.Request, res: express.Response) => {
 
 // Health check endpoint
 app.get('/status', async (_req: express.Request, res: express.Response) => {
+  const startTime = Date.now();
   try {
+    // Run health check with detailed diagnostics
     const dbHealthy = await db.healthCheck();
+    const healthCheckDuration = Date.now() - startTime;
+    
+    // Get pool statistics
+    const poolStats = {
+      total: db.pool.totalCount,
+      idle: db.pool.idleCount,
+      waiting: db.pool.waitingCount
+    };
     
     const status = {
       status: dbHealthy ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       memory: process.memoryUsage(),
-      database: dbHealthy ? 'connected' : 'disconnected',
+      database: {
+        connected: dbHealthy,
+        poolStats,
+        healthCheckDuration: `${healthCheckDuration}ms`
+      },
       alerts: 0,
-      version: process.env.npm_package_version || '1.0.0'
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development'
     };
+    
+    // Log health check result
+    if (!dbHealthy) {
+      logger.warn('Health check returned degraded status', { poolStats, duration: healthCheckDuration });
+    }
     
     // Simplified health check - only fail if DB is down
     const httpStatus = dbHealthy ? 200 : 503;
     res.status(httpStatus).json(status);
   } catch (error: any) {
-    logger.error('Health check failed:', error.message);
+    const duration = Date.now() - startTime;
+    logger.error('Health check failed:', { 
+      error: error.message, 
+      duration: `${duration}ms`,
+      stack: error.stack 
+    });
     res.status(503).json({
       status: 'error',
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      duration: `${duration}ms`
     });
   }
 });
