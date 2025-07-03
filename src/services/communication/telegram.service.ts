@@ -119,7 +119,7 @@ export class TelegramService {
           await this.handleSetupBBVACommand(chatId);
           break;
         case '/complete_setup':
-          await this.handleCompleteSetupCommand(chatId, params);
+          await this.handleCompleteSetupCommand(chatId, params[0]);
           break;
         case '/dashboard':
           await this.handleDashboardCommand(chatId);
