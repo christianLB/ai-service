@@ -144,20 +144,36 @@ class DatabaseService {
       // Create schema
       await client.query(`CREATE SCHEMA IF NOT EXISTS financial`);
       
-      // Check if we need to migrate
-      const result = await client.query(`
+      // Always check and update schema
+      logger.info('Checking financial schema...');
+      
+      // Check if we have the old schema OR missing objects
+      const schemaCheck = await client.query(`
         SELECT 
           EXISTS (
             SELECT 1 FROM information_schema.columns 
             WHERE table_schema = 'financial' 
             AND table_name = 'transactions' 
             AND column_name = 'currency'
-          ) as needs_migration
+          ) as has_old_schema,
+          EXISTS (
+            SELECT 1 FROM information_schema.views 
+            WHERE table_schema = 'financial' 
+            AND table_name = 'categorized_transactions'
+          ) as has_view,
+          EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'financial' 
+            AND table_name = 'accounts' 
+            AND column_name = 'wallet_address'
+          ) as has_wallet_address
       `);
       
-      if (result.rows[0].needs_migration) {
+      const { has_old_schema, has_view, has_wallet_address } = schemaCheck.rows[0];
+      
+      if (has_old_schema || !has_view || !has_wallet_address) {
         // Run migration
-        logger.info('Detected old financial schema, running migration...');
+        logger.info('Schema needs update, running migration...');
         await migrateFinancialSchema(client);
         return;
       }
