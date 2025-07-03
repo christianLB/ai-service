@@ -9,15 +9,12 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: ai-service-db
-    env_file:
-      - /volume1/docker/ai-service/config/.env.production
     environment:
       POSTGRES_DB: ai_service
       POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ultra_secure_password_2025
     volumes:
       - /volume1/docker/ai-service/postgres:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
     networks:
       - ai-service-network
     restart: unless-stopped
@@ -27,45 +24,21 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis Cache
+  # Redis Cache  
   redis:
     image: redis:7-alpine
     container_name: ai-service-redis
-    env_file:
-      - /volume1/docker/ai-service/config/.env.production
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["redis-server --requirepass $$REDIS_PASSWORD --appendonly yes"]
+    command: redis-server --requirepass redis_secure_password_2025 --appendonly yes
     volumes:
       - /volume1/docker/ai-service/redis:/data
-    ports:
-      - "6380:6379"
     networks:
       - ai-service-network
     restart: unless-stopped
 
-  # Prometheus Metrics
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: ai-service-prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
-    volumes:
-      - https://raw.githubusercontent.com/christianLB/ai-service/main/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - /volume1/docker/ai-service/prometheus:/prometheus
-    ports:
-      - "9091:9090"
-    networks:
-      - ai-service-network
-    restart: unless-stopped
-
-  # Main Application - Built from GitHub
+  # Main Application
   ai-service:
     image: ghcr.io/christianlb/ai-service:latest
     container_name: ai-service-prod
-    # Load environment from mounted file
     env_file:
       - /volume1/docker/ai-service/config/.env.production
     volumes:
