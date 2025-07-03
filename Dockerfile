@@ -42,6 +42,10 @@ COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 
+# Copiar entrypoint script
+COPY --chown=nodejs:nodejs entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
 # Crear directorios necesarios
 RUN mkdir -p logs workflows && chown -R nodejs:nodejs logs workflows
 
@@ -56,4 +60,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/status || exit 1
 
 # Comando de inicio
-CMD ["dumb-init", "node", "dist/index.js"]
+ENTRYPOINT ["dumb-init", "./entrypoint.sh"]

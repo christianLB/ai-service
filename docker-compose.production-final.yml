@@ -1,0 +1,134 @@
+version: "3.8"
+
+networks:
+  ai-service-network:
+    driver: bridge
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-service-db
+    environment:
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ultra_secure_password_2025}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache  
+  redis:
+    image: redis:7-alpine
+    container_name: ai-service-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secure_password_2025} --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+
+  # Main Application
+  ai-service:
+    image: ghcr.io/christianlb/ai-service:latest
+    container_name: ai-service-prod
+    environment:
+      # Core
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: info
+      
+      # Database
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ultra_secure_password_2025}
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_password_2025}
+      
+      # Telegram Bot (CONFIGURE THESE IN PORTAINER)
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
+      TELEGRAM_ALERTS_ENABLED: ${TELEGRAM_ALERTS_ENABLED:-true}
+      
+      # GoCardless (CONFIGURE THESE IN PORTAINER)
+      GO_SECRET_ID: ${GO_SECRET_ID}
+      GO_SECRET_KEY: ${GO_SECRET_KEY}
+      GO_REDIRECT_URI: ${GO_REDIRECT_URI:-https://localhost:3000/callback}
+      
+      # AI Services (OPTIONAL)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
+      
+    volumes:
+      - logs:/app/logs
+      - workflows:/app/data/workflows
+      - documents:/app/data/documents
+      - knowledge:/app/data/knowledge
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Named volumes (Portainer friendly)
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/ai-service/postgres
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/ai-service/redis
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/ai-service/logs
+  workflows:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/ai-service/workflows
+  documents:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/ai-service/documents
+  knowledge:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/ai-service/knowledge
