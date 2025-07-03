@@ -14,6 +14,7 @@ import flowGen from './routes/flow-gen';
 import flowUpdate from './routes/flow-update';
 import flowTest from './routes/flow-test';
 import financialRoutes from './routes/financial';
+import telegramRoutes from './routes/telegram';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
@@ -86,6 +87,7 @@ app.use('/api', flowGen);
 app.use('/api', flowUpdate);
 app.use('/api', flowTest);
 app.use('/api/financial', financialRoutes);
+app.use('/api/telegram', telegramRoutes);
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -132,7 +134,12 @@ app.use('*', (req: express.Request, res: express.Response) => {
       'GET /api/financial/dashboard/quick-stats',
       'POST /api/financial/sync',
       'GET /api/financial/sync-status',
-      'GET /api/financial/health'
+      'GET /api/financial/health',
+      'POST /api/telegram/webhook',
+      'POST /api/telegram/send-message',
+      'POST /api/telegram/send-alert',
+      'POST /api/telegram/setup-webhook',
+      'GET /api/telegram/status'
     ]
   });
 });
