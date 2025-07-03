@@ -39,21 +39,82 @@ services:
       - ai-service-network
     restart: unless-stopped
 
-  # AI Service Principal (imagen simplificada)
+  # N8N Workflow Engine
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ai-service-n8n
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=n8n_admin_2025
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=https://ai-service.anaxi.net
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=ai_user
+      - DB_POSTGRESDB_PASSWORD=ultra_secure_password_2025
+    ports:
+      - "5678:5678"
+    volumes:
+      - /volume1/docker/ai-service/n8n:/home/node/.n8n
+    networks:
+      - ai-service-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus para métricas
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-service-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - /volume1/docker/ai-service/prometheus:/prometheus
+      - ./monitoring/prometheus.synology.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-service-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana_admin_password_2025
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - /volume1/docker/ai-service/grafana:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - ai-service-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # AI Service Principal (imagen pre-construida)
   ai-service:
-    image: node:20-slim
+    image: k2600x/ai-service:latest
     container_name: ai-service-prod
-    working_dir: /app
-    command: >
-      bash -c "
-        apt-get update && 
-        apt-get install -y curl git && 
-        rm -rf * .* 2>/dev/null || true &&
-        git clone https://github.com/christianLB/ai-service.git . && 
-        npm ci && 
-        npm run build && 
-        npm start
-      "
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -69,13 +130,32 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=redis_secure_password_2025
+      - N8N_API_URL=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - GO_SECRET_ID=6b4b7fe5-5863-4432-880a-aab64d52a1e6
+      - GO_SECRET_KEY=8246fb5525c80628d4d13de48c0d7ea4c38fc01e100f8ab5270977b0f0898ce6469d68e09667e77da588f172c9147a83748aa026b8382b9139b13c8d8e9cb79b
+      - GO_REDIRECT_URI=https://ai-service.anaxi.net/financial/callback
+      - DASHBOARD_URL=https://ai-service.anaxi.net/dashboard
+      - LOG_LEVEL=info
     ports:
       - "3003:3000"
     volumes:
       - /volume1/docker/ai-service/logs:/app/logs
+      - /volume1/docker/ai-service/workflows:/app/data/workflows
+      - /volume1/docker/ai-service/documents:/app/data/documents
+      - /volume1/docker/ai-service/knowledge:/app/data/knowledge
     networks:
       - ai-service-network
     depends_on:
       postgres:
         condition: service_healthy
+      n8n:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
