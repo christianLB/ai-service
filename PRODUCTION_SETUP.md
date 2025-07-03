@@ -43,32 +43,30 @@ CLAUDE_API_KEY=tu_claude_api_key_aqui
 
 ---
 
-## 🗄️ Base de Datos - Inicialización Automática
+## 🗄️ Base de Datos - Inicialización Manual
 
-### **Esquemas que se crean automáticamente**:
+**IMPORTANTE**: Los esquemas de base de datos se deben inicializar manualmente después del despliegue.
 
-1. **`financial-schema.sql`** - Sistema financiero completo:
-   - Tablas de cuentas bancarias
-   - Transacciones financieras
-   - Categorización automática
-   - Sistema de facturas
-   - Integración GoCardless
+### **Pasos de Inicialización Obligatorios**:
 
-2. **`init-db.sql`** - Esquemas base:
-   - Tablas del AI Service
-   - Documentos y conocimiento
-   - Logs de comunicación
-   - Índices optimizados
-
-### **Configuración GoCardless**:
-
-Después del primer despliegue, ejecutar:
-
+#### **1. Esperar que el servicio inicie completamente**
 ```bash
-# 1. Inicializar sistema financiero
-curl -X POST https://ai-service.anaxi.net/api/financial/init-db
+# Verificar que AI Service está running
+curl https://ai-service.anaxi.net/status
+```
 
-# 2. Configurar conexión BBVA
+#### **2. Inicializar esquemas de base de datos**
+```bash
+# Crear esquemas base del AI Service
+curl -X POST https://ai-service.anaxi.net/api/init-db
+
+# Crear esquemas del sistema financiero
+curl -X POST https://ai-service.anaxi.net/api/financial/init-db
+```
+
+#### **3. Configurar integración GoCardless/BBVA**
+```bash
+# Configurar conexión BBVA
 curl -X POST https://ai-service.anaxi.net/api/financial/setup-bbva \
   -H "Content-Type: application/json" \
   -d '{
@@ -76,13 +74,25 @@ curl -X POST https://ai-service.anaxi.net/api/financial/setup-bbva \
     "redirect_uri": "https://ai-service.anaxi.net/financial/callback"
   }'
 
-# 3. Obtener enlace de autorización (seguir URL devuelta)
+# Seguir URL de autorización devuelta en la respuesta
 
-# 4. Completar configuración después de autorización
+# Completar configuración después de autorización en el navegador
 curl -X POST https://ai-service.anaxi.net/api/financial/complete-setup
 
-# 5. Primera sincronización
+# Primera sincronización de transacciones
 curl -X POST https://ai-service.anaxi.net/api/financial/sync
+```
+
+### **Verificación de Esquemas**:
+```bash
+# Conectar a la base de datos y verificar
+docker exec -it ai-service-db psql -U ai_user -d ai_service
+
+# Verificar esquemas creados
+\dn
+
+# Verificar tablas financieras (debe existir después de init-db)
+\dt financial.*
 ```
 
 ---
