@@ -1,10 +1,31 @@
+-- Inicialización de Base de Datos para AI Service
+-- Synology DSM 420+ + PostgreSQL 15
+
 -- Crear base de datos para n8n si no existe
-CREATE DATABASE IF NOT EXISTS n8n;
+SELECT 'CREATE DATABASE n8n'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'n8n')\gexec
 
 -- Crear extensiones necesarias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "unaccent";
+
+-- Configurar búsqueda de texto completo en español
+CREATE TEXT SEARCH CONFIGURATION IF NOT EXISTS spanish_unaccent (COPY = spanish);
+ALTER TEXT SEARCH CONFIGURATION spanish_unaccent
+   ALTER MAPPING FOR hword, hword_part, word
+   WITH unaccent, spanish_stem;
+
+-- Crear esquemas para AI Service
+CREATE SCHEMA IF NOT EXISTS ai_service;
+CREATE SCHEMA IF NOT EXISTS financial;
+
+-- Configurar permisos
+GRANT ALL PRIVILEGES ON SCHEMA ai_service TO ai_user;
+GRANT ALL PRIVILEGES ON SCHEMA financial TO ai_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ai_service TO ai_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ai_service TO ai_user;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA ai_service TO ai_user;
 
 -- Crear tablas extendidas para experimentación
 -- Tabla de documentos ingestados
