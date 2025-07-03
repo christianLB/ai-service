@@ -456,6 +456,7 @@ export class GoCardlessService {
     transactionsSynced: number;
   }>> {
     try {
+      console.log('=== GOCARDLESS PERIODIC SYNC ===');
       console.log('Starting periodic sync of GoCardless accounts...');
       
       // Get all active bank accounts
@@ -464,6 +465,8 @@ export class GoCardlessService {
         FROM financial.accounts 
         WHERE type = 'bank_account' AND is_active = true AND account_id IS NOT NULL
       `);
+      
+      console.log(`Found ${accounts.rows.length} active bank accounts to sync`);
 
       let accountsSynced = 0;
       let totalTransactionsSynced = 0;

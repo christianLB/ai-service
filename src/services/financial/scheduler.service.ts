@@ -330,10 +330,13 @@ export class FinancialSchedulerService {
   // ============================================================================
 
   async performManualSync(): Promise<any> {
-    console.log('Performing manual sync...');
+    console.log('=== MANUAL SYNC STARTED ===');
+    console.log(`Timestamp: ${new Date().toISOString()}`);
     
     try {
+      console.log('Calling GoCardless performPeriodicSync...');
       const result = await this.goCardless.performPeriodicSync();
+      console.log('GoCardless sync result:', JSON.stringify(result, null, 2));
       
       await this.logSyncMetrics({
         accountsSynced: result.data?.accountsSynced || 0,

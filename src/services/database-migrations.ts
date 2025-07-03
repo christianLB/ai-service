@@ -160,7 +160,10 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         ADD COLUMN IF NOT EXISTS institution_id VARCHAR(255),
         ADD COLUMN IF NOT EXISTS requisition_id VARCHAR(255),
         ADD COLUMN IF NOT EXISTS iban VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS last_sync TIMESTAMPTZ
+        ADD COLUMN IF NOT EXISTS last_sync TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS wallet_address VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS chain_id VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS exchange_name VARCHAR(100)
       `);
       
       // Step 6: Create categories table
@@ -215,6 +218,32 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_accounts_currency_id ON financial.accounts(currency_id);
         CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_transaction_id ON financial.transaction_categorizations(transaction_id);
         CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_category_id ON financial.transaction_categorizations(category_id);
+      `);
+      
+      // Step 9: Create categorized_transactions view
+      await client.query(`
+        CREATE OR REPLACE VIEW financial.categorized_transactions AS
+        SELECT 
+          t.id,
+          t.account_id,
+          a.name as account_name,
+          t.type,
+          t.amount,
+          t.currency_id,
+          c.code as currency_code,
+          t.description,
+          t.date,
+          cat.id as category_id,
+          cat.name as category_name,
+          cat.type as category_type,
+          tc.confidence as confidence_score,
+          tc.method as categorization_method,
+          t.created_at
+        FROM financial.transactions t
+        JOIN financial.accounts a ON t.account_id = a.account_id
+        JOIN financial.currencies c ON t.currency_id = c.id
+        LEFT JOIN financial.transaction_categorizations tc ON t.id = tc.transaction_id
+        LEFT JOIN financial.categories cat ON tc.category_id = cat.id
       `);
       
       await client.query('COMMIT');

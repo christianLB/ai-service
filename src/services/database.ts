@@ -199,6 +199,9 @@ class DatabaseService {
           institution_id VARCHAR(255),
           requisition_id VARCHAR(255),
           iban VARCHAR(255),
+          wallet_address VARCHAR(255),
+          chain_id VARCHAR(50),
+          exchange_name VARCHAR(100),
           metadata JSONB DEFAULT '{}',
           is_active BOOLEAN DEFAULT TRUE,
           last_sync TIMESTAMPTZ,
@@ -282,6 +285,32 @@ class DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_accounts_institution ON financial.accounts(institution);
         CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_transaction_id ON financial.transaction_categorizations(transaction_id);
         CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_category_id ON financial.transaction_categorizations(category_id);
+      `);
+      
+      // Create views
+      await client.query(`
+        CREATE OR REPLACE VIEW financial.categorized_transactions AS
+        SELECT 
+          t.id,
+          t.account_id,
+          a.name as account_name,
+          t.type,
+          t.amount,
+          t.currency_id,
+          c.code as currency_code,
+          t.description,
+          t.date,
+          cat.id as category_id,
+          cat.name as category_name,
+          cat.type as category_type,
+          tc.confidence as confidence_score,
+          tc.method as categorization_method,
+          t.created_at
+        FROM financial.transactions t
+        JOIN financial.accounts a ON t.account_id = a.account_id
+        JOIN financial.currencies c ON t.currency_id = c.id
+        LEFT JOIN financial.transaction_categorizations tc ON t.id = tc.transaction_id
+        LEFT JOIN financial.categories cat ON tc.category_id = cat.id
       `);
       
       logger.info('Financial schema created successfully');
