@@ -143,6 +143,32 @@ class DatabaseService {
       // Create schema
       await client.query(`CREATE SCHEMA IF NOT EXISTS financial`);
       
+      // Check if we need to migrate old schema
+      const result = await client.query(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.columns 
+        WHERE table_schema = 'financial' 
+        AND table_name = 'transactions' 
+        AND column_name = 'currency'
+      `);
+      
+      if (result.rows[0].count > 0) {
+        // Old schema exists, check if it has data
+        const dataCheck = await client.query(`
+          SELECT COUNT(*) as count FROM financial.transactions
+        `);
+        
+        if (dataCheck.rows[0].count === 0) {
+          // No data, safe to drop and recreate
+          logger.info('Migrating financial schema to new structure...');
+          await client.query(`DROP SCHEMA financial CASCADE`);
+          await client.query(`CREATE SCHEMA financial`);
+        } else {
+          logger.warn('Financial schema has data, skipping migration. Manual intervention required.');
+          return;
+        }
+      }
+      
       // Create currencies table
       await client.query(`
         CREATE TABLE IF NOT EXISTS financial.currencies (
@@ -173,12 +199,16 @@ class DatabaseService {
           account_id VARCHAR(255) UNIQUE NOT NULL,
           name VARCHAR(255) NOT NULL,
           type VARCHAR(50) NOT NULL,
-          currency VARCHAR(10) NOT NULL,
+          currency_id UUID REFERENCES financial.currencies(id),
           balance DECIMAL(20, 8) DEFAULT 0,
           available_balance DECIMAL(20, 8) DEFAULT 0,
           institution VARCHAR(255),
+          institution_id VARCHAR(255),
+          requisition_id VARCHAR(255),
+          iban VARCHAR(255),
           metadata JSONB DEFAULT '{}',
           is_active BOOLEAN DEFAULT TRUE,
+          last_sync TIMESTAMPTZ,
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
         )
@@ -191,14 +221,64 @@ class DatabaseService {
           transaction_id VARCHAR(255) UNIQUE NOT NULL,
           account_id VARCHAR(255) NOT NULL,
           amount DECIMAL(20, 8) NOT NULL,
-          currency VARCHAR(10) NOT NULL,
+          currency_id UUID REFERENCES financial.currencies(id),
           type VARCHAR(50) NOT NULL,
+          status VARCHAR(50) DEFAULT 'confirmed',
           category VARCHAR(100),
           description TEXT,
+          reference VARCHAR(255),
           date DATE NOT NULL,
           created_at TIMESTAMPTZ DEFAULT NOW(),
-          metadata JSONB DEFAULT '{}'
+          updated_at TIMESTAMPTZ DEFAULT NOW(),
+          metadata JSONB DEFAULT '{}',
+          tags TEXT[],
+          fee_amount DECIMAL(20, 8),
+          fee_currency_id UUID REFERENCES financial.currencies(id)
         )
+      `);
+      
+      // Create categories table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS financial.categories (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(100) UNIQUE NOT NULL,
+          type VARCHAR(20) CHECK (type IN ('income', 'expense', 'transfer')),
+          parent_id UUID REFERENCES financial.categories(id),
+          color VARCHAR(7),
+          icon VARCHAR(50),
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      
+      // Create transaction_categorizations table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS financial.transaction_categorizations (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          transaction_id UUID REFERENCES financial.transactions(id) ON DELETE CASCADE,
+          category_id UUID REFERENCES financial.categories(id),
+          confidence DECIMAL(3, 2) DEFAULT 1.00,
+          method VARCHAR(50) DEFAULT 'manual',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(transaction_id)
+        )
+      `);
+      
+      // Insert default categories
+      await client.query(`
+        INSERT INTO financial.categories (name, type) VALUES 
+        ('Salary', 'income'),
+        ('Freelance', 'income'),
+        ('Investment', 'income'),
+        ('Food & Dining', 'expense'),
+        ('Transportation', 'expense'),
+        ('Shopping', 'expense'),
+        ('Bills & Utilities', 'expense'),
+        ('Entertainment', 'expense'),
+        ('Healthcare', 'expense'),
+        ('Transfer', 'transfer')
+        ON CONFLICT (name) DO NOTHING
       `);
       
       // Create indexes
@@ -207,6 +287,8 @@ class DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_transactions_date ON financial.transactions(date);
         CREATE INDEX IF NOT EXISTS idx_transactions_category ON financial.transactions(category);
         CREATE INDEX IF NOT EXISTS idx_accounts_institution ON financial.accounts(institution);
+        CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_transaction_id ON financial.transaction_categorizations(transaction_id);
+        CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_category_id ON financial.transaction_categorizations(category_id);
       `);
       
       logger.info('Financial schema created successfully');
