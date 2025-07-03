@@ -1,0 +1,114 @@
+version: "3.8"
+
+networks:
+  ai-service-network:
+    driver: bridge
+
+services:
+  # PostgreSQL básico
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-service-db
+    environment:
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /volume1/docker/ai-service/postgres:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis básico
+  redis:
+    image: redis:7-alpine
+    container_name: ai-service-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - /volume1/docker/ai-service/redis:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+
+  # N8N Workflow Engine - SIMPLE (sin PostgreSQL)
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ai-service-n8n
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_ADMIN_PASSWORD}
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      # Sin base de datos PostgreSQL, usa SQLite por defecto
+    ports:
+      - "5678:5678"
+    volumes:
+      - /volume1/docker/ai-service/n8n:/home/node/.n8n
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+    # Sin health check para simplificar
+
+  # AI Service con N8N
+  ai-service:
+    image: k2600x/ai-service:latest
+    container_name: ai-service-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_service
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - LOG_LEVEL=info
+      # Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL}
+      - TELEGRAM_ALERTS_ENABLED=true
+      # N8N
+      - N8N_API_URL=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY:-}
+      # APIs
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      # GoCardless Financial
+      - GO_SECRET_ID=${GO_SECRET_ID}
+      - GO_SECRET_KEY=${GO_SECRET_KEY}
+      - GO_REDIRECT_URI=${GO_REDIRECT_URI}
+      - DASHBOARD_URL=${DASHBOARD_URL}
+    ports:
+      - "3003:3000"
+    volumes:
+      - /volume1/docker/ai-service/logs:/app/logs
+      - /volume1/docker/ai-service/workflows:/app/data/workflows
+      - /volume1/docker/ai-service/documents:/app/data/documents
+      - /volume1/docker/ai-service/knowledge:/app/data/knowledge
+    networks:
+      - ai-service-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Sin dependencia de N8N health check
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
