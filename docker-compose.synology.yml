@@ -60,9 +60,10 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - /volume1/docker/ai-service/data:/app/data
+      - /volume1/docker/ai-service/workflows:/app/data/workflows
+      - /volume1/docker/ai-service/documents:/app/data/documents
+      - /volume1/docker/ai-service/knowledge:/app/data/knowledge
       - /volume1/docker/ai-service/logs:/app/logs
-      - /volume1/docker/ai-service/workflows:/app/workflows
     networks:
       - ai-service-network
     depends_on:
