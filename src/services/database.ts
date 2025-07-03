@@ -129,8 +129,93 @@ class DatabaseService {
       `);
 
       logger.info('Database tables created successfully');
+      
+      // Create financial schema if it doesn't exist
+      await this.createFinancialSchema(client);
+      
     } finally {
       client.release();
+    }
+  }
+  
+  private async createFinancialSchema(client: any): Promise<void> {
+    try {
+      // Create schema
+      await client.query(`CREATE SCHEMA IF NOT EXISTS financial`);
+      
+      // Create currencies table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS financial.currencies (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          code VARCHAR(10) UNIQUE NOT NULL,
+          name VARCHAR(100) NOT NULL,
+          type VARCHAR(20) NOT NULL CHECK (type IN ('fiat', 'crypto')),
+          decimals INTEGER DEFAULT 2,
+          symbol VARCHAR(10),
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      
+      // Insert default currencies if not exist
+      await client.query(`
+        INSERT INTO financial.currencies (code, name, type, decimals, symbol) VALUES 
+        ('EUR', 'Euro', 'fiat', 2, '€'),
+        ('USD', 'US Dollar', 'fiat', 2, '$')
+        ON CONFLICT (code) DO NOTHING
+      `);
+      
+      // Create accounts table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS financial.accounts (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          account_id VARCHAR(255) UNIQUE NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          type VARCHAR(50) NOT NULL,
+          currency VARCHAR(10) NOT NULL,
+          balance DECIMAL(20, 8) DEFAULT 0,
+          available_balance DECIMAL(20, 8) DEFAULT 0,
+          institution VARCHAR(255),
+          metadata JSONB DEFAULT '{}',
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      
+      // Create transactions table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS financial.transactions (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          transaction_id VARCHAR(255) UNIQUE NOT NULL,
+          account_id VARCHAR(255) NOT NULL,
+          amount DECIMAL(20, 8) NOT NULL,
+          currency VARCHAR(10) NOT NULL,
+          type VARCHAR(50) NOT NULL,
+          category VARCHAR(100),
+          description TEXT,
+          date DATE NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          metadata JSONB DEFAULT '{}'
+        )
+      `);
+      
+      // Create indexes
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON financial.transactions(account_id);
+        CREATE INDEX IF NOT EXISTS idx_transactions_date ON financial.transactions(date);
+        CREATE INDEX IF NOT EXISTS idx_transactions_category ON financial.transactions(category);
+        CREATE INDEX IF NOT EXISTS idx_accounts_institution ON financial.accounts(institution);
+      `);
+      
+      logger.info('Financial schema created successfully');
+    } catch (error: any) {
+      // If schema already exists, that's fine
+      if (error.code !== '42P06') { // 42P06 = schema already exists
+        logger.error('Error creating financial schema:', error.message);
+        throw error;
+      }
     }
   }
 

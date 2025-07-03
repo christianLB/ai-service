@@ -1,0 +1,25 @@
+[dotenv@17.0.1] injecting env (22) from .env.local – [tip] encrypt with dotenvx: https://dotenvx.com
+📁 Environment variables loaded from .env.local
+2025-07-03T18:22:35.007Z [info] 🚀 Starting AI Service initialization...
+2025-07-03T18:22:35.009Z [info] 📊 Initializing database...
+2025-07-03T18:22:35.046Z [info] Database tables created successfully
+2025-07-03T18:22:35.047Z [info] Database service initialized successfully
+2025-07-03T18:22:35.047Z [info] ✅ Database initialized successfully
+2025-07-03T18:22:35.047Z [info] 📈 Initializing metrics service...
+2025-07-03T18:22:35.048Z [info] Metrics service initialized successfully
+2025-07-03T18:22:35.048Z [info] ✅ Metrics service initialized successfully
+2025-07-03T18:22:35.048Z [info] 🎉 All services initialized successfully
+2025-07-03T18:22:35.051Z [info] 🚀 AI Service listening on port 3002
+2025-07-03T18:22:35.051Z [info] 🏦 Financial Dashboard at http://localhost:3002/dashboard
+2025-07-03T18:22:35.051Z [info] 📊 Metrics available at http://localhost:3002/api/metrics
+2025-07-03T18:22:35.052Z [info] 🏥 Health check at http://localhost:3002/status
+2025-07-03T18:22:35.052Z [info] 📈 Performance dashboard at http://localhost:3002/api/performance
+2025-07-03T18:22:35.052Z [info] 🔧 Configuration:
+2025-07-03T18:22:41.808Z [info] GET /status - Request started
+2025-07-03T18:22:41.814Z [info] GET /status - 200 (6ms)
+2025-07-03T18:22:48.735Z [info] GET /dashboard - Request started
+2025-07-03T18:22:48.739Z [info] GET /dashboard - 200 (4ms)
+2025-07-03T18:22:55.981Z [info] 🛑 Received SIGTERM. Starting graceful shutdown...
+2025-07-03T18:22:55.982Z [info] Database connection closed
+2025-07-03T18:22:55.982Z [info] ✅ Database connections closed
+2025-07-03T18:22:55.982Z [info] ✅ Graceful shutdown completed
