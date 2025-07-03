@@ -1,0 +1,77 @@
+version: "3.8"
+
+networks:
+  ai-service-network:
+    driver: bridge
+
+services:
+  # PostgreSQL básico
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-service-db
+    environment:
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /volume1/docker/ai-service/postgres:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis básico
+  redis:
+    image: redis:7-alpine
+    container_name: ai-service-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - /volume1/docker/ai-service/redis:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+
+  # AI Service Principal (imagen pre-construida) - MÍNIMO
+  ai-service:
+    image: k2600x/ai-service:latest
+    container_name: ai-service-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_service
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - LOG_LEVEL=info
+      # Variables opcionales con valores por defecto
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL:-}
+      - TELEGRAM_ALERTS_ENABLED=false
+    ports:
+      - "3003:3000"
+    volumes:
+      - /volume1/docker/ai-service/logs:/app/logs
+    networks:
+      - ai-service-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
