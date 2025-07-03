@@ -5,7 +5,7 @@ networks:
     driver: bridge
 
 services:
-  # PostgreSQL básico
+  # PostgreSQL Database con esquemas financieros
   postgres:
     image: postgres:15-alpine
     container_name: ai-service-db
@@ -15,6 +15,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - /volume1/docker/ai-service/postgres:/var/lib/postgresql/data
+      - ./scripts/financial-schema.sql:/docker-entrypoint-initdb.d/01-financial-schema.sql
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/02-init-db.sql
     ports:
       - "5433:5432"
     networks:
@@ -26,7 +28,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis básico
+  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: ai-service-redis
@@ -39,72 +41,63 @@ services:
       - ai-service-network
     restart: unless-stopped
 
-  # N8N Workflow Engine
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: ai-service-n8n
-    environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_ADMIN_PASSWORD}
-      - N8N_HOST=n8n
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=${WEBHOOK_URL}
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=n8n
-      - DB_POSTGRESDB_USER=ai_user
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-    ports:
-      - "5678:5678"
+  # Prometheus Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-service-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
     volumes:
-      - /volume1/docker/ai-service/n8n:/home/node/.n8n
+      - /volume1/docker/ai-service/prometheus:/prometheus
+    ports:
+      - "9090:9090"
     networks:
       - ai-service-network
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
-  # AI Service con N8N
+  # AI Service Principal - COMPLETO
   ai-service:
     image: k2600x/ai-service:latest
     container_name: ai-service-prod
     environment:
+      # Core Configuration
       - NODE_ENV=production
       - PORT=3000
+      - LOG_LEVEL=info
+      
+      # Database Configuration
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=ai_service
       - POSTGRES_USER=ai_user
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      
+      # Redis Configuration
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - LOG_LEVEL=info
-      # Telegram
+      
+      # Telegram Bot Configuration
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL}
       - TELEGRAM_ALERTS_ENABLED=true
-      # N8N
-      - N8N_API_URL=http://n8n:5678
-      - N8N_API_KEY=${N8N_API_KEY:-}
-      # APIs
+      
+      # AI APIs
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
-      # GoCardless Financial
+      
+      # GoCardless Financial Integration
       - GO_SECRET_ID=${GO_SECRET_ID}
       - GO_SECRET_KEY=${GO_SECRET_KEY}
       - GO_REDIRECT_URI=${GO_REDIRECT_URI}
+      
+      # Dashboard Configuration
       - DASHBOARD_URL=${DASHBOARD_URL}
+      
     ports:
       - "3003:3000"
     volumes:
@@ -116,8 +109,6 @@ services:
       - ai-service-network
     depends_on:
       postgres:
-        condition: service_healthy
-      n8n:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
