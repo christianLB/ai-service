@@ -318,12 +318,15 @@ Esto puede tomar unos momentos...
       
       try {
         // Llamar al endpoint de sync
+        logger.info(`Iniciando sincronización bancaria para chat ${chatId}`);
         const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
         
+        logger.info(`Respuesta del endpoint sync: ${response.status}`);
         const result = await response.json();
+        logger.info(`Resultado sync:`, result);
         
         if (result.success) {
           const { accountsSynced, transactionsSynced } = result.data;
