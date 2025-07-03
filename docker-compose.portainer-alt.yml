@@ -35,16 +35,28 @@ services:
       - ai-service-network
     restart: unless-stopped
 
-  # Main Application
+  # Main Application with mounted env file
   ai-service:
     image: ghcr.io/christianlb/ai-service:latest
     container_name: ai-service-prod
-    env_file: /volume1/docker/ai-service/config/.env.production
     volumes:
+      - /volume1/docker/ai-service/config/.env.production:/app/.env.production:ro
       - /volume1/docker/ai-service/logs:/app/logs
       - /volume1/docker/ai-service/workflows:/app/data/workflows
       - /volume1/docker/ai-service/documents:/app/data/documents
       - /volume1/docker/ai-service/knowledge:/app/data/knowledge
+    command: |
+      sh -c "
+        echo 'Loading environment from mounted file...'
+        if [ -f /app/.env.production ]; then
+          export \$(cat /app/.env.production | grep -v '^#' | xargs)
+          echo 'Environment loaded successfully'
+        else
+          echo 'ERROR: .env.production not found!'
+          exit 1
+        fi
+        node dist/index.js
+      "
     ports:
       - "3001:3000"
     depends_on:
