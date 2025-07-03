@@ -18,6 +18,8 @@ import telegramRoutes from './routes/telegram';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
+import { TelegramService } from './services/communication/telegram.service';
+import { FinancialDatabaseService } from './services/financial/database.service';
 
 const app = express();
 
@@ -171,6 +173,64 @@ app.use('*', (req: express.Request, res: express.Response) => {
   });
 });
 
+// Inicialización del bot de Telegram
+async function initializeTelegramBot() {
+  try {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
+    
+    // Verificar si está configurado
+    if (!botToken || botToken === 'your-telegram-bot-token' || !chatId || chatId === 'your-telegram-chat-id') {
+      logger.warn('⚠️  Telegram bot not configured properly - skipping initialization');
+      return;
+    }
+    
+    logger.info('🤖 Initializing Telegram bot...');
+    
+    // Crear instancia del servicio financiero
+    const financialService = new FinancialDatabaseService({
+      host: process.env.POSTGRES_HOST || 'localhost',
+      port: parseInt(process.env.POSTGRES_PORT || '5432'),
+      database: process.env.POSTGRES_DB || 'ai_service',
+      user: process.env.POSTGRES_USER || 'ai_user',
+      password: process.env.POSTGRES_PASSWORD || ''
+    });
+    
+    // Crear instancia del servicio de Telegram
+    const telegramService = new TelegramService(
+      {
+        botToken,
+        chatId,
+        webhookUrl,
+        alertsEnabled: process.env.TELEGRAM_ALERTS_ENABLED === 'true'
+      },
+      financialService
+    );
+    
+    // Configurar webhook si está definido
+    if (webhookUrl && webhookUrl.startsWith('https://')) {
+      try {
+        await telegramService.setWebhook(webhookUrl);
+        logger.info(`✅ Telegram webhook configured: ${webhookUrl}`);
+      } catch (error: any) {
+        logger.error('Failed to set webhook:', error.message);
+        // No fallar si el webhook no se puede configurar
+      }
+    } else {
+      logger.info('ℹ️  Telegram bot running in polling mode (no webhook)');
+    }
+    
+    // Guardar instancia global para uso en rutas
+    (global as any).telegramService = telegramService;
+    
+    logger.info('✅ Telegram bot initialized successfully');
+  } catch (error: any) {
+    logger.error('❌ Telegram bot initialization failed:', error.message);
+    // No fallar el startup si Telegram falla
+  }
+}
+
 // Inicialización de servicios
 async function initializeServices() {
   try {
@@ -185,6 +245,9 @@ async function initializeServices() {
     logger.info('📈 Initializing metrics service...');
     await metricsService.initialize();
     logger.info('✅ Metrics service initialized successfully');
+    
+    // Inicializar Telegram si está configurado
+    await initializeTelegramBot();
     
     logger.info('🎉 All services initialized successfully');
     return true;

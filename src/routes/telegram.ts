@@ -7,45 +7,32 @@ const router = Router();
 
 let telegramService: TelegramService;
 
-// Inicializar servicio de Telegram
-function initializeTelegramService() {
-  if (!telegramService) {
-    const config = {
-      botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-      chatId: process.env.TELEGRAM_CHAT_ID || '',
-      webhookUrl: process.env.TELEGRAM_WEBHOOK_URL,
-      alertsEnabled: process.env.TELEGRAM_ALERTS_ENABLED === 'true'
-    };
-
-    if (!config.botToken) {
-      logger.error('TELEGRAM_BOT_TOKEN no configurado');
-      return null;
-    }
-
-    if (!config.chatId) {
-      logger.error('TELEGRAM_CHAT_ID no configurado');
-      return null;
-    }
-
-    const financialService = new FinancialDatabaseService({
-      host: process.env.POSTGRES_HOST || 'localhost',
-      port: parseInt(process.env.POSTGRES_PORT || '5432'),
-      database: process.env.POSTGRES_DB || 'ai_service',
-      user: process.env.POSTGRES_USER || 'ai_user',
-      password: process.env.POSTGRES_PASSWORD || ''
-    });
-    telegramService = new TelegramService(config, financialService);
-    
-    logger.info('TelegramService inicializado');
+// Obtener servicio de Telegram (inicializado en index.ts)
+function getTelegramService(): TelegramService | null {
+  // Primero intentar obtener la instancia global
+  const globalService = (global as any).telegramService;
+  if (globalService) {
+    return globalService;
   }
   
-  return telegramService;
+  // Si no hay instancia global, verificar si está configurado
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  
+  if (!botToken || botToken === 'your-telegram-bot-token' || !chatId) {
+    logger.error('Telegram service not configured');
+    return null;
+  }
+  
+  // No deberíamos llegar aquí si la inicialización funcionó
+  logger.error('Telegram service not initialized at startup');
+  return null;
 }
 
 // Webhook endpoint para recibir mensajes de Telegram
 router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
   try {
-    const service = initializeTelegramService();
+    const service = getTelegramService();
     if (!service) {
       res.status(500).json({ error: 'Telegram service not configured' });
       return;
@@ -66,7 +53,7 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
 // Endpoint para enviar mensaje manual
 router.post('/send-message', async (req: Request, res: Response): Promise<void> => {
   try {
-    const service = initializeTelegramService();
+    const service = getTelegramService();
     if (!service) {
       res.status(500).json({ error: 'Telegram service not configured' });
       return;
@@ -91,7 +78,7 @@ router.post('/send-message', async (req: Request, res: Response): Promise<void> 
 // Endpoint para enviar alerta
 router.post('/send-alert', async (req: Request, res: Response): Promise<void> => {
   try {
-    const service = initializeTelegramService();
+    const service = getTelegramService();
     if (!service) {
       res.status(500).json({ error: 'Telegram service not configured' });
       return;
@@ -124,7 +111,7 @@ router.post('/send-alert', async (req: Request, res: Response): Promise<void> =>
 // Endpoint para configurar webhook
 router.post('/setup-webhook', async (req: Request, res: Response): Promise<void> => {
   try {
-    const service = initializeTelegramService();
+    const service = getTelegramService();
     if (!service) {
       res.status(500).json({ error: 'Telegram service not configured' });
       return;
@@ -149,7 +136,7 @@ router.post('/setup-webhook', async (req: Request, res: Response): Promise<void>
 // Endpoint para obtener estado del servicio
 router.get('/status', async (req: Request, res: Response): Promise<void> => {
   try {
-    const service = initializeTelegramService();
+    const service = getTelegramService();
     const isConfigured = !!service;
     
     res.json({
