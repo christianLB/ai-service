@@ -240,23 +240,51 @@ export class GoCardlessService {
         throw new Error('EUR currency not found in database');
       }
 
-      // Create account in database
-      const account = await this.db.createAccount({
-        name: `BBVA Account ${accountDetails.iban?.slice(-4) || accountId.slice(-4)}`,
-        type: 'bank_account',
-        currencyId: eurCurrency.id,
-        accountId: accountId,
-        institutionId: accountDetails.institution_id,
-        requisitionId: requisitionId,
-        iban: accountDetails.iban,
-        balance: balances[0]?.balanceAmount?.amount || '0',
-        isActive: true,
-        metadata: {
-          gocardless_account_id: accountId,
-          account_details: accountDetails,
-          last_sync: new Date().toISOString()
-        }
-      });
+      // Check if account already exists
+      const existingAccount = await this.db.query(
+        'SELECT * FROM financial.accounts WHERE account_id = $1',
+        [accountId]
+      );
+
+      let account;
+      if (existingAccount.rows.length > 0) {
+        // Account exists, update balance and metadata
+        console.log('Account already exists, updating balance...');
+        account = existingAccount.rows[0];
+        
+        await this.db.query(
+          `UPDATE financial.accounts 
+           SET balance = $1, metadata = $2, last_sync = NOW() 
+           WHERE account_id = $3`,
+          [
+            balances[0]?.balanceAmount?.amount || '0',
+            JSON.stringify({
+              gocardless_account_id: accountId,
+              account_details: accountDetails,
+              last_sync: new Date().toISOString()
+            }),
+            accountId
+          ]
+        );
+      } else {
+        // Create new account
+        account = await this.db.createAccount({
+          name: `BBVA Account ${accountDetails.iban?.slice(-4) || accountId.slice(-4)}`,
+          type: 'bank_account',
+          currencyId: eurCurrency.id,
+          accountId: accountId,
+          institutionId: accountDetails.institution_id,
+          requisitionId: requisitionId,
+          iban: accountDetails.iban,
+          balance: balances[0]?.balanceAmount?.amount || '0',
+          isActive: true,
+          metadata: {
+            gocardless_account_id: accountId,
+            account_details: accountDetails,
+            last_sync: new Date().toISOString()
+          }
+        });
+      }
 
       console.log('Account synced to database:', account.id);
       return account;
