@@ -26,9 +26,26 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
     
     const { has_old_currency, has_currency_id, has_categories } = schemaCheck.rows[0];
     
-    if (!has_old_currency && has_currency_id && has_categories) {
+    // Check if wallet_address exists - this is critical
+    const walletCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'financial' 
+        AND table_name = 'accounts' 
+        AND column_name = 'wallet_address'
+      ) as has_wallet_address
+    `);
+    
+    const { has_wallet_address } = walletCheck.rows[0];
+    
+    // Only skip migration if EVERYTHING is up to date including wallet_address
+    if (!has_old_currency && has_currency_id && has_categories && has_wallet_address) {
       logger.info('Financial schema is up to date');
       return;
+    }
+    
+    if (!has_wallet_address) {
+      logger.info('wallet_address column missing - will be added during migration');
     }
     
     logger.info('Starting financial schema migration...');
