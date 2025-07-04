@@ -2,7 +2,32 @@ import { logger } from '../utils/log';
 
 export async function migrateFinancialSchema(client: any): Promise<void> {
   try {
-    // Check current schema version
+    logger.info('🔧 Starting financial schema migration...');
+    
+    // PRIORITY 1: Add wallet_address column if missing (this is the critical issue)
+    const walletCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'financial' 
+        AND table_name = 'accounts' 
+        AND column_name = 'wallet_address'
+      ) as has_wallet_address
+    `);
+    
+    const { has_wallet_address } = walletCheck.rows[0];
+    
+    if (!has_wallet_address) {
+      logger.info('🚨 CRITICAL: Adding wallet_address column...');
+      await client.query(`
+        ALTER TABLE financial.accounts 
+        ADD COLUMN wallet_address VARCHAR(255)
+      `);
+      logger.info('✅ wallet_address column added successfully');
+    } else {
+      logger.info('✅ wallet_address column already exists');
+    }
+    
+    // Check other schema elements
     const schemaCheck = await client.query(`
       SELECT 
         EXISTS (
@@ -25,28 +50,6 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
     `);
     
     const { has_old_currency, has_currency_id, has_categories } = schemaCheck.rows[0];
-    
-    // Check if wallet_address exists - this is critical
-    const walletCheck = await client.query(`
-      SELECT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_schema = 'financial' 
-        AND table_name = 'accounts' 
-        AND column_name = 'wallet_address'
-      ) as has_wallet_address
-    `);
-    
-    const { has_wallet_address } = walletCheck.rows[0];
-    
-    // Only skip migration if EVERYTHING is up to date including wallet_address
-    if (!has_old_currency && has_currency_id && has_categories && has_wallet_address) {
-      logger.info('Financial schema is up to date');
-      return;
-    }
-    
-    if (!has_wallet_address) {
-      logger.info('wallet_address column missing - will be added during migration');
-    }
     
     logger.info('Starting financial schema migration...');
     
