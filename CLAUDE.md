@@ -135,3 +135,4 @@ Si hay problemas críticos:
 - **NUNCA** implementar cambios importantes sin documentar
 - **COMUNICAR** proactivamente el progreso al usuario
 - **PRIORIZAR** funcionalidades que generen ingresos o amplíen capacidades cognitivas
+- **NUNCA** se sugiere hacer cambios directamente en producción. Producción es para desplegar y nada más
