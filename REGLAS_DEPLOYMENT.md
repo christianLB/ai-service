@@ -1,5 +1,11 @@
 # 🚨 REGLAS CRÍTICAS DE DEPLOYMENT - NO CAMBIAR
 
+## 📁 ARCHIVO ÚNICO DE PRODUCCIÓN
+
+**USAR SOLO**: `docker-compose.production.yml`
+
+Todos los demás archivos docker-compose han sido eliminados para evitar confusión.
+
 ## 🔴 PUERTO: 3003
 
 **EL PUERTO DEBE SER SIEMPRE 3003**
