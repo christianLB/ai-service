@@ -3,8 +3,8 @@
 ## Manual de Usuario Evolutivo & Guía de Desarrollo
 
 **Versión**: 2.0.0  
-**Fecha**: 2025-07-02  
-**Estado**: Servicio Financiero Avanzado con IA Implementado
+**Fecha**: 2025-07-04  
+**Estado**: Sistema Neural Inteligente con Auto-Reestructuración
 
 ---
 
@@ -26,25 +26,142 @@ Este documento sirve como **centro de comunicación bidireccional** entre:
 
 ---
 
-## 📋 Estado Actual del Servicio
+## 🧠 ARQUITECTURA NEURAL DEL SISTEMA
 
-### ✅ Implementado y Funcional
+```
+                     ┌─────────────────────────┐
+                     │    NEURAL ORCHESTRATOR  │
+                     │   (Auto-Reestructuring  │
+                     │      Intelligence)      │
+                     └───────────┬─────────────┘
+                                 │
+        ┌────────────────────────┼────────────────────────┐
+        │                        │                        │
+   ┌────▼────┐             ┌────▼────┐             ┌────▼────┐
+   │  CORE   │             │ HEMISPH │             │EXTREMIT │
+   │ ❤️ Vital │             │🧠 Autono │             │🦾 Option│
+   │ Systems │             │   mous  │             │   al    │
+   └─────────┘             └─────────┘             └─────────┘
+        │                        │                        │
+        ├─ Database              ├─ Financial             ├─ Telegram
+        ├─ Express              ├─ Documents             ├─ Metrics  
+        ├─ Health Check         └─ Workflows             └─ Alerts
+        └─ Environment
+```
 
-#### **🤖 Core AI Service**
+### 🔴 CORE (Sistema Nervioso Central)
+**Estado**: OPERATIONAL | **Falla**: SISTEMA MUERTO
+- PostgreSQL Database Connection Pool
+- Express HTTP Server (Puerto 3003)
+- Environment Variables & Configuration
+- Health Check System (`/status`, `/neural`)
 
-- **Generación de Workflows**: Descripción → Workflow n8n completo
-- **Validación Inteligente**: Esquemas Joi + políticas de seguridad
-- **Testing Simulado**: Ejecución de workflows con resultados detallados
-- **Persistencia**: Base de datos simulada con versionado
-- **Métricas**: Prometheus + dashboards en tiempo real
+### 🧠 HEMISFERIOS (Sistemas Autónomos)
 
-#### **🏦 Financial Intelligence System** ⭐ **NUEVO**
+#### **🏦 Hemisferio Financiero** 
+**Estado**: OPERATIONAL | **Falla**: HEMISFERIO DEGRADADO
+```
+Financial Intelligence System
+├── GoCardless Integration (Real Banking)
+├── AI Categorization (90%+ accuracy)
+├── Smart Reporting & Analytics
+├── Real-time Dashboard
+└── Learning System (user feedback)
+```
 
-- **Integración Bancaria Real**: GoCardless + BBVA datos reales
-- **Categorización Automática IA**: 90%+ precisión en auto-categorización
-- **Reportes Inteligentes**: Análisis temporal y tendencias
-- **Dashboard Visual**: Métricas en tiempo real
-- **Sistema de Aprendizaje**: Mejora continua con feedback del usuario
+#### **📄 Hemisferio Documental** ⭐ **NUEVO**
+**Estado**: OPERATIONAL | **Falla**: HEMISFERIO DEGRADADO  
+```
+Document Intelligence System
+├── Multi-format Ingestion (PDF, DOCX, TXT...)
+├── OpenAI Analysis (summaries, entities, topics)
+├── Semantic Search (vector embeddings)
+├── Telegram Bot Integration
+└── Question-Answering System
+```
+
+#### **⚙️ Hemisferio Workflow**
+**Estado**: OPERATIONAL | **Falla**: DEGRADACIÓN PARCIAL
+```
+Workflow Automation System  
+├── AI Workflow Generation
+├── Schema Validation (Joi)
+├── Simulation Testing
+├── n8n Integration
+└── Version Control
+```
+
+### 🦾 EXTREMIDADES (Funcionalidades Opcionales)
+
+#### **📱 Comunicación**
+**Estado**: CONDITIONAL | **Falla**: SIN NOTIFICACIONES
+- Telegram Bot Multi-comando
+- Alertas Automáticas
+- Webhooks & Integraciones
+
+#### **📊 Métricas**  
+**Estado**: OPERATIONAL | **Falla**: SIN VISIBILIDAD
+- Prometheus Metrics
+- Real-time Dashboards
+- Performance Monitoring
+
+---
+
+## 🧠 SISTEMA NEURAL DE AUTO-REESTRUCTURACIÓN
+
+### **Terminología Neuronal Oficial**
+
+```
+ComponentType:
+├── CORE ❤️        → Falla = Muerte del sistema
+├── HEMISPHERE 🧠  → Falla = Degradación funcional 
+├── EXTREMITY 🦾   → Falla = Pérdida opcional
+└── RAMIFICATION 🌿 → Falla = Sub-funcionalidad
+
+HealthStatus:
+├── OPTIMAL 🟢     → 100% funcional
+├── DEGRADED 🟡    → Funcional con limitaciones
+├── CRITICAL 🟠    → Barely functional  
+└── OFFLINE 🔴     → No funcional
+```
+
+### **Matriz de Adaptación Neural**
+
+```
+FALLA DETECTADA → EVALUACIÓN → DECISIÓN → REESTRUCTURACIÓN
+       │               │           │            │
+       ▼               ▼           ▼            ▼
+   Component        Health      Operation     System
+   Monitoring      Assessment    Mode        Adaptation
+       │               │           │            │
+   [Every 30s]    [Real-time]  [Automatic]  [Seamless]
+```
+
+### **Modos Operativos del Sistema**
+
+#### 🟢 **MODO COMPLETO** (Complete Mode)
+- Todos los hemisferios activos
+- Todas las extremidades funcionando  
+- Capacidades completas de IA
+- **Estado ideal de operación**
+
+#### 🟡 **MODO ESENCIAL** (Essential Mode)
+- Core + Hemisferios básicos
+- Sin dependencias externas (OpenAI, APIs)
+- Solo datos locales y CRUD básico
+- **Degradación controlada**
+
+#### 🟠 **MODO CRÍTICO** (Critical Mode)
+- Solo Core + funcionalidades mínimas
+- Health check + Database básico
+- Sin hemisferios complejos
+- **Modo supervivencia**
+
+#### 🔴 **MODO EMERGENCIA** (Emergency Mode)
+- Core comprometido
+- Funcionalidad mínima esencial
+- Requiere intervención manual
+- **Estado de alerta máxima**
 
 #### **API Endpoints Disponibles**
 
