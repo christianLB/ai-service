@@ -46,7 +46,7 @@ services:
       - /volume1/docker/ai-service/documents:/app/data/documents
       - /volume1/docker/ai-service/knowledge:/app/data/knowledge
     ports:
-      - "3001:3000"
+      - "3003:3000"  # IMPORTANTE: NO CAMBIAR - El proxy reverso apunta a 3003
     depends_on:
       postgres:
         condition: service_healthy
