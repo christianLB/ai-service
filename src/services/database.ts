@@ -163,195 +163,46 @@ class DatabaseService {
       // Always check and update schema
       logger.info('Checking financial schema...');
       
-      // Check if we need to run migration - ALWAYS run it if wallet_address is missing
-      const schemaCheck = await client.query(`
+      // ALWAYS run migration to ensure schema consistency
+      logger.info('🔧 Running financial schema migration for consistency...');
+      try {
+        await migrateFinancialSchema(client);
+        logger.info('✅ Migration completed successfully');
+      } catch (migrationError: any) {
+        logger.error('❌ Migration failed:', migrationError.message);
+        logger.error('Migration stack trace:', migrationError.stack);
+        throw migrationError;
+      }
+      
+      // Verify critical columns exist
+      const verifyCheck = await client.query(`
         SELECT 
           EXISTS (
             SELECT 1 FROM information_schema.columns 
             WHERE table_schema = 'financial' 
             AND table_name = 'accounts' 
             AND column_name = 'wallet_address'
-          ) as has_wallet_address
+          ) as has_wallet_address,
+          EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'financial' 
+            AND table_name = 'categories'
+          ) as has_categories_table,
+          EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'financial' 
+            AND table_name = 'transaction_categorizations'
+          ) as has_categorizations_table
       `);
       
-      const { has_wallet_address } = schemaCheck.rows[0];
+      const verification = verifyCheck.rows[0];
       
-      if (!has_wallet_address) {
-        // FORCE migration - wallet_address is critical
-        logger.info('wallet_address column missing - FORCING migration...');
-        await migrateFinancialSchema(client);
-        
-        // Verify it was added
-        const verifyCheck = await client.query(`
-          SELECT EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_schema = 'financial' 
-            AND table_name = 'accounts' 
-            AND column_name = 'wallet_address'
-          ) as wallet_added
-        `);
-        
-        if (!verifyCheck.rows[0].wallet_added) {
-          logger.error('CRITICAL: wallet_address column still missing after migration!');
-          throw new Error('Migration failed - wallet_address not added');
-        }
-        
-        logger.info('✅ wallet_address column verified successfully');
-        return;
+      if (!verification.has_wallet_address || !verification.has_categories_table || !verification.has_categorizations_table) {
+        logger.error('CRITICAL: Schema verification failed!', verification);
+        throw new Error('Migration incomplete - critical tables or columns missing');
       }
       
-      // Create currencies table
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS financial.currencies (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          code VARCHAR(10) UNIQUE NOT NULL,
-          name VARCHAR(100) NOT NULL,
-          type VARCHAR(20) NOT NULL CHECK (type IN ('fiat', 'crypto')),
-          decimals INTEGER DEFAULT 2,
-          symbol VARCHAR(10),
-          is_active BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      
-      // Insert default currencies if not exist
-      await client.query(`
-        INSERT INTO financial.currencies (code, name, type, decimals, symbol) VALUES 
-        ('EUR', 'Euro', 'fiat', 2, '€'),
-        ('USD', 'US Dollar', 'fiat', 2, '$')
-        ON CONFLICT (code) DO NOTHING
-      `);
-      
-      // Create accounts table
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS financial.accounts (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          account_id VARCHAR(255) UNIQUE NOT NULL,
-          name VARCHAR(255) NOT NULL,
-          type VARCHAR(50) NOT NULL,
-          currency_id UUID REFERENCES financial.currencies(id),
-          balance DECIMAL(20, 8) DEFAULT 0,
-          available_balance DECIMAL(20, 8) DEFAULT 0,
-          institution VARCHAR(255),
-          institution_id VARCHAR(255),
-          requisition_id VARCHAR(255),
-          iban VARCHAR(255),
-          wallet_address VARCHAR(255),
-          chain_id VARCHAR(50),
-          exchange_name VARCHAR(100),
-          metadata JSONB DEFAULT '{}',
-          is_active BOOLEAN DEFAULT TRUE,
-          last_sync TIMESTAMPTZ,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      
-      // Create transactions table
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS financial.transactions (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          transaction_id VARCHAR(255) UNIQUE NOT NULL,
-          account_id VARCHAR(255) NOT NULL,
-          amount DECIMAL(20, 8) NOT NULL,
-          currency_id UUID REFERENCES financial.currencies(id),
-          type VARCHAR(50) NOT NULL,
-          status VARCHAR(50) DEFAULT 'confirmed',
-          category VARCHAR(100),
-          description TEXT,
-          reference VARCHAR(255),
-          date DATE NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          updated_at TIMESTAMPTZ DEFAULT NOW(),
-          metadata JSONB DEFAULT '{}',
-          tags TEXT[],
-          fee_amount DECIMAL(20, 8),
-          fee_currency_id UUID REFERENCES financial.currencies(id)
-        )
-      `);
-      
-      // Create categories table
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS financial.categories (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          name VARCHAR(100) UNIQUE NOT NULL,
-          type VARCHAR(20) CHECK (type IN ('income', 'expense', 'transfer')),
-          parent_id UUID REFERENCES financial.categories(id),
-          color VARCHAR(7),
-          icon VARCHAR(50),
-          is_active BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      
-      // Create transaction_categorizations table
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS financial.transaction_categorizations (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          transaction_id UUID REFERENCES financial.transactions(id) ON DELETE CASCADE,
-          category_id UUID REFERENCES financial.categories(id),
-          confidence DECIMAL(3, 2) DEFAULT 1.00,
-          method VARCHAR(50) DEFAULT 'manual',
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          UNIQUE(transaction_id)
-        )
-      `);
-      
-      // Insert default categories
-      await client.query(`
-        INSERT INTO financial.categories (name, type) VALUES 
-        ('Salary', 'income'),
-        ('Freelance', 'income'),
-        ('Investment', 'income'),
-        ('Food & Dining', 'expense'),
-        ('Transportation', 'expense'),
-        ('Shopping', 'expense'),
-        ('Bills & Utilities', 'expense'),
-        ('Entertainment', 'expense'),
-        ('Healthcare', 'expense'),
-        ('Transfer', 'transfer')
-        ON CONFLICT (name) DO NOTHING
-      `);
-      
-      // Create indexes
-      await client.query(`
-        CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON financial.transactions(account_id);
-        CREATE INDEX IF NOT EXISTS idx_transactions_date ON financial.transactions(date);
-        CREATE INDEX IF NOT EXISTS idx_transactions_category ON financial.transactions(category);
-        CREATE INDEX IF NOT EXISTS idx_accounts_institution ON financial.accounts(institution);
-        CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_transaction_id ON financial.transaction_categorizations(transaction_id);
-        CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_category_id ON financial.transaction_categorizations(category_id);
-      `);
-      
-      // Create views
-      await client.query(`
-        CREATE OR REPLACE VIEW financial.categorized_transactions AS
-        SELECT 
-          t.id,
-          t.account_id,
-          a.name as account_name,
-          t.type,
-          t.amount,
-          t.currency_id,
-          c.code as currency_code,
-          t.description,
-          t.date,
-          cat.id as category_id,
-          cat.name as category_name,
-          cat.type as category_type,
-          tc.confidence as confidence_score,
-          tc.method as categorization_method,
-          t.created_at
-        FROM financial.transactions t
-        JOIN financial.accounts a ON t.account_id = a.account_id
-        JOIN financial.currencies c ON t.currency_id = c.id
-        LEFT JOIN financial.transaction_categorizations tc ON t.id = tc.transaction_id
-        LEFT JOIN financial.categories cat ON tc.category_id = cat.id
-      `);
-      
-      logger.info('Financial schema created successfully');
+      logger.info('✅ Financial schema migration completed and verified');
     } catch (error: any) {
       // If schema already exists, that's fine
       if (error.code !== '42P06') { // 42P06 = schema already exists

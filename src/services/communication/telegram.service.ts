@@ -1,12 +1,14 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { TelegramConfig, FinancialAlert, TelegramCommand, SystemStatus, FinancialSummary, ReportType, AlertPriority } from './types';
 import { FinancialDatabaseService } from '../financial/database.service';
+import { TelegramDocumentService } from '../document-intelligence/telegram-document.service';
 import { logger } from '../../utils/log';
 
 export class TelegramService {
   private bot: TelegramBot;
   private config: TelegramConfig;
   private financialService: FinancialDatabaseService;
+  private documentService: TelegramDocumentService;
 
   constructor(config: TelegramConfig, financialService: FinancialDatabaseService) {
     this.config = config;
@@ -17,8 +19,11 @@ export class TelegramService {
       webHook: false
     });
 
+    // Initialize document service
+    this.documentService = new TelegramDocumentService(this.bot);
+
     this.setupCommands();
-    logger.info('Telegram service initialized');
+    logger.info('Telegram service initialized with document intelligence');
   }
 
   private setupCommands(): void {
@@ -32,7 +37,13 @@ export class TelegramService {
       { command: 'reporte', description: 'Generar reporte' },
       { command: 'sync', description: 'Sincronizar datos bancarios' },
       { command: 'setup', description: 'Configurar conexión bancaria' },
-      { command: 'dashboard', description: 'Enlace al dashboard' }
+      { command: 'dashboard', description: 'Enlace al dashboard' },
+      { command: 'upload', description: 'Subir documento para análisis' },
+      { command: 'list', description: 'Listar documentos' },
+      { command: 'search', description: 'Buscar en documentos' },
+      { command: 'summary', description: 'Ver resumen de documento' },
+      { command: 'analyze', description: 'Analizar documento' },
+      { command: 'dochelp', description: 'Ayuda de documentos' }
     ]);
   }
 
@@ -124,6 +135,15 @@ export class TelegramService {
         case '/dashboard':
           await this.handleDashboardCommand(chatId);
           break;
+        // Document Intelligence commands are handled by documentService
+        case '/upload':
+        case '/list':
+        case '/search':
+        case '/summary':
+        case '/analyze':
+        case '/dochelp':
+          // These are handled automatically by the TelegramDocumentService
+          break;
         default:
           await this.sendMessage(chatId, '❓ Comando no reconocido. Usa /help para ver los comandos disponibles.');
       }
@@ -135,16 +155,19 @@ export class TelegramService {
 
   private async handleStartCommand(chatId: string): Promise<void> {
     const message = `
-🤖 <b>¡Hola! Soy tu Bot Financiero AI</b>
+🤖 <b>¡Hola! Soy tu Bot AI Inteligente</b>
 
 Estoy conectado a tu sistema AI Service y puedo ayudarte con:
 
 💰 <b>Información financiera</b>
 📊 <b>Reportes automáticos</b>
 🔄 <b>Sincronización bancaria</b>
+📄 <b>Análisis de documentos</b>
+🧠 <b>Búsqueda inteligente</b>
 ⚙️ <b>Control del sistema</b>
 
 Usa /help para ver todos los comandos disponibles.
+Puedes enviarme documentos directamente para análisis automático.
 
 <i>Sistema inicializado: ${new Date().toLocaleString()}</i>
     `;
@@ -163,6 +186,14 @@ Usa /help para ver todos los comandos disponibles.
 /sync - Sincronizar transacciones bancarias
 /setup - Configurar conexión bancaria
 
+<b>📄 Documentos:</b>
+/upload - Subir documento para análisis
+/list - Listar tus documentos
+/search [query] - Buscar en documentos
+/summary [ID] - Ver resumen de documento
+/analyze [ID] - Re-analizar documento
+/dochelp - Ayuda de documentos
+
 <b>⚙️ Sistema:</b>
 /status - Estado del sistema AI
 /dashboard - Enlace al dashboard web
@@ -172,7 +203,7 @@ Usa /help para ver todos los comandos disponibles.
 /start - Reiniciar el bot
 
 <i>Ejemplo: /gastos alimentacion</i>
-<i>Ejemplo: /reporte weekly</i>
+<i>Ejemplo: /search contrato alquiler</i>
     `;
     
     await this.sendMessage(chatId, message);
@@ -548,8 +579,8 @@ ${dashboardUrl}
         totalBalance: accounts.reduce((sum: number, acc: any) => sum + acc.balance, 0),
         recentTransactions: transactions.total,
         lastSync: new Date(),
-        categorizedTransactions: transactions.items.filter((t: any) => t.category).length,
-        pendingCategorizations: transactions.items.filter((t: any) => !t.category).length
+        categorizedTransactions: transactions.items.filter((t: any) => t.categoryId).length,
+        pendingCategorizations: transactions.items.filter((t: any) => !t.categoryId).length
       };
     } catch (error) {
       logger.error('Error obteniendo summary financiero:', error);

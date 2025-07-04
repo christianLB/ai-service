@@ -95,7 +95,6 @@ export class SchemaValidator {
           { name: 'currency_id', type: 'uuid', nullable: true },
           { name: 'type', type: 'character varying', nullable: false },
           { name: 'status', type: 'character varying', nullable: true, defaultValue: "'confirmed'" },
-          { name: 'category', type: 'character varying', nullable: true },
           { name: 'description', type: 'text', nullable: true },
           { name: 'reference', type: 'character varying', nullable: true },
           { name: 'date', type: 'date', nullable: false },

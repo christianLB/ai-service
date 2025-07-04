@@ -15,17 +15,20 @@ import flowUpdate from './routes/flow-update';
 import flowTest from './routes/flow-test';
 import financialRoutes from './routes/financial';
 import telegramRoutes from './routes/telegram';
+import documentRoutes from './routes/documents';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
 import { TelegramService } from './services/communication/telegram.service';
 import { FinancialDatabaseService } from './services/financial/database.service';
+import { DocumentStorageService } from './services/document-intelligence/storage.service';
+import { neuralOrchestrator } from './services/neural-orchestrator';
 
 const app = express();
 
 // Middleware básico
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Servir archivos estáticos
 app.use('/public', express.static(path.join(__dirname, '../public')));
@@ -57,15 +60,16 @@ app.get('/dashboard', (_req: express.Request, res: express.Response) => {
   res.sendFile(path.join(__dirname, '../public/financial-dashboard.html'));
 });
 
-// Health check endpoint
+// Neural health check endpoint
 app.get('/status', async (_req: express.Request, res: express.Response) => {
   const startTime = Date.now();
   try {
-    // Run health check with detailed diagnostics
-    const dbHealthy = await db.healthCheck();
+    // Get neural system state
+    const neuralState = await neuralOrchestrator.evaluateSystemHealth();
     const healthCheckDuration = Date.now() - startTime;
     
-    // Get pool statistics
+    // Get traditional metrics for compatibility
+    const dbHealthy = await db.healthCheck();
     const poolStats = {
       total: db.pool.totalCount,
       idle: db.pool.idleCount,
@@ -73,7 +77,16 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
     };
     
     const status = {
-      status: dbHealthy ? 'ok' : 'degraded',
+      // Neural system status
+      neural: {
+        mode: neuralState.mode,
+        overallHealth: neuralState.overallHealth,
+        activeHemispheres: neuralState.activeHemispheres,
+        offlineExtremities: neuralState.offlineExtremities,
+        lastEvaluation: neuralState.lastEvaluation
+      },
+      // Traditional status for backward compatibility
+      status: neuralState.overallHealth === 'optimal' ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       memory: process.memoryUsage(),
@@ -82,22 +95,21 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
         poolStats,
         healthCheckDuration: `${healthCheckDuration}ms`
       },
-      alerts: 0,
       version: process.env.npm_package_version || '1.0.0',
       environment: process.env.NODE_ENV || 'development'
     };
     
-    // Log health check result
-    if (!dbHealthy) {
-      logger.warn('Health check returned degraded status', { poolStats, duration: healthCheckDuration });
-    }
+    // Determine HTTP status based on neural health
+    let httpStatus = 200;
+    if (neuralState.overallHealth === 'offline') httpStatus = 503;
+    else if (neuralState.overallHealth === 'critical') httpStatus = 503;
+    else if (neuralState.overallHealth === 'degraded') httpStatus = 200; // Still functional
     
-    // Simplified health check - only fail if DB is down
-    const httpStatus = dbHealthy ? 200 : 503;
     res.status(httpStatus).json(status);
+    
   } catch (error: any) {
     const duration = Date.now() - startTime;
-    logger.error('Health check failed:', { 
+    logger.error('Neural health check failed:', { 
       error: error.message, 
       duration: `${duration}ms`,
       stack: error.stack 
@@ -111,12 +123,30 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
   }
 });
 
+// Detailed neural status endpoint
+app.get('/neural', async (_req: express.Request, res: express.Response) => {
+  try {
+    const neuralReport = neuralOrchestrator.getNeuralReport();
+    res.json({
+      success: true,
+      data: neuralReport
+    });
+  } catch (error: any) {
+    logger.error('Error getting neural report:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // API Routes
 app.use('/api', flowGen);
 app.use('/api', flowUpdate);
 app.use('/api', flowTest);
 app.use('/api/financial', financialRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -168,7 +198,20 @@ app.use('*', (req: express.Request, res: express.Response) => {
       'POST /api/telegram/send-message',
       'POST /api/telegram/send-alert',
       'POST /api/telegram/setup-webhook',
-      'GET /api/telegram/status'
+      'GET /api/telegram/status',
+      'POST /api/documents/upload',
+      'GET /api/documents',
+      'GET /api/documents/:id',
+      'GET /api/documents/:id/analysis',
+      'POST /api/documents/:id/analyze',
+      'POST /api/documents/:id/question',
+      'DELETE /api/documents/:id',
+      'POST /api/documents/search',
+      'GET /api/documents/search',
+      'GET /api/documents/stats/overview',
+      'GET /api/documents/files/:filename',
+      'GET /api/documents/health',
+      'GET /neural - Neural system detailed status'
     ]
   });
 });
@@ -246,8 +289,19 @@ async function initializeServices() {
     await metricsService.initialize();
     logger.info('✅ Metrics service initialized successfully');
     
+    // Inicializar document storage
+    logger.info('📄 Initializing document storage...');
+    const documentStorage = new DocumentStorageService();
+    await documentStorage.init();
+    logger.info('✅ Document storage initialized successfully');
+    
     // Inicializar Telegram si está configurado
     await initializeTelegramBot();
+    
+    // Inicializar Neural Orchestrator
+    logger.info('🧠 Initializing Neural Orchestrator...');
+    await neuralOrchestrator.startMonitoring();
+    logger.info('✅ Neural Orchestrator initialized successfully');
     
     logger.info('🎉 All services initialized successfully');
     return true;
@@ -262,6 +316,10 @@ async function gracefulShutdown(signal: string) {
   logger.info(`🛑 Received ${signal}. Starting graceful shutdown...`);
   
   try {
+    // Stop neural orchestrator monitoring
+    neuralOrchestrator.stopMonitoring();
+    logger.info('✅ Neural Orchestrator stopped');
+    
     // Cerrar conexiones de base de datos
     await db.close();
     logger.info('✅ Database connections closed');
