@@ -136,7 +136,7 @@ export class FinancialSchedulerService {
       const accountsNeedingSync = await this.db.query(`
         SELECT a.id, a.name, a.account_id
         FROM financial.accounts a
-        LEFT JOIN financial.transactions t ON a.id = t.account_id
+        LEFT JOIN financial.transactions t ON a.account_id = t.account_id
         WHERE a.type = 'bank_account' AND a.is_active = true
         GROUP BY a.id, a.name, a.account_id
         HAVING COUNT(t.id) = 0

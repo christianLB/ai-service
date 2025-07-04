@@ -291,6 +291,12 @@ export class GoCardlessService {
       // Process each transaction
       for (const gcTransaction of transactions) {
         try {
+          // Validate transaction has required data
+          if (!gcTransaction.transaction_amount?.amount) {
+            console.log('Skipping transaction without amount:', gcTransaction.transaction_id);
+            continue;
+          }
+
           // Check if transaction already exists
           const existingTransaction = await this.db.query(
             'SELECT id FROM financial.transactions WHERE reference = $1',
