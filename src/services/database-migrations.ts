@@ -155,16 +155,23 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
       }
       
       // Step 5: Add missing columns to accounts
-      await client.query(`
-        ALTER TABLE financial.accounts 
-        ADD COLUMN IF NOT EXISTS institution_id VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS requisition_id VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS iban VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS last_sync TIMESTAMPTZ,
-        ADD COLUMN IF NOT EXISTS wallet_address VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS chain_id VARCHAR(50),
-        ADD COLUMN IF NOT EXISTS exchange_name VARCHAR(100)
-      `);
+      logger.info('Adding missing columns to accounts table...');
+      try {
+        await client.query(`
+          ALTER TABLE financial.accounts 
+          ADD COLUMN IF NOT EXISTS institution_id VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS requisition_id VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS iban VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS last_sync TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS wallet_address VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS chain_id VARCHAR(50),
+          ADD COLUMN IF NOT EXISTS exchange_name VARCHAR(100)
+        `);
+        logger.info('Successfully added missing columns');
+      } catch (error: any) {
+        logger.error('Error adding columns:', error.message);
+        throw error;
+      }
       
       // Step 6: Create categories table
       if (!has_categories) {
