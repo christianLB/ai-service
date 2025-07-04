@@ -208,7 +208,20 @@ export class GoCardlessService {
         url += '?' + params.toString();
       }
 
-      const response = await this.api.get(url);
+      let response;
+      try {
+        response = await this.api.get(url);
+      } catch (apiError: any) {
+        // Handle rate limit (429) gracefully
+        if (apiError.response?.status === 429) {
+          const retryAfter = apiError.response.data?.detail?.match(/(\d+) seconds/)?.[1];
+          const waitTime = retryAfter ? parseInt(retryAfter) : 3600; // Default 1 hour
+          
+          console.log(`Rate limit exceeded for account ${accountId}. Must wait ${Math.round(waitTime/3600)} hours.`);
+          throw new Error(`GoCardless rate limit exceeded. Next sync available in ${Math.round(waitTime/3600)} hours.`);
+        }
+        throw apiError;
+      }
       const transactions = response.data.transactions;
       
       // Combine booked and pending transactions
