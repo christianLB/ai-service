@@ -4,6 +4,22 @@
 
 **IMPORTANTE**: Siempre leer este documento al comenzar cualquier sesión de trabajo.
 
+## 🚨 NUEVA METODOLOGÍA OBLIGATORIA (2025-07-04)
+
+### PROHIBIDO:
+- ❌ Deploy sin análisis completo
+- ❌ Fixes reactivos en producción  
+- ❌ "Probar" en producción
+- ❌ Desarrollo sin tests
+
+### OBLIGATORIO:
+- ✅ Leer `METODOLOGIA_DESARROLLO.md` antes de cualquier cambio
+- ✅ Seguir proceso: Análisis → Diseño → Testing → Deploy
+- ✅ Validación completa pre-deploy
+- ✅ Tests automáticos para todo
+
+**OBJETIVO**: Zero errores en producción
+
 ---
 
 ## 📋 Centro de Comunicación Principal
