@@ -115,6 +115,10 @@ export class FinancialSchedulerService {
 
   private async performInitialSyncCheck(): Promise<void> {
     try {
+      console.log('Initial sync check disabled due to GoCardless rate limit.');
+      console.log('Rate limit will reset tomorrow. Automatic sync will resume then.');
+      return;
+      
       console.log('Checking if initial sync is needed...');
       
       // Check if we have any accounts
