@@ -114,7 +114,7 @@ export class TelegramDocumentService {
       // Send processing message
       const processingMsg = await this.bot.sendMessage(chatId, 
         '📄 *Processing Document*\n\n' +
-        `• File: ${document.file_name}\n` +
+        `• File: ${this.escapeMarkdown(document.file_name || 'unknown')}\n` +
         `• Size: ${this.formatFileSize(document.file_size || 0)}\n` +
         `• Status: Downloading... 📥`,
         { parse_mode: 'Markdown' }
@@ -138,7 +138,7 @@ export class TelegramDocumentService {
       // Update status
       await this.bot.editMessageText(
         '📄 *Processing Document*\n\n' +
-        `• File: ${document.file_name}\n` +
+        `• File: ${this.escapeMarkdown(document.file_name || 'unknown')}\n` +
         `• Size: ${this.formatFileSize(document.file_size || 0)}\n` +
         `• Status: Extracting content... 📝`,
         { chat_id: chatId, message_id: processingMsg.message_id, parse_mode: 'Markdown' }
@@ -155,7 +155,7 @@ export class TelegramDocumentService {
       // Update status
       await this.bot.editMessageText(
         '📄 *Processing Document*\n\n' +
-        `• File: ${document.file_name}\n` +
+        `• File: ${this.escapeMarkdown(document.file_name || 'unknown')}\n` +
         `• Size: ${this.formatFileSize(document.file_size || 0)}\n` +
         `• Status: Analyzing content... 🧠`,
         { chat_id: chatId, message_id: processingMsg.message_id, parse_mode: 'Markdown' }
@@ -449,5 +449,28 @@ export class TelegramDocumentService {
     summary += `• Date: ${document.createdAt.toLocaleDateString()}`;
     
     return summary;
+  }
+
+  private escapeMarkdown(text: string): string {
+    // Escape special Markdown characters that can break parsing
+    return text
+      .replace(/\*/g, '\\*')
+      .replace(/_/g, '\\_')
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+      .replace(/~/g, '\\~')
+      .replace(/`/g, '\\`')
+      .replace(/>/g, '\\>')
+      .replace(/#/g, '\\#')
+      .replace(/\+/g, '\\+')
+      .replace(/-/g, '\\-')
+      .replace(/=/g, '\\=')
+      .replace(/\|/g, '\\|')
+      .replace(/\{/g, '\\{')
+      .replace(/\}/g, '\\}')
+      .replace(/\./g, '\\.')
+      .replace(/!/g, '\\!');
   }
 }
