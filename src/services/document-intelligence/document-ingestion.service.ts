@@ -268,7 +268,8 @@ Content extraction failed with error: ${error.message}`;
   private async storeFile(file: Buffer, documentId: string, format: FileFormat): Promise<string> {
     const extension = this.getFileExtension(format);
     const fileName = `${documentId}.${extension}`;
-    const filePath = path.join(process.cwd(), 'data', 'documents', 'storage', fileName);
+    const basePath = process.env.DOCUMENT_STORAGE_PATH || path.join(process.cwd(), 'data', 'documents', 'storage');
+    const filePath = path.join(basePath, fileName);
 
     await fs.writeFile(filePath, file);
     return filePath;
