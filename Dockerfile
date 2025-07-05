@@ -27,7 +27,12 @@ CMD ["dumb-init", "npm", "run", "dev"]
 # Stage de construcción
 FROM base AS builder
 RUN npm ci
+
+# Copiar archivos del proyecto
 COPY . .
+
+# Instalar dependencias del frontend y construir
+RUN cd frontend && npm ci && cd ..
 RUN npm run build
 
 # Stage de producción
@@ -38,6 +43,7 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
 # Copiar archivos construidos
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/public ./public
