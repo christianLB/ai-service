@@ -1,9 +1,11 @@
-// Financial API Routes - GoCardless Integration
+// Financial API Routes - GoCardless Integration + Client Management
 import { Router, Request, Response, NextFunction } from 'express';
 import { GoCardlessService } from '../services/financial/gocardless.service';
 import { FinancialDatabaseService } from '../services/financial/database.service';
 import { FinancialSchedulerService } from '../services/financial/scheduler.service';
 import { FinancialReportingService } from '../services/financial/reporting.service';
+import clientsRoutes from './financial/clients.routes';
+import invoicesRoutes from './financial/invoices.routes';
 
 const router = Router();
 
@@ -1114,5 +1116,15 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
     });
   }
 });
+
+// ============================================================================
+// CLIENT & INVOICE MANAGEMENT
+// ============================================================================
+
+// Mount client management routes
+router.use('/clients', clientsRoutes);
+
+// Mount invoice management routes
+router.use('/invoices', invoicesRoutes);
 
 export default router;
