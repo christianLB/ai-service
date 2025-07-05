@@ -4,6 +4,7 @@ import {
   DashboardOutlined,
   UserOutlined,
   FileTextOutlined,
+  FolderOutlined,
   SettingOutlined,
   BellOutlined,
   LogoutOutlined,
@@ -40,6 +41,11 @@ const AppLayout: React.FC = () => {
       key: '/invoices',
       icon: <FileTextOutlined />,
       label: 'Facturas',
+    },
+    {
+      key: '/documents',
+      icon: <FolderOutlined />,
+      label: 'Documentos',
     },
     {
       key: '/health',

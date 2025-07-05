@@ -14,6 +14,9 @@ import ClientForm from './pages/clients/ClientForm';
 import InvoiceList from './pages/invoices/InvoiceList';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import InvoiceForm from './pages/invoices/InvoiceForm';
+import DocumentList from './pages/documents/DocumentList';
+import DocumentDetail from './pages/documents/DocumentDetail';
+import DocumentForm from './pages/documents/DocumentForm';
 import SystemHealth from './pages/SystemHealth';
 import Settings from './pages/Settings';
 
@@ -61,6 +64,12 @@ const App: React.FC = () => {
               <Route path="invoices/new" element={<InvoiceForm />} />
               <Route path="invoices/:id" element={<InvoiceDetail />} />
               <Route path="invoices/:id/edit" element={<InvoiceForm />} />
+              
+              {/* Document Routes */}
+              <Route path="documents" element={<DocumentList />} />
+              <Route path="documents/new" element={<DocumentForm />} />
+              <Route path="documents/:id" element={<DocumentDetail />} />
+              <Route path="documents/:id/edit" element={<DocumentForm />} />
               
               {/* System Routes */}
               <Route path="health" element={<SystemHealth />} />
