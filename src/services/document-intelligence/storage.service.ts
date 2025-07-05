@@ -29,7 +29,9 @@ export class DocumentStorageService {
   private generateThumbnails: boolean;
 
   constructor(options: StorageOptions = {}) {
-    this.basePath = options.basePath || path.join(process.cwd(), 'data', 'documents', 'storage');
+    this.basePath = options.basePath || 
+                   process.env.DOCUMENT_STORAGE_PATH || 
+                   path.join(process.cwd(), 'data', 'documents', 'storage');
     this.maxFileSize = options.maxFileSize || 50 * 1024 * 1024; // 50MB default
     this.allowedTypes = options.allowedTypes || [
       'application/pdf',

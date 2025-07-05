@@ -303,7 +303,9 @@ async function initializeServices() {
     
     // Inicializar document storage
     logger.info('📄 Initializing document storage...');
-    const documentStorage = new DocumentStorageService();
+    const documentStorage = new DocumentStorageService({
+      basePath: process.env.DOCUMENT_STORAGE_PATH
+    });
     await documentStorage.init();
     logger.info('✅ Document storage initialized successfully');
     
