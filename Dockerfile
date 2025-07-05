@@ -53,7 +53,8 @@ COPY --chown=nodejs:nodejs entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 # Crear directorios necesarios
-RUN mkdir -p logs workflows && chown -R nodejs:nodejs logs workflows
+RUN mkdir -p logs workflows data/documents/storage data/documents/temp data/documents/thumbnails data/knowledge data/workflows/storage && \
+    chown -R nodejs:nodejs logs workflows data
 
 # Configurar usuario
 USER nodejs
