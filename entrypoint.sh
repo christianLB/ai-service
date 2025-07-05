@@ -47,6 +47,27 @@ echo "  POSTGRES_USER=${POSTGRES_USER}"
 echo "  TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:0:10}..."
 echo "  TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}"
 
+# Ensure data directories exist with proper permissions
+echo "📁 Ensuring data directories exist..."
+
+# Only create directories if they don't exist (preserves existing data)
+mkdir -p /app/data/documents/storage /app/data/documents/temp /app/data/documents/thumbnails
+mkdir -p /app/data/knowledge
+mkdir -p /app/data/workflows/storage
+
+# Check write permissions
+echo "🔍 Checking write permissions..."
+if touch /app/data/documents/storage/.write_test 2>/dev/null; then
+    rm -f /app/data/documents/storage/.write_test
+    echo "✅ Write permissions OK for document storage"
+else
+    echo "⚠️  WARNING: No write permissions in /app/data/documents/storage"
+    echo "   Running as user: $(id)"
+    echo "   Directory owner: $(ls -ld /app/data/documents/storage 2>/dev/null || echo 'Directory not accessible')"
+fi
+
+echo "✅ Data directories ready"
+
 # Start the application
 echo "🎯 Starting Node.js application..."
 exec node dist/index.js
