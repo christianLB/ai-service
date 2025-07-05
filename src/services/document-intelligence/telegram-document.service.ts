@@ -100,7 +100,7 @@ export class TelegramDocumentService {
     });
   }
 
-  private async handleDocumentUpload(msg: TelegramBot.Message): Promise<void> {
+  public async handleDocumentUpload(msg: TelegramBot.Message): Promise<void> {
     const chatId = msg.chat.id;
     const userId = msg.from?.id.toString();
     const document = msg.document;
@@ -199,7 +199,7 @@ export class TelegramDocumentService {
     );
   }
 
-  private async handleListDocuments(msg: TelegramBot.Message): Promise<void> {
+  public async handleListDocuments(msg: TelegramBot.Message): Promise<void> {
     const chatId = msg.chat.id;
     const userId = msg.from?.id.toString();
 
@@ -239,7 +239,7 @@ export class TelegramDocumentService {
     }
   }
 
-  private async handleSearchDocuments(msg: TelegramBot.Message, query: string): Promise<void> {
+  public async handleSearchDocuments(msg: TelegramBot.Message, query: string): Promise<void> {
     const chatId = msg.chat.id;
     const userId = msg.from?.id.toString();
 
@@ -285,7 +285,7 @@ export class TelegramDocumentService {
     }
   }
 
-  private async handleGetSummary(msg: TelegramBot.Message, docId: string): Promise<void> {
+  public async handleGetSummary(msg: TelegramBot.Message, docId: string): Promise<void> {
     const chatId = msg.chat.id;
 
     try {
@@ -312,7 +312,7 @@ export class TelegramDocumentService {
     }
   }
 
-  private async handleAnalyzeDocument(msg: TelegramBot.Message, docId: string): Promise<void> {
+  public async handleAnalyzeDocument(msg: TelegramBot.Message, docId: string): Promise<void> {
     const chatId = msg.chat.id;
 
     try {
@@ -353,7 +353,7 @@ export class TelegramDocumentService {
     }
   }
 
-  private async handleDocumentHelp(msg: TelegramBot.Message): Promise<void> {
+  public async handleDocumentHelp(msg: TelegramBot.Message): Promise<void> {
     const chatId = msg.chat.id;
     
     await this.bot.sendMessage(chatId, 

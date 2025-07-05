@@ -135,14 +135,35 @@ export class TelegramService {
         case '/dashboard':
           await this.handleDashboardCommand(chatId);
           break;
-        // Document Intelligence commands are handled by documentService
+        // Document Intelligence commands
         case '/upload':
+          // Send upload instructions
+          await this.sendMessage(chatId, 
+            '📄 *Document Upload*\n\n' +
+            'Send me any document (PDF, DOCX, TXT, etc.) and I\'ll:\n' +
+            '• Extract and analyze the content\n' +
+            '• Generate a summary\n' +
+            '• Extract key information\n' +
+            '• Make it searchable\n\n' +
+            'Just send the file directly!', 
+            { parse_mode: 'Markdown' }
+          );
+          break;
         case '/list':
         case '/search':
         case '/summary':
         case '/analyze':
         case '/dochelp':
-          // These are handled automatically by the TelegramDocumentService
+          // These document commands require more context than available in webhook
+          await this.sendMessage(chatId, 
+            '📄 *Document Commands*\n\n' +
+            'Los comandos de documentos están configurados pero requieren procesamiento especial.\n\n' +
+            'Para subir documentos:\n' +
+            '1. Usa `/upload` para ver instrucciones\n' +
+            '2. Envía tu archivo directamente\n\n' +
+            'Los comandos `/list`, `/search`, `/summary`, `/analyze` y `/dochelp` están en desarrollo.', 
+            { parse_mode: 'Markdown' }
+          );
           break;
         default:
           await this.sendMessage(chatId, '❓ Comando no reconocido. Usa /help para ver los comandos disponibles.');
@@ -650,6 +671,18 @@ ${dashboardUrl}
       if (update.message) {
         const message = update.message;
         
+        // Handle document uploads
+        if (message.document) {
+          logger.info('Document received via webhook, processing...', {
+            fileName: message.document.file_name,
+            fileSize: message.document.file_size,
+            chatId: message.chat.id
+          });
+          await this.documentService.handleDocumentUpload(message);
+          return;
+        }
+        
+        // Handle text commands
         if (message.text && message.text.startsWith('/')) {
           const [command, ...params] = message.text.split(' ');
           
