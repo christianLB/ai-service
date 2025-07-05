@@ -33,6 +33,9 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Servir archivos estáticos
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
+// Servir frontend React (static files - use different path to avoid conflict)
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
 // Middleware de métricas (debe ir antes de las rutas)
 app.use(metricsService.createApiMetricsMiddleware());
 
@@ -147,6 +150,15 @@ app.use('/api', flowTest);
 app.use('/api/financial', financialRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/documents', documentRoutes);
+
+// Frontend React SPA routes (must be after API routes)
+app.get('/app', (_req: express.Request, res: express.Response) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
+app.get('/app/*', (_req: express.Request, res: express.Response) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
