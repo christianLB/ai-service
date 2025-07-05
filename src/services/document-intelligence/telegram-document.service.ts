@@ -24,7 +24,9 @@ export class TelegramDocumentService {
     this.bot = bot;
     this.ingestionService = new DocumentIngestionService();
     this.analysisService = new OpenAIAnalysisService();
-    this.storageService = new DocumentStorageService();
+    this.storageService = new DocumentStorageService({
+      basePath: process.env.DOCUMENT_STORAGE_PATH
+    });
     this.config = {
       maxFileSize: 50 * 1024 * 1024, // 50MB
       allowedTypes: ['pdf', 'docx', 'doc', 'txt', 'md', 'csv', 'xlsx', 'pptx'],

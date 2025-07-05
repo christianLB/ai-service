@@ -13,7 +13,9 @@ export class DocumentController {
   constructor() {
     this.ingestionService = new DocumentIngestionService();
     this.analysisService = new OpenAIAnalysisService();
-    this.storageService = new DocumentStorageService();
+    this.storageService = new DocumentStorageService({
+      basePath: process.env.DOCUMENT_STORAGE_PATH
+    });
   }
 
   async uploadDocument(req: Request, res: Response): Promise<void> {
