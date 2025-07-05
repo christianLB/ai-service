@@ -18,9 +18,24 @@ mkdir -p $BASE_DIR/postgres
 mkdir -p $BASE_DIR/redis
 mkdir -p $BASE_DIR/prometheus
 mkdir -p $BASE_DIR/logs
-mkdir -p $BASE_DIR/workflows
-mkdir -p $BASE_DIR/documents
+mkdir -p $BASE_DIR/workflows/storage
+mkdir -p $BASE_DIR/documents/storage
+mkdir -p $BASE_DIR/documents/temp
+mkdir -p $BASE_DIR/documents/thumbnails
 mkdir -p $BASE_DIR/knowledge
+
+# Set correct permissions for nodejs user (UID 1001)
+echo "   Setting permissions..."
+if [ "$EUID" -eq 0 ]; then
+    chown -R 1001:1001 $BASE_DIR/documents
+    chown -R 1001:1001 $BASE_DIR/knowledge
+    chown -R 1001:1001 $BASE_DIR/workflows
+    chown -R 1001:1001 $BASE_DIR/logs
+    echo "   ✅ Permissions set for nodejs user"
+else
+    echo "   ⚠️  WARNING: Not running as root, cannot set permissions"
+    echo "   Run: sudo chown -R 1001:1001 $BASE_DIR/documents"
+fi
 
 # Check if .env.production exists
 if [ ! -f "$BASE_DIR/config/.env.production" ]; then
