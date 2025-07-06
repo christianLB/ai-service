@@ -38,6 +38,15 @@ router.get('/:id/transactions', async (req, res) => {
   await clientsController.getClientTransactions(req, res);
 });
 
+// Transaction linking endpoints
+router.get('/:id/linked-transactions', async (req, res) => {
+  await clientsController.getClientLinkedTransactions(req, res);
+});
+
+router.get('/:id/transaction-summary', async (req, res) => {
+  await clientsController.getClientTransactionSummary(req, res);
+});
+
 // Search and bulk operations
 router.post('/search', async (req, res) => {
   await clientsController.searchClients(req, res);

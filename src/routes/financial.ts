@@ -4,8 +4,11 @@ import { GoCardlessService } from '../services/financial/gocardless.service';
 import { FinancialDatabaseService } from '../services/financial/database.service';
 import { FinancialSchedulerService } from '../services/financial/scheduler.service';
 import { FinancialReportingService } from '../services/financial/reporting.service';
+import { TransactionMatchingService } from '../services/financial/transaction-matching.service';
 import clientsRoutes from './financial/clients.routes';
 import invoicesRoutes from './financial/invoices.routes';
+import transactionsRoutes, { setDatabaseService as setTransactionDbService } from './financial/transactions.routes';
+import dashboardRoutes from './financial/dashboard.routes';
 
 const router = Router();
 
@@ -14,6 +17,7 @@ let goCardlessService: GoCardlessService;
 let databaseService: FinancialDatabaseService;
 let schedulerService: FinancialSchedulerService;
 let reportingService: FinancialReportingService;
+let transactionMatchingService: TransactionMatchingService;
 
 // Initialize services with config
 const initializeServices = () => {
@@ -45,6 +49,15 @@ const initializeServices = () => {
     goCardlessService = new GoCardlessService(config, databaseService);
     schedulerService = new FinancialSchedulerService(goCardlessService, databaseService);
     reportingService = new FinancialReportingService(databaseService.pool);
+    transactionMatchingService = new TransactionMatchingService(databaseService.pool);
+    
+    // Set transaction matching service in controllers
+    setTransactionDbService(databaseService);
+    
+    // Get client controller instance and set transaction matching service
+    const ClientsController = require('./financial/clients.controller').ClientsController;
+    const clientsController = new ClientsController();
+    clientsController.setTransactionMatchingService(transactionMatchingService);
   }
 };
 
@@ -1126,5 +1139,11 @@ router.use('/clients', clientsRoutes);
 
 // Mount invoice management routes
 router.use('/invoices', invoicesRoutes);
+
+// Mount transaction management routes
+router.use('/transactions', transactionsRoutes);
+
+// Mount enhanced dashboard routes
+router.use('/dashboard', dashboardRoutes);
 
 export default router;

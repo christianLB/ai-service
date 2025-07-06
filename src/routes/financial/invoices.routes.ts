@@ -60,6 +60,37 @@ router.post('/:id/attachments', async (req, res) => {
   await invoicesController.attachDocument(req, res);
 });
 
+// PDF Generation and Download
+router.post('/:id/generate-pdf', async (req, res) => {
+  await invoicesController.generatePDF(req, res);
+});
+
+router.get('/:id/download-pdf', async (req, res) => {
+  await invoicesController.downloadPDF(req, res);
+});
+
+router.get('/:id/preview', async (req, res) => {
+  await invoicesController.previewInvoice(req, res);
+});
+
+// Email sending
+router.post('/:id/send-email', async (req, res) => {
+  await invoicesController.sendInvoiceEmail(req, res);
+});
+
+router.post('/:id/send-reminder', async (req, res) => {
+  await invoicesController.sendPaymentReminder(req, res);
+});
+
+// Invoice numbering
+router.get('/numbering/next', async (req, res) => {
+  await invoicesController.getNextInvoiceNumber(req, res);
+});
+
+router.get('/numbering/sequences', async (req, res) => {
+  await invoicesController.getNumberingSequences(req, res);
+});
+
 // Health check
 router.get('/health', async (req, res) => {
   res.json({

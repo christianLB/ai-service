@@ -1378,3 +1378,92 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 - **Decision Quality Score**
 - **Information Retrieval Accuracy**
 - **Cognitive Load Reduction**
+
+
+---
+
+## 📝 Registro de Cambios
+
+### 2025-07-06 - Sistema de Vinculación Clientes-Transacciones
+
+#### **🎯 Objetivo**: Implementar sistema robusto para vincular transacciones bancarias con clientes
+
+#### **✅ Componentes Implementados**:
+
+1. **Modelos y Tipos**:
+   - `client-transaction.model.ts` - Modelos para links y patrones de matching
+   - Tipos para vínculos manuales/automáticos con confidence scores
+
+2. **Servicio de Matching**:
+   - `TransactionMatchingService` - Lógica completa de vinculación
+   - Matching automático por referencia/monto
+   - Fuzzy matching por nombre (usando pg_trgm)
+   - Sistema de patrones configurables
+   - Soporte para override manual
+
+3. **API Endpoints**:
+   - `GET /api/financial/transactions/unlinked` - Transacciones sin vincular
+   - `POST /api/financial/transactions/:id/link` - Vincular manualmente
+   - `POST /api/financial/transactions/auto-match` - Matching automático
+   - `GET /api/financial/clients/:id/linked-transactions` - Transacciones del cliente
+   - Gestión completa de patrones de matching
+
+4. **Base de Datos**:
+   - Tabla `client_transaction_links` con índices optimizados
+   - Tabla `transaction_matching_patterns` para reglas
+   - Migración automática con soporte incremental
+   - Extensión pg_trgm para fuzzy matching
+
+5. **Algoritmos de Matching**:
+   - Exacto por referencia bancaria
+   - Fuzzy por nombre de contraparte (>70% similitud)
+   - Por patrones configurables (monto, descripción, recurrencia)
+   - Confidence scoring para cada match
+
+#### **🎯 Beneficios**:
+- Automatización del tracking de ingresos por cliente
+- Reducción de trabajo manual en conciliación
+- Base para reportes de revenue por cliente
+- Trazabilidad completa de pagos
+
+#### **📊 Métricas**:
+- Confidence threshold: 0.7 para auto-match
+- Soporte para override manual con historial
+- Tracking de match_type y criterios usados
+
+### 2025-07-05 - Implementación Frontend de Gestión Documental
+
+#### **🎯 Objetivo**: Crear interfaz completa para gestión de documentos en React
+
+#### **✅ Componentes Implementados**:
+
+1. **Servicios y Tipos**:
+   - `documentService.ts` - Servicio completo para API de documentos
+   - `document.types.ts` - Tipos TypeScript para documentos
+
+2. **Páginas Principales**:
+   - `DocumentList.tsx` - Lista de documentos con búsqueda y filtros
+   - `DocumentDetail.tsx` - Vista detallada con análisis y Q&A
+   - `DocumentForm.tsx` - Formulario para carga y edición
+
+3. **Componentes Auxiliares**:
+   - `DocumentSearch.tsx` - Búsqueda avanzada con filtros
+   - `DocumentStats.tsx` - Estadísticas y métricas de documentos
+
+4. **Integración con Sistema**:
+   - Rutas añadidas en `App.tsx`
+   - Menú de navegación actualizado en `AppLayout.tsx`
+
+#### **🚀 Funcionalidades Clave**:
+
+- **Carga de documentos**: Soporte para PDF, DOCX, TXT, imágenes, etc.
+- **Análisis automático**: Integración con OpenAI para análisis
+- **Búsqueda semántica**: Búsqueda por contenido y metadatos
+- **Sistema Q&A**: Preguntas y respuestas sobre documentos
+- **Gestión completa**: CRUD completo con interfaz intuitiva
+
+#### **📋 Próximos Pasos**:
+- [ ] Integrar con sistema de notificaciones Telegram
+- [ ] Añadir visualización de PDFs inline
+- [ ] Implementar búsqueda por voz
+- [ ] Crear dashboard de análisis documental

@@ -2,6 +2,9 @@ import TelegramBot from 'node-telegram-bot-api';
 import { TelegramConfig, FinancialAlert, TelegramCommand, SystemStatus, FinancialSummary, ReportType, AlertPriority } from './types';
 import { FinancialDatabaseService } from '../financial/database.service';
 import { TelegramDocumentService } from '../document-intelligence/telegram-document.service';
+import { InvoiceManagementService } from '../financial/invoice-management.service';
+import { ClientManagementService } from '../financial/client-management.service';
+import { FinancialReportingService } from '../financial/reporting.service';
 import { logger } from '../../utils/log';
 
 export class TelegramService {
@@ -9,10 +12,18 @@ export class TelegramService {
   private config: TelegramConfig;
   private financialService: FinancialDatabaseService;
   private documentService: TelegramDocumentService;
+  private invoiceService: InvoiceManagementService;
+  private clientService: ClientManagementService;
+  private reportingService: FinancialReportingService;
 
   constructor(config: TelegramConfig, financialService: FinancialDatabaseService) {
     this.config = config;
     this.financialService = financialService;
+    
+    // Initialize additional services
+    this.invoiceService = new InvoiceManagementService();
+    this.clientService = new ClientManagementService();
+    this.reportingService = new FinancialReportingService(financialService.pool);
     
     this.bot = new TelegramBot(config.botToken, {
       polling: false,  // Usaremos webhook
@@ -38,12 +49,19 @@ export class TelegramService {
       { command: 'sync', description: 'Sincronizar datos bancarios' },
       { command: 'setup', description: 'Configurar conexión bancaria' },
       { command: 'dashboard', description: 'Enlace al dashboard' },
+      // Document commands
       { command: 'upload', description: 'Subir documento para análisis' },
       { command: 'list', description: 'Listar documentos' },
       { command: 'search', description: 'Buscar en documentos' },
       { command: 'summary', description: 'Ver resumen de documento' },
       { command: 'analyze', description: 'Analizar documento' },
-      { command: 'dochelp', description: 'Ayuda de documentos' }
+      { command: 'dochelp', description: 'Ayuda de documentos' },
+      // Revenue management commands
+      { command: 'invoice', description: 'Gestión de facturas' },
+      { command: 'revenue', description: 'Análisis de ingresos' },
+      { command: 'pending', description: 'Pagos pendientes' },
+      { command: 'client', description: 'Gestión de clientes' },
+      { command: 'payment', description: 'Registrar pago' }
     ]);
   }
 
@@ -135,6 +153,22 @@ export class TelegramService {
         case '/dashboard':
           await this.handleDashboardCommand(chatId);
           break;
+        // Revenue management commands
+        case '/invoice':
+          await this.handleInvoiceCommand(chatId, params);
+          break;
+        case '/revenue':
+          await this.handleRevenueCommand(chatId, params);
+          break;
+        case '/pending':
+          await this.handlePendingCommand(chatId, params);
+          break;
+        case '/client':
+          await this.handleClientCommand(chatId, params);
+          break;
+        case '/payment':
+          await this.handlePaymentCommand(chatId, params);
+          break;
         // Document Intelligence commands
         case '/upload':
           // Send upload instructions
@@ -200,7 +234,19 @@ Puedes enviarme documentos directamente para análisis automático.
     const message = `
 📖 <b>Comandos Disponibles</b>
 
-<b>💰 Financieros:</b>
+<b>💰 Gestión de Ingresos:</b>
+/invoice create [cliente] [cantidad] [desc] - Crear factura
+/invoice list [cliente] - Listar facturas
+/invoice send [ID] - Enviar factura
+/revenue [periodo] - Análisis de ingresos
+/revenue breakdown [periodo] - Desglose detallado
+/pending - Ver pagos pendientes
+/pending remind [cliente] - Recordar pago
+/client balance [cliente] - Balance del cliente
+/client list - Listar clientes
+/payment record [cliente] [cantidad] - Registrar pago
+
+<b>💸 Gastos y Análisis:</b>
 /balance - Balance actual de cuentas
 /gastos [categoría] - Gastos por categoría
 /reporte [periodo] - Generar reporte (daily/weekly/monthly)
@@ -223,8 +269,10 @@ Puedes enviarme documentos directamente para análisis automático.
 /help - Mostrar esta ayuda
 /start - Reiniciar el bot
 
-<i>Ejemplo: /gastos alimentacion</i>
-<i>Ejemplo: /search contrato alquiler</i>
+<i>Ejemplos:</i>
+<i>• /invoice create "Acme Corp" 1500 "Servicios Marzo"</i>
+<i>• /revenue month</i>
+<i>• /client balance "Tech Solutions"</i>
     `;
     
     await this.sendMessage(chatId, message);
@@ -665,6 +713,772 @@ ${dashboardUrl}
     }
   }
 
+  // ============================================================================
+  // REVENUE MANAGEMENT COMMAND HANDLERS
+  // ============================================================================
+
+  private async handleInvoiceCommand(chatId: string, params: string[]): Promise<void> {
+    try {
+      const subcommand = params[0];
+      
+      switch (subcommand) {
+        case 'create':
+          await this.handleInvoiceCreate(chatId, params.slice(1));
+          break;
+        case 'list':
+          await this.handleInvoiceList(chatId, params.slice(1));
+          break;
+        case 'send':
+          await this.handleInvoiceSend(chatId, params.slice(1));
+          break;
+        default:
+          await this.sendMessage(chatId, `
+💼 <b>Gestión de Facturas</b>
+
+Comandos disponibles:
+• /invoice create [cliente] [cantidad] [descripción]
+• /invoice list [cliente]
+• /invoice send [ID]
+
+<i>Usa /help para ver ejemplos</i>
+          `);
+      }
+    } catch (error) {
+      logger.error('Error en comando invoice:', error);
+      await this.sendMessage(chatId, '❌ Error procesando comando de factura');
+    }
+  }
+
+  private async handleInvoiceCreate(chatId: string, params: string[]): Promise<void> {
+    try {
+      // Parse parameters with quotes support
+      const args = this.parseQuotedParams(params.join(' '));
+      
+      if (args.length < 3) {
+        await this.sendMessage(chatId, `
+❌ <b>Parámetros incorrectos</b>
+
+Uso: /invoice create "nombre cliente" cantidad "descripción"
+
+Ejemplo:
+/invoice create "Acme Corp" 1500 "Servicios de consultoría - Marzo 2024"
+        `);
+        return;
+      }
+
+      const [clientName, amountStr, description] = args;
+      const amount = parseFloat(amountStr);
+
+      if (isNaN(amount) || amount <= 0) {
+        await this.sendMessage(chatId, '❌ La cantidad debe ser un número positivo');
+        return;
+      }
+
+      // Find or create client
+      let client = await this.clientService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
+      
+      if (!client) {
+        // Create basic client
+        client = await this.clientService.createClient({
+          name: clientName,
+          businessName: clientName,
+          taxId: `TEMP-${Date.now()}`,
+          taxIdType: 'OTHER',
+          email: '',
+          clientType: 'business',
+          currency: 'EUR',
+          status: 'active',
+          createdBy: `telegram-${chatId}`
+        });
+      }
+
+      // Create invoice
+      const invoice = await this.invoiceService.createInvoice({
+        clientId: client.id,
+        type: 'invoice',
+        status: 'draft',
+        issueDate: new Date(),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        items: [{
+          id: '1',
+          description,
+          quantity: 1,
+          unitPrice: amount,
+          amount,
+          total: amount * 1.21,
+          taxRate: 21,
+          taxAmount: amount * 0.21
+        }],
+        currency: 'EUR',
+        taxRate: 21,
+        taxType: 'IVA',
+        paymentTerms: 30,
+        createdBy: `telegram-${chatId}`
+      });
+
+      await this.sendMessage(chatId, `
+✅ <b>Factura Creada</b>
+
+📄 <b>Número:</b> ${invoice.invoiceNumber}
+👤 <b>Cliente:</b> ${clientName}
+💰 <b>Importe:</b> €${amount.toFixed(2)}
+🏷️ <b>IVA (21%):</b> €${(amount * 0.21).toFixed(2)}
+💵 <b>Total:</b> €${(amount * 1.21).toFixed(2)}
+📅 <b>Vencimiento:</b> ${new Date(invoice.dueDate).toLocaleDateString()}
+
+📋 <b>Concepto:</b> ${description}
+
+<b>Acciones disponibles:</b>
+• /invoice send ${invoice.id} - Enviar al cliente
+• /invoice list - Ver todas las facturas
+      `, {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '📤 Enviar', callback_data: `invoice_send_${invoice.id}` },
+            { text: '📋 Ver Lista', callback_data: 'invoice_list' }
+          ]]
+        }
+      });
+    } catch (error: any) {
+      logger.error('Error creando factura:', error);
+      await this.sendMessage(chatId, `❌ Error al crear factura: ${error.message}`);
+    }
+  }
+
+  private async handleInvoiceList(chatId: string, params: string[]): Promise<void> {
+    try {
+      const clientFilter = params.join(' ').trim();
+      let clientId: string | undefined;
+
+      if (clientFilter) {
+        const client = await this.clientService.getClientByTaxId(clientFilter);
+        if (client) {
+          clientId = client.id;
+        }
+      }
+
+      const { invoices, total } = await this.invoiceService.listInvoices({
+        clientId,
+        limit: 10,
+        sortBy: 'issue_date',
+        sortOrder: 'DESC'
+      });
+
+      if (invoices.length === 0) {
+        await this.sendMessage(chatId, `
+📋 <b>No hay facturas</b>
+
+${clientFilter ? `No se encontraron facturas para "${clientFilter}"` : 'No tienes facturas registradas'}
+
+Usa /invoice create para crear una nueva factura
+        `);
+        return;
+      }
+
+      let message = `📋 <b>Listado de Facturas</b>\n\n`;
+      if (clientFilter) {
+        message += `🔍 Filtrado por: ${clientFilter}\n\n`;
+      }
+
+      const statusEmoji = {
+        draft: '📝',
+        sent: '📤',
+        viewed: '👁️',
+        paid: '✅',
+        overdue: '⚠️',
+        cancelled: '❌'
+      };
+
+      invoices.forEach(invoice => {
+        const emoji = statusEmoji[invoice.status as keyof typeof statusEmoji] || '📄';
+        const isPaid = invoice.status === 'paid';
+        const isOverdue = invoice.status !== 'paid' && new Date(invoice.dueDate) < new Date();
+        
+        message += `${emoji} <b>${invoice.invoiceNumber}</b>\n`;
+        message += `   👤 ${invoice.clientName}\n`;
+        message += `   💰 €${invoice.total.toFixed(2)}`;
+        
+        if (isPaid) {
+          message += ` ✅ Pagada`;
+        } else if (isOverdue) {
+          message += ` ⚠️ Vencida`;
+        }
+        
+        message += `\n   📅 ${new Date(invoice.issueDate).toLocaleDateString()}\n\n`;
+      });
+
+      if (total > 10) {
+        message += `<i>Mostrando 10 de ${total} facturas</i>\n`;
+      }
+
+      // Calculate summary
+      const totalAmount = invoices.reduce((sum, inv) => sum + inv.total, 0);
+      const paidAmount = invoices
+        .filter(inv => inv.status === 'paid')
+        .reduce((sum, inv) => sum + inv.total, 0);
+      const pendingAmount = totalAmount - paidAmount;
+
+      message += `\n<b>📊 Resumen:</b>\n`;
+      message += `💵 Total: €${totalAmount.toFixed(2)}\n`;
+      message += `✅ Cobrado: €${paidAmount.toFixed(2)}\n`;
+      message += `⏳ Pendiente: €${pendingAmount.toFixed(2)}`;
+
+      await this.sendMessage(chatId, message);
+    } catch (error) {
+      logger.error('Error listando facturas:', error);
+      await this.sendMessage(chatId, '❌ Error al listar facturas');
+    }
+  }
+
+  private async handleInvoiceSend(chatId: string, params: string[]): Promise<void> {
+    try {
+      const invoiceId = params[0];
+      
+      if (!invoiceId) {
+        await this.sendMessage(chatId, `
+❌ <b>Falta el ID de la factura</b>
+
+Uso: /invoice send [ID]
+
+Para ver los IDs usa: /invoice list
+        `);
+        return;
+      }
+
+      const invoice = await this.invoiceService.getInvoice(invoiceId);
+      
+      if (!invoice) {
+        await this.sendMessage(chatId, '❌ Factura no encontrada');
+        return;
+      }
+
+      // Update invoice status to sent
+      await this.invoiceService.updateInvoice(invoiceId, { status: 'sent' });
+
+      await this.sendMessage(chatId, `
+📤 <b>Factura Enviada</b>
+
+✅ La factura ${invoice.invoiceNumber} ha sido marcada como enviada.
+
+📧 <b>Cliente:</b> ${invoice.clientName}
+💰 <b>Importe:</b> €${invoice.total.toFixed(2)}
+📅 <b>Vencimiento:</b> ${new Date(invoice.dueDate).toLocaleDateString()}
+
+<i>El cliente ha sido notificado (simulado)</i>
+      `);
+    } catch (error) {
+      logger.error('Error enviando factura:', error);
+      await this.sendMessage(chatId, '❌ Error al enviar factura');
+    }
+  }
+
+  private async handleRevenueCommand(chatId: string, params: string[]): Promise<void> {
+    try {
+      const subcommand = params[0] || 'today';
+      const isBreakdown = subcommand === 'breakdown';
+      const period = isBreakdown ? (params[1] || 'month') : subcommand;
+
+      const { startDate, endDate } = this.getPeriodDates(period);
+      
+      const report = await this.reportingService.generateReport({
+        startDate,
+        endDate,
+        currency: 'EUR'
+      });
+
+      let message = `💰 <b>Análisis de Ingresos - ${this.formatPeriod(period)}</b>\n\n`;
+
+      // Summary
+      message += `📊 <b>Resumen:</b>\n`;
+      message += `💵 Ingresos: €${parseFloat(report.summary.totalIncome).toFixed(2)}\n`;
+      message += `💸 Gastos: €${parseFloat(report.summary.totalExpenses).toFixed(2)}\n`;
+      message += `📈 Neto: €${parseFloat(report.summary.netAmount).toFixed(2)}\n`;
+      message += `📝 Transacciones: ${report.summary.transactionCount}\n\n`;
+
+      if (isBreakdown) {
+        // Detailed breakdown
+        if (report.byCategory.income.length > 0) {
+          message += `💚 <b>Desglose de Ingresos:</b>\n`;
+          report.byCategory.income.forEach(cat => {
+            message += `• ${cat.categoryName}: €${parseFloat(cat.amount).toFixed(2)} (${cat.percentage.toFixed(1)}%)\n`;
+          });
+          message += '\n';
+        }
+
+        if (report.byCategory.expenses.length > 0) {
+          message += `💔 <b>Desglose de Gastos:</b>\n`;
+          report.byCategory.expenses.forEach(cat => {
+            message += `• ${cat.categoryName}: €${parseFloat(cat.amount).toFixed(2)} (${cat.percentage.toFixed(1)}%)\n`;
+          });
+        }
+      }
+
+      // Quick actions
+      message += `\n<b>🔍 Ver más detalles:</b>\n`;
+      message += `• /revenue breakdown ${period} - Desglose completo\n`;
+      message += `• /pending - Pagos pendientes\n`;
+      message += `• /invoice list - Ver facturas`;
+
+      await this.sendMessage(chatId, message, {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '📊 Desglose', callback_data: `revenue_breakdown_${period}` },
+              { text: '⏳ Pendientes', callback_data: 'pending_list' }
+            ],
+            [
+              { text: '📈 Dashboard', callback_data: 'open_dashboard' }
+            ]
+          ]
+        }
+      });
+    } catch (error) {
+      logger.error('Error en comando revenue:', error);
+      await this.sendMessage(chatId, '❌ Error al obtener análisis de ingresos');
+    }
+  }
+
+  private async handlePendingCommand(chatId: string, params: string[]): Promise<void> {
+    try {
+      const subcommand = params[0];
+      
+      if (subcommand === 'remind' && params[1]) {
+        await this.handlePendingRemind(chatId, params.slice(1));
+        return;
+      }
+
+      // Get overdue and pending invoices
+      const overdueInvoices = await this.invoiceService.getOverdueInvoices();
+      const { invoices: pendingInvoices } = await this.invoiceService.listInvoices({
+        status: 'sent',
+        limit: 50
+      });
+
+      const allPending = [...overdueInvoices, ...pendingInvoices.filter(inv => 
+        !overdueInvoices.find(o => o.id === inv.id)
+      )];
+
+      if (allPending.length === 0) {
+        await this.sendMessage(chatId, `
+✅ <b>No hay pagos pendientes</b>
+
+Todas las facturas están al día.
+
+Usa /invoice create para crear nuevas facturas.
+        `);
+        return;
+      }
+
+      let message = `⏳ <b>Pagos Pendientes</b>\n\n`;
+
+      // Group by status
+      const overdue = allPending.filter(inv => new Date(inv.dueDate) < new Date());
+      const upcoming = allPending.filter(inv => new Date(inv.dueDate) >= new Date());
+
+      if (overdue.length > 0) {
+        message += `⚠️ <b>VENCIDAS (${overdue.length}):</b>\n`;
+        let totalOverdue = 0;
+        
+        overdue.forEach(invoice => {
+          const daysOverdue = Math.floor((Date.now() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+          message += `\n🔴 <b>${invoice.invoiceNumber}</b>\n`;
+          message += `   👤 ${invoice.clientName}\n`;
+          message += `   💰 €${invoice.total.toFixed(2)}\n`;
+          message += `   ⏰ Vencida hace ${daysOverdue} días\n`;
+          totalOverdue += invoice.total;
+        });
+        
+        message += `\n   <b>Total vencido: €${totalOverdue.toFixed(2)}</b>\n\n`;
+      }
+
+      if (upcoming.length > 0) {
+        message += `📅 <b>PRÓXIMAS A VENCER (${upcoming.length}):</b>\n`;
+        let totalUpcoming = 0;
+        
+        upcoming
+          .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+          .slice(0, 5)
+          .forEach(invoice => {
+            const daysUntil = Math.floor((new Date(invoice.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            message += `\n🟡 <b>${invoice.invoiceNumber}</b>\n`;
+            message += `   👤 ${invoice.clientName}\n`;
+            message += `   💰 €${invoice.total.toFixed(2)}\n`;
+            message += `   📅 Vence en ${daysUntil} días\n`;
+            totalUpcoming += invoice.total;
+          });
+        
+        if (upcoming.length > 5) {
+          message += `\n<i>... y ${upcoming.length - 5} más</i>\n`;
+        }
+        
+        message += `\n   <b>Total próximo: €${totalUpcoming.toFixed(2)}</b>\n`;
+      }
+
+      const grandTotal = allPending.reduce((sum, inv) => sum + inv.total, 0);
+      message += `\n💵 <b>TOTAL PENDIENTE: €${grandTotal.toFixed(2)}</b>\n\n`;
+
+      message += `<b>Acciones:</b>\n`;
+      message += `• /pending remind [cliente] - Enviar recordatorio\n`;
+      message += `• /payment record [cliente] [cantidad] - Registrar pago`;
+
+      await this.sendMessage(chatId, message);
+    } catch (error) {
+      logger.error('Error en comando pending:', error);
+      await this.sendMessage(chatId, '❌ Error al obtener pagos pendientes');
+    }
+  }
+
+  private async handlePendingRemind(chatId: string, params: string[]): Promise<void> {
+    try {
+      const clientName = params.join(' ');
+      
+      if (!clientName) {
+        await this.sendMessage(chatId, '❌ Especifica el nombre del cliente');
+        return;
+      }
+
+      const client = await this.clientService.getClientByTaxId(clientName);
+      if (!client) {
+        await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
+        return;
+      }
+
+      const { invoices } = await this.invoiceService.listInvoices({
+        clientId: client.id,
+        status: 'sent'
+      });
+
+      const pendingInvoices = invoices.filter(inv => 
+        inv.status !== 'paid' && inv.status !== 'cancelled'
+      );
+
+      if (pendingInvoices.length === 0) {
+        await this.sendMessage(chatId, `✅ ${clientName} no tiene pagos pendientes`);
+        return;
+      }
+
+      const totalPending = pendingInvoices.reduce((sum, inv) => sum + inv.total, 0);
+
+      await this.sendMessage(chatId, `
+📧 <b>Recordatorio Enviado</b>
+
+✅ Se ha enviado un recordatorio de pago a ${clientName}
+
+📋 <b>Facturas pendientes:</b> ${pendingInvoices.length}
+💰 <b>Total pendiente:</b> €${totalPending.toFixed(2)}
+
+<i>El cliente ha sido notificado por email (simulado)</i>
+      `);
+    } catch (error) {
+      logger.error('Error enviando recordatorio:', error);
+      await this.sendMessage(chatId, '❌ Error al enviar recordatorio');
+    }
+  }
+
+  private async handleClientCommand(chatId: string, params: string[]): Promise<void> {
+    try {
+      const subcommand = params[0];
+      
+      if (subcommand === 'balance' && params[1]) {
+        await this.handleClientBalance(chatId, params.slice(1));
+        return;
+      }
+      
+      if (subcommand === 'list') {
+        await this.handleClientList(chatId);
+        return;
+      }
+
+      await this.sendMessage(chatId, `
+👥 <b>Gestión de Clientes</b>
+
+Comandos disponibles:
+• /client list - Listar todos los clientes
+• /client balance [nombre] - Ver balance del cliente
+
+<i>Usa /help para ver ejemplos</i>
+      `);
+    } catch (error) {
+      logger.error('Error en comando client:', error);
+      await this.sendMessage(chatId, '❌ Error procesando comando de cliente');
+    }
+  }
+
+  private async handleClientBalance(chatId: string, params: string[]): Promise<void> {
+    try {
+      const clientName = params.join(' ');
+      
+      const client = await this.clientService.getClientByTaxId(clientName);
+      if (!client) {
+        await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
+        return;
+      }
+
+      const stats = await this.invoiceService.getClientInvoiceStats(client.id);
+      const transactions = await this.clientService.getClientTransactions(client.id, { limit: 5 });
+
+      let message = `👤 <b>Balance de ${client.name}</b>\n\n`;
+
+      message += `📊 <b>Resumen:</b>\n`;
+      message += `📄 Facturas totales: ${stats.totalInvoices}\n`;
+      message += `💰 Ingresos totales: €${stats.totalRevenue.toFixed(2)}\n`;
+      message += `✅ Facturas pagadas: ${stats.paidInvoices}\n`;
+      message += `⏳ Facturas pendientes: ${stats.pendingInvoices}\n`;
+      message += `⚠️ Facturas vencidas: ${stats.overdueInvoices}\n`;
+      message += `📈 Promedio por factura: €${stats.averageAmount.toFixed(2)}\n\n`;
+
+      if (stats.lastInvoiceDate) {
+        message += `📅 Última factura: ${new Date(stats.lastInvoiceDate).toLocaleDateString()}\n\n`;
+      }
+
+      if (transactions.length > 0) {
+        message += `📋 <b>Últimas transacciones:</b>\n`;
+        transactions.forEach(tx => {
+          const emoji = tx.type === 'payment' ? '💚' : '📄';
+          const sign = tx.type === 'payment' ? '+' : '';
+          message += `${emoji} ${sign}€${tx.amount.toFixed(2)} - ${tx.description}\n`;
+          message += `   📅 ${new Date(tx.date).toLocaleDateString()}\n`;
+        });
+      }
+
+      await this.sendMessage(chatId, message, {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '📄 Ver Facturas', callback_data: `client_invoices_${client.id}` },
+            { text: '➕ Nueva Factura', callback_data: `invoice_create_${client.id}` }
+          ]]
+        }
+      });
+    } catch (error) {
+      logger.error('Error obteniendo balance de cliente:', error);
+      await this.sendMessage(chatId, '❌ Error al obtener balance del cliente');
+    }
+  }
+
+  private async handleClientList(chatId: string): Promise<void> {
+    try {
+      const { clients, total } = await this.clientService.listClients({
+        status: 'active',
+        limit: 10,
+        sortBy: 'total_revenue',
+        sortOrder: 'DESC'
+      });
+
+      if (clients.length === 0) {
+        await this.sendMessage(chatId, `
+👥 <b>No hay clientes registrados</b>
+
+Los clientes se crean automáticamente al generar facturas.
+
+Usa /invoice create para crear tu primera factura.
+        `);
+        return;
+      }
+
+      let message = `👥 <b>Listado de Clientes</b>\n\n`;
+
+      clients.forEach((client, index) => {
+        const emoji = index < 3 ? ['🥇', '🥈', '🥉'][index] : '👤';
+        message += `${emoji} <b>${client.name}</b>\n`;
+        
+        if (client.totalRevenue > 0) {
+          message += `   💰 €${client.totalRevenue.toFixed(2)}`;
+        }
+        
+        if (client.totalInvoices > 0) {
+          message += ` (${client.totalInvoices} facturas)`;
+        }
+        
+        if (client.outstandingBalance > 0) {
+          message += `\n   ⏳ Pendiente: €${client.outstandingBalance.toFixed(2)}`;
+        }
+        
+        message += '\n\n';
+      });
+
+      if (total > 10) {
+        message += `<i>Mostrando 10 de ${total} clientes</i>\n`;
+      }
+
+      // Calculate totals
+      const totalRevenue = clients.reduce((sum, c) => sum + (c.totalRevenue || 0), 0);
+      const totalOutstanding = clients.reduce((sum, c) => sum + (c.outstandingBalance || 0), 0);
+
+      message += `\n<b>📊 Totales:</b>\n`;
+      message += `💵 Facturado: €${totalRevenue.toFixed(2)}\n`;
+      message += `⏳ Pendiente: €${totalOutstanding.toFixed(2)}`;
+
+      await this.sendMessage(chatId, message);
+    } catch (error) {
+      logger.error('Error listando clientes:', error);
+      await this.sendMessage(chatId, '❌ Error al listar clientes');
+    }
+  }
+
+  private async handlePaymentCommand(chatId: string, params: string[]): Promise<void> {
+    try {
+      if (params.length < 2) {
+        await this.sendMessage(chatId, `
+💳 <b>Registrar Pago</b>
+
+Uso: /payment record [cliente] [cantidad]
+
+Ejemplo:
+/payment record "Acme Corp" 1500
+
+Esto marcará las facturas del cliente como pagadas por el importe indicado.
+        `);
+        return;
+      }
+
+      const args = this.parseQuotedParams(params.join(' '));
+      if (args.length < 2) {
+        await this.sendMessage(chatId, '❌ Faltan parámetros. Usa: /payment record "cliente" cantidad');
+        return;
+      }
+
+      const [clientName, amountStr] = args;
+      const amount = parseFloat(amountStr);
+
+      if (isNaN(amount) || amount <= 0) {
+        await this.sendMessage(chatId, '❌ La cantidad debe ser un número positivo');
+        return;
+      }
+
+      const client = await this.clientService.getClientByTaxId(clientName);
+      if (!client) {
+        await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
+        return;
+      }
+
+      // Get unpaid invoices for the client
+      const { invoices } = await this.invoiceService.listInvoices({
+        clientId: client.id,
+        status: 'sent'
+      });
+
+      const unpaidInvoices = invoices
+        .filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled')
+        .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+      if (unpaidInvoices.length === 0) {
+        await this.sendMessage(chatId, `✅ ${clientName} no tiene facturas pendientes de pago`);
+        return;
+      }
+
+      // Apply payment to invoices (oldest first)
+      let remainingAmount = amount;
+      const paidInvoices: any[] = [];
+
+      for (const invoice of unpaidInvoices) {
+        if (remainingAmount <= 0) break;
+        
+        if (remainingAmount >= invoice.total) {
+          // Full payment
+          await this.invoiceService.markAsPaid(
+            invoice.id, 
+            new Date(), 
+            `Pago via Telegram - ${new Date().toISOString()}`
+          );
+          paidInvoices.push({ invoice, paidAmount: invoice.total });
+          remainingAmount -= invoice.total;
+        } else {
+          // Partial payment (mark as paid if it's the full remaining amount)
+          await this.invoiceService.markAsPaid(
+            invoice.id,
+            new Date(),
+            `Pago parcial via Telegram - €${remainingAmount.toFixed(2)}`
+          );
+          paidInvoices.push({ invoice, paidAmount: remainingAmount });
+          remainingAmount = 0;
+        }
+      }
+
+      let message = `✅ <b>Pago Registrado</b>\n\n`;
+      message += `👤 <b>Cliente:</b> ${clientName}\n`;
+      message += `💰 <b>Importe:</b> €${amount.toFixed(2)}\n\n`;
+
+      message += `📄 <b>Facturas pagadas:</b>\n`;
+      paidInvoices.forEach(({ invoice, paidAmount }) => {
+        message += `• ${invoice.invoiceNumber}: €${paidAmount.toFixed(2)}\n`;
+      });
+
+      if (remainingAmount > 0) {
+        message += `\n💵 <b>Saldo a favor:</b> €${remainingAmount.toFixed(2)}\n`;
+      }
+
+      const totalPending = unpaidInvoices.reduce((sum, inv) => sum + inv.total, 0) - amount;
+      if (totalPending > 0) {
+        message += `\n⏳ <b>Pendiente restante:</b> €${totalPending.toFixed(2)}`;
+      } else {
+        message += `\n🎉 <b>¡Cliente al día!</b>`;
+      }
+
+      await this.sendMessage(chatId, message);
+    } catch (error: any) {
+      logger.error('Error registrando pago:', error);
+      await this.sendMessage(chatId, `❌ Error al registrar pago: ${error.message}`);
+    }
+  }
+
+  // ============================================================================
+  // UTILITY METHODS
+  // ============================================================================
+
+  private parseQuotedParams(input: string): string[] {
+    const regex = /[^\s"]+|"([^"]*)"/gi;
+    const result: string[] = [];
+    let match;
+
+    while ((match = regex.exec(input))) {
+      result.push(match[1] || match[0]);
+    }
+
+    return result;
+  }
+
+  private getPeriodDates(period: string): { startDate: Date; endDate: Date } {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (period.toLowerCase()) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        break;
+      case 'week':
+        const weekStart = now.getDate() - now.getDay();
+        startDate = new Date(now.getFullYear(), now.getMonth(), weekStart);
+        endDate = new Date(now.getFullYear(), now.getMonth(), weekStart + 6, 23, 59, 59);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+        break;
+      default:
+        // Default to current month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    }
+
+    return { startDate, endDate };
+  }
+
+  private formatPeriod(period: string): string {
+    const periodMap: { [key: string]: string } = {
+      today: 'Hoy',
+      week: 'Esta Semana',
+      month: 'Este Mes',
+      year: 'Este Año'
+    };
+    return periodMap[period.toLowerCase()] || period;
+  }
+
   // Método para procesar webhook
   async processWebhook(update: any): Promise<void> {
     try {
@@ -696,8 +1510,66 @@ ${dashboardUrl}
           await this.handleCommand(telegramCommand);
         }
       }
+      
+      // Handle callback queries from inline keyboards
+      if (update.callback_query) {
+        await this.handleCallbackQuery(update.callback_query);
+      }
     } catch (error) {
       logger.error('Error procesando webhook:', error);
+    }
+  }
+
+  // Handle callback queries from inline keyboards
+  private async handleCallbackQuery(callbackQuery: any): Promise<void> {
+    try {
+      const { data, message } = callbackQuery;
+      const chatId = message.chat.id.toString();
+
+      // Answer callback query to remove loading state
+      await this.bot.answerCallbackQuery(callbackQuery.id);
+
+      // Parse callback data
+      const [action, ...params] = data.split('_');
+
+      switch (action) {
+        case 'invoice':
+          if (params[0] === 'send') {
+            await this.handleInvoiceSend(chatId, [params[1]]);
+          } else if (params[0] === 'list') {
+            await this.handleInvoiceList(chatId, []);
+          } else if (params[0] === 'create') {
+            await this.sendMessage(chatId, 'Use: /invoice create "cliente" cantidad "descripción"');
+          }
+          break;
+          
+        case 'revenue':
+          if (params[0] === 'breakdown') {
+            await this.handleRevenueCommand(chatId, ['breakdown', params[1] || 'month']);
+          }
+          break;
+          
+        case 'pending':
+          if (params[0] === 'list') {
+            await this.handlePendingCommand(chatId, []);
+          }
+          break;
+          
+        case 'client':
+          if (params[0] === 'invoices') {
+            const clientId = params[1];
+            await this.handleInvoiceList(chatId, [clientId]);
+          }
+          break;
+          
+        case 'open':
+          if (params[0] === 'dashboard') {
+            await this.handleDashboardCommand(chatId);
+          }
+          break;
+      }
+    } catch (error) {
+      logger.error('Error handling callback query:', error);
     }
   }
 }

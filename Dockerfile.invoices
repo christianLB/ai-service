@@ -1,0 +1,95 @@
+# Dockerfile with Puppeteer support for invoice generation
+FROM node:20-slim AS base
+
+# Install dependencies for Puppeteer
+RUN apt-get update && apt-get install -y \
+    chromium \
+    fonts-liberation \
+    fonts-noto-cjk \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    curl \
+    dumb-init \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Puppeteer environment
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Stage for development
+FROM base AS development
+RUN npm ci
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p storage/invoices generated-invoices logs
+
+EXPOSE 3000
+CMD ["dumb-init", "npm", "run", "dev"]
+
+# Stage for building
+FROM base AS builder
+RUN npm ci
+COPY . .
+
+# Build frontend
+RUN cd frontend && npm ci && cd ..
+RUN npm run build
+
+# Copy templates (important for invoice generation)
+RUN mkdir -p dist/templates && cp -r src/templates/* dist/templates/
+
+# Stage for production
+FROM base AS production
+
+# Create non-root user
+RUN groupadd -g 1001 nodejs && useradd -r -u 1001 -g nodejs nodejs
+
+# Copy built files
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/public ./public
+
+# Copy templates to dist
+COPY --from=builder --chown=nodejs:nodejs /app/src/templates ./dist/templates
+
+# Copy entrypoint
+COPY --chown=nodejs:nodejs entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
+# Create necessary directories with proper permissions
+RUN mkdir -p logs workflows data/documents/storage data/documents/temp \
+    data/documents/thumbnails data/knowledge data/workflows/storage \
+    storage/invoices generated-invoices && \
+    chown -R nodejs:nodejs logs workflows data storage generated-invoices
+
+# Switch to non-root user
+USER nodejs
+
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/status || exit 1
+
+# Start command
+ENTRYPOINT ["dumb-init", "./entrypoint.sh"]

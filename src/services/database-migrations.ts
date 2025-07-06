@@ -4,6 +4,14 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
   try {
     logger.info('🔧 Starting financial schema migration...');
     
+    // Enable pg_trgm extension for fuzzy string matching
+    try {
+      await client.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+      logger.info('✅ pg_trgm extension enabled for fuzzy matching');
+    } catch (error: any) {
+      logger.warn('Could not enable pg_trgm extension:', error.message);
+    }
+    
     // Step 0: Ensure base tables exist first
     await ensureBaseTables(client);
     
@@ -41,6 +49,106 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
       ('ETH', 'Ethereum', 'crypto', 18, 'Ξ')
       ON CONFLICT (code) DO NOTHING
     `);
+    
+    // Add counterparty_name column if missing
+    const counterpartyCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'financial' 
+        AND table_name = 'transactions' 
+        AND column_name = 'counterparty_name'
+      ) as has_counterparty_name
+    `);
+    
+    if (!counterpartyCheck.rows[0].has_counterparty_name) {
+      logger.info('Adding counterparty_name column to transactions...');
+      await client.query(`
+        ALTER TABLE financial.transactions 
+        ADD COLUMN counterparty_name VARCHAR(255)
+      `);
+      logger.info('✅ counterparty_name column added successfully');
+    }
+    
+    // Check and create client_transaction_links table if missing
+    const linkTableCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'financial' 
+        AND table_name = 'client_transaction_links'
+      ) as has_links_table
+    `);
+    
+    if (!linkTableCheck.rows[0].has_links_table) {
+      logger.info('Creating client_transaction_links table...');
+      await client.query(`
+        CREATE TABLE financial.client_transaction_links (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          transaction_id UUID REFERENCES financial.transactions(id) ON DELETE CASCADE,
+          client_id UUID NOT NULL,
+          match_type VARCHAR(20) NOT NULL CHECK (match_type IN ('automatic', 'manual', 'pattern', 'fuzzy')),
+          match_confidence DECIMAL(3, 2) DEFAULT 1.00,
+          matched_by VARCHAR(255),
+          matched_at TIMESTAMPTZ DEFAULT NOW(),
+          match_criteria JSONB,
+          is_manual_override BOOLEAN DEFAULT FALSE,
+          previous_link_id UUID,
+          override_reason TEXT,
+          notes TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(transaction_id)
+        )
+      `);
+      
+      // Create indexes
+      await client.query(`
+        CREATE INDEX idx_client_transaction_links_transaction_id ON financial.client_transaction_links(transaction_id);
+        CREATE INDEX idx_client_transaction_links_client_id ON financial.client_transaction_links(client_id);
+        CREATE INDEX idx_client_transaction_links_match_type ON financial.client_transaction_links(match_type);
+      `);
+      
+      logger.info('✅ client_transaction_links table created successfully');
+    }
+    
+    // Check and create transaction_matching_patterns table if missing
+    const patternTableCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'financial' 
+        AND table_name = 'transaction_matching_patterns'
+      ) as has_patterns_table
+    `);
+    
+    if (!patternTableCheck.rows[0].has_patterns_table) {
+      logger.info('Creating transaction_matching_patterns table...');
+      await client.query(`
+        CREATE TABLE financial.transaction_matching_patterns (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          client_id UUID NOT NULL,
+          pattern_type VARCHAR(20) NOT NULL CHECK (pattern_type IN ('reference', 'description', 'amount_range', 'recurring')),
+          pattern VARCHAR(500) NOT NULL,
+          confidence DECIMAL(3, 2) DEFAULT 0.80,
+          amount_min DECIMAL(20, 8),
+          amount_max DECIMAL(20, 8),
+          day_of_month INTEGER,
+          frequency VARCHAR(20) CHECK (frequency IN ('daily', 'weekly', 'monthly', 'quarterly', 'yearly')),
+          is_active BOOLEAN DEFAULT TRUE,
+          match_count INTEGER DEFAULT 0,
+          last_matched_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      
+      // Create indexes
+      await client.query(`
+        CREATE INDEX idx_transaction_matching_patterns_client_id ON financial.transaction_matching_patterns(client_id);
+        CREATE INDEX idx_transaction_matching_patterns_pattern_type ON financial.transaction_matching_patterns(pattern_type);
+        CREATE INDEX idx_transaction_matching_patterns_active ON financial.transaction_matching_patterns(is_active);
+      `);
+      
+      logger.info('✅ transaction_matching_patterns table created successfully');
+    }
     
     logger.info('✅ Financial schema migration completed successfully');
     
@@ -317,6 +425,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       status VARCHAR(50) DEFAULT 'confirmed',
       description TEXT,
       reference VARCHAR(255),
+      counterparty_name VARCHAR(255),
       date DATE NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -371,14 +480,62 @@ async function ensureBaseTables(client: any): Promise<void> {
     ON CONFLICT (name) DO NOTHING
   `);
   
+  // Create client_transaction_links table
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS financial.client_transaction_links (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      transaction_id UUID REFERENCES financial.transactions(id) ON DELETE CASCADE,
+      client_id UUID NOT NULL,
+      match_type VARCHAR(20) NOT NULL CHECK (match_type IN ('automatic', 'manual', 'pattern', 'fuzzy')),
+      match_confidence DECIMAL(3, 2) DEFAULT 1.00,
+      matched_by VARCHAR(255),
+      matched_at TIMESTAMPTZ DEFAULT NOW(),
+      match_criteria JSONB,
+      is_manual_override BOOLEAN DEFAULT FALSE,
+      previous_link_id UUID,
+      override_reason TEXT,
+      notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(transaction_id)
+    )
+  `);
+
+  // Create transaction_matching_patterns table
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS financial.transaction_matching_patterns (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      client_id UUID NOT NULL,
+      pattern_type VARCHAR(20) NOT NULL CHECK (pattern_type IN ('reference', 'description', 'amount_range', 'recurring')),
+      pattern VARCHAR(500) NOT NULL,
+      confidence DECIMAL(3, 2) DEFAULT 0.80,
+      amount_min DECIMAL(20, 8),
+      amount_max DECIMAL(20, 8),
+      day_of_month INTEGER,
+      frequency VARCHAR(20) CHECK (frequency IN ('daily', 'weekly', 'monthly', 'quarterly', 'yearly')),
+      is_active BOOLEAN DEFAULT TRUE,
+      match_count INTEGER DEFAULT 0,
+      last_matched_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
   // Create indexes
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON financial.transactions(account_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_date ON financial.transactions(date);
     CREATE INDEX IF NOT EXISTS idx_transactions_status ON financial.transactions(status);
+    CREATE INDEX IF NOT EXISTS idx_transactions_counterparty ON financial.transactions(counterparty_name);
     CREATE INDEX IF NOT EXISTS idx_accounts_institution_id ON financial.accounts(institution_id);
     CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_transaction_id ON financial.transaction_categorizations(transaction_id);
     CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_category_id ON financial.transaction_categorizations(category_id);
+    CREATE INDEX IF NOT EXISTS idx_client_transaction_links_transaction_id ON financial.client_transaction_links(transaction_id);
+    CREATE INDEX IF NOT EXISTS idx_client_transaction_links_client_id ON financial.client_transaction_links(client_id);
+    CREATE INDEX IF NOT EXISTS idx_client_transaction_links_match_type ON financial.client_transaction_links(match_type);
+    CREATE INDEX IF NOT EXISTS idx_transaction_matching_patterns_client_id ON financial.transaction_matching_patterns(client_id);
+    CREATE INDEX IF NOT EXISTS idx_transaction_matching_patterns_pattern_type ON financial.transaction_matching_patterns(pattern_type);
+    CREATE INDEX IF NOT EXISTS idx_transaction_matching_patterns_active ON financial.transaction_matching_patterns(is_active);
   `);
   
   // Create views needed for reporting

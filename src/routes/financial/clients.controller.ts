@@ -1,13 +1,19 @@
 import { Request, Response } from 'express';
 import { ClientManagementService } from '../../services/financial/client-management.service';
+import { TransactionMatchingService } from '../../services/financial/transaction-matching.service';
 import { logger } from '../../utils/log';
 import { Client } from '../../models/financial/client.model';
 
 export class ClientsController {
   private clientService: ClientManagementService;
+  private transactionMatchingService: TransactionMatchingService | null = null;
 
   constructor() {
     this.clientService = new ClientManagementService();
+  }
+
+  setTransactionMatchingService(service: TransactionMatchingService) {
+    this.transactionMatchingService = service;
   }
 
   /**
@@ -465,6 +471,86 @@ export class ClientsController {
       res.status(500).json({
         success: false,
         error: 'Failed to search clients'
+      });
+    }
+  }
+
+  /**
+   * Get client linked transactions
+   * GET /api/financial/clients/:id/linked-transactions
+   */
+  async getClientLinkedTransactions(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.transactionMatchingService) {
+        res.status(503).json({
+          success: false,
+          error: 'Transaction matching service not initialized'
+        });
+        return;
+      }
+
+      const { id } = req.params;
+      const { startDate, endDate } = req.query;
+
+      const transactions = await this.transactionMatchingService.getClientTransactions(
+        id,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+
+      res.json({
+        success: true,
+        data: {
+          transactions,
+          count: transactions.length
+        }
+      });
+
+    } catch (error: any) {
+      logger.error('Error getting client linked transactions:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get client linked transactions'
+      });
+    }
+  }
+
+  /**
+   * Get client transaction summary
+   * GET /api/financial/clients/:id/transaction-summary
+   */
+  async getClientTransactionSummary(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.transactionMatchingService) {
+        res.status(503).json({
+          success: false,
+          error: 'Transaction matching service not initialized'
+        });
+        return;
+      }
+
+      const { id } = req.params;
+
+      const summary = await this.transactionMatchingService.getClientTransactionSummary(id);
+
+      if (!summary) {
+        res.status(404).json({
+          success: false,
+          error: 'Client not found or no transaction data'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: { summary }
+      });
+
+    } catch (error: any) {
+      logger.error('Error getting client transaction summary:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get client transaction summary'
       });
     }
   }

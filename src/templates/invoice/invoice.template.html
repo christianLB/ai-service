@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="{{language}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{labels.invoice}} {{invoice.invoiceNumber}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: {{company.branding.fontFamily}};
+            color: #333;
+            line-height: 1.6;
+            background: #fff;
+        }
+
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background: white;
+        }
+
+        /* Header */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid {{company.branding.primaryColor}};
+        }
+
+        .company-info {
+            flex: 1;
+        }
+
+        .company-logo {
+            max-width: 200px;
+            max-height: 80px;
+            margin-bottom: 10px;
+        }
+
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: {{company.branding.primaryColor}};
+            margin-bottom: 5px;
+        }
+
+        .company-details {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .invoice-title {
+            text-align: right;
+            flex: 1;
+        }
+
+        .invoice-type {
+            font-size: 32px;
+            font-weight: bold;
+            color: {{company.branding.primaryColor}};
+            text-transform: uppercase;
+        }
+
+        .invoice-number {
+            font-size: 18px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .invoice-date {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* Client and Invoice Info */
+        .invoice-parties {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            gap: 40px;
+        }
+
+        .party-section {
+            flex: 1;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: {{company.branding.primaryColor}};
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .party-details {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .party-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        /* Invoice Details Grid */
+        .invoice-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .detail-item {
+            font-size: 14px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 3px;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        /* Items Table */
+        .items-table {
+            width: 100%;
+            margin-bottom: 30px;
+            border-collapse: collapse;
+        }
+
+        .items-table th {
+            background: {{company.branding.primaryColor}};
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .items-table th:last-child,
+        .items-table td:last-child {
+            text-align: right;
+        }
+
+        .items-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .items-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .item-description {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .item-details {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Totals */
+        .invoice-totals {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 40px;
+        }
+
+        .totals-section {
+            width: 300px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .total-row.subtotal {
+            border-top: 1px solid #e0e0e0;
+            padding-top: 15px;
+        }
+
+        .total-row.grand-total {
+            border-top: 2px solid {{company.branding.primaryColor}};
+            font-size: 18px;
+            font-weight: bold;
+            color: {{company.branding.primaryColor}};
+            padding-top: 15px;
+            margin-top: 10px;
+        }
+
+        /* Payment Info */
+        .payment-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .payment-grid {
+            display: grid;
+            grid-template-columns: 1fr 200px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .bank-details {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .bank-detail-row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+
+        .bank-label {
+            font-weight: bold;
+            width: 120px;
+            color: #666;
+        }
+
+        .qr-code {
+            text-align: center;
+        }
+
+        .qr-code img {
+            width: 180px;
+            height: 180px;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .qr-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Notes and Terms */
+        .notes-section {
+            margin-bottom: 30px;
+        }
+
+        .notes-content {
+            background: #fffbf0;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ffa000;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .terms-section {
+            margin-bottom: 30px;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        .invoice-footer {
+            border-top: 2px solid #e0e0e0;
+            padding-top: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .legal-info {
+            margin-top: 10px;
+            font-size: 11px;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-paid {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-overdue {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .invoice-container {
+                padding: 20px;
+            }
+
+            .items-table th {
+                background: {{company.branding.primaryColor}} !important;
+                color: white !important;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .invoice-header,
+            .invoice-parties,
+            .payment-grid {
+                flex-direction: column;
+            }
+
+            .invoice-title {
+                text-align: left;
+                margin-top: 20px;
+            }
+
+            .totals-section {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="invoice-header">
+            <div class="company-info">
+                {{#if company.branding.logoUrl}}
+                <img src="{{company.branding.logoUrl}}" alt="{{company.name}}" class="company-logo">
+                {{/if}}
+                <div class="company-name">{{company.name}}</div>
+                <div class="company-details">
+                    {{company.legalName}}<br>
+                    {{labels.taxId}}: {{company.taxId}}<br>
+                    {{company.address.street}} {{company.address.number}}<br>
+                    {{company.address.postalCode}} {{company.address.city}}, {{company.address.country}}<br>
+                    {{labels.phone}}: {{company.phone}}<br>
+                    {{labels.email}}: {{company.email}}
+                    {{#if company.website}}<br>{{company.website}}{{/if}}
+                </div>
+            </div>
+
+            <div class="invoice-title">
+                <div class="invoice-type">{{labels.invoiceType}}</div>
+                <div class="invoice-number">{{invoice.invoiceNumber}}</div>
+                <div class="invoice-date">{{labels.date}}: {{formatDate invoice.issueDate}}</div>
+                {{#if showStatus}}
+                <div style="margin-top: 10px;">
+                    <span class="status-badge status-{{invoice.status}}">{{labels.status.{{invoice.status}}}}</span>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+
+        <!-- Client and Invoice Info -->
+        <div class="invoice-parties">
+            <div class="party-section">
+                <div class="section-title">{{labels.billTo}}</div>
+                <div class="party-details">
+                    <div class="party-name">{{client.businessName}}</div>
+                    {{#if client.name}}{{client.name}}<br>{{/if}}
+                    {{labels.taxId}}: {{client.taxId}}<br>
+                    {{#if client.address}}
+                    {{client.address.street}} {{client.address.number}}<br>
+                    {{client.address.postalCode}} {{client.address.city}}<br>
+                    {{client.address.country}}<br>
+                    {{/if}}
+                    {{#if client.email}}{{labels.email}}: {{client.email}}<br>{{/if}}
+                    {{#if client.phone}}{{labels.phone}}: {{client.phone}}{{/if}}
+                </div>
+            </div>
+
+            <div class="party-section">
+                <div class="section-title">{{labels.invoiceDetails}}</div>
+                <div class="invoice-details">
+                    <div class="detail-item">
+                        <div class="detail-label">{{labels.issueDate}}</div>
+                        <div class="detail-value">{{formatDate invoice.issueDate}}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">{{labels.dueDate}}</div>
+                        <div class="detail-value">{{formatDate invoice.dueDate}}</div>
+                    </div>
+                    {{#if invoice.serviceStartDate}}
+                    <div class="detail-item">
+                        <div class="detail-label">{{labels.servicePeriod}}</div>
+                        <div class="detail-value">{{formatDate invoice.serviceStartDate}} - {{formatDate invoice.serviceEndDate}}</div>
+                    </div>
+                    {{/if}}
+                    <div class="detail-item">
+                        <div class="detail-label">{{labels.paymentTerms}}</div>
+                        <div class="detail-value">{{invoice.paymentTerms}} {{labels.days}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%">{{labels.description}}</th>
+                    <th style="width: 15%">{{labels.quantity}}</th>
+                    <th style="width: 15%">{{labels.unitPrice}}</th>
+                    <th style="width: 20%">{{labels.amount}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each invoice.items}}
+                <tr>
+                    <td>
+                        <div class="item-description">{{description}}</div>
+                        {{#if category}}<div class="item-details">{{../labels.category}}: {{category}}</div>{{/if}}
+                    </td>
+                    <td>{{quantity}} {{#if unit}}{{unit}}{{/if}}</td>
+                    <td>{{formatCurrency unitPrice ../invoice.currency}}</td>
+                    <td>{{formatCurrency amount ../invoice.currency}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div class="invoice-totals">
+            <div class="totals-section">
+                <div class="total-row subtotal">
+                    <span>{{labels.subtotal}}</span>
+                    <span>{{formatCurrency invoice.subtotal invoice.currency}}</span>
+                </div>
+                
+                {{#if invoice.discount}}
+                <div class="total-row">
+                    <span>{{labels.discount}} {{#if (eq invoice.discountType 'percentage')}}({{invoice.discount}}%){{/if}}</span>
+                    <span>-{{formatCurrency discountAmount invoice.currency}}</span>
+                </div>
+                {{/if}}
+                
+                <div class="total-row">
+                    <span>{{invoice.taxType}} ({{invoice.taxRate}}%)</span>
+                    <span>{{formatCurrency invoice.taxAmount invoice.currency}}</span>
+                </div>
+                
+                <div class="total-row grand-total">
+                    <span>{{labels.total}}</span>
+                    <span>{{formatCurrency invoice.total invoice.currency}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Information -->
+        <div class="payment-section">
+            <div class="section-title">{{labels.paymentInformation}}</div>
+            <div class="payment-grid">
+                <div class="bank-details">
+                    {{#if bankAccount}}
+                    <div class="bank-detail-row">
+                        <span class="bank-label">{{labels.bank}}:</span>
+                        <span>{{bankAccount.bankName}}</span>
+                    </div>
+                    <div class="bank-detail-row">
+                        <span class="bank-label">{{labels.accountHolder}}:</span>
+                        <span>{{bankAccount.accountHolder}}</span>
+                    </div>
+                    {{#if bankAccount.iban}}
+                    <div class="bank-detail-row">
+                        <span class="bank-label">IBAN:</span>
+                        <span>{{bankAccount.iban}}</span>
+                    </div>
+                    {{/if}}
+                    {{#if bankAccount.swiftBic}}
+                    <div class="bank-detail-row">
+                        <span class="bank-label">SWIFT/BIC:</span>
+                        <span>{{bankAccount.swiftBic}}</span>
+                    </div>
+                    {{/if}}
+                    <div class="bank-detail-row">
+                        <span class="bank-label">{{labels.reference}}:</span>
+                        <span><strong>{{invoice.invoiceNumber}}</strong></span>
+                    </div>
+                    {{/if}}
+                </div>
+                
+                {{#if qrCode}}
+                <div class="qr-code">
+                    <img src="{{qrCode}}" alt="QR Code">
+                    <div class="qr-label">{{labels.scanToPay}}</div>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+
+        <!-- Notes -->
+        {{#if invoice.notes}}
+        <div class="notes-section">
+            <div class="section-title">{{labels.notes}}</div>
+            <div class="notes-content">
+                {{invoice.notes}}
+            </div>
+        </div>
+        {{/if}}
+
+        <!-- Terms and Conditions -->
+        {{#if invoice.termsAndConditions}}
+        <div class="terms-section">
+            <div class="section-title">{{labels.termsAndConditions}}</div>
+            <div class="terms-content">
+                {{invoice.termsAndConditions}}
+            </div>
+        </div>
+        {{/if}}
+
+        <!-- Footer -->
+        <div class="invoice-footer">
+            {{#if company.invoiceFooter}}
+            <div>{{company.invoiceFooter}}</div>
+            {{/if}}
+            <div class="legal-info">
+                {{#if company.legalInfo.registrationNumber}}
+                {{company.legalName}} - {{labels.registeredIn}} {{company.legalInfo.registrationLocation}}, 
+                {{labels.registrationNumber}} {{company.legalInfo.registrationNumber}}
+                {{#if company.legalInfo.capitalStock}}, {{labels.capitalStock}} {{company.legalInfo.capitalStock}}{{/if}}
+                {{/if}}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,13 +1,49 @@
 import { Request, Response } from 'express';
 import { InvoiceManagementService } from '../../services/financial/invoice-management.service';
+import { InvoiceGenerationService } from '../../services/financial/invoice-generation.service';
+import { InvoiceNumberingService } from '../../services/financial/invoice-numbering.service';
+import { InvoiceStorageService } from '../../services/financial/invoice-storage.service';
+import { getInvoiceEmailService } from '../../services/financial/invoice-email.service';
+import { ClientManagementService } from '../../services/financial/client-management.service';
 import { logger } from '../../utils/log';
 import { Invoice, InvoiceItem } from '../../models/financial/invoice.model';
+import { DEFAULT_COMPANY_CONFIG } from '../../models/financial/company.model';
+import { Pool } from 'pg';
 
 export class InvoicesController {
   private invoiceService: InvoiceManagementService;
+  private invoiceGenerationService: InvoiceGenerationService;
+  private invoiceNumberingService: InvoiceNumberingService;
+  private invoiceStorageService: InvoiceStorageService;
+  private invoiceEmailService: ReturnType<typeof getInvoiceEmailService>;
+  private clientService: ClientManagementService;
+  private pool: Pool;
 
   constructor() {
     this.invoiceService = new InvoiceManagementService();
+    this.invoiceGenerationService = new InvoiceGenerationService();
+    this.clientService = new ClientManagementService();
+    this.invoiceEmailService = getInvoiceEmailService();
+    
+    // Initialize pool for numbering and storage services
+    this.pool = new Pool({
+      connectionString: process.env.DATABASE_URL || 'postgresql://localhost/ai_service'
+    });
+    
+    this.invoiceNumberingService = new InvoiceNumberingService(this.pool);
+    this.invoiceStorageService = new InvoiceStorageService(this.pool);
+    
+    // Initialize schemas
+    this.initializeSchemas();
+  }
+
+  private async initializeSchemas(): Promise<void> {
+    try {
+      await this.invoiceNumberingService.initializeSchema();
+      await this.invoiceStorageService.initializeSchema();
+    } catch (error) {
+      logger.error('Error initializing invoice schemas:', error);
+    }
   }
 
   /**
@@ -527,6 +563,386 @@ export class InvoicesController {
       res.status(500).json({
         success: false,
         error: 'Failed to duplicate invoice'
+      });
+    }
+  }
+
+  /**
+   * Generate PDF for invoice
+   * POST /api/financial/invoices/:id/generate-pdf
+   */
+  async generatePDF(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { language, showStatus = true, generateQR = true } = req.body;
+
+      // Get invoice and client
+      const invoice = await this.invoiceService.getInvoice(id);
+      if (!invoice) {
+        res.status(404).json({
+          success: false,
+          error: 'Invoice not found'
+        });
+        return;
+      }
+
+      const client = await this.clientService.getClient(invoice.clientId);
+      if (!client) {
+        res.status(404).json({
+          success: false,
+          error: 'Client not found'
+        });
+        return;
+      }
+
+      // Generate PDF
+      const result = await this.invoiceGenerationService.generateInvoicePDF({
+        invoice,
+        client,
+        company: DEFAULT_COMPANY_CONFIG,
+        language: language || client.language,
+        showStatus,
+        generateQR
+      });
+
+      // Store PDF
+      const stored = await this.invoiceStorageService.storeInvoice(
+        invoice.id,
+        invoice.invoiceNumber,
+        result.pdfBuffer,
+        result.fileName,
+        { generatePublicUrl: true }
+      );
+
+      // Update invoice with PDF URL
+      await this.invoiceService.updateInvoice(id, {
+        pdfUrl: stored.url
+      });
+
+      res.json({
+        success: true,
+        data: {
+          fileName: result.fileName,
+          fileSize: stored.fileSize,
+          url: stored.url,
+          storedAt: stored.createdAt
+        },
+        message: 'Invoice PDF generated successfully'
+      });
+
+    } catch (error: any) {
+      logger.error('Error generating invoice PDF:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to generate invoice PDF'
+      });
+    }
+  }
+
+  /**
+   * Download invoice PDF
+   * GET /api/financial/invoices/:id/download-pdf
+   */
+  async downloadPDF(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      // Retrieve stored PDF
+      const result = await this.invoiceStorageService.retrieveInvoice(id);
+      
+      if (!result) {
+        res.status(404).json({
+          success: false,
+          error: 'Invoice PDF not found'
+        });
+        return;
+      }
+
+      // Set headers for download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.metadata.fileName}"`);
+      res.setHeader('Content-Length', result.buffer.length.toString());
+
+      // Send PDF
+      res.send(result.buffer);
+
+    } catch (error: any) {
+      logger.error('Error downloading invoice PDF:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to download invoice PDF'
+      });
+    }
+  }
+
+  /**
+   * Preview invoice HTML
+   * GET /api/financial/invoices/:id/preview
+   */
+  async previewInvoice(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { language } = req.query;
+
+      // Get invoice and client
+      const invoice = await this.invoiceService.getInvoice(id);
+      if (!invoice) {
+        res.status(404).json({
+          success: false,
+          error: 'Invoice not found'
+        });
+        return;
+      }
+
+      const client = await this.clientService.getClient(invoice.clientId);
+      if (!client) {
+        res.status(404).json({
+          success: false,
+          error: 'Client not found'
+        });
+        return;
+      }
+
+      // Generate HTML preview
+      const html = await this.invoiceGenerationService.previewInvoiceHTML({
+        invoice,
+        client,
+        company: DEFAULT_COMPANY_CONFIG,
+        language: (language as string) || client.language,
+        showStatus: true,
+        generateQR: true
+      });
+
+      // Send HTML
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html);
+
+    } catch (error: any) {
+      logger.error('Error previewing invoice:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to preview invoice'
+      });
+    }
+  }
+
+  /**
+   * Send invoice by email
+   * POST /api/financial/invoices/:id/send-email
+   */
+  async sendInvoiceEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const {
+        subject,
+        message,
+        cc,
+        bcc,
+        language
+      } = req.body;
+
+      // Get invoice and client
+      const invoice = await this.invoiceService.getInvoice(id);
+      if (!invoice) {
+        res.status(404).json({
+          success: false,
+          error: 'Invoice not found'
+        });
+        return;
+      }
+
+      const client = await this.clientService.getClient(invoice.clientId);
+      if (!client) {
+        res.status(404).json({
+          success: false,
+          error: 'Client not found'
+        });
+        return;
+      }
+
+      // Generate PDF if not already generated
+      let pdfBuffer: Buffer;
+      const existingPdf = await this.invoiceStorageService.retrieveInvoice(id);
+      
+      if (existingPdf) {
+        pdfBuffer = existingPdf.buffer;
+      } else {
+        const result = await this.invoiceGenerationService.generateInvoicePDF({
+          invoice,
+          client,
+          company: DEFAULT_COMPANY_CONFIG,
+          language: language || client.language
+        });
+        pdfBuffer = result.pdfBuffer;
+        
+        // Store for future use
+        await this.invoiceStorageService.storeInvoice(
+          invoice.id,
+          invoice.invoiceNumber,
+          pdfBuffer,
+          result.fileName
+        );
+      }
+
+      // Send email
+      const sent = await this.invoiceEmailService.sendInvoiceEmail({
+        invoice,
+        client,
+        company: DEFAULT_COMPANY_CONFIG,
+        pdfBuffer,
+        language: language || client.language,
+        subject,
+        message,
+        cc,
+        bcc
+      });
+
+      if (sent) {
+        // Update invoice status
+        await this.invoiceService.updateInvoice(id, {
+          status: 'sent',
+          sentAt: new Date()
+        });
+
+        res.json({
+          success: true,
+          message: 'Invoice sent successfully'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Failed to send invoice email'
+        });
+      }
+
+    } catch (error: any) {
+      logger.error('Error sending invoice email:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to send invoice email'
+      });
+    }
+  }
+
+  /**
+   * Send payment reminder
+   * POST /api/financial/invoices/:id/send-reminder
+   */
+  async sendPaymentReminder(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { language } = req.body;
+
+      // Get invoice and client
+      const invoice = await this.invoiceService.getInvoice(id);
+      if (!invoice) {
+        res.status(404).json({
+          success: false,
+          error: 'Invoice not found'
+        });
+        return;
+      }
+
+      if (invoice.status === 'paid') {
+        res.status(400).json({
+          success: false,
+          error: 'Invoice is already paid'
+        });
+        return;
+      }
+
+      const client = await this.clientService.getClient(invoice.clientId);
+      if (!client) {
+        res.status(404).json({
+          success: false,
+          error: 'Client not found'
+        });
+        return;
+      }
+
+      // Send reminder
+      const sent = await this.invoiceEmailService.sendPaymentReminder(
+        invoice,
+        client,
+        DEFAULT_COMPANY_CONFIG,
+        language || client.language
+      );
+
+      if (sent) {
+        res.json({
+          success: true,
+          message: 'Payment reminder sent successfully'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Failed to send payment reminder'
+        });
+      }
+
+    } catch (error: any) {
+      logger.error('Error sending payment reminder:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to send payment reminder'
+      });
+    }
+  }
+
+  /**
+   * Get next invoice number
+   * GET /api/financial/invoices/numbering/next
+   */
+  async getNextInvoiceNumber(req: Request, res: Response): Promise<void> {
+    try {
+      const { series, prefix, format, year } = req.query;
+
+      const nextNumber = await this.invoiceNumberingService.getNextInvoiceNumber({
+        series: series as string,
+        prefix: prefix as string,
+        format: format as string,
+        year: year ? parseInt(year as string) : undefined
+      });
+
+      res.json({
+        success: true,
+        data: {
+          nextNumber,
+          preview: `This will be your next invoice number: ${nextNumber}`
+        }
+      });
+
+    } catch (error: any) {
+      logger.error('Error getting next invoice number:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get next invoice number'
+      });
+    }
+  }
+
+  /**
+   * Get numbering sequences
+   * GET /api/financial/invoices/numbering/sequences
+   */
+  async getNumberingSequences(req: Request, res: Response): Promise<void> {
+    try {
+      const sequences = await this.invoiceNumberingService.getAllSequences();
+      const stats = await this.invoiceNumberingService.getStatistics();
+
+      res.json({
+        success: true,
+        data: {
+          sequences,
+          statistics: stats
+        }
+      });
+
+    } catch (error: any) {
+      logger.error('Error getting numbering sequences:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get numbering sequences'
       });
     }
   }
