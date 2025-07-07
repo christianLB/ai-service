@@ -1,6 +1,7 @@
 // Version and Deployment Notification Routes
 import { Router, Request, Response } from 'express';
 import { TelegramService } from '../services/communication/telegram.service';
+import { FinancialAlert } from '../services/communication/types';
 import { logger } from '../utils/log';
 
 const router = Router();
@@ -66,16 +67,24 @@ router.post('/watchtower/notify', async (req: Request, res: Response) => {
         return;
       }
       
-      const deployMessage = `🚀 *Nueva Versión Desplegada*\n\n` +
-        `📦 Container: \`${containerName}\`\n` +
-        `🏷️ Versión: \`${versionInfo.version}\`\n` +
-        `📋 Commit: \`${versionInfo.commit}\`\n` +
-        `🕐 Build: \`${versionInfo.buildDate}\`\n` +
+      const deployMessage = `🚀 Nueva Versión Desplegada\n\n` +
+        `📦 Container: ${containerName}\n` +
+        `🏷️ Versión: ${versionInfo.version}\n` +
+        `📋 Commit: ${versionInfo.commit}\n` +
+        `🕐 Build: ${versionInfo.buildDate}\n` +
         `📝 Detalle: ${message}\n\n` +
         `✅ Sistema actualizado automáticamente`;
       
+      // Create alert object
+      const alert: FinancialAlert = {
+        type: 'system_error', // closest type available
+        priority: 'medium',
+        message: deployMessage,
+        timestamp: new Date()
+      };
+      
       // Send to configured admin chat
-      await telegramService.sendAlert(deployMessage, 'info');
+      await telegramService.sendAlert(alert);
       
       console.log('✅ Deployment notification sent via Telegram');
     } catch (telegramError) {
@@ -118,14 +127,22 @@ router.post('/test-notification', async (req: Request, res: Response) => {
       buildDate: process.env.BUILD_DATE || 'unknown'
     };
     
-    const testMessage = `🧪 *Test de Notificación*\n\n` +
+    const testMessage = `🧪 Test de Notificación\n\n` +
       `📦 Sistema: AI Service\n` +
-      `🏷️ Versión: \`${versionInfo.version}\`\n` +
-      `📋 Commit: \`${versionInfo.commit}\`\n` +
-      `🕐 Build: \`${versionInfo.buildDate}\`\n\n` +
+      `🏷️ Versión: ${versionInfo.version}\n` +
+      `📋 Commit: ${versionInfo.commit}\n` +
+      `🕐 Build: ${versionInfo.buildDate}\n\n` +
       `✅ Notificaciones funcionando correctamente`;
     
-    await telegramService.sendAlert(testMessage, 'info');
+    // Create alert object
+    const alert: FinancialAlert = {
+      type: 'system_error',
+      priority: 'low',
+      message: testMessage,
+      timestamp: new Date()
+    };
+    
+    await telegramService.sendAlert(alert);
     
     res.json({
       success: true,
