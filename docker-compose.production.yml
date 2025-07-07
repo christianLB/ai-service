@@ -9,8 +9,10 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: ai-service-db
-    env_file:
-      - /volume1/docker/ai-service/config/.env.production
+    environment:
+      - POSTGRES_DB=ai_service
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=placeholder_will_be_read_from_env_file
     volumes:
       - /volume1/docker/ai-service/postgres:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -27,9 +29,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ai-service-redis
-    env_file:
-      - /volume1/docker/ai-service/config/.env.production
-    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    command: redis-server --requirepass placeholder_password --appendonly yes
     volumes:
       - /volume1/docker/ai-service/redis:/data
     networks:
@@ -40,8 +40,17 @@ services:
   ai-service:
     image: ghcr.io/christianlb/ai-service:latest
     container_name: ai-service-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_service
+      - POSTGRES_USER=ai_user
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     volumes:
-      # Variables de entorno desde archivo montado
+      # Mount the env file for the app to read internally
       - /volume1/docker/ai-service/config/.env.production:/app/.env.production:ro
       - /volume1/docker/ai-service/logs:/app/logs
       - /volume1/docker/ai-service/workflows:/app/data/workflows
@@ -82,10 +91,6 @@ services:
       - WATCHTOWER_INCLUDE_STOPPED=false
       - WATCHTOWER_REVIVE_STOPPED=false
       
-      # GHCR Authentication (from environment)
-      - REPO_USER=${GITHUB_USER:-}
-      - REPO_PASS=${GITHUB_TOKEN:-}
-      
       # Telegram Notifications via internal API
       - WATCHTOWER_NOTIFICATIONS=gotify
       - WATCHTOWER_NOTIFICATION_GOTIFY_URL=http://ai-service:3000/api/watchtower/notify
@@ -97,7 +102,6 @@ services:
       
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ~/.docker/config.json:/config.json:ro
     networks:
       - ai-service-network
     restart: unless-stopped
