@@ -1,4 +1,4 @@
-name: Deploy to Production (NAS)
+name: Build and Push Docker Image
 
 on:
   push:
@@ -93,80 +93,19 @@ jobs:
           COMMIT=${{ steps.version.outputs.commit_full }}
           COMMIT_SHORT=${{ steps.version.outputs.commit_short }}
 
-  # Trigger NAS deployment via webhook
-  deploy-nas:
+  # Notify deployment completion
+  notify:
     needs: build
     runs-on: ubuntu-latest
-    environment: production
+    if: always()
     
     steps:
-    - name: Trigger NAS Container Update
+    - name: Deployment Summary
       run: |
-        echo "🚀 Triggering NAS container update..."
-        
-        # Option 1: Direct webhook to NAS (if you have webhook setup)
-        if [ -n "${{ secrets.NAS_WEBHOOK_URL }}" ]; then
-          curl -X POST "${{ secrets.NAS_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.NAS_WEBHOOK_TOKEN }}" \
-            -d '{
-              "action": "update_container",
-              "container": "ai-service",
-              "image": "${{ needs.build.outputs.image-tag }}",
-              "sha": "${{ needs.build.outputs.image-sha }}"
-            }'
-          
-          echo "✅ NAS webhook triggered"
-        fi
-        
-        # Option 2: SSH to NAS (if SSH is enabled)
-        if [ -n "${{ secrets.NAS_SSH_KEY }}" ]; then
-          echo "Using SSH method..."
-          # This would require SSH setup on your NAS
-        fi
-        
-        # Option 3: Use Synology API (if available)
-        if [ -n "${{ secrets.SYNOLOGY_API_TOKEN }}" ]; then
-          echo "Using Synology DSM API..."
-          # Call Synology Container Manager API
-        fi
-        
-    - name: Wait and verify deployment
-      run: |
-        echo "⏳ Waiting for container to update..."
-        sleep 60
-        
-        # Verify service is responding
-        for i in {1..10}; do
-          if curl -f https://ai-service.anaxi.net/status; then
-            echo "✅ Service is healthy after update"
-            break
-          fi
-          
-          if [ $i -eq 10 ]; then
-            echo "❌ Service health check failed after update"
-            exit 1
-          fi
-          
-          echo "⏳ Health check attempt $i/10..."
-          sleep 30
-        done
-        
-    - name: Verify financial endpoints
-      run: |
-        echo "🔍 Verifying financial endpoints..."
-        
-        # Check if financial endpoints are working
-        if curl -f https://ai-service.anaxi.net/api/financial/dashboard/health; then
-          echo "✅ Financial services are healthy"
-        else
-          echo "⚠️ Financial services may need attention"
-          echo "This might be normal if database migration is needed"
-        fi
-        
-        # Test revenue metrics (this should work after migration)
-        if curl -f https://ai-service.anaxi.net/api/financial/dashboard/revenue-metrics; then
-          echo "✅ Revenue metrics are working"
-        else
-          echo "⚠️ Revenue metrics not working - may need manual migration"
-        fi
+        echo "🎉 Docker image built and pushed successfully!"
+        echo "📦 Image: ${{ needs.build.outputs.image-tag }}"
+        echo "🔗 Registry: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+        echo ""
+        echo "✅ Watchtower will automatically detect and deploy the new version"
+        echo "📱 You will receive Telegram notifications when deployment completes"
+        echo "🔄 No manual intervention required"
