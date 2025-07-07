@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Tooltip, Button, Space } from 'antd';
 import { InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
 
 interface VersionInfo {
   version: string;
@@ -13,6 +14,9 @@ interface VersionInfo {
   uptime: number;
   timestamp: string;
 }
+
+// Enable duration plugin
+dayjs.extend(duration);
 
 const VersionIndicator: React.FC = () => {
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
