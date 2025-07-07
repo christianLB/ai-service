@@ -1,8 +1,20 @@
 // Version and Deployment Notification Routes
 import { Router, Request, Response } from 'express';
 import { TelegramService } from '../services/communication/telegram.service';
+import { logger } from '../utils/log';
 
 const router = Router();
+
+// Get Telegram service instance
+function getTelegramService(): TelegramService | null {
+  const globalService = (global as any).telegramService;
+  if (globalService) {
+    return globalService;
+  }
+  
+  logger.error('Telegram service not initialized');
+  return null;
+}
 
 // Get current version information
 router.get('/version', (req: Request, res: Response) => {
@@ -43,7 +55,16 @@ router.post('/watchtower/notify', async (req: Request, res: Response) => {
     
     // Send Telegram notification
     try {
-      const telegramService = TelegramService.getInstance();
+      const telegramService = getTelegramService();
+      if (!telegramService) {
+        console.log('⚠️ Telegram service not available for notifications');
+        res.json({
+          success: true,
+          message: 'Notification processed (Telegram unavailable)',
+          version: versionInfo
+        });
+        return;
+      }
       
       const deployMessage = `🚀 *Nueva Versión Desplegada*\n\n` +
         `📦 Container: \`${containerName}\`\n` +
@@ -82,7 +103,14 @@ router.post('/watchtower/notify', async (req: Request, res: Response) => {
 // Manual deployment test notification
 router.post('/test-notification', async (req: Request, res: Response) => {
   try {
-    const telegramService = TelegramService.getInstance();
+    const telegramService = getTelegramService();
+    if (!telegramService) {
+      res.status(503).json({
+        success: false,
+        error: 'Telegram service not available'
+      });
+      return;
+    }
     
     const versionInfo = {
       version: process.env.VERSION || 'development',
