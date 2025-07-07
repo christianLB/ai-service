@@ -15,7 +15,7 @@ services:
       - POSTGRES_PASSWORD=placeholder_will_be_read_from_env_file
     volumes:
       - /volume1/docker/ai-service/postgres:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - /volume1/docker/ai-service/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - ai-service-network
     restart: unless-stopped
