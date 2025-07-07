@@ -1,6 +1,6 @@
 // Version and Deployment Notification Routes
 import { Router, Request, Response } from 'express';
-import { TelegramService } from '../services/telegram.service';
+import { TelegramService } from '../services/communication/telegram.service';
 
 const router = Router();
 
