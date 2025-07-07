@@ -62,3 +62,44 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      # Labels for Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai-service"
+
+  # Watchtower for automatic updates
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: ai-service-watchtower
+    environment:
+      # Update settings
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_ROLLING_RESTART=true
+      - WATCHTOWER_SCOPE=ai-service
+      - WATCHTOWER_POLL_INTERVAL=300  # Check every 5 minutes
+      - WATCHTOWER_INCLUDE_STOPPED=false
+      - WATCHTOWER_REVIVE_STOPPED=false
+      
+      # GHCR Authentication (from environment)
+      - REPO_USER=${GITHUB_USER:-}
+      - REPO_PASS=${GITHUB_TOKEN:-}
+      
+      # Telegram Notifications via internal API
+      - WATCHTOWER_NOTIFICATIONS=gotify
+      - WATCHTOWER_NOTIFICATION_GOTIFY_URL=http://ai-service:3000/api/watchtower/notify
+      - WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=watchtower-notify
+      
+      # Debugging
+      - WATCHTOWER_DEBUG=true
+      - WATCHTOWER_LOG_LEVEL=info
+      
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.docker/config.json:/config.json:ro
+    networks:
+      - ai-service-network
+    restart: unless-stopped
+    depends_on:
+      - ai-service
+    command: --scope ai-service --cleanup --rolling-restart --interval 300
