@@ -1,0 +1,27 @@
+#!/bin/bash
+# Comando Claude: Deploy seguro con validaciones
+
+set -e
+
+ENV=${1:-development}
+
+echo "🚀 Iniciando deploy a: $ENV"
+echo ""
+
+# Validaciones pre-deploy
+echo "🔍 Ejecutando validaciones pre-deploy..."
+make validate
+
+echo ""
+echo "🏗️ Construyendo aplicación..."
+make build
+
+echo ""
+echo "📦 Iniciando deployment..."
+
+if [ "$ENV" = "production" ]; then
+    echo "⚠️  ADVERTENCIA: Deploy a producción requiere confirmación manual"
+    echo "Ejecuta: ./scripts/claude-deploy-manager.sh prod"
+else
+    ./scripts/claude-deploy-manager.sh dev
+fi

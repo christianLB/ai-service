@@ -1,10 +1,13 @@
-name: Build and Publish Docker Image
+name: Build and Publish Docker Image (Legacy)
 
 on:
-  push:
-    branches:
-      - main
+  # Disabled - now handled by deploy-production.yml
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build without deployment'
+        required: false
+        default: 'false'
 
 env:
   REGISTRY: ghcr.io

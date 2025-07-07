@@ -1,0 +1,35 @@
+#!/bin/bash
+# Comando Claude: Validación completa del proyecto
+
+set -e
+
+echo "🔍 Validación Completa del Proyecto"
+echo "==================================="
+echo ""
+
+# 1. Verificar secrets
+echo "🔐 Verificando secrets..."
+./scripts/secure-env-manager.sh audit
+echo ""
+
+# 2. Verificar tipos
+echo "📐 Verificando tipos TypeScript..."
+npm run typecheck
+echo ""
+
+# 3. Ejecutar tests
+echo "🧪 Ejecutando tests..."
+npm test
+echo ""
+
+# 4. Validar esquemas
+echo "📋 Validando esquemas..."
+npm run validate:schema
+echo ""
+
+# 5. Verificar build
+echo "🏗️ Verificando build..."
+npm run build
+echo ""
+
+echo "✅ Validación completa exitosa!"

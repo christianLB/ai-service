@@ -1,0 +1,18 @@
+#!/bin/bash
+# Comando Claude: Ejecutar tests con validación completa
+
+set -e
+
+echo "🧪 Ejecutando suite de tests completa..."
+echo ""
+
+# Ejecutar tests
+echo "📋 Tests unitarios..."
+npm test
+
+echo ""
+echo "🔍 Verificando tipos TypeScript..."
+npm run typecheck
+
+echo ""
+echo "✅ Validación completa exitosa!"

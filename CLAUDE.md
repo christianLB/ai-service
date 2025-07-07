@@ -4,6 +4,49 @@
 
 **IMPORTANTE**: Siempre leer este documento al comenzar cualquier sesión de trabajo.
 
+## 🚀 COMANDOS OPTIMIZADOS PARA CLAUDE
+
+### Comandos Personalizados Disponibles:
+
+Los siguientes comandos están disponibles directamente en Claude para desarrollo eficiente:
+
+- `/dev` - Iniciar desarrollo completo (verifica Docker y levanta servicios)
+- `/test` - Ejecutar tests y validación de tipos
+- `/validate` - Validación completa del proyecto (secrets, tipos, tests, build)
+- `/status` - Ver estado completo del sistema
+- `/deploy [env]` - Deploy con validaciones (development/production)
+- `/db [env] [type]` - Conectar a base de datos
+- `/logs [service] [lines]` - Ver logs de servicios
+- `/secrets <action> [env]` - Gestionar secrets de forma segura
+- `/quick-fix <issue>` - Soluciones rápidas a problemas comunes
+
+### Uso de Comandos:
+
+```bash
+# Iniciar desarrollo
+/dev
+
+# Ver estado del sistema
+/status
+
+# Ejecutar validación completa
+/validate
+
+# Ver logs del servicio AI
+/logs ai-service 100
+
+# Gestionar secrets
+/secrets init production
+/secrets switch development
+/secrets audit
+
+# Solucionar problemas comunes
+/quick-fix ports    # Liberar puertos
+/quick-fix docker   # Reiniciar Docker
+/quick-fix cache    # Limpiar cache
+/quick-fix deps     # Reinstalar dependencias
+```
+
 ## 🚨 NUEVA METODOLOGÍA OBLIGATORIA (2025-07-04)
 
 ### PROHIBIDO:

@@ -1,0 +1,18 @@
+#!/bin/bash
+# Comando Claude: Iniciar desarrollo completo
+
+set -e
+
+echo "🚀 Iniciando desarrollo completo del AI Service..."
+echo ""
+
+# Verificar si los servicios Docker están corriendo
+if ! docker compose ps 2>/dev/null | grep -q "Up"; then
+    echo "📦 Levantando servicios Docker..."
+    make up
+    echo ""
+fi
+
+# Iniciar desarrollo
+echo "💻 Iniciando desarrollo (backend + frontend)..."
+make dev

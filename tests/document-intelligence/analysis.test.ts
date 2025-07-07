@@ -209,7 +209,11 @@ describe('OpenAI Analysis Service', () => {
 
       expect(answer).toBeDefined();
       // Should indicate that the information is not available in the context
-      expect(answer.toLowerCase()).toContain('not' || 'cannot' || 'unable');
+      expect(
+        answer.toLowerCase().includes('not') || 
+        answer.toLowerCase().includes('cannot') || 
+        answer.toLowerCase().includes('unable')
+      ).toBe(true);
     }, 30000);
   });
 

@@ -1,0 +1,32 @@
+#!/bin/bash
+# Comando Claude: Ver estado completo del sistema
+
+set -e
+
+echo "📊 Estado del Sistema AI Service"
+echo "================================"
+echo ""
+
+# Estado de Docker
+echo "🐳 Servicios Docker:"
+docker compose ps 2>/dev/null || echo "Docker no está corriendo o no hay servicios levantados"
+echo ""
+
+# Salud de servicios
+echo "🏥 Salud de Servicios:"
+make health 2>/dev/null || true
+echo ""
+
+# Git status
+echo "📝 Estado Git:"
+git status -s
+echo ""
+
+# Último commit
+echo "📌 Último commit:"
+git log -1 --oneline
+echo ""
+
+# Uso de recursos
+echo "💻 Uso de Recursos:"
+docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" 2>/dev/null || echo "No hay contenedores corriendo"

@@ -1,0 +1,63 @@
+#!/bin/bash
+# Comando Claude: Soluciones rápidas a problemas comunes
+
+set -e
+
+ISSUE=${1:-help}
+
+case "$ISSUE" in
+    ports)
+        echo "🔧 Liberando puertos ocupados..."
+        echo "Matando procesos en puertos comunes..."
+        
+        # Puerto 3000 (AI Service)
+        lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+        
+        # Puerto 5434 (PostgreSQL)
+        lsof -ti:5434 | xargs kill -9 2>/dev/null || true
+        
+        # Puerto 5678 (n8n)
+        lsof -ti:5678 | xargs kill -9 2>/dev/null || true
+        
+        echo "✅ Puertos liberados"
+        ;;
+        
+    docker)
+        echo "🐳 Reiniciando Docker..."
+        docker-compose down
+        docker system prune -f
+        docker-compose up -d
+        echo "✅ Docker reiniciado"
+        ;;
+        
+    cache)
+        echo "🗑️ Limpiando cache..."
+        rm -rf node_modules/.cache
+        rm -rf frontend/node_modules/.cache
+        rm -rf dist
+        rm -rf frontend/dist
+        echo "✅ Cache limpiado"
+        ;;
+        
+    deps)
+        echo "📦 Reinstalando dependencias..."
+        rm -rf node_modules package-lock.json
+        rm -rf frontend/node_modules frontend/package-lock.json
+        npm install
+        npm run install:frontend
+        echo "✅ Dependencias reinstaladas"
+        ;;
+        
+    *)
+        echo "🔧 Quick Fix - Soluciones Rápidas"
+        echo "================================"
+        echo ""
+        echo "Uso: quick-fix <problema>"
+        echo ""
+        echo "Problemas soportados:"
+        echo "  ports   - Liberar puertos ocupados"
+        echo "  docker  - Reiniciar Docker completamente"
+        echo "  cache   - Limpiar todos los caches"
+        echo "  deps    - Reinstalar todas las dependencias"
+        ;;
+esac

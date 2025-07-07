@@ -57,7 +57,7 @@ describe('Validator Service', () => {
     });
 
     it('should reject workflow without name', () => {
-      const invalidWorkflow = { ...validWorkflow };
+      const invalidWorkflow: any = { ...validWorkflow };
       delete invalidWorkflow.name;
       
       const result = validateWorkflow(invalidWorkflow);

@@ -1,0 +1,13 @@
+#!/bin/bash
+# Comando Claude: Conectar a base de datos de forma segura
+
+set -e
+
+ENV=${1:-development}
+TYPE=${2:-postgres}
+
+echo "🗄️ Conectando a $TYPE en entorno: $ENV"
+echo ""
+
+# Usar el script seguro de deploy manager
+./scripts/claude-deploy-manager.sh db "$ENV" "$TYPE"
