@@ -1,9 +1,13 @@
-name: Deploy to Production
+name: Deploy to Production (Legacy - SSH)
 
 on:
-  push:
-    branches: [main]
+  # Disabled - now using deploy-production-nas.yml
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy via SSH method'
+        required: false
+        default: 'false'
 
 env:
   REGISTRY: ghcr.io

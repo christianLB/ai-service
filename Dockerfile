@@ -1,6 +1,18 @@
 # Multi-stage Dockerfile para AI Service
 FROM node:20-alpine AS base
 
+# Build arguments for versioning
+ARG VERSION=development
+ARG BUILD_DATE=unknown
+ARG COMMIT=unknown
+ARG COMMIT_SHORT=unknown
+
+# Environment variables for runtime
+ENV VERSION=${VERSION}
+ENV BUILD_DATE=${BUILD_DATE}
+ENV COMMIT=${COMMIT}
+ENV COMMIT_SHORT=${COMMIT_SHORT}
+
 # Instalar dependencias del sistema
 RUN apk add --no-cache \
     curl \

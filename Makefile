@@ -87,6 +87,24 @@ deploy-prod: ## Deploy manual a producción (emergencia)
 deploy-dev: ## Deploy a desarrollo
 	./scripts/claude-deploy-manager.sh dev
 
+switch-to-ghcr: ## Cambiar a usar imagen de GHCR (redespliegue final)
+	@echo "${RED}⚠️ CAMBIO A IMAGEN DE GHCR${NC}"
+	@echo "${YELLOW}Esto cambiará tu stack para usar ghcr.io/k2600x/ai-service:latest${NC}"
+	@echo "${YELLOW}Y activará Watchtower para auto-updates${NC}"
+	@echo "${YELLOW}¿Continuar? (escribe 'SWITCH' para confirmar)${NC}"
+	@read confirmation && [ "$$confirmation" = "SWITCH" ] || (echo "Cancelado" && exit 1)
+	@echo "${YELLOW}🔄 Pulling latest image from GHCR...${NC}"
+	docker pull ghcr.io/k2600x/ai-service:latest
+	@echo "${YELLOW}🔄 Restarting stack with Watchtower...${NC}"
+	docker compose down
+	docker compose up -d
+	@echo "${GREEN}✅ Stack migrado a GHCR con Watchtower activo${NC}"
+	@echo "${YELLOW}💡 Verifica los logs: make logs${NC}"
+
+switch-to-ghcr-remote: ## Cambiar a GHCR remotamente (SSH key-based, SECURE)
+	@echo "${BLUE}🔐 Executing secure remote deployment...${NC}"
+	./scripts/secure-deploy-remote.sh
+
 # === SETUP Y MANTENIMIENTO ===
 setup: ## Setup inicial del proyecto
 	@echo "${YELLOW}🛠️ Configurando proyecto...${NC}"
@@ -144,6 +162,9 @@ migrate-financial-prod: ## Crear schema financiero en PRODUCCIÓN (requiere conf
 
 test-financial: ## Probar configuración financiera
 	./scripts/test-financial-setup.sh
+
+security-audit: ## Verificar que no hay credenciales expuestas
+	./scripts/security-audit.sh
 
 # === DOCUMENTOS ===
 ingest: ## Ingestar documento (requiere FILE=path/to/file)

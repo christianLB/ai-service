@@ -51,6 +51,7 @@ import type {
   ClientMetrics
 } from '../types';
 import dayjs from 'dayjs';
+import VersionIndicator from '../components/VersionIndicator';
 
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -196,10 +197,15 @@ const Dashboard: React.FC = () => {
       {/* Header Actions */}
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
-          <h1 style={{ margin: 0 }}>Dashboard Financiero</h1>
-          <p style={{ margin: 0, color: '#666' }}>
-            Última actualización: {revenueMetrics?.generatedAt ? dayjs(revenueMetrics.generatedAt).format('DD/MM/YYYY HH:mm') : 'N/A'}
-          </p>
+          <Space direction="vertical" size="small">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h1 style={{ margin: 0 }}>Dashboard Financiero</h1>
+              <VersionIndicator />
+            </div>
+            <p style={{ margin: 0, color: '#666' }}>
+              Última actualización: {revenueMetrics?.generatedAt ? dayjs(revenueMetrics.generatedAt).format('DD/MM/YYYY HH:mm') : 'N/A'}
+            </p>
+          </Space>
         </Col>
         <Col>
           <Space>

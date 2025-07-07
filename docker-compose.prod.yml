@@ -209,24 +209,38 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
       - "com.centurylinklabs.watchtower.scope=ai-service"
 
-  # Watchtower for auto-updates (backup method)
+  # Watchtower for auto-updates with GHCR authentication
   watchtower:
     image: containrrr/watchtower:latest
+    env_file:
+      - .env.local
     environment:
+      # Update settings
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_INCLUDE_RESTARTING=true
       - WATCHTOWER_ROLLING_RESTART=true
       - WATCHTOWER_SCOPE=ai-service
       - WATCHTOWER_POLL_INTERVAL=300  # Check every 5 minutes
-      - WATCHTOWER_NOTIFICATIONS=slack
-      - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL=${SLACK_WEBHOOK_URL}
-      - WATCHTOWER_DEBUG=true
-      - REPO_USER=${GITHUB_ACTOR}
+      - WATCHTOWER_INCLUDE_STOPPED=false
+      - WATCHTOWER_REVIVE_STOPPED=false
+      
+      # GHCR Authentication
+      - REPO_USER=${GITHUB_USER}
       - REPO_PASS=${GITHUB_TOKEN}
+      
+      # Telegram Notifications
+      - WATCHTOWER_NOTIFICATIONS=gotify
+      - WATCHTOWER_NOTIFICATION_GOTIFY_URL=http://ai-service:3000/api/watchtower/notify
+      - WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=watchtower-notify
+      
+      # Debugging
+      - WATCHTOWER_DEBUG=true
+      - WATCHTOWER_LOG_LEVEL=info
+      
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ~/.docker/config.json:/config.json:ro
     networks:
       - ai-service-network
     restart: unless-stopped
-    command: --scope ai-service --cleanup --rolling-restart
+    command: --scope ai-service --cleanup --rolling-restart --interval 300

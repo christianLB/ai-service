@@ -14,6 +14,7 @@ import flowGen from './routes/flow-gen';
 import flowUpdate from './routes/flow-update';
 import flowTest from './routes/flow-test';
 import financialRoutes from './routes/financial';
+import versionRoutes from './routes/version';
 import telegramRoutes from './routes/telegram';
 import documentRoutes from './routes/documents';
 import { logger } from './utils/log';
@@ -148,6 +149,7 @@ app.use('/api', flowGen);
 app.use('/api', flowUpdate);
 app.use('/api', flowTest);
 app.use('/api/financial', financialRoutes);
+app.use('/api', versionRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/documents', documentRoutes);
 

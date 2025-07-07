@@ -1,7 +1,43 @@
+# Dependencies
 node_modules
+
+# Environment files (NEVER COMMIT)
 .env*
+!.env.example
+
+# Logs and runtime data
 logs
 workflows
 !/.github/workflows
 !/.github/workflows/**
+
+# Build outputs
 /dist
+
+# Security sensitive files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+id_rsa*
+id_ed25519*
+.ssh/
+config.json
+
+# Backup files with potentially sensitive data
+*.backup
+*.backup.*
+.env.local.backup*
+
+# Docker override files (may contain credentials)
+docker-compose.override.yml
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Temporary files
+.tmp/
+temp/
