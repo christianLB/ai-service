@@ -9,8 +9,10 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: ai-service-db
-    env_file:
-      - /volume1/docker/ai-service/config/.env.production
+    environment:
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ultra_secure_password_2025
     volumes:
       - /volume1/docker/ai-service/postgres:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -27,9 +29,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ai-service-redis
-    env_file:
-      - /volume1/docker/ai-service/config/.env.production
-    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    command: redis-server --requirepass redis_secure_password_2025 --appendonly yes
     volumes:
       - /volume1/docker/ai-service/redis:/data
     networks:
@@ -40,12 +40,9 @@ services:
   ai-service:
     image: ghcr.io/christianlb/ai-service:latest
     container_name: ai-service-prod
-    env_file:
-      - /volume1/docker/ai-service/config/.env.production
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
     volumes:
+      # Variables de entorno desde archivo montado
+      - /volume1/docker/ai-service/config/.env.production:/app/.env.production:ro
       - /volume1/docker/ai-service/logs:/app/logs
       - /volume1/docker/ai-service/workflows:/app/data/workflows
       - /volume1/docker/ai-service/documents:/app/data/documents
