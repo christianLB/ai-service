@@ -1,182 +1,379 @@
-# AI Service Makefile - Comandos optimizados para desarrollo eficiente
-.PHONY: help dev prod test build clean setup lint typecheck validate
+# Makefile principal - AI Service
+# Sistema completo de gestión de ambientes y deployment
+
+# Cargar configuración local si existe
+-include .make.env
+
+# Los Makefiles modulares se llaman directamente con -f
+# No los incluimos aquí para evitar conflictos
+
+# Variables de configuración (con valores por defecto)
+NAS_HOST ?= 192.168.1.11
+NAS_USER ?= admin
+NAS_PATH ?= /volume1/docker/ai-service
+LOCAL_NAS_PATH ?= ~/ai-service-prod
+DB_NAME ?= ai_service
+DB_USER ?= ai_user
+CONTAINER_NAME ?= ai-postgres
+
+# Configurar SSH con sshpass si está disponible
+ifdef SSHPASS
+    SSH_CMD := sshpass -e ssh
+    SCP_CMD := sshpass -e scp
+else
+    SSH_CMD := ssh
+    SCP_CMD := scp
+endif
+
+# Script helper para comandos remotos
+REMOTE_EXEC := ./scripts/remote-exec.sh
 
 # Colores para output
+RED := \033[0;31m
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
-RED := \033[0;31m
-NC := \033[0m
+BLUE := \033[0;34m
+NC := \033[0m # No Color
 
-help: ## Mostrar esta ayuda
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "${GREEN}%-20s${NC} %s\n", $$1, $$2}'
+# =============================================================================
+# 🎯 COMANDOS PRINCIPALES (atajos directos)
+# =============================================================================
 
-# === DESARROLLO RÁPIDO ===
-dev: ## Iniciar desarrollo completo (backend + frontend)
-	@echo "${YELLOW}🚀 Iniciando desarrollo completo...${NC}"
-	npm run dev:full
+.PHONY: prod
+prod: ## Ver estado de producción
+	@$(MAKE) -f Makefile.quick prod
 
-dev-backend: ## Solo backend en modo desarrollo
-	npm run dev
+.PHONY: dev
+dev: ## Ver estado de desarrollo  
+	@$(MAKE) -f Makefile.quick dev
 
-dev-frontend: ## Solo frontend en modo desarrollo
-	npm run dev:frontend
+.PHONY: st
+st: ## Status ultra-rápido
+	@$(MAKE) -f Makefile.quick st
 
-# === DOCKER COMMANDS ===
-up: ## Levantar todos los servicios Docker
-	docker compose up -d
-	@echo "${GREEN}✅ Servicios levantados. Verificando salud...${NC}"
+.PHONY: 911
+911: ## Guía de emergencia
+	@$(MAKE) -f Makefile.quick 911
+
+.PHONY: help-all
+help-all: ## Ver TODOS los comandos
+	@$(MAKE) -f Makefile.quick help-all
+
+.PHONY: help
+help: ## Mostrar ayuda principal
+	@echo "$(BLUE)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║                    AI SERVICE - COMANDOS                      ║$(NC)"
+	@echo "$(BLUE)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Comandos principales:$(NC)"
+	@echo "  $(GREEN)make prod$(NC)            - Ver estado de producción"
+	@echo "  $(GREEN)make dev$(NC)             - Ver estado de desarrollo"
+	@echo "  $(GREEN)make st$(NC)              - Status ultra-rápido"
+	@echo "  $(GREEN)make help-all$(NC)        - Ver TODOS los comandos disponibles"
+	@echo "  $(GREEN)make 911$(NC)             - Guía de emergencia"
+	@echo ""
+	@echo "$(YELLOW)Comandos por categoría:$(NC)"
+	@echo "  $(BLUE)make -f Makefile.production help$(NC)  - Comandos de producción"
+	@echo "  $(BLUE)make -f Makefile.development help$(NC) - Comandos de desarrollo"
+	@echo "  $(BLUE)make -f Makefile.multi-env help$(NC)   - Comandos multi-ambiente"
+	@echo "  $(BLUE)make -f Makefile.compare help$(NC)     - Comandos de comparación"
+	@echo "  $(BLUE)make -f Makefile.quick help$(NC)       - Comandos rápidos"
+	@echo ""
+	@echo "$(YELLOW)Configuración:$(NC)"
+	@echo "  Asegúrate de tener .make.env configurado con las credenciales"
+	@echo "  (ver .make.env.example)"
+
+.PHONY: status
+status: ## Verifica el estado del servicio en producción
+	@echo "$(BLUE)Verificando estado del servicio...$(NC)"
+	@curl -s http://$(NAS_HOST):3003/status | jq '.'
+
+.PHONY: status-simple
+status-simple: ## Estado simple (solo status field)
+	@curl -s http://$(NAS_HOST):3003/status | jq -r '.status'
+
+.PHONY: check-db
+check-db: ## Verifica conexión a la base de datos
+	@echo "$(BLUE)Verificando conexión a PostgreSQL...$(NC)"
+	@$(REMOTE_EXEC) docker exec $(CONTAINER_NAME) pg_isready -U $(DB_USER) -d $(DB_NAME)
+
+.PHONY: db-tables
+db-tables: ## Lista todas las tablas en el esquema financial
+	@echo "$(BLUE)Tablas en esquema financial:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'financial' ORDER BY table_name;\""
+
+.PHONY: check-migrations
+check-migrations: ## Verifica qué migraciones faltan
+	@echo "$(BLUE)Verificando migraciones pendientes...$(NC)"
+	@echo "$(YELLOW)Verificando tabla account_insights...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -t -c \"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'financial' AND table_name = 'account_insights');\""
+	@echo "$(YELLOW)Verificando otras tablas críticas...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c \"SELECT COUNT(*) as tablas_financial FROM information_schema.tables WHERE table_schema = 'financial';\""
+
+.PHONY: apply-financial-migration
+apply-financial-migration: ## Aplica la migración de tablas financieras
+	@echo "$(BLUE)Aplicando migración de tablas financieras...$(NC)"
+	@echo "$(YELLOW)Copiando archivo SQL...$(NC)"
+	@$(SCP_CMD) config/init-financial-tables.sql $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/config/
+	@echo "$(YELLOW)Ejecutando migración...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker exec -i $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) < $(NAS_PATH)/config/init-financial-tables.sql"
+	@echo "$(GREEN)✓ Migración aplicada$(NC)"
+	@$(MAKE) verify-migration
+
+.PHONY: verify-migration
+verify-migration: ## Verifica que la migración se aplicó correctamente
+	@echo "$(BLUE)Verificando migración...$(NC)"
+	@echo -n "Tabla account_insights: "
+	@if $(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -t -c \"SELECT EXISTS (SELECT FROM financial.account_insights);\"" | grep -q 't'; then \
+		echo "$(GREEN)✓ Existe$(NC)"; \
+	else \
+		echo "$(RED)✗ No existe$(NC)"; \
+		exit 1; \
+	fi
+	@echo -n "Estado del servicio: "
+	@STATUS=$$(curl -s http://$(NAS_HOST):3003/status | jq -r '.status'); \
+	if [ "$$STATUS" = "healthy" ]; then \
+		echo "$(GREEN)✓ $$STATUS$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ $$STATUS$(NC)"; \
+	fi
+
+.PHONY: db-shell
+db-shell: ## Abre una shell psql en la base de datos
+	@echo "$(BLUE)Conectando a PostgreSQL...$(NC)"
+	@$(SSH_CMD) -t $(NAS_USER)@$(NAS_HOST) "sudo docker exec -it $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME)"
+
+.PHONY: logs
+logs: ## Muestra los logs del servicio AI
+	@echo "$(BLUE)Logs del servicio AI (últimas 50 líneas):$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 50 -f ai-service"
+
+.PHONY: logs-postgres
+logs-postgres: ## Muestra los logs de PostgreSQL
+	@echo "$(BLUE)Logs de PostgreSQL (últimas 50 líneas):$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 50 -f $(CONTAINER_NAME)"
+
+.PHONY: restart-service
+restart-service: ## Reinicia el servicio AI
+	@echo "$(YELLOW)Reiniciando servicio AI...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker restart ai-service"
 	@sleep 5
-	@make health
+	@$(MAKE) status-simple
 
-down: ## Detener servicios Docker
-	docker compose down
+.PHONY: update-env
+update-env: ## Actualiza el archivo .env.production en el NAS
+	@echo "$(BLUE)Actualizando .env.production...$(NC)"
+	@if [ -f .env.production ]; then \
+		$(SCP_CMD) .env.production $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/.env.production; \
+		echo "$(GREEN)✓ Archivo actualizado$(NC)"; \
+	else \
+		echo "$(RED)✗ No se encuentra .env.production$(NC)"; \
+		exit 1; \
+	fi
 
-rebuild: ## Reconstruir contenedores sin cache
-	docker compose build --no-cache
-	docker compose up -d
+.PHONY: deploy
+deploy: ## Deploy completo (migración + restart)
+	@echo "$(BLUE)=== INICIANDO DEPLOYMENT ===$(NC)"
+	@$(MAKE) check-db
+	@$(MAKE) apply-financial-migration
+	@$(MAKE) restart-service
+	@echo "$(GREEN)=== DEPLOYMENT COMPLETADO ===$(NC)"
+	@$(MAKE) status
 
-logs: ## Ver logs de todos los servicios
-	docker compose logs -f
+.PHONY: ssh-copy-schema
+ssh-copy-schema: ## Copia schema completo via SSH
+	@echo "$(BLUE)Copiando schema completo al NAS...$(NC)"
+	@$(SCP_CMD) scripts/complete-production-schema.sql $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/config/
+	@$(SCP_CMD) config/init-db-production-clean.sql $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/config/
+	@echo "$(GREEN)✓ Schema copiado$(NC)"
 
-logs-ai: ## Ver solo logs del servicio AI
-	docker compose logs -f ai-service
+.PHONY: ssh-copy-all
+ssh-copy-all: ## Copia todos los archivos SQL via SSH
+	@echo "$(BLUE)Copiando todos los archivos SQL...$(NC)"
+	@$(SCP_CMD) config/*.sql $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/config/
+	@$(SCP_CMD) scripts/*.sql $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/config/ 2>/dev/null || true
+	@echo "$(GREEN)✓ Archivos copiados$(NC)"
 
-# === TESTING ===
-test: ## Ejecutar todos los tests
-	npm test
-
-test-watch: ## Tests en modo watch
-	npm run test:watch
-
-test-coverage: ## Tests con cobertura
-	npm run test:coverage
-
-# === VALIDACIÓN Y CALIDAD ===
-validate: ## Validar todo (tipos, tests, esquemas)
-	@echo "${YELLOW}🔍 Validando proyecto...${NC}"
-	@make typecheck
-	@make validate-schema
-	@echo "${GREEN}✅ Validación completa${NC}"
-
-typecheck: ## Verificar tipos TypeScript
-	npm run typecheck
-
-validate-schema: ## Validar esquemas de datos
-	npm run validate:schema
-
-lint: ## Ejecutar linter (cuando esté configurado)
-	npm run lint
-
-# === BUILD Y DEPLOY ===
-build: ## Construir para producción
-	npm run build
-
-predeploy: ## Preparar para deployment
-	npm run predeploy
-
-deploy-check: ## Verificar si está listo para deploy
-	npm run deploy:check
-
-deploy-prod: ## Deploy manual a producción (emergencia)
-	@echo "${RED}⚠️ DEPLOY MANUAL A PRODUCCIÓN${NC}"
-	@echo "${YELLOW}Normalmente el deploy es automático via GitHub Actions${NC}"
-	@echo "${YELLOW}¿Continuar con deploy manual? (escribe 'DEPLOY' para confirmar)${NC}"
-	@read confirmation && [ "$$confirmation" = "DEPLOY" ] || (echo "Cancelado" && exit 1)
-	./scripts/claude-deploy-manager.sh prod
-
-deploy-dev: ## Deploy a desarrollo
-	./scripts/claude-deploy-manager.sh dev
-
-switch-to-ghcr: ## Cambiar a usar imagen de GHCR (redespliegue final)
-	@echo "${RED}⚠️ CAMBIO A IMAGEN DE GHCR${NC}"
-	@echo "${YELLOW}Esto cambiará tu stack para usar ghcr.io/k2600x/ai-service:latest${NC}"
-	@echo "${YELLOW}Y activará Watchtower para auto-updates${NC}"
-	@echo "${YELLOW}¿Continuar? (escribe 'SWITCH' para confirmar)${NC}"
-	@read confirmation && [ "$$confirmation" = "SWITCH" ] || (echo "Cancelado" && exit 1)
-	@echo "${YELLOW}🔄 Pulling latest image from GHCR...${NC}"
-	docker pull ghcr.io/k2600x/ai-service:latest
-	@echo "${YELLOW}🔄 Restarting stack with Watchtower...${NC}"
-	docker compose down
-	docker compose up -d
-	@echo "${GREEN}✅ Stack migrado a GHCR con Watchtower activo${NC}"
-	@echo "${YELLOW}💡 Verifica los logs: make logs${NC}"
-
-switch-to-ghcr-remote: ## Cambiar a GHCR remotamente (SSH key-based, SECURE)
-	@echo "${BLUE}🔐 Executing secure remote deployment...${NC}"
-	./scripts/secure-deploy-remote.sh
-
-# === SETUP Y MANTENIMIENTO ===
-setup: ## Setup inicial del proyecto
-	@echo "${YELLOW}🛠️ Configurando proyecto...${NC}"
-	npm install
-	npm run install:frontend
-	./scripts/setup-production.sh
-	@echo "${GREEN}✅ Setup completo${NC}"
-
-clean: ## Limpiar archivos generados
-	rm -rf dist node_modules frontend/node_modules coverage
-	find . -name "*.log" -type f -delete
-
-reset-db: ## Resetear base de datos (CUIDADO!)
-	@echo "${RED}⚠️ Esto borrará todos los datos. Presiona Ctrl+C para cancelar...${NC}"
-	@sleep 3
-	docker compose down -v
-	docker compose up -d postgres
+.PHONY: ssh-restart
+ssh-restart: ## Reinicia ai-service via SSH
+	@echo "$(YELLOW)Reiniciando ai-service...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S docker restart ai-service"
+	@echo "$(GREEN)✓ Servicio reiniciado$(NC)"
 	@sleep 5
-	docker compose exec postgres psql -U ai_user -d ai_service -f /docker-entrypoint-initdb.d/init-db.sql
+	@$(MAKE) status-simple
 
-# === MONITOREO ===
-health: ## Verificar salud de servicios
-	@echo "${YELLOW}🏥 Verificando salud de servicios...${NC}"
-	@curl -s http://localhost:3000/status || echo "${RED}❌ AI Service no responde${NC}"
-	@curl -s http://localhost:5678/healthz || echo "${RED}❌ n8n no responde${NC}"
-	@curl -s http://localhost:9090/-/healthy || echo "${RED}❌ Prometheus no responde${NC}"
-	@echo "${GREEN}✅ Verificación completa${NC}"
+.PHONY: ssh-reset-db
+ssh-reset-db: ssh-copy-schema ## Reset completo de BD via SSH
+	@echo "$(RED)⚠️  ESTO ELIMINARÁ TODOS LOS DATOS$(NC)"
+	@echo "$(YELLOW)Presiona Ctrl+C para cancelar o Enter para continuar...$(NC)"
+	@read confirm
+	@echo "$(BLUE)1. Deteniendo servicios...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S docker-compose -f $(NAS_PATH)/docker-compose.production.yml down"
+	@echo "$(BLUE)2. Limpiando datos de PostgreSQL...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S rm -rf $(NAS_PATH)/postgres-data/*"
+	@echo "$(BLUE)3. Iniciando servicios...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S docker-compose -f $(NAS_PATH)/docker-compose.production.yml up -d"
+	@echo "$(GREEN)✓ Base de datos reseteada$(NC)"
+	@echo "$(YELLOW)Esperando 30 segundos para que los servicios inicien...$(NC)"
+	@sleep 30
+	@$(MAKE) status
 
-status: ## Estado rápido del sistema
-	@docker compose ps
-	@echo "\n${YELLOW}📊 Uso de recursos:${NC}"
-	@docker stats --no-stream
+.PHONY: ssh-apply-sql
+ssh-apply-sql: ## Aplica un archivo SQL específico (uso: make ssh-apply-sql FILE=config/fix.sql)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica el archivo con FILE=ruta/archivo.sql$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Copiando $(FILE) al NAS...$(NC)"
+	@$(SCP_CMD) $(FILE) $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/config/
+	@echo "$(BLUE)Aplicando SQL...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S docker exec -i $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) < $(NAS_PATH)/config/$$(basename $(FILE))"
+	@echo "$(GREEN)✓ SQL aplicado$(NC)"
 
-# === UTILIDADES ===
-shell: ## Entrar al contenedor del servicio AI
-	docker compose exec ai-service /bin/bash
+.PHONY: ssh-logs
+ssh-logs: ## Ver logs de ai-service via SSH
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S docker logs --tail 50 -f ai-service"
 
-shell-db: ## Entrar a PostgreSQL
-	docker compose exec postgres psql -U ai_user -d ai_service
+.PHONY: ssh-logs-postgres
+ssh-logs-postgres: ## Ver logs de PostgreSQL via SSH
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S docker logs --tail 50 -f $(CONTAINER_NAME)"
 
-redis-cli: ## Acceder a Redis CLI
-	docker compose exec redis redis-cli -a redis_secure_password_2025
+.PHONY: ssh-ps
+ssh-ps: ## Ver contenedores corriendo via SSH
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S docker ps"
 
-# === DATABASE MANAGEMENT ===
-migrate-financial: ## Crear schema financiero (requiere ENV=development|production)
-	@if [ -z "$(ENV)" ]; then echo "${RED}Error: Especifica ENV=development o ENV=production${NC}"; exit 1; fi
-	@echo "${YELLOW}🏦 Ejecutando migración financiera en $(ENV)...${NC}"
-	./scripts/setup-financial-db.sh
+.PHONY: quick-fix
+quick-fix: ## Solución rápida para financial.account_insights
+	@echo "$(YELLOW)Aplicando fix rápido...$(NC)"
+	@cat config/init-financial-tables.sql | $(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker exec -i $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME)"
+	@$(MAKE) verify-migration
 
-migrate-financial-prod: ## Crear schema financiero en PRODUCCIÓN (requiere confirmación)
-	@echo "${RED}⚠️ MIGRACIÓN A PRODUCCIÓN - Esto afectará la base de datos en vivo${NC}"
-	@echo "${YELLOW}¿Estás seguro? (escribe 'MIGRATE' para confirmar)${NC}"
-	@read confirmation && [ "$$confirmation" = "MIGRATE" ] || (echo "Cancelado" && exit 1)
-	ENV=production make migrate-financial
+.PHONY: backup-db
+backup-db: ## Hace backup de la base de datos
+	@echo "$(BLUE)Creando backup de la base de datos...$(NC)"
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	ssh $(NAS_USER)@$(NAS_HOST) "sudo docker exec $(CONTAINER_NAME) pg_dump -U $(DB_USER) -d $(DB_NAME) | gzip > $(NAS_PATH)/backups/backup_$$TIMESTAMP.sql.gz"; \
+	echo "$(GREEN)✓ Backup creado: backup_$$TIMESTAMP.sql.gz$(NC)"
 
-test-financial: ## Probar configuración financiera
-	./scripts/test-financial-setup.sh
+.PHONY: test-connection
+test-connection: ## Prueba la conexión SSH al NAS
+	@echo "$(BLUE)Probando conexión al NAS...$(NC)"
+	@if $(SSH_CMD) -o ConnectTimeout=5 $(NAS_USER)@$(NAS_HOST) "echo 'OK'" > /dev/null 2>&1; then \
+		echo "$(GREEN)✓ Conexión exitosa$(NC)"; \
+	else \
+		echo "$(RED)✗ No se puede conectar al NAS$(NC)"; \
+		exit 1; \
+	fi
 
-security-audit: ## Verificar que no hay credenciales expuestas
-	./scripts/security-audit.sh
+.PHONY: dashboard-check
+dashboard-check: ## Verifica el dashboard financiero
+	@echo "$(BLUE)Verificando dashboard financiero...$(NC)"
+	@RESPONSE=$$(curl -s http://$(NAS_HOST):3003/api/financial/dashboard/overview); \
+	if echo "$$RESPONSE" | jq -e '.success == false' > /dev/null 2>&1; then \
+		echo "$(RED)✗ Dashboard con errores:$(NC)"; \
+		echo "$$RESPONSE" | jq '.'; \
+	else \
+		echo "$(GREEN)✓ Dashboard funcionando correctamente$(NC)"; \
+		echo "$$RESPONSE" | jq '.'; \
+	fi
 
-# === DOCUMENTOS ===
-ingest: ## Ingestar documento (requiere FILE=path/to/file)
-	@if [ -z "$(FILE)" ]; then echo "${RED}Error: Especifica FILE=path/to/document${NC}"; exit 1; fi
-	./scripts/ingest-document.sh $(FILE)
+# Targets de desarrollo
+.PHONY: dev-status
+dev-status: ## Estado del desarrollo local
+	@curl -s http://localhost:3000/status | jq '.'
 
-# === TELEGRAM ===
-telegram-test: ## Probar bot de Telegram
-	./scripts/test-telegram.sh
+.PHONY: dev-migrate
+dev-migrate: ## Aplica migraciones en desarrollo local
+	@echo "$(BLUE)Aplicando migraciones en desarrollo...$(NC)"
+	@docker exec -i ai-service-postgres-1 psql -U postgres -d ai_service < config/init-financial-tables.sql
 
-# === ATAJOS COMUNES ===
-d: dev ## Alias para dev
-t: test ## Alias para test
-u: up ## Alias para up
-l: logs-ai ## Alias para logs del servicio AI
+# ==============================================================================
+# COMANDOS LOCALES (usando ~/ai-service-prod montado)
+# ==============================================================================
+
+.PHONY: local-copy-sql
+local-copy-sql: ## Copia archivos SQL al NAS via montaje local
+	@echo "$(BLUE)Copiando archivos SQL a $(LOCAL_NAS_PATH)/config...$(NC)"
+	@mkdir -p $(LOCAL_NAS_PATH)/config
+	@cp -v config/*.sql $(LOCAL_NAS_PATH)/config/
+	@echo "$(GREEN)✓ Archivos copiados$(NC)"
+
+.PHONY: local-copy-schema
+local-copy-schema: ## Copia el schema completo de producción
+	@echo "$(BLUE)Copiando schema de producción...$(NC)"
+	@cp -v scripts/complete-production-schema.sql $(LOCAL_NAS_PATH)/config/
+	@cp -v config/init-db-production-clean.sql $(LOCAL_NAS_PATH)/config/
+	@echo "$(GREEN)✓ Schema copiado$(NC)"
+
+.PHONY: local-list
+local-list: ## Lista archivos en el NAS local
+	@echo "$(BLUE)Archivos en $(LOCAL_NAS_PATH):$(NC)"
+	@ls -la $(LOCAL_NAS_PATH)/
+	@echo ""
+	@echo "$(BLUE)Archivos SQL:$(NC)"
+	@ls -la $(LOCAL_NAS_PATH)/config/*.sql 2>/dev/null || echo "No hay archivos SQL"
+
+.PHONY: local-backup-create
+local-backup-create: ## Crea directorio de backups si no existe
+	@echo "$(BLUE)Creando directorio de backups...$(NC)"
+	@mkdir -p $(LOCAL_NAS_PATH)/backups
+	@echo "$(GREEN)✓ Directorio creado$(NC)"
+
+.PHONY: local-reset-db
+local-reset-db: local-copy-schema ## Prepara archivos para reset de BD (ejecutar comandos en el NAS)
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(YELLOW)Archivos copiados. Ahora en el NAS ejecuta:$(NC)"
+	@echo ""
+	@echo "$(GREEN)# 1. Detener servicios$(NC)"
+	@echo "cd $(NAS_PATH)"
+	@echo "sudo docker-compose -f docker-compose.production.yml down"
+	@echo ""
+	@echo "$(GREEN)# 2. Limpiar datos de PostgreSQL$(NC)"
+	@echo "sudo rm -rf $(NAS_PATH)/postgres-data/*"
+	@echo ""
+	@echo "$(GREEN)# 3. Actualizar docker-compose.production.yml para incluir:$(NC)"
+	@echo "postgres:"
+	@echo "  volumes:"
+	@echo "    - $(NAS_PATH)/config/init-db-production-clean.sql:/docker-entrypoint-initdb.d/01-init.sql:ro"
+	@echo "    - $(NAS_PATH)/config/complete-production-schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro"
+	@echo ""
+	@echo "$(GREEN)# 4. Iniciar servicios$(NC)"
+	@echo "sudo docker-compose -f docker-compose.production.yml up -d"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+
+.PHONY: local-compose-backup
+local-compose-backup: ## Hace backup del docker-compose actual
+	@echo "$(BLUE)Haciendo backup de docker-compose...$(NC)"
+	@cp -v $(LOCAL_NAS_PATH)/docker-compose.production.yml $(LOCAL_NAS_PATH)/docker-compose.production.yml.bak
+	@echo "$(GREEN)✓ Backup creado$(NC)"
+
+.PHONY: local-compose-update
+local-compose-update: ## Actualiza docker-compose con el de desarrollo
+	@echo "$(BLUE)Actualizando docker-compose...$(NC)"
+	@cp -v docker-compose.production.yml $(LOCAL_NAS_PATH)/
+	@echo "$(GREEN)✓ docker-compose actualizado$(NC)"
+
+# =============================================================================
+# 🚀 COMANDOS DE INICIO RÁPIDO
+# =============================================================================
+
+.PHONY: setup
+setup: ## Configurar ambiente inicial
+	@echo "$(BLUE)🔧 Configurando ambiente...$(NC)"
+	@if [ ! -f .make.env ]; then \
+		echo "$(YELLOW)Creando .make.env desde template...$(NC)"; \
+		cp .make.env.example .make.env; \
+		echo "$(RED)⚠️  Edita .make.env con tus credenciales$(NC)"; \
+	else \
+		echo "$(GREEN)✓ .make.env ya existe$(NC)"; \
+	fi
+	@echo "$(GREEN)✓ Setup completado$(NC)"
+
+.PHONY: init
+init: setup ## Inicializar proyecto completo
+	@$(MAKE) dev-install -f Makefile.development
+	@$(MAKE) dev-up -f Makefile.development
+	@echo "$(GREEN)✓ Proyecto inicializado$(NC)"
+
+# Target por defecto
+.DEFAULT_GOAL := help

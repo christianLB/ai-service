@@ -1,0 +1,69 @@
+# Makefile simplificado para AI Service
+# Gestión de deployment y migraciones
+
+# Cargar configuración local si existe
+-include .make.env
+
+# Variables de configuración
+NAS_HOST ?= 192.168.1.11
+NAS_USER ?= admin
+NAS_PATH ?= /volume1/docker/ai-service
+DB_NAME ?= ai_service
+DB_USER ?= ai_user
+CONTAINER_NAME ?= ai-postgres
+
+# Colores
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m
+
+.PHONY: help
+help: ## Muestra esta ayuda
+	@echo "$(BLUE)AI Service - Comandos disponibles:$(NC)"
+	@echo ""
+	@echo "$(GREEN)make quick-fix$(NC)    - Aplica migración financiera"
+	@echo "$(GREEN)make status$(NC)       - Ver estado del servicio"
+	@echo "$(GREEN)make verify$(NC)       - Verificar migración"
+	@echo "$(GREEN)make ssh-copy$(NC)     - Copiar SQL al NAS"
+	@echo ""
+
+.PHONY: ssh-copy
+ssh-copy: ## Copia el archivo SQL al NAS
+	@echo "$(BLUE)Copiando archivo SQL al NAS...$(NC)"
+	@scp config/init-financial-tables.sql $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/config/
+	@echo "$(GREEN)✓ Archivo copiado$(NC)"
+
+.PHONY: quick-fix
+quick-fix: ssh-copy ## Aplica la migración financiera (requiere ejecutar comando en el NAS)
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(YELLOW)Archivo SQL copiado al NAS.$(NC)"
+	@echo "$(YELLOW)Ahora ejecuta este comando en el NAS:$(NC)"
+	@echo ""
+	@echo "$(GREEN)sudo docker exec -i $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) < $(NAS_PATH)/config/init-financial-tables.sql$(NC)"
+	@echo ""
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+
+.PHONY: status
+status: ## Ver estado del servicio
+	@echo "$(BLUE)Estado del servicio:$(NC)"
+	@curl -s http://$(NAS_HOST):3003/status | python3 -m json.tool | grep -E '"status"|"overallHealth"'
+
+.PHONY: verify
+verify: ## Verificar migración
+	@echo "$(BLUE)Verificando dashboard financiero...$(NC)"
+	@RESPONSE=$$(curl -s http://$(NAS_HOST):3003/api/financial/dashboard/overview); \
+	if echo "$$RESPONSE" | grep -q '"success":false'; then \
+		echo "$(RED)✗ Dashboard con errores$(NC)"; \
+		echo "$$RESPONSE" | python3 -m json.tool; \
+	else \
+		echo "$(GREEN)✓ Dashboard funcionando correctamente$(NC)"; \
+	fi
+
+.PHONY: ssh-nas
+ssh-nas: ## Conectar al NAS por SSH
+	@echo "$(BLUE)Conectando al NAS...$(NC)"
+	@ssh $(NAS_USER)@$(NAS_HOST)
+
+.DEFAULT_GOAL := help

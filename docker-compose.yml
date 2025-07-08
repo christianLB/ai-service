@@ -147,7 +147,7 @@ services:
 
   # Servicio AI principal
   ai-service:
-    image: ghcr.io/k2600x/ai-service:latest
+    image: ghcr.io/christianlb/ai-service:latest
     # Fallback to local build if image not available
     # build: 
     #   context: .
@@ -160,12 +160,18 @@ services:
       - POSTGRES_DB=ai_service
       - POSTGRES_USER=ai_user
       - POSTGRES_PASSWORD=ultra_secure_password_2025
+      - DATABASE_URL=postgresql://ai_user:ultra_secure_password_2025@postgres:5432/ai_service
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_PASSWORD=redis_secure_password_2025
       - N8N_API_URL=http://n8n:5678
-      - N8N_API_KEY=${N8N_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - N8N_API_KEY=${N8N_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-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}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      - TELEGRAM_BOT_TOKEN=7675285244:AAHcM733tpyttgRPWITfeQOAGnrtbrWThpE
+      - TELEGRAM_CHAT_ID=5015255679
+      - DOCUMENT_STORAGE_PATH=/app/documents
+      - TELEGRAM_WEBHOOK_URL=https://ai-service.anaxi.net/api/telegram/webhook
       - LOG_LEVEL=info
     ports:
       - "3000:3000"
@@ -181,8 +187,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      n8n:
-        condition: service_healthy
+      # n8n:
+      #   condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/status || exit 1"]

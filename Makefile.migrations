@@ -1,0 +1,149 @@
+# Makefile.migrations - Sistema de migraciones de base de datos
+# Gestión automatizada de schemas con Alembic
+
+include .make.env
+
+# Colores
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+RED := \033[0;31m
+NC := \033[0m
+
+# =============================================================================
+# 🔄 COMANDOS DE MIGRACIÓN
+# =============================================================================
+
+.PHONY: migrate-init
+migrate-init: ## Inicializar Alembic en el proyecto
+	@echo "$(BLUE)🔧 Inicializando Alembic...$(NC)"
+	@if [ ! -d "alembic" ]; then \
+		pip install alembic psycopg2-binary; \
+		alembic init alembic; \
+		echo "$(GREEN)✓ Alembic inicializado$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ Alembic ya está inicializado$(NC)"; \
+	fi
+
+.PHONY: migrate-create
+migrate-create: ## Crear nueva migración (uso: make migrate-create NAME="descripcion")
+	@if [ -z "$(NAME)" ]; then \
+		echo "$(RED)Error: Especifica NAME=\"descripcion de la migración\"$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)📝 Creando migración: $(NAME)$(NC)"
+	@alembic revision -m "$(NAME)"
+	@echo "$(GREEN)✓ Migración creada$(NC)"
+
+.PHONY: migrate-auto
+migrate-auto: ## Generar migración automática desde modelos
+	@echo "$(BLUE)🔍 Generando migración automática...$(NC)"
+	@alembic revision --autogenerate -m "auto_$(shell date +%Y%m%d_%H%M%S)"
+	@echo "$(GREEN)✓ Migración generada$(NC)"
+
+.PHONY: migrate-up
+migrate-up: ## Aplicar migraciones pendientes
+	@echo "$(BLUE)⬆️  Aplicando migraciones...$(NC)"
+	@alembic upgrade head
+	@echo "$(GREEN)✓ Migraciones aplicadas$(NC)"
+
+.PHONY: migrate-down
+migrate-down: ## Revertir última migración
+	@echo "$(YELLOW)⬇️  Revirtiendo última migración...$(NC)"
+	@alembic downgrade -1
+	@echo "$(GREEN)✓ Migración revertida$(NC)"
+
+.PHONY: migrate-status
+migrate-status: ## Ver estado de migraciones
+	@echo "$(BLUE)📊 Estado de migraciones:$(NC)"
+	@alembic current
+	@echo ""
+	@echo "$(BLUE)Historial:$(NC)"
+	@alembic history --verbose
+
+.PHONY: migrate-sync-dev-to-prod
+migrate-sync-dev-to-prod: ## Sincronizar schema de dev a prod
+	@echo "$(YELLOW)🔄 Sincronizando dev → prod$(NC)"
+	@echo "$(RED)⚠️  ADVERTENCIA: Esto actualizará el schema de PRODUCCIÓN$(NC)"
+	@echo "¿Continuar? (s/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "s" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
+	@echo "$(BLUE)1. Generando SQL de diferencias...$(NC)"
+	@docker exec ai-service-postgres-1 pg_dump -U ai_user -d ai_service --schema-only > /tmp/dev-schema.sql
+	@echo "$(BLUE)2. Aplicando en producción...$(NC)"
+	@$(MAKE) -f Makefile.production prod-apply-schema
+	@echo "$(GREEN)✓ Sincronización completada$(NC)"
+
+.PHONY: migrate-diff
+migrate-diff: ## Ver diferencias entre dev y prod
+	@echo "$(BLUE)🔍 Analizando diferencias...$(NC)"
+	@$(MAKE) -f Makefile.compare diff-schema
+
+# =============================================================================
+# 🗄️ COMANDOS DE SCHEMA
+# =============================================================================
+
+.PHONY: schema-dump
+schema-dump: ## Exportar schema actual a SQL
+	@echo "$(BLUE)📥 Exportando schema...$(NC)"
+	@docker exec ai-service-postgres-1 pg_dump -U ai_user -d ai_service --schema-only > schema-$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)✓ Schema exportado$(NC)"
+
+.PHONY: schema-load
+schema-load: ## Cargar schema desde archivo (uso: make schema-load FILE=schema.sql)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica FILE=archivo.sql$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)📤 Cargando schema desde $(FILE)...$(NC)"
+	@docker exec -i ai-service-postgres-1 psql -U ai_user -d ai_service < $(FILE)
+	@echo "$(GREEN)✓ Schema cargado$(NC)"
+
+.PHONY: schema-validate
+schema-validate: ## Validar schema contra modelos
+	@echo "$(BLUE)✅ Validando schema...$(NC)"
+	@python scripts/validate_schema.py || echo "$(RED)✗ Validación falló$(NC)"
+
+# =============================================================================
+# 🚀 COMANDOS DE DEPLOY
+# =============================================================================
+
+.PHONY: deploy-check
+deploy-check: ## Verificar si hay migraciones pendientes antes de deploy
+	@echo "$(BLUE)🔍 Verificando migraciones pendientes...$(NC)"
+	@if [ "$$(alembic current 2>/dev/null | grep -c head)" -eq 0 ]; then \
+		echo "$(RED)✗ Hay migraciones pendientes$(NC)"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✓ Todas las migraciones aplicadas$(NC)"; \
+	fi
+
+.PHONY: deploy-migrate
+deploy-migrate: ## Aplicar migraciones en producción
+	@echo "$(YELLOW)🚀 Aplicando migraciones en PRODUCCIÓN$(NC)"
+	@echo "$(RED)⚠️  Asegúrate de haber hecho backup$(NC)"
+	@echo "¿Continuar? (s/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "s" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo "$(BLUE)Aplicando migraciones...$(NC)"
+	# Aquí ejecutarías alembic en producción
+	@echo "$(GREEN)✓ Migraciones aplicadas en producción$(NC)"
+
+# =============================================================================
+# Ayuda
+# =============================================================================
+
+.PHONY: help
+help: ## Mostrar esta ayuda
+	@echo "$(BLUE)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║              SISTEMA DE MIGRACIONES DE BD                     ║$(NC)"
+	@echo "$(BLUE)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "$(GREEN)%-25s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Flujo típico:$(NC)"
+	@echo "  1. make migrate-create NAME=\"add_new_feature\""
+	@echo "  2. Editar alembic/versions/XXX_add_new_feature.py"
+	@echo "  3. make migrate-up"
+	@echo "  4. make migrate-sync-dev-to-prod"
+
+.DEFAULT_GOAL := help

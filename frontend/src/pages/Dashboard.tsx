@@ -27,6 +27,7 @@ import {
   LineChartOutlined,
   ClockCircleOutlined,
   WarningOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import { 
   Tooltip as RechartsTooltip, 
@@ -45,6 +46,7 @@ import {
   AreaChart
 } from 'recharts';
 import dashboardService from '../services/dashboardService';
+import BankAccounts from './BankAccounts';
 import type { 
   HealthStatus, 
   RevenueMetrics, 
@@ -866,6 +868,16 @@ const Dashboard: React.FC = () => {
                 )}
               </div>
             ),
+          },
+          {
+            key: 'bank-accounts',
+            label: (
+              <span>
+                <BankOutlined />
+                Cuentas Bancarias
+              </span>
+            ),
+            children: <BankAccounts />,
           },
         ]}
       />

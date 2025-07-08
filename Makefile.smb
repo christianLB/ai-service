@@ -1,0 +1,33 @@
+# Makefile con soporte SMB para copiar directamente
+
+include .make.env
+
+# Ruta SMB montada localmente
+SMB_PATH ?= /Volumes/docker/ai-service
+# o para Linux:
+# SMB_PATH ?= /mnt/nas-docker/ai-service
+
+.PHONY: smb-copy-config
+smb-copy-config: ## Copia configuración via SMB
+	@echo "📁 Copiando archivos via SMB..."
+	@cp -v config/*.sql $(SMB_PATH)/config/
+	@echo "✅ Archivos copiados"
+
+.PHONY: smb-copy-sql
+smb-copy-sql: ## Copia un SQL específico via SMB
+	@echo "📁 Copiando $(FILE) via SMB..."
+	@cp -v $(FILE) $(SMB_PATH)/config/
+	@echo "✅ Archivo copiado"
+
+.PHONY: smb-list
+smb-list: ## Lista archivos en el NAS via SMB
+	@echo "📁 Archivos en $(SMB_PATH)/config:"
+	@ls -la $(SMB_PATH)/config/
+
+.PHONY: smb-quick-deploy
+smb-quick-deploy: ## Deploy rápido via SMB
+	@echo "🚀 Deploy rápido via SMB..."
+	@cp -v config/complete-production-schema.sql $(SMB_PATH)/config/
+	@cp -v config/init-db-production-clean.sql $(SMB_PATH)/config/
+	@echo "✅ Archivos copiados, ahora ejecuta en el NAS:"
+	@echo "   sudo docker exec -i ai-postgres psql -U ai_user -d ai_service < /volume1/docker/ai-service/config/complete-production-schema.sql"

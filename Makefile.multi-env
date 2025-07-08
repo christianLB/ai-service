@@ -1,0 +1,187 @@
+# Makefile.multi-env - Comandos que funcionan en múltiples ambientes
+# Usar: make [comando] ENV=[development|production]
+
+# Cargar configuración según el ambiente
+ENV ?= development
+include .make.env
+
+# Configuración según ambiente
+ifeq ($(ENV),production)
+    HOST := $(NAS_HOST)
+    USER := $(NAS_USER)
+    DB_NAME := ai_service
+    DB_USER := ai_user
+    CONTAINER := ai-postgres
+    API_URL := http://$(HOST):3003
+    SSH_PREFIX := sshpass -e ssh $(USER)@$(HOST)
+    SUDO_PREFIX := echo '$(SUDO_PASS)' | sudo -S
+    DOCKER_CMD := $(SUDO_PREFIX) /usr/local/bin/docker
+else
+    HOST := localhost
+    USER := $(shell whoami)
+    DB_NAME := ai_service
+    DB_USER := postgres
+    CONTAINER := ai-service-postgres-1
+    API_URL := http://localhost:3000
+    SSH_PREFIX := 
+    SUDO_PREFIX := 
+    DOCKER_CMD := docker
+endif
+
+# Colores
+CYAN := \033[0;36m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+NC := \033[0m
+
+# =============================================================================
+# 🔵 COMANDOS MULTI-AMBIENTE
+# =============================================================================
+
+.PHONY: env-info
+env-info: ## Mostrar información del ambiente actual
+	@echo "$(CYAN)📍 Ambiente: $(ENV)$(NC)"
+	@echo "Host: $(HOST)"
+	@echo "Usuario: $(USER)"
+	@echo "Base de datos: $(DB_NAME)"
+	@echo "API URL: $(API_URL)"
+
+.PHONY: status
+status: ## Estado del ambiente (ENV=development|production)
+	@echo "$(CYAN)📊 Estado de $(ENV)$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@curl -s $(API_URL)/status | python3 -m json.tool || echo "$(RED)✗ Servicio no disponible$(NC)"
+
+.PHONY: check-db
+check-db: ## Verificar base de datos en cualquier ambiente
+	@echo "$(CYAN)🗄️  Verificando BD en $(ENV)...$(NC)"
+ifeq ($(ENV),production)
+	@$(SSH_PREFIX) "$(DOCKER_CMD) exec $(CONTAINER) pg_isready -U $(DB_USER) -d $(DB_NAME)"
+else
+	@$(DOCKER_CMD) exec $(CONTAINER) pg_isready -U $(DB_USER) -d $(DB_NAME)
+endif
+
+.PHONY: apply-sql
+apply-sql: ## Aplicar archivo SQL (make apply-sql FILE=path/to/file.sql ENV=production)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica el archivo con FILE=path/to/file.sql$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)📝 Aplicando $(FILE) en $(ENV)...$(NC)"
+ifeq ($(ENV),production)
+	@$(MAKE) prod-apply-sql FILE=$(FILE) -f Makefile.production
+else
+	@docker exec -i $(CONTAINER) psql -U $(DB_USER) -d $(DB_NAME) < $(FILE)
+endif
+	@echo "$(GREEN)✓ SQL aplicado$(NC)"
+
+.PHONY: backup
+backup: ## Crear backup en cualquier ambiente
+	@echo "$(CYAN)💾 Creando backup de $(ENV)...$(NC)"
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	if [ "$(ENV)" = "production" ]; then \
+		$(MAKE) prod-backup -f Makefile.production; \
+	else \
+		mkdir -p backups; \
+		$(DOCKER_CMD) exec $(CONTAINER) pg_dump -U $(DB_USER) -d $(DB_NAME) | gzip > backups/backup_dev_$$TIMESTAMP.sql.gz; \
+		echo "$(GREEN)✓ Backup creado: backups/backup_dev_$$TIMESTAMP.sql.gz$(NC)"; \
+	fi
+
+.PHONY: logs
+logs: ## Ver logs del servicio en cualquier ambiente
+	@echo "$(CYAN)📋 Logs de $(ENV)$(NC)"
+ifeq ($(ENV),production)
+	@$(SSH_PREFIX) "$(DOCKER_CMD) logs --tail 50 -f ai-service"
+else
+	@$(DOCKER_CMD) logs --tail 50 -f ai-service-ai-service-1
+endif
+
+.PHONY: restart
+restart: ## Reiniciar servicios en cualquier ambiente
+	@echo "$(CYAN)🔄 Reiniciando servicios en $(ENV)...$(NC)"
+ifeq ($(ENV),production)
+	@echo "$(YELLOW)⚠️  Reiniciando PRODUCCIÓN. ¿Continuar? (s/N):$(NC)"
+	@read CONFIRM && [ "$$CONFIRM" = "s" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
+	@$(SSH_PREFIX) "$(DOCKER_CMD) restart ai-service"
+else
+	@docker-compose restart
+endif
+	@echo "$(GREEN)✓ Servicios reiniciados$(NC)"
+
+.PHONY: db-shell
+db-shell: ## Abrir shell PostgreSQL en cualquier ambiente
+	@echo "$(CYAN)🐘 Conectando a PostgreSQL en $(ENV)...$(NC)"
+ifeq ($(ENV),production)
+	@$(SSH_PREFIX) -t "$(DOCKER_CMD) exec -it $(CONTAINER) psql -U $(DB_USER) -d $(DB_NAME)"
+else
+	@$(DOCKER_CMD) exec -it $(CONTAINER) psql -U $(DB_USER) -d $(DB_NAME)
+endif
+
+.PHONY: exec
+exec: ## Ejecutar comando en contenedor (make exec CMD="ls -la" ENV=production)
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(RED)Error: Especifica el comando con CMD=\"comando\"$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)🔧 Ejecutando en $(ENV): $(CMD)$(NC)"
+ifeq ($(ENV),production)
+	@$(SSH_PREFIX) "$(DOCKER_CMD) exec ai-service $(CMD)"
+else
+	@$(DOCKER_CMD) exec ai-service-ai-service-1 $(CMD)
+endif
+
+.PHONY: health
+health: ## Health check detallado en cualquier ambiente
+	@echo "$(CYAN)🏥 Health Check de $(ENV)$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@STATUS=$$(curl -s $(API_URL)/status | python3 -c "import sys, json; print(json.load(sys.stdin).get('status', 'unknown'))" 2>/dev/null || echo "error"); \
+	if [ "$$STATUS" = "healthy" ]; then \
+		echo "API Status: $(GREEN)✓ $$STATUS$(NC)"; \
+	elif [ "$$STATUS" = "degraded" ]; then \
+		echo "API Status: $(YELLOW)⚠ $$STATUS$(NC)"; \
+	else \
+		echo "API Status: $(RED)✗ $$STATUS$(NC)"; \
+	fi
+	@echo -n "Database: "
+	@if $(MAKE) check-db ENV=$(ENV) --no-print-directory >/dev/null 2>&1; then \
+		echo "$(GREEN)✓ Conectado$(NC)"; \
+	else \
+		echo "$(RED)✗ Sin conexión$(NC)"; \
+	fi
+
+.PHONY: validate-env
+validate-env: ## Validar configuración del ambiente
+	@echo "$(CYAN)🔍 Validando ambiente $(ENV)...$(NC)"
+	@if [ "$(ENV)" != "development" ] && [ "$(ENV)" != "production" ]; then \
+		echo "$(RED)Error: ENV debe ser 'development' o 'production'$(NC)"; \
+		exit 1; \
+	fi
+	@if [ "$(ENV)" = "production" ] && [ -z "$(SSHPASS)" ]; then \
+		echo "$(RED)Error: SSHPASS no está configurado para producción$(NC)"; \
+		echo "Configura las credenciales en .make.env"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ Ambiente válido$(NC)"
+
+# =============================================================================
+# Ayuda
+# =============================================================================
+
+.PHONY: help
+help: ## Mostrar esta ayuda
+	@echo "$(CYAN)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(CYAN)║              COMANDOS MULTI-AMBIENTE                          ║$(NC)"
+	@echo "$(CYAN)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "Uso: make [comando] ENV=[development|production]"
+	@echo "Ambiente actual: $(ENV)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "$(CYAN)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "Ejemplos:"
+	@echo "  make status ENV=production"
+	@echo "  make apply-sql FILE=migration.sql ENV=development"
+	@echo "  make backup ENV=production"
+
+.DEFAULT_GOAL := help

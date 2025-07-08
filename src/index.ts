@@ -34,9 +34,6 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Servir archivos estáticos
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
-// Servir frontend React (static files - use different path to avoid conflict)
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
 // Middleware de métricas (debe ir antes de las rutas)
 app.use(metricsService.createApiMetricsMiddleware());
 
@@ -53,15 +50,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Main route redirect to dashboard
+// Main route - return API info
 app.get('/', (_req: express.Request, res: express.Response) => {
-  res.redirect('/dashboard');
-});
-
-// Dashboard redirect
-app.get('/dashboard', (_req: express.Request, res: express.Response) => {
-  // Direct serve instead of redirect to avoid 404 issues
-  res.sendFile(path.join(__dirname, '../public/financial-dashboard.html'));
+  res.json({
+    service: 'AI Service API',
+    version: process.env.npm_package_version || '1.0.0',
+    status: 'running',
+    message: 'Use /status for health check or /api/* for API endpoints'
+  });
 });
 
 // Neural health check endpoint
@@ -153,14 +149,6 @@ app.use('/api', versionRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/documents', documentRoutes);
 
-// Frontend React SPA routes (must be after API routes)
-app.get('/app', (_req: express.Request, res: express.Response) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
-
-app.get('/app/*', (_req: express.Request, res: express.Response) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -185,7 +173,6 @@ app.use('*', (req: express.Request, res: express.Response) => {
     path: req.originalUrl,
     available_endpoints: [
       'GET /status',
-      'GET /dashboard - Financial Dashboard',
       'POST /api/flow-gen',
       'POST /api/flow-update', 
       'POST /api/flow-test',

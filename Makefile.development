@@ -1,0 +1,180 @@
+# Makefile.development - Comandos para desarrollo local
+# Estos comandos son seguros y solo afectan tu ambiente local
+
+# Variables de desarrollo
+DEV_DB_HOST := localhost
+DEV_DB_PORT := 5432
+DEV_DB_NAME := ai_service
+DEV_DB_USER := postgres
+DEV_CONTAINER_PREFIX := ai-service
+DEV_API_PORT := 3000
+
+# Colores
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m
+
+# =============================================================================
+# 🟢 COMANDOS DE DESARROLLO - Database
+# =============================================================================
+
+.PHONY: dev-reset-db
+dev-reset-db: ## Reset BD local sin confirmación (rápido para desarrollo)
+	@echo "$(YELLOW)🔄 Reseteando base de datos local...$(NC)"
+	@docker exec $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -c "DROP DATABASE IF EXISTS $(DEV_DB_NAME);"
+	@docker exec $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -c "CREATE DATABASE $(DEV_DB_NAME);"
+	@$(MAKE) dev-apply-schema
+	@echo "$(GREEN)✓ Base de datos local reseteada$(NC)"
+
+.PHONY: dev-apply-schema
+dev-apply-schema: ## Aplicar schema en desarrollo
+	@echo "$(BLUE)📝 Aplicando schema en desarrollo...$(NC)"
+	@docker exec -i $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -d $(DEV_DB_NAME) < scripts/complete-production-schema.sql
+	@echo "$(GREEN)✓ Schema aplicado$(NC)"
+
+.PHONY: dev-migrate
+dev-migrate: ## Aplicar migraciones en desarrollo
+	@echo "$(BLUE)🔄 Aplicando migraciones...$(NC)"
+	@docker exec -i $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -d $(DEV_DB_NAME) < config/init-financial-tables.sql
+	@echo "$(GREEN)✓ Migraciones aplicadas$(NC)"
+
+.PHONY: dev-seed
+dev-seed: ## Cargar datos de prueba en desarrollo
+	@echo "$(BLUE)🌱 Cargando datos de prueba...$(NC)"
+	@if [ -f "scripts/seed-data.sql" ]; then \
+		docker exec -i $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -d $(DEV_DB_NAME) < scripts/seed-data.sql; \
+		echo "$(GREEN)✓ Datos de prueba cargados$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ No se encontró scripts/seed-data.sql$(NC)"; \
+	fi
+
+# =============================================================================
+# 🟢 COMANDOS DE DESARROLLO - Estado y Monitoreo
+# =============================================================================
+
+.PHONY: dev-status
+dev-status: ## Estado del ambiente local
+	@echo "$(BLUE)📊 ESTADO DE DESARROLLO LOCAL$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(BLUE)Servicio AI:$(NC)"
+	@-curl -s http://localhost:$(DEV_API_PORT)/status | python3 -m json.tool | head -15 || echo "$(RED)✗ Servicio no disponible$(NC)"
+	@echo ""
+	@echo "$(BLUE)Contenedores:$(NC)"
+	@docker ps --format "table {{.Names}}\t{{.Status}}" | grep $(DEV_CONTAINER_PREFIX) || echo "$(YELLOW)No hay contenedores corriendo$(NC)"
+
+.PHONY: dev-check-db
+dev-check-db: ## Verificar BD local
+	@echo "$(BLUE)🗄️  Base de datos local:$(NC)"
+	@echo -n "PostgreSQL: "
+	@if docker exec $(DEV_CONTAINER_PREFIX)-postgres-1 pg_isready -U $(DEV_DB_USER) >/dev/null 2>&1; then \
+		echo "$(GREEN)✓ Corriendo$(NC)"; \
+		echo -n "Tablas: "; \
+		docker exec $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -d $(DEV_DB_NAME) -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema');" | tr -d ' '; \
+	else \
+		echo "$(RED)✗ No disponible$(NC)"; \
+	fi
+
+.PHONY: dev-logs
+dev-logs: ## Ver logs del servicio local
+	@docker logs -f $(DEV_CONTAINER_PREFIX)-ai-service-1 --tail 50
+
+.PHONY: dev-logs-db
+dev-logs-db: ## Ver logs de PostgreSQL local
+	@docker logs -f $(DEV_CONTAINER_PREFIX)-postgres-1 --tail 50
+
+# =============================================================================
+# 🟢 COMANDOS DE DESARROLLO - Docker
+# =============================================================================
+
+.PHONY: dev-up
+dev-up: ## Levantar ambiente de desarrollo
+	@echo "$(BLUE)🚀 Iniciando ambiente de desarrollo...$(NC)"
+	@docker-compose up -d
+	@echo "$(YELLOW)⏳ Esperando que los servicios inicien...$(NC)"
+	@sleep 5
+	@$(MAKE) dev-status
+
+.PHONY: dev-down
+dev-down: ## Detener ambiente de desarrollo
+	@echo "$(YELLOW)🛑 Deteniendo ambiente de desarrollo...$(NC)"
+	@docker-compose down
+	@echo "$(GREEN)✓ Ambiente detenido$(NC)"
+
+.PHONY: dev-restart
+dev-restart: ## Reiniciar servicios de desarrollo
+	@echo "$(YELLOW)🔄 Reiniciando servicios...$(NC)"
+	@docker-compose restart
+	@sleep 5
+	@$(MAKE) dev-status
+
+.PHONY: dev-rebuild
+dev-rebuild: ## Reconstruir imagen de desarrollo
+	@echo "$(BLUE)🏗️  Reconstruyendo imagen...$(NC)"
+	@docker-compose build --no-cache ai-service
+	@echo "$(GREEN)✓ Imagen reconstruida$(NC)"
+
+# =============================================================================
+# 🟢 COMANDOS DE DESARROLLO - Testing
+# =============================================================================
+
+.PHONY: dev-test
+dev-test: ## Ejecutar tests
+	@echo "$(BLUE)🧪 Ejecutando tests...$(NC)"
+	@npm test
+
+.PHONY: dev-test-watch
+dev-test-watch: ## Ejecutar tests en modo watch
+	@npm run test:watch
+
+.PHONY: dev-lint
+dev-lint: ## Ejecutar linter
+	@echo "$(BLUE)🔍 Ejecutando linter...$(NC)"
+	@npm run lint
+
+.PHONY: dev-typecheck
+dev-typecheck: ## Verificar tipos TypeScript
+	@echo "$(BLUE)📐 Verificando tipos...$(NC)"
+	@npm run typecheck || echo "$(YELLOW)⚠ Considera usar TypeScript$(NC)"
+
+# =============================================================================
+# 🟢 COMANDOS DE DESARROLLO - Utilidades
+# =============================================================================
+
+.PHONY: dev-shell
+dev-shell: ## Abrir shell en contenedor de desarrollo
+	@docker exec -it $(DEV_CONTAINER_PREFIX)-ai-service-1 /bin/sh
+
+.PHONY: dev-db-shell
+dev-db-shell: ## Abrir psql en desarrollo
+	@docker exec -it $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -d $(DEV_DB_NAME)
+
+.PHONY: dev-clean
+dev-clean: ## Limpiar archivos temporales y cache
+	@echo "$(BLUE)🧹 Limpiando...$(NC)"
+	@rm -rf node_modules/.cache
+	@rm -rf dist
+	@rm -rf coverage
+	@echo "$(GREEN)✓ Limpieza completada$(NC)"
+
+.PHONY: dev-install
+dev-install: ## Instalar dependencias
+	@echo "$(BLUE)📦 Instalando dependencias...$(NC)"
+	@npm install
+	@echo "$(GREEN)✓ Dependencias instaladas$(NC)"
+
+# =============================================================================
+# Ayuda
+# =============================================================================
+
+.PHONY: help
+help: ## Mostrar esta ayuda
+	@echo "$(GREEN)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(GREEN)║               COMANDOS DE DESARROLLO LOCAL                    ║$(NC)"
+	@echo "$(GREEN)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "$(BLUE)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(GREEN)✓ Estos comandos son seguros y solo afectan tu ambiente local$(NC)"
+
+.DEFAULT_GOAL := help

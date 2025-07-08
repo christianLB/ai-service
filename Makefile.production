@@ -1,0 +1,181 @@
+# Makefile.production - Comandos específicos para producción
+# ADVERTENCIA: Estos comandos afectan PRODUCCIÓN. Usar con cuidado.
+
+include .make.env
+
+# Variables de producción
+PROD_HOST := 192.168.1.11
+PROD_USER := k2600x
+PROD_PATH := /volume1/docker/ai-service
+PROD_DB := ai_service
+PROD_DB_USER := ai_user
+PROD_CONTAINER := ai-postgres
+BACKUP_DIR := $(PROD_PATH)/backups
+
+# SSH con autenticación
+ifdef SSHPASS
+    export SSHPASS
+    SSH := sshpass -e ssh
+    SCP := sshpass -e scp
+else
+    SSH := ssh
+    SCP := scp
+endif
+
+# Colores
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m
+
+# =============================================================================
+# 🔴 COMANDOS DE PRODUCCIÓN - Reset y Recovery
+# =============================================================================
+
+.PHONY: prod-reset-db
+prod-reset-db: ## Reset completo de BD en PRODUCCIÓN (con confirmación)
+	@echo "$(RED)⚠️  ADVERTENCIA: Esto ELIMINARÁ TODOS LOS DATOS en PRODUCCIÓN$(NC)"
+	@echo "$(RED)Host: $(PROD_HOST)$(NC)"
+	@echo "$(RED)Base de datos: $(PROD_DB)$(NC)"
+	@echo "$(YELLOW)¿Estás ABSOLUTAMENTE SEGURO? Escribe 'SI ELIMINAR TODO' para continuar:$(NC)"
+	@read CONFIRM && [ "$$CONFIRM" = "SI ELIMINAR TODO" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
+	@$(MAKE) prod-backup
+	@echo "$(YELLOW)Ejecutando reset...$(NC)"
+	@$(MAKE) prod-reset-db-force
+
+.PHONY: prod-reset-db-force
+prod-reset-db-force: ## Reset sin confirmación (solo para emergencias)
+	@echo "$(RED)🔥 RESET FORZADO EN PRODUCCIÓN$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stop ai-service ai-postgres ai-redis || true"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S rm -rf $(PROD_PATH)/postgres-data/*"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-postgres"
+	@sleep 10
+	@$(MAKE) prod-create-db
+	@$(MAKE) prod-apply-schema
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-redis ai-service"
+	@sleep 10
+	@$(MAKE) prod-health
+
+.PHONY: prod-create-db
+prod-create-db: ## Crear base de datos en producción si no existe
+	@echo "$(BLUE)📊 Creando base de datos si no existe...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d template1 -tc \"SELECT 1 FROM pg_database WHERE datname = '$(PROD_DB)'\" | grep -q 1 || echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d template1 -c 'CREATE DATABASE $(PROD_DB);'"
+	@echo "$(GREEN)✓ Base de datos verificada/creada$(NC)"
+
+.PHONY: prod-apply-schema
+prod-apply-schema: ## Aplicar schema completo en producción
+	@echo "$(BLUE)📝 Aplicando schema en producción...$(NC)"
+	@$(SCP) scripts/complete-production-schema.sql $(PROD_USER)@$(PROD_HOST):/tmp/
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) < /tmp/complete-production-schema.sql"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "rm /tmp/complete-production-schema.sql"
+	@echo "$(GREEN)✓ Schema aplicado$(NC)"
+
+.PHONY: prod-fix-permissions
+prod-fix-permissions: ## Arreglar permisos de archivos en el NAS
+	@echo "$(BLUE)🔧 Arreglando permisos...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chmod -R 644 $(PROD_PATH)/config/*.sql"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chown -R $(PROD_USER):users $(PROD_PATH)/config/"
+	@echo "$(GREEN)✓ Permisos corregidos$(NC)"
+
+# =============================================================================
+# 🔴 COMANDOS DE PRODUCCIÓN - Diagnóstico
+# =============================================================================
+
+.PHONY: prod-status
+prod-status: ## Estado completo del sistema en producción
+	@echo "$(BLUE)📊 ESTADO DE PRODUCCIÓN$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(BLUE)Servicio AI:$(NC)"
+	@-curl -s http://$(PROD_HOST):3003/status | python3 -m json.tool | head -20
+	@echo ""
+	@echo "$(BLUE)Contenedores:$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '(ai-|postgres|redis|watchtower)' || echo 'No hay contenedores AI corriendo'"
+	@echo ""
+	@echo "$(BLUE)Base de datos:$(NC)"
+	@$(MAKE) -f Makefile.production prod-check-db --no-print-directory
+
+.PHONY: prod-check-containers
+prod-check-containers: ## Ver todos los contenedores en el NAS
+	@echo "$(BLUE)🐳 Contenedores en producción:$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' | head -20"
+
+.PHONY: prod-check-db
+prod-check-db: ## Verificar BD y tablas en producción
+	@echo "$(BLUE)🗄️  Verificando base de datos...$(NC)"
+	@echo -n "Conexión: "
+	@if $(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) pg_isready -U $(PROD_DB_USER) -d $(PROD_DB)" >/dev/null 2>&1; then \
+		echo "$(GREEN)✓ OK$(NC)"; \
+	else \
+		echo "$(RED)✗ ERROR$(NC)"; \
+	fi
+	@echo -n "Tablas financial: "
+	@COUNT=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -t -c \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'financial';\"" 2>/dev/null | tr -d ' '); \
+	echo "$(GREEN)$$COUNT tablas$(NC)"
+
+.PHONY: prod-health
+prod-health: ## Health check completo de producción
+	@echo "$(BLUE)🏥 Health Check Producción$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@STATUS=$$(curl -s http://$(PROD_HOST):3003/status | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('status', 'unknown'))" 2>/dev/null || echo "error"); \
+	if [ "$$STATUS" = "healthy" ]; then \
+		echo "Estado: $(GREEN)✓ $$STATUS$(NC)"; \
+	elif [ "$$STATUS" = "degraded" ]; then \
+		echo "Estado: $(YELLOW)⚠ $$STATUS$(NC)"; \
+	else \
+		echo "Estado: $(RED)✗ $$STATUS$(NC)"; \
+	fi
+	@echo -n "Dashboard: "
+	@if curl -s http://$(PROD_HOST):3003/api/financial/dashboard/overview | grep -q '"success":true' 2>/dev/null; then \
+		echo "$(GREEN)✓ Funcionando$(NC)"; \
+	else \
+		echo "$(RED)✗ Con errores$(NC)"; \
+	fi
+
+# =============================================================================
+# 🔴 COMANDOS DE PRODUCCIÓN - Backup
+# =============================================================================
+
+.PHONY: prod-backup
+prod-backup: ## Backup de producción con timestamp
+	@echo "$(BLUE)💾 Creando backup de producción...$(NC)"
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mkdir -p $(BACKUP_DIR)"; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) pg_dump -U $(PROD_DB_USER) -d $(PROD_DB) | gzip > /tmp/backup_$$TIMESTAMP.sql.gz"; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mv /tmp/backup_$$TIMESTAMP.sql.gz $(BACKUP_DIR)/"; \
+	echo "$(GREEN)✓ Backup creado: backup_$$TIMESTAMP.sql.gz$(NC)"
+
+.PHONY: prod-backup-list
+prod-backup-list: ## Listar backups disponibles en el NAS
+	@echo "$(BLUE)📋 Backups disponibles:$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "ls -lah $(BACKUP_DIR)/*.sql.gz 2>/dev/null | tail -10" || echo "$(YELLOW)No hay backups$(NC)"
+
+.PHONY: prod-restore
+prod-restore: ## Restaurar backup específico (usar: make prod-restore FILE=backup_20250101_120000.sql.gz)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica el archivo con FILE=backup_XXXXXX.sql.gz$(NC)"; \
+		echo "Usa 'make prod-backup-list' para ver backups disponibles"; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)⚠️  Restaurando backup: $(FILE)$(NC)"
+	@echo "$(RED)Esto reemplazará TODOS los datos actuales. ¿Continuar? (s/N):$(NC)"
+	@read CONFIRM && [ "$$CONFIRM" = "s" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
+	@echo "$(BLUE)Restaurando...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "gunzip -c $(BACKUP_DIR)/$(FILE) | echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)"
+	@echo "$(GREEN)✓ Backup restaurado$(NC)"
+
+# =============================================================================
+# Ayuda
+# =============================================================================
+
+.PHONY: help
+help: ## Mostrar esta ayuda
+	@echo "$(RED)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(RED)║          COMANDOS DE PRODUCCIÓN - USAR CON CUIDADO           ║$(NC)"
+	@echo "$(RED)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "$(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(RED)⚠️  ADVERTENCIA: Estos comandos afectan el ambiente de PRODUCCIÓN$(NC)"
+
+.DEFAULT_GOAL := help

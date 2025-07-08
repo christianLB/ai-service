@@ -1,0 +1,171 @@
+# Makefile.quick - Comandos rápidos y de emergencia
+# Atajos útiles y procedimientos de emergencia
+
+include .make.env
+
+# Colores
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+PURPLE := \033[0;35m
+NC := \033[0m
+
+# =============================================================================
+# ⚡ COMANDOS RÁPIDOS (aliases útiles)
+# =============================================================================
+
+.PHONY: prod
+prod: ## Ver estado de producción (alias rápido)
+	@$(MAKE) -f Makefile.production prod-status
+
+.PHONY: dev
+dev: ## Ver estado de desarrollo (alias rápido)
+	@$(MAKE) -f Makefile.development dev-status
+
+.PHONY: logs
+logs: ## Ver logs de producción (últimas 50 líneas)
+	@$(MAKE) -f Makefile.multi-env logs ENV=production
+
+.PHONY: restart
+restart: ## Reiniciar producción con confirmación
+	@$(MAKE) -f Makefile.multi-env restart ENV=production
+
+.PHONY: backup
+backup: ## Backup rápido de producción
+	@$(MAKE) -f Makefile.production prod-backup
+
+.PHONY: st
+st: ## Status ultra-rápido de producción
+	@curl -s http://$(NAS_HOST):3003/status | python3 -c "import sys, json; d=json.load(sys.stdin); print(f\"Status: {d['status']}\")" || echo "$(RED)✗ Offline$(NC)"
+
+.PHONY: db
+db: ## Conectar a BD producción
+	@$(MAKE) -f Makefile.multi-env db-shell ENV=production
+
+.PHONY: fix
+fix: ## Aplicar fix de schema financiero en producción
+	@echo "$(YELLOW)🔧 Aplicando fix rápido...$(NC)"
+	@sshpass -e ssh $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c 'CREATE TABLE IF NOT EXISTS financial.account_insights (id UUID PRIMARY KEY DEFAULT gen_random_uuid());'"
+	@$(MAKE) restart
+
+# =============================================================================
+# 🚨 COMANDOS DE EMERGENCIA
+# =============================================================================
+
+.PHONY: prod-emergency-stop
+prod-emergency-stop: ## 🚨 DETENER TODO en producción INMEDIATAMENTE
+	@echo "$(RED)🚨 DETENIENDO TODOS LOS SERVICIOS DE PRODUCCIÓN$(NC)"
+	@sshpass -e ssh $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stop ai-service ai-postgres ai-redis ai-watchtower || true"
+	@echo "$(RED)⛔ SERVICIOS DETENIDOS$(NC)"
+
+.PHONY: prod-emergency-restore
+prod-emergency-restore: ## 🚨 Restaurar último backup bueno conocido
+	@echo "$(RED)🚨 RESTAURACIÓN DE EMERGENCIA$(NC)"
+	@echo "$(YELLOW)Buscando último backup...$(NC)"
+	@LAST_BACKUP=$$(sshpass -e ssh $(NAS_USER)@$(NAS_HOST) "ls -t $(NAS_PATH)/backups/*.sql.gz 2>/dev/null | head -1 | xargs basename" || echo ""); \
+	if [ -z "$$LAST_BACKUP" ]; then \
+		echo "$(RED)✗ No se encontraron backups$(NC)"; \
+		exit 1; \
+	else \
+		echo "$(BLUE)Último backup: $$LAST_BACKUP$(NC)"; \
+		echo "$(YELLOW)Restaurando...$(NC)"; \
+		$(MAKE) -f Makefile.production prod-restore FILE=$$LAST_BACKUP; \
+	fi
+
+.PHONY: prod-rollback
+prod-rollback: ## 🚨 Rollback completo (detener, restaurar backup, reiniciar)
+	@echo "$(RED)🚨 INICIANDO ROLLBACK COMPLETO$(NC)"
+	@echo "$(YELLOW)Esto detendrá servicios, restaurará el último backup y reiniciará todo$(NC)"
+	@echo "$(RED)¿Continuar? Escribe 'ROLLBACK' para confirmar:$(NC)"
+	@read CONFIRM && [ "$$CONFIRM" = "ROLLBACK" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
+	@$(MAKE) prod-emergency-stop
+	@$(MAKE) prod-emergency-restore
+	@echo "$(YELLOW)Reiniciando servicios...$(NC)"
+	@sshpass -e ssh $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-postgres ai-redis ai-service"
+	@sleep 10
+	@$(MAKE) -f Makefile.production prod-health
+
+.PHONY: 911
+911: ## 🚨 EMERGENCIA: Mostrar comandos de rescate
+	@echo "$(RED)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(RED)║                    🚨 COMANDOS DE EMERGENCIA 🚨               ║$(NC)"
+	@echo "$(RED)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Si el servicio está caído:$(NC)"
+	@echo "  make prod-emergency-stop    # Detener todo"
+	@echo "  make prod-health           # Ver qué está mal"
+	@echo "  make logs                  # Ver logs recientes"
+	@echo "  make restart              # Reiniciar servicios"
+	@echo ""
+	@echo "$(YELLOW)Si hay errores de base de datos:$(NC)"
+	@echo "  make db                   # Conectar a PostgreSQL"
+	@echo "  make fix                  # Aplicar fix rápido"
+	@echo "  make prod-apply-schema    # Reaplicar schema completo"
+	@echo ""
+	@echo "$(YELLOW)Si necesitas hacer rollback:$(NC)"
+	@echo "  make prod-backup-list     # Ver backups disponibles"
+	@echo "  make prod-emergency-restore # Restaurar último backup"
+	@echo "  make prod-rollback        # Rollback completo"
+	@echo ""
+	@echo "$(RED)Contacto de emergencia: $(NC)"
+	@echo "  Telegram: @tu_usuario"
+	@echo "  Email: tu@email.com"
+
+# =============================================================================
+# 🎯 COMANDOS DE UN SOLO PROPÓSITO
+# =============================================================================
+
+.PHONY: fix-balance
+fix-balance: ## Arreglar error de columna balance
+	@echo "$(YELLOW)🔧 Arreglando error de balance...$(NC)"
+	@sshpass -e ssh $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c 'ALTER TABLE financial.accounts ADD COLUMN IF NOT EXISTS balance NUMERIC(20,8) DEFAULT 0;'"
+	@$(MAKE) restart
+
+.PHONY: create-db-only
+create-db-only: ## Solo crear base de datos si no existe
+	@sshpass -e ssh $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d template1 -c 'CREATE DATABASE ai_service;' || echo 'Database already exists'"
+
+.PHONY: check-all
+check-all: ## Verificación completa del sistema
+	@echo "$(BLUE)🔍 Verificación completa del sistema$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@$(MAKE) st
+	@$(MAKE) -f Makefile.production prod-check-containers --no-print-directory | head -5
+	@$(MAKE) -f Makefile.production prod-check-db --no-print-directory
+
+# =============================================================================
+# Ayuda
+# =============================================================================
+
+.PHONY: help
+help: ## Mostrar comandos rápidos y de emergencia
+	@echo "$(PURPLE)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(PURPLE)║              ⚡ COMANDOS RÁPIDOS Y EMERGENCIA                 ║$(NC)"
+	@echo "$(PURPLE)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(GREEN)Comandos rápidos:$(NC)"
+	@grep -E '^[a-z]+:.*?## [^🚨].*$$' Makefile.quick | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-15s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(RED)Comandos de emergencia:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## 🚨.*$$' Makefile.quick | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(RED)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Tip: usa 'make 911' para ver guía de emergencia$(NC)"
+
+.PHONY: help-all
+help-all: ## Ver TODOS los comandos disponibles
+	@echo "$(PURPLE)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(PURPLE)║                  TODOS LOS COMANDOS DISPONIBLES               ║$(NC)"
+	@echo "$(PURPLE)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@$(MAKE) -f Makefile.quick help
+	@echo ""
+	@$(MAKE) -f Makefile.production help
+	@echo ""
+	@$(MAKE) -f Makefile.development help
+	@echo ""
+	@$(MAKE) -f Makefile.multi-env help
+	@echo ""
+	@$(MAKE) -f Makefile.compare help
+
+.DEFAULT_GOAL := help

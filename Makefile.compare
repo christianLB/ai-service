@@ -1,0 +1,214 @@
+# Makefile.compare - Comandos para comparar desarrollo vs producción
+# Ayuda a identificar diferencias y validar antes de deploy
+
+include .make.env
+
+# Configuración
+PROD_HOST := $(NAS_HOST)
+PROD_USER := $(NAS_USER)
+PROD_DB := ai_service
+DEV_DB := ai_service
+
+# SSH command
+SSH := sshpass -e ssh $(PROD_USER)@$(PROD_HOST)
+
+# Colores
+MAGENTA := \033[0;35m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+BLUE := \033[0;34m
+NC := \033[0m
+
+# =============================================================================
+# 🟡 COMANDOS DE COMPARACIÓN
+# =============================================================================
+
+.PHONY: diff-schema
+diff-schema: ## Comparar schemas desarrollo vs producción
+	@echo "$(MAGENTA)🔍 Comparando schemas dev vs prod...$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	
+	@# Extraer schema de desarrollo
+	@echo "$(BLUE)📥 Extrayendo schema de desarrollo...$(NC)"
+	@docker exec ai-service-postgres-1 pg_dump -U postgres -d $(DEV_DB) --schema-only --no-owner --no-privileges > /tmp/schema-dev.sql
+	
+	@# Extraer schema de producción
+	@echo "$(BLUE)📥 Extrayendo schema de producción...$(NC)"
+	@$(SSH) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres pg_dump -U ai_user -d $(PROD_DB) --schema-only --no-owner --no-privileges" > /tmp/schema-prod.sql
+	
+	@# Comparar
+	@echo ""
+	@echo "$(MAGENTA)📊 Diferencias encontradas:$(NC)"
+	@diff -u /tmp/schema-prod.sql /tmp/schema-dev.sql | grep -E "^[+-]" | grep -v "^[+-]{3}" | head -50 || echo "$(GREEN)✓ Los schemas son idénticos$(NC)"
+	
+	@# Limpiar
+	@rm -f /tmp/schema-dev.sql /tmp/schema-prod.sql
+
+.PHONY: diff-tables
+diff-tables: ## Comparar tablas existentes dev vs prod
+	@echo "$(MAGENTA)📋 Comparando tablas...$(NC)"
+	@echo ""
+	
+	@echo "$(BLUE)Desarrollo:$(NC)"
+	@docker exec ai-service-postgres-1 psql -U postgres -d $(DEV_DB) -t -c "SELECT schemaname || '.' || tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY 1;" > /tmp/tables-dev.txt
+	
+	@echo "$(BLUE)Producción:$(NC)"
+	@$(SSH) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d $(PROD_DB) -t -c \"SELECT schemaname || '.' || tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY 1;\"" > /tmp/tables-prod.txt
+	
+	@echo ""
+	@echo "$(YELLOW)Tablas solo en desarrollo:$(NC)"
+	@comm -23 <(sort /tmp/tables-dev.txt) <(sort /tmp/tables-prod.txt) | grep -v "^$$" || echo "$(GREEN)✓ Ninguna$(NC)"
+	
+	@echo ""
+	@echo "$(RED)Tablas solo en producción:$(NC)"
+	@comm -13 <(sort /tmp/tables-dev.txt) <(sort /tmp/tables-prod.txt) | grep -v "^$$" || echo "$(GREEN)✓ Ninguna$(NC)"
+	
+	@rm -f /tmp/tables-dev.txt /tmp/tables-prod.txt
+
+.PHONY: diff-counts
+diff-counts: ## Comparar conteo de registros dev vs prod
+	@echo "$(MAGENTA)📊 Comparando conteo de registros...$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	
+	@echo "Schema financial:"
+	@echo -n "  accounts       - Dev: "
+	@docker exec ai-service-postgres-1 psql -U postgres -d $(DEV_DB) -t -c "SELECT COUNT(*) FROM financial.accounts;" 2>/dev/null | tr -d ' ' || echo "0"
+	@echo -n "                  Prod: "
+	@$(SSH) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d $(PROD_DB) -t -c \"SELECT COUNT(*) FROM financial.accounts;\"" 2>/dev/null | tr -d ' ' || echo "0"
+	
+	@echo -n "  transactions   - Dev: "
+	@docker exec ai-service-postgres-1 psql -U postgres -d $(DEV_DB) -t -c "SELECT COUNT(*) FROM financial.transactions;" 2>/dev/null | tr -d ' ' || echo "0"
+	@echo -n "                  Prod: "
+	@$(SSH) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d $(PROD_DB) -t -c \"SELECT COUNT(*) FROM financial.transactions;\"" 2>/dev/null | tr -d ' ' || echo "0"
+
+.PHONY: diff-status
+diff-status: ## Comparar estado de servicios dev vs prod
+	@echo "$(MAGENTA)🚦 Comparando estado de servicios...$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	
+	@echo "$(BLUE)Desarrollo:$(NC)"
+	@STATUS_DEV=$$(curl -s http://localhost:3000/status | python3 -c "import sys, json; print(json.load(sys.stdin).get('status', 'unknown'))" 2>/dev/null || echo "offline"); \
+	if [ "$$STATUS_DEV" = "healthy" ]; then \
+		echo "  Estado: $(GREEN)✓ $$STATUS_DEV$(NC)"; \
+	elif [ "$$STATUS_DEV" = "degraded" ]; then \
+		echo "  Estado: $(YELLOW)⚠ $$STATUS_DEV$(NC)"; \
+	else \
+		echo "  Estado: $(RED)✗ $$STATUS_DEV$(NC)"; \
+	fi
+	
+	@echo ""
+	@echo "$(BLUE)Producción:$(NC)"
+	@STATUS_PROD=$$(curl -s http://$(PROD_HOST):3003/status | python3 -c "import sys, json; print(json.load(sys.stdin).get('status', 'unknown'))" 2>/dev/null || echo "offline"); \
+	if [ "$$STATUS_PROD" = "healthy" ]; then \
+		echo "  Estado: $(GREEN)✓ $$STATUS_PROD$(NC)"; \
+	elif [ "$$STATUS_PROD" = "degraded" ]; then \
+		echo "  Estado: $(YELLOW)⚠ $$STATUS_PROD$(NC)"; \
+	else \
+		echo "  Estado: $(RED)✗ $$STATUS_PROD$(NC)"; \
+	fi
+
+.PHONY: validate-deploy
+validate-deploy: ## Validar si es seguro hacer deploy
+	@echo "$(MAGENTA)🚀 Validando deploy...$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	
+	@ERRORS=0
+	
+	@# Verificar servicio de desarrollo
+	@echo -n "$(BLUE)1. Servicio desarrollo:$(NC) "
+	@if curl -s http://localhost:3000/status | grep -q '"status"' 2>/dev/null; then \
+		echo "$(GREEN)✓ OK$(NC)"; \
+	else \
+		echo "$(RED)✗ No responde$(NC)"; \
+		ERRORS=$$((ERRORS + 1)); \
+	fi
+	
+	@# Verificar tests
+	@echo -n "$(BLUE)2. Tests:$(NC) "
+	@if [ -f "package.json" ] && grep -q '"test"' package.json; then \
+		if npm test > /dev/null 2>&1; then \
+			echo "$(GREEN)✓ Pasando$(NC)"; \
+		else \
+			echo "$(RED)✗ Fallando$(NC)"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi \
+	else \
+		echo "$(YELLOW)⚠ No configurados$(NC)"; \
+	fi
+	
+	@# Verificar build
+	@echo -n "$(BLUE)3. Build:$(NC) "
+	@if npm run build > /dev/null 2>&1; then \
+		echo "$(GREEN)✓ Exitoso$(NC)"; \
+	else \
+		echo "$(RED)✗ Con errores$(NC)"; \
+		ERRORS=$$((ERRORS + 1)); \
+	fi
+	
+	@# Verificar diferencias de schema
+	@echo -n "$(BLUE)4. Schema:$(NC) "
+	@if $(MAKE) diff-schema --no-print-directory | grep -q "idénticos"; then \
+		echo "$(GREEN)✓ Sincronizado$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ Con diferencias$(NC)"; \
+	fi
+	
+	@# Resultado final
+	@echo ""
+	@if [ $$ERRORS -eq 0 ]; then \
+		echo "$(GREEN)✅ Listo para deploy$(NC)"; \
+	else \
+		echo "$(RED)❌ NO hacer deploy - $$ERRORS errores encontrados$(NC)"; \
+		exit 1; \
+	fi
+
+.PHONY: sync-schema
+sync-schema: ## Generar SQL para sincronizar prod con dev
+	@echo "$(MAGENTA)🔄 Generando script de sincronización...$(NC)"
+	@echo "$(YELLOW)⚠️  ADVERTENCIA: Revisa el script antes de aplicar$(NC)"
+	@echo ""
+	
+	@# Generar script de migración
+	@echo "-- Script de sincronización generado $(shell date)" > sync-schema.sql
+	@echo "-- REVISAR ANTES DE APLICAR EN PRODUCCIÓN" >> sync-schema.sql
+	@echo "" >> sync-schema.sql
+	
+	@# Extraer y comparar schemas
+	@docker exec ai-service-postgres-1 pg_dump -U postgres -d $(DEV_DB) --schema-only --no-owner --no-privileges > /tmp/schema-dev.sql
+	@$(SSH) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres pg_dump -U ai_user -d $(PROD_DB) --schema-only --no-owner --no-privileges" > /tmp/schema-prod.sql
+	
+	@# Aquí podrías usar una herramienta más sofisticada para generar las diferencias
+	@echo "-- Diferencias detectadas:" >> sync-schema.sql
+	@diff -u /tmp/schema-prod.sql /tmp/schema-dev.sql | grep "^+" | grep -v "^+++" >> sync-schema.sql || true
+	
+	@echo "$(GREEN)✓ Script generado: sync-schema.sql$(NC)"
+	@echo "  Revísalo antes de aplicar con: make prod-apply-sql FILE=sync-schema.sql"
+	
+	@rm -f /tmp/schema-dev.sql /tmp/schema-prod.sql
+
+.PHONY: compare-all
+compare-all: ## Ejecutar todas las comparaciones
+	@$(MAKE) diff-status
+	@echo ""
+	@$(MAKE) diff-tables
+	@echo ""
+	@$(MAKE) diff-counts
+	@echo ""
+	@$(MAKE) validate-deploy
+
+# =============================================================================
+# Ayuda
+# =============================================================================
+
+.PHONY: help
+help: ## Mostrar esta ayuda
+	@echo "$(MAGENTA)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(MAGENTA)║            COMANDOS DE COMPARACIÓN DEV vs PROD                ║$(NC)"
+	@echo "$(MAGENTA)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "$(MAGENTA)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Estos comandos ayudan a identificar diferencias antes de deploy$(NC)"
+
+.DEFAULT_GOAL := help
