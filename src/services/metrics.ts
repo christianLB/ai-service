@@ -148,13 +148,9 @@ class MetricsService {
       // Trigger notification if Telegram is configured
       try {
         const { TelegramService } = await import('./communication/telegram.service');
-        const telegram = new TelegramService();
-        if (telegram.isConfigured()) {
-          await telegram.sendAlert(
-            `🚨 ${alert.level.toUpperCase()}: ${alert.message}`,
-            alert.level as 'info' | 'warning' | 'error'
-          );
-        }
+        // Skip Telegram notifications for now - requires proper configuration
+        // TODO: Implement proper Telegram integration with config
+        logger.warn('Telegram notifications not yet configured for alerts');
       } catch (err) {
         // Telegram not configured or error sending
         logger.debug('Could not send Telegram alert:', err);
