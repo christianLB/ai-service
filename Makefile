@@ -4,6 +4,15 @@
 # Cargar configuración local si existe
 -include .make.env
 
+# Exportar las variables para que estén disponibles en los subprocesos
+ifdef SSHPASS
+export SSHPASS
+endif
+
+ifdef SUDO_PASS
+export SUDO_PASS
+endif
+
 # Los Makefiles modulares se llaman directamente con -f
 # No los incluimos aquí para evitar conflictos
 
@@ -39,6 +48,81 @@ NC := \033[0m # No Color
 # 🎯 COMANDOS PRINCIPALES (atajos directos)
 # =============================================================================
 
+# =============================================================================
+# 🚨 COMANDOS DE EMERGENCIA (recuperación < 30 segundos)
+# =============================================================================
+
+.PHONY: 911
+911: ## 🚨 EMERGENCIA - Muestra el runbook de emergencia
+	@cat docs/EMERGENCY_RUNBOOK.md | less
+
+.PHONY: emergency-diagnose
+emergency-diagnose: ## 🚨 Diagnóstico rápido del sistema (10s)
+	@echo "$(RED)🚨 EJECUTANDO DIAGNÓSTICO DE EMERGENCIA...$(NC)"
+	@./scripts/emergency/diagnose.sh
+
+.PHONY: emergency-backup
+emergency-backup: ## 🚨 Backup de emergencia ultra-rápido
+	@echo "$(RED)🚨 CREANDO BACKUP DE EMERGENCIA...$(NC)"
+	@./scripts/emergency/pre-deploy-backup.sh emergency
+
+.PHONY: emergency-rollback
+emergency-rollback: ## 🚨 Rollback al último backup estable (20s)
+	@echo "$(RED)🚨 EJECUTANDO ROLLBACK DE EMERGENCIA...$(NC)"
+	@./scripts/emergency/rollback.sh latest
+
+.PHONY: prod-emergency-stop
+prod-emergency-stop: ## 🚨 DETIENE TODO INMEDIATAMENTE
+	@echo "$(RED)🚨 DETENIENDO TODOS LOS SERVICIOS DE EMERGENCIA...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && docker-compose -f docker-compose.production.yml down --timeout 5"
+	@echo "$(GREEN)✓ Servicios detenidos$(NC)"
+
+.PHONY: prod-emergency-restore
+prod-emergency-restore: ## 🚨 Restaura el último backup automáticamente
+	@echo "$(RED)🚨 RESTAURANDO DESDE ÚLTIMO BACKUP...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && ./scripts/emergency/rollback.sh latest"
+
+.PHONY: emergency-help
+emergency-help: ## 🚨 Muestra ayuda rápida de emergencia
+	@echo "$(RED)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(RED)                    🚨 COMANDOS DE EMERGENCIA 🚨                $(NC)"
+	@echo "$(RED)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)RESPUESTA INMEDIATA (0-30 segundos):$(NC)"
+	@echo "  $(GREEN)make emergency-diagnose$(NC)    - Diagnóstico rápido (10s)"
+	@echo "  $(GREEN)make emergency-rollback$(NC)    - Rollback automático (20s)"
+	@echo "  $(GREEN)make prod-emergency-stop$(NC)   - Detener TODO inmediatamente"
+	@echo "  $(GREEN)make prod-emergency-restore$(NC)- Restaurar último backup"
+	@echo ""
+	@echo "$(YELLOW)INFORMACIÓN:$(NC)"
+	@echo "  $(GREEN)make 911$(NC)                   - Ver runbook completo"
+	@echo "  $(GREEN)make emergency-help$(NC)        - Esta ayuda"
+	@echo ""
+	@echo "$(RED)Si todo falla: ./scripts/emergency/rollback.sh latest$(NC)"
+	@echo ""
+
+.PHONY: emergency-sync
+emergency-sync: ## 🚨 Sincroniza scripts de emergencia con producción
+	@echo "$(YELLOW)🔄 Sincronizando scripts de emergencia con producción...$(NC)"
+	@./scripts/emergency/sync-to-production.sh
+	@echo "$(GREEN)✓ Scripts de emergencia sincronizados$(NC)"
+
+# =============================================================================
+# 🎯 COMANDOS PRINCIPALES (atajos directos) - continuación
+# =============================================================================
+
+.PHONY: cicd-setup
+cicd-setup: ## Configurar secretos para CI/CD (GHCR, GitHub Actions)
+	@$(MAKE) -f Makefile.security cicd-setup
+
+.PHONY: ghcr-setup
+ghcr-setup: ## Configurar autenticación GitHub Container Registry
+	@$(MAKE) -f Makefile.security ghcr-setup
+
+.PHONY: validate-cicd
+validate-cicd: ## Validar configuración de CI/CD
+	@$(MAKE) -f Makefile.security validate-cicd
+
 .PHONY: prod
 prod: ## Ver estado de producción
 	@$(MAKE) -f Makefile.quick prod
@@ -59,6 +143,18 @@ st: ## Status ultra-rápido
 help-all: ## Ver TODOS los comandos
 	@$(MAKE) -f Makefile.quick help-all
 
+.PHONY: doctor
+doctor: ## Diagnóstico completo del sistema
+	@$(MAKE) -f Makefile.monitoring doctor
+
+.PHONY: secrets-validate
+secrets-validate: ## Validar configuración de secrets
+	@$(MAKE) -f Makefile.security secrets-validate
+
+.PHONY: metrics
+metrics: ## Ver métricas del sistema
+	@$(MAKE) -f Makefile.monitoring metrics
+
 .PHONY: help
 help: ## Mostrar ayuda principal
 	@echo "$(BLUE)╔══════════════════════════════════════════════════════════════╗$(NC)"
@@ -70,7 +166,13 @@ help: ## Mostrar ayuda principal
 	@echo "  $(GREEN)make dev$(NC)             - Ver estado de desarrollo"
 	@echo "  $(GREEN)make st$(NC)              - Status ultra-rápido"
 	@echo "  $(GREEN)make help-all$(NC)        - Ver TODOS los comandos disponibles"
-	@echo "  $(GREEN)make 911$(NC)             - Guía de emergencia"
+	@echo "  $(GREEN)make 911$(NC)             - 🚨 EMERGENCIA - Guía de respuesta rápida"
+	@echo ""
+	@echo "$(RED)🚨 Comandos de emergencia (< 30 segundos):$(NC)"
+	@echo "  $(GREEN)make emergency-diagnose$(NC)     - Diagnóstico rápido del sistema"
+	@echo "  $(GREEN)make emergency-rollback$(NC)     - Rollback automático al último backup"
+	@echo "  $(GREEN)make prod-emergency-stop$(NC)    - DETENER TODO inmediatamente"
+	@echo "  $(GREEN)make emergency-help$(NC)         - Ver ayuda de emergencia"
 	@echo ""
 	@echo "$(YELLOW)Comandos por categoría:$(NC)"
 	@echo "  $(BLUE)make -f Makefile.production help$(NC)  - Comandos de producción"
@@ -78,6 +180,8 @@ help: ## Mostrar ayuda principal
 	@echo "  $(BLUE)make -f Makefile.multi-env help$(NC)   - Comandos multi-ambiente"
 	@echo "  $(BLUE)make -f Makefile.compare help$(NC)     - Comandos de comparación"
 	@echo "  $(BLUE)make -f Makefile.quick help$(NC)       - Comandos rápidos"
+	@echo "  $(BLUE)make -f Makefile.security help$(NC)    - Seguridad y secrets"
+	@echo "  $(BLUE)make -f Makefile.monitoring help$(NC)  - Monitoreo y métricas"
 	@echo ""
 	@echo "$(YELLOW)Configuración:$(NC)"
 	@echo "  Asegúrate de tener .make.env configurado con las credenciales"
@@ -156,9 +260,128 @@ logs-postgres: ## Muestra los logs de PostgreSQL
 .PHONY: restart-service
 restart-service: ## Reinicia el servicio AI
 	@echo "$(YELLOW)Reiniciando servicio AI...$(NC)"
-	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker restart ai-service"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-service"
 	@sleep 5
 	@$(MAKE) status-simple
+
+.PHONY: restart-postgres
+restart-postgres: ## Reinicia PostgreSQL
+	@echo "$(YELLOW)Reiniciando PostgreSQL...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-postgres"
+	@sleep 3
+	@echo "$(GREEN)✓ PostgreSQL reiniciado$(NC)"
+
+.PHONY: restart-all
+restart-all: ## Reinicia todos los servicios
+	@echo "$(YELLOW)Reiniciando todos los servicios...$(NC)"
+	@$(MAKE) restart-postgres
+	@sleep 2
+	@$(MAKE) restart-service
+	@echo "$(GREEN)✓ Todos los servicios reiniciados$(NC)"
+
+.PHONY: fix-postgres-permissions
+fix-postgres-permissions: ## Arregla permisos de PostgreSQL
+	@echo "$(YELLOW)Arreglando permisos de PostgreSQL...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stop ai-postgres"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S chown -R 999:999 $(NAS_PATH)/postgres"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S chmod -R 700 $(NAS_PATH)/postgres"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-postgres"
+	@sleep 5
+	@echo "$(GREEN)✓ Permisos corregidos$(NC)"
+	@$(MAKE) restart-service
+
+.PHONY: fix-frontend-serving
+fix-frontend-serving: ## Arregla el servicio del frontend copiando al lugar correcto
+	@echo "$(BLUE)=== ARREGLANDO SERVICIO DE FRONTEND ===$(NC)"
+	@echo "$(YELLOW)📦 Compilando frontend...$(NC)"
+	@cd frontend && npm run build
+	@echo "$(YELLOW)🔄 Limpiando directorios en producción...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S rm -rf $(NAS_PATH)/frontend/dist/*"
+	@echo "$(YELLOW)📤 Copiando frontend compilado...$(NC)"
+	@tar -czf /tmp/frontend-complete.tar.gz -C frontend/dist .
+	@$(SCP_CMD) /tmp/frontend-complete.tar.gz $(NAS_USER)@$(NAS_HOST):/tmp/
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH)/frontend/dist && \
+		echo '$(SUDO_PASS)' | sudo -S tar -xzf /tmp/frontend-complete.tar.gz && \
+		echo '$(SUDO_PASS)' | sudo -S chown -R $(NAS_USER):users . && \
+		echo '$(SUDO_PASS)' | sudo -S rm /tmp/frontend-complete.tar.gz"
+	@rm /tmp/frontend-complete.tar.gz
+	@echo "$(GREEN)✓ Frontend actualizado en el volumen montado$(NC)"
+	@echo "$(BLUE)Verificando actualización...$(NC)"
+	@$(MAKE) verify-frontend-deploy
+
+.PHONY: fix-missing-tables
+fix-missing-tables: ## Crea tablas faltantes en la base de datos
+	@echo "$(YELLOW)🔧 Creando tabla financial.sync_logs...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c \"CREATE TABLE IF NOT EXISTS financial.sync_logs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), sync_type VARCHAR(50), status VARCHAR(50), started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, completed_at TIMESTAMP, error TEXT, metadata JSONB, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);\""
+	@echo "$(GREEN)✓ Tabla creada$(NC)"
+
+.PHONY: fix-all
+fix-all: ## Arregla todos los problemas conocidos
+	@echo "$(BLUE)=== ARREGLANDO TODOS LOS PROBLEMAS ===$(NC)"
+	@$(MAKE) fix-missing-tables
+	@$(MAKE) fix-frontend-serving
+	@echo "$(GREEN)=== TODOS LOS PROBLEMAS ARREGLADOS ===$(NC)"
+
+.PHONY: force-frontend-update
+force-frontend-update: ## Fuerza actualización completa del frontend con limpieza de caché
+	@echo "$(BLUE)=== ACTUALIZACIÓN FORZADA DE FRONTEND ===$(NC)"
+	@echo "$(YELLOW)📦 Compilando frontend con timestamp...$(NC)"
+	@cd frontend && npm run build
+	@echo "$(YELLOW)🧹 Limpiando COMPLETAMENTE el directorio de producción...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S rm -rf $(NAS_PATH)/frontend/dist"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S mkdir -p $(NAS_PATH)/frontend/dist"
+	@echo "$(YELLOW)📤 Copiando frontend nuevo...$(NC)"
+	@tar -czf /tmp/frontend-force.tar.gz -C frontend dist
+	@$(SCP_CMD) /tmp/frontend-force.tar.gz $(NAS_USER)@$(NAS_HOST):/tmp/
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH)/frontend && \
+		echo '$(SUDO_PASS)' | sudo -S tar -xzf /tmp/frontend-force.tar.gz && \
+		echo '$(SUDO_PASS)' | sudo -S chown -R 1001:1001 dist && \
+		echo '$(SUDO_PASS)' | sudo -S chmod -R 755 dist && \
+		echo '$(SUDO_PASS)' | sudo -S rm /tmp/frontend-force.tar.gz"
+	@rm /tmp/frontend-force.tar.gz
+	@echo "$(YELLOW)🔄 Reiniciando servicio para limpiar caché...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-service"
+	@sleep 5
+	@echo "$(GREEN)✅ Frontend actualizado forzosamente$(NC)"
+	@echo "$(BLUE)📋 Verificando actualización...$(NC)"
+	@$(MAKE) verify-html-update
+
+.PHONY: verify-html-update
+verify-html-update: ## Verifica que el HTML apunta a los archivos JS correctos
+	@echo "$(BLUE)Verificando HTML y assets...$(NC)"
+	@echo -n "Archivo JS en HTML: "
+	@curl -s http://$(NAS_HOST):3003/ | grep -o 'src="/assets/[^"]*\.js"' | head -1 || echo "NO ENCONTRADO"
+	@echo -n "Archivos JS en servidor: "
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ls $(NAS_PATH)/frontend/dist/assets/*.js 2>/dev/null" || echo "NO ENCONTRADO"
+	@echo -n "Contiene código actualizado: "
+	@curl -s http://$(NAS_HOST):3003/ | grep -o 'src="/assets/[^"]*\.js"' | head -1 | xargs -I {} curl -s http://$(NAS_HOST):3003{} | grep -c "Iniciando setup BBVA" || echo "NO"
+
+.PHONY: diagnose-frontend
+diagnose-frontend: ## Diagnostica problemas con el frontend
+	@echo "$(BLUE)=== DIAGNÓSTICO DE FRONTEND ===$(NC)"
+	@echo "$(YELLOW)1. HTML servido:$(NC)"
+	@curl -s http://$(NAS_HOST):3003/ | grep -E '(src=|href=)' | grep -E '\.(js|css)' | head -5
+	@echo ""
+	@echo "$(YELLOW)2. Archivos en el servidor:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ls -la $(NAS_PATH)/frontend/dist/assets/ 2>/dev/null | head -10" || echo "Error accediendo"
+	@echo ""
+	@echo "$(YELLOW)3. Archivos en el contenedor:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-service ls -la /app/public/assets/ 2>/dev/null | head -10" || echo "Error accediendo"
+	@echo ""
+	@echo "$(YELLOW)4. Headers HTTP:$(NC)"
+	@curl -sI http://$(NAS_HOST):3003/ | grep -E '(Cache-Control|ETag|Last-Modified)'
+
+.PHONY: verify-frontend-deploy
+verify-frontend-deploy: ## Verifica que el frontend se desplegó correctamente
+	@echo "$(BLUE)Verificando frontend en producción...$(NC)"
+	@echo -n "Archivos JS en prod: "
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ls -la $(NAS_PATH)/frontend/dist/assets/*.js 2>/dev/null | wc -l || echo 0"
+	@echo -n "Contiene consentUrl: "
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "grep -c 'consentUrl' $(NAS_PATH)/frontend/dist/assets/*.js 2>/dev/null || echo 'NO ENCONTRADO'"
+	@echo -n "Contiene logs debug: "
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "grep -c 'Iniciando setup BBVA' $(NAS_PATH)/frontend/dist/assets/*.js 2>/dev/null || echo 'NO'"
+	@echo "Archivos en dist:"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ls -la $(NAS_PATH)/frontend/dist/ 2>/dev/null | head -10"
 
 .PHONY: update-env
 update-env: ## Actualiza el archivo .env.production en el NAS
@@ -171,13 +394,114 @@ update-env: ## Actualiza el archivo .env.production en el NAS
 		exit 1; \
 	fi
 
+.PHONY: deploy-full
+deploy-full: ## Build y deploy completo con Docker
+	@echo "$(BLUE)=== BUILD Y DEPLOY COMPLETO ===$(NC)"
+	@echo "$(YELLOW)🏗️ Construyendo imagen Docker...$(NC)"
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	docker build -t ai-service:$$TIMESTAMP -t ai-service:latest .
+	@echo "$(YELLOW)📦 Guardando imagen...$(NC)"
+	@docker save ai-service:latest | gzip > /tmp/ai-service-latest.tar.gz
+	@echo "$(YELLOW)📤 Subiendo imagen al NAS...$(NC)"
+	@$(SCP_CMD) /tmp/ai-service-latest.tar.gz $(NAS_USER)@$(NAS_HOST):/tmp/
+	@echo "$(YELLOW)🔄 Actualizando en producción...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker load < /tmp/ai-service-latest.tar.gz && \
+		echo '$(SUDO_PASS)' | sudo -S sed -i 's/image: ai-service:.*/image: ai-service:latest/' docker-compose.production.yml && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose -f docker-compose.production.yml up -d ai-service && \
+		echo '$(SUDO_PASS)' | sudo -S rm /tmp/ai-service-latest.tar.gz"
+	@rm /tmp/ai-service-latest.tar.gz
+	@echo "$(GREEN)=== DEPLOY COMPLETO ===$(NC)"
+	@sleep 10
+	@$(MAKE) status
+
+.PHONY: deploy-frontend
+deploy-frontend: ## Deploy solo del frontend (usa el volumen montado)
+	@echo "$(BLUE)=== DEPLOY RÁPIDO DE FRONTEND ===$(NC)"
+	@echo "$(YELLOW)📦 Compilando frontend...$(NC)"
+	@cd frontend && npm run build
+	@echo "$(YELLOW)📦 Sincronizando frontend con producción...$(NC)"
+	@tar -czf /tmp/frontend-dist.tar.gz -C frontend/dist .
+	@$(SCP_CMD) /tmp/frontend-dist.tar.gz $(NAS_USER)@$(NAS_HOST):/tmp/
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH)/frontend && \
+		echo '$(SUDO_PASS)' | sudo -S rm -rf dist && \
+		echo '$(SUDO_PASS)' | sudo -S mkdir -p dist && \
+		echo '$(SUDO_PASS)' | sudo -S tar -xzf /tmp/frontend-dist.tar.gz -C dist && \
+		echo '$(SUDO_PASS)' | sudo -S chown -R $(NAS_USER):users dist && \
+		echo '$(SUDO_PASS)' | sudo -S rm /tmp/frontend-dist.tar.gz"
+	@rm /tmp/frontend-dist.tar.gz
+	@echo "$(GREEN)✓ Frontend actualizado$(NC)"
+	@echo "$(BLUE)Frontend se sirve desde el volumen montado, no requiere reinicio$(NC)"
+	@$(MAKE) verify-frontend-deploy
+
+.PHONY: deploy-frontend-clean
+deploy-frontend-clean: ## Deploy frontend con limpieza completa de caché
+	@echo "$(BLUE)=== DEPLOY LIMPIO DE FRONTEND ===$(NC)"
+	@echo "$(YELLOW)📦 Compilando frontend...$(NC)"
+	@cd frontend && npm run build
+	@echo "$(YELLOW)🧹 Limpiando versión anterior...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH)/frontend && \
+		echo '$(SUDO_PASS)' | sudo -S rm -rf dist.old && \
+		echo '$(SUDO_PASS)' | sudo -S mv dist dist.old 2>/dev/null || true && \
+		echo '$(SUDO_PASS)' | sudo -S mkdir -p dist"
+	@echo "$(YELLOW)📤 Subiendo nueva versión...$(NC)"
+	@tar -czf /tmp/frontend-dist.tar.gz -C frontend/dist .
+	@$(SCP_CMD) /tmp/frontend-dist.tar.gz $(NAS_USER)@$(NAS_HOST):/tmp/
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH)/frontend && \
+		echo '$(SUDO_PASS)' | sudo -S tar -xzf /tmp/frontend-dist.tar.gz -C dist && \
+		echo '$(SUDO_PASS)' | sudo -S chown -R $(NAS_USER):users dist && \
+		echo '$(SUDO_PASS)' | sudo -S rm /tmp/frontend-dist.tar.gz && \
+		echo '$(SUDO_PASS)' | sudo -S rm -rf dist.old"
+	@rm /tmp/frontend-dist.tar.gz
+	@echo "$(YELLOW)🔄 Reiniciando servicio para limpiar caché interno...$(NC)"
+	@$(MAKE) restart-service
+	@echo "$(GREEN)✓ Frontend actualizado y caché limpiado$(NC)"
+	@echo "$(YELLOW)⚠️  Si el navegador sigue mostrando versión vieja:$(NC)"
+	@echo "  1. Abre DevTools (F12)"
+	@echo "  2. Click derecho en botón recargar"
+	@echo "  3. Selecciona 'Vaciar caché y volver a cargar'"
+	@$(MAKE) verify-frontend-deploy
+
+.PHONY: verify-html-update
+verify-html-update: ## Verifica que el HTML principal se actualizó
+	@echo "$(BLUE)Verificando actualización del HTML...$(NC)"
+	@echo "$(YELLOW)index.html en producción:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cat $(NAS_PATH)/frontend/dist/index.html | grep -E 'script.*src=.*\.js' | head -5"
+	@echo ""
+	@echo "$(YELLOW)Archivos JS actuales:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ls -la $(NAS_PATH)/frontend/dist/assets/*.js 2>/dev/null | tail -5 || echo 'No JS files found'"
+	@echo ""
+	@echo "$(YELLOW)Timestamp del index.html:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ls -la $(NAS_PATH)/frontend/dist/index.html"
+
+.PHONY: force-frontend-update
+force-frontend-update: ## Fuerza actualización completa del frontend
+	@echo "$(RED)⚠️  FORZANDO ACTUALIZACIÓN COMPLETA$(NC)"
+	@$(MAKE) deploy-frontend-clean
+	@echo ""
+	@echo "$(YELLOW)Verificando resultado...$(NC)"
+	@$(MAKE) verify-html-update
+	@echo ""
+	@echo "$(GREEN)✅ Actualización forzada completada$(NC)"
+	@echo "$(YELLOW)Importante: Limpia el caché de tu navegador$(NC)"
+
+.PHONY: diagnose-frontend
+diagnose-frontend: ## Diagnostica problemas con el frontend
+	@./scripts/diagnose-frontend.sh
+
 .PHONY: deploy
-deploy: ## Deploy completo (migración + restart)
-	@echo "$(BLUE)=== INICIANDO DEPLOYMENT ===$(NC)"
+deploy: ## Deploy completo con backup automático (migración + restart)
+	@echo "$(BLUE)=== INICIANDO DEPLOYMENT CON BACKUP AUTOMÁTICO ===$(NC)"
+	@echo "$(YELLOW)📸 Creando backup pre-deploy...$(NC)"
+	@./scripts/emergency/pre-deploy-backup.sh auto
+	@echo "$(BLUE)🔍 Verificando estado actual...$(NC)"
 	@$(MAKE) check-db
+	@echo "$(BLUE)📝 Aplicando migraciones...$(NC)"
 	@$(MAKE) apply-financial-migration
+	@echo "$(BLUE)🔄 Reiniciando servicios...$(NC)"
 	@$(MAKE) restart-service
 	@echo "$(GREEN)=== DEPLOYMENT COMPLETADO ===$(NC)"
+	@echo "$(YELLOW)💡 En caso de problemas: make emergency-rollback$(NC)"
 	@$(MAKE) status
 
 .PHONY: ssh-copy-schema

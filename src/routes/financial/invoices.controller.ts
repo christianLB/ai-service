@@ -8,7 +8,7 @@ import { ClientManagementService } from '../../services/financial/client-managem
 import { logger } from '../../utils/log';
 import { Invoice, InvoiceItem } from '../../models/financial/invoice.model';
 import { DEFAULT_COMPANY_CONFIG } from '../../models/financial/company.model';
-import { Pool } from 'pg';
+import { db } from '../../services/database';
 
 export class InvoicesController {
   private invoiceService: InvoiceManagementService;
@@ -17,7 +17,7 @@ export class InvoicesController {
   private invoiceStorageService: InvoiceStorageService;
   private invoiceEmailService: ReturnType<typeof getInvoiceEmailService>;
   private clientService: ClientManagementService;
-  private pool: Pool;
+  private schemasInitialized = false;
 
   constructor() {
     this.invoiceService = new InvoiceManagementService();
@@ -25,24 +25,38 @@ export class InvoicesController {
     this.clientService = new ClientManagementService();
     this.invoiceEmailService = getInvoiceEmailService();
     
-    // Initialize pool for numbering and storage services
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL || 'postgresql://localhost/ai_service'
-    });
+    // Use the existing database pool instead of creating a new one
+    this.invoiceNumberingService = new InvoiceNumberingService(db.pool);
+    this.invoiceStorageService = new InvoiceStorageService(db.pool);
     
-    this.invoiceNumberingService = new InvoiceNumberingService(this.pool);
-    this.invoiceStorageService = new InvoiceStorageService(this.pool);
-    
-    // Initialize schemas
-    this.initializeSchemas();
+    // Schema initialization will be done lazily when needed
   }
 
-  private async initializeSchemas(): Promise<void> {
+  private async initializeSchemasAsync(): Promise<void> {
+    // Avoid multiple initialization attempts
+    if (this.schemasInitialized) return;
+    
     try {
+      logger.info('Initializing invoice schemas...');
       await this.invoiceNumberingService.initializeSchema();
       await this.invoiceStorageService.initializeSchema();
+      this.schemasInitialized = true;
+      logger.info('Invoice schemas initialized successfully');
     } catch (error) {
       logger.error('Error initializing invoice schemas:', error);
+      throw error; // Let the caller handle the error
+    }
+  }
+
+  private async ensureSchemasInitialized(): Promise<void> {
+    // Initialize schemas on first use
+    if (!this.schemasInitialized) {
+      try {
+        await this.initializeSchemasAsync();
+      } catch (error) {
+        logger.error('Failed to initialize schemas on demand:', error);
+        // Continue anyway - the database might already have the schemas
+      }
     }
   }
 
@@ -52,6 +66,9 @@ export class InvoicesController {
    */
   async createInvoice(req: Request, res: Response): Promise<void> {
     try {
+      // Ensure schemas are initialized
+      await this.ensureSchemasInitialized();
+      
       const invoiceData: Partial<Invoice> = req.body;
 
       // Validate required fields
@@ -573,6 +590,9 @@ export class InvoicesController {
    */
   async generatePDF(req: Request, res: Response): Promise<void> {
     try {
+      // Ensure schemas are initialized for storage
+      await this.ensureSchemasInitialized();
+      
       const { id } = req.params;
       const { language, showStatus = true, generateQR = true } = req.body;
 
@@ -645,6 +665,9 @@ export class InvoicesController {
    */
   async downloadPDF(req: Request, res: Response): Promise<void> {
     try {
+      // Ensure schemas are initialized for storage
+      await this.ensureSchemasInitialized();
+      
       const { id } = req.params;
 
       // Retrieve stored PDF
@@ -895,6 +918,9 @@ export class InvoicesController {
    */
   async getNextInvoiceNumber(req: Request, res: Response): Promise<void> {
     try {
+      // Ensure schemas are initialized
+      await this.ensureSchemasInitialized();
+      
       const { series, prefix, format, year } = req.query;
 
       const nextNumber = await this.invoiceNumberingService.getNextInvoiceNumber({
@@ -927,6 +953,9 @@ export class InvoicesController {
    */
   async getNumberingSequences(req: Request, res: Response): Promise<void> {
     try {
+      // Ensure schemas are initialized
+      await this.ensureSchemasInitialized();
+      
       const sequences = await this.invoiceNumberingService.getAllSequences();
       const stats = await this.invoiceNumberingService.getStatistics();
 

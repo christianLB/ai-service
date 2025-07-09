@@ -1,6 +1,7 @@
 import { register, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
 import { logger } from '../utils/log';
 import { db } from './database';
+import { auditCatch } from '../utils/forensic-logger';
 
 class MetricsService {
   private initialized = false;
@@ -90,6 +91,7 @@ class MetricsService {
         await this.updateSystemMetrics();
       } catch (error: any) {
         logger.error('Error updating periodic metrics:', error.message);
+        auditCatch('MetricsService.startPeriodicMetrics', error, 'silenced');
       }
     }, 30000);
   }
@@ -105,6 +107,7 @@ class MetricsService {
       await db.recordMetric('executions_24h', stats.executions_last_24h, 'counter');
     } catch (error: any) {
       logger.error('Error updating workflow metrics:', error.message);
+      auditCatch('MetricsService.updateWorkflowMetrics', error, 'silenced');
     }
   }
 
@@ -114,6 +117,49 @@ class MetricsService {
     this.memoryUsage.set({ type: 'heapTotal' }, memUsage.heapTotal);
     this.memoryUsage.set({ type: 'heapUsed' }, memUsage.heapUsed);
     this.memoryUsage.set({ type: 'external' }, memUsage.external);
+    
+    // Verificar alertas de recursos
+    this.checkResourceAlerts(memUsage);
+  }
+
+  private async checkResourceAlerts(memUsage: NodeJS.MemoryUsage): Promise<void> {
+    const memoryUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+    
+    // Alerta si memoria supera 80%
+    if (memoryUsagePercent > 80) {
+      const alert = {
+        level: memoryUsagePercent > 90 ? 'critical' : 'warning',
+        metric: 'memory_usage',
+        threshold: 80,
+        current: memoryUsagePercent,
+        message: `Memory usage at ${memoryUsagePercent.toFixed(1)}% (${(memUsage.heapUsed / 1024 / 1024).toFixed(1)}MB / ${(memUsage.heapTotal / 1024 / 1024).toFixed(1)}MB)`
+      };
+      
+      // Log alert
+      logger.warn('Resource alert:', alert);
+      
+      // Store alert in database
+      await db.recordMetric('resource_alerts', 1, 'counter', alert)
+        .catch(err => {
+          logger.error('Error recording resource alert:', err);
+          auditCatch('MetricsService.checkResourceAlerts', err, 'silenced');
+        });
+      
+      // Trigger notification if Telegram is configured
+      try {
+        const { TelegramService } = await import('./communication/telegram.service');
+        const telegram = new TelegramService();
+        if (telegram.isConfigured()) {
+          await telegram.sendAlert(
+            `🚨 ${alert.level.toUpperCase()}: ${alert.message}`,
+            alert.level as 'info' | 'warning' | 'error'
+          );
+        }
+      } catch (err) {
+        // Telegram not configured or error sending
+        logger.debug('Could not send Telegram alert:', err);
+      }
+    }
   }
 
   // Métodos para registrar eventos
@@ -127,7 +173,10 @@ class MetricsService {
     // Persistir métricas críticas
     if (status === 'error') {
       db.recordMetric('workflow_generation_errors', 1, 'counter', { model })
-        .catch(err => logger.error('Error recording metric to DB:', err));
+        .catch(err => {
+          logger.error('Error recording metric to DB:', err);
+          auditCatch('MetricsService.recordWorkflowGeneration', err, 'silenced');
+        });
     }
   }
 
@@ -156,7 +205,10 @@ class MetricsService {
         method, 
         endpoint, 
         status_code: statusCode 
-      }).catch(err => logger.error('Error recording API error metric:', err));
+      }).catch(err => {
+        logger.error('Error recording API error metric:', err);
+        auditCatch('MetricsService.recordApiRequest', err, 'silenced');
+      });
     }
   }
 
@@ -168,11 +220,17 @@ class MetricsService {
       provider, 
       model, 
       success: success.toString() 
-    }).catch(err => logger.error('Error recording LLM metric:', err));
+    }).catch(err => {
+      logger.error('Error recording LLM metric:', err);
+      auditCatch('MetricsService.recordLLMRequest', err, 'silenced');
+    });
 
     if (!success) {
       db.recordMetric('llm_errors', 1, 'counter', { provider, model })
-        .catch(err => logger.error('Error recording LLM error metric:', err));
+        .catch(err => {
+          logger.error('Error recording LLM error metric:', err);
+          auditCatch('MetricsService.recordLLMRequest-error', err, 'silenced');
+        });
     }
   }
 

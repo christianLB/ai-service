@@ -1,0 +1,384 @@
+# Makefile.monitoring - Sistema de Monitoreo y Métricas
+# Herramientas avanzadas para monitoreo, logs y análisis de performance
+
+# Cargar configuración
+-include .make.env
+
+# Colores
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+MAGENTA := \033[0;35m
+CYAN := \033[0;36m
+NC := \033[0m
+
+# Variables con defaults
+LINES ?= 50
+FOLLOW ?= false
+GREP ?= 
+FORMAT ?= table
+VERBOSE ?= false
+CONTAINER_NAME ?= ai-service
+DB_CONTAINER ?= ai-postgres
+
+# Configurar SSH
+ifdef SSHPASS
+    SSH_CMD := sshpass -e ssh
+else
+    SSH_CMD := ssh
+endif
+
+.PHONY: help
+help: ## Mostrar ayuda de comandos de monitoreo
+	@echo "$(MAGENTA)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(MAGENTA)║                COMANDOS DE MONITOREO Y MÉTRICAS               ║$(NC)"
+	@echo "$(MAGENTA)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Logs y Análisis:$(NC)"
+	@echo "  $(GREEN)make logs-advanced$(NC)       - Logs con filtros avanzados"
+	@echo "  $(GREEN)make logs-analyze$(NC)        - Análisis de patrones en logs"
+	@echo "  $(GREEN)make logs-errors$(NC)         - Solo errores y warnings"
+	@echo "  $(GREEN)make logs-tail$(NC)           - Logs en tiempo real"
+	@echo ""
+	@echo "$(YELLOW)Métricas y Performance:$(NC)"
+	@echo "  $(GREEN)make metrics$(NC)             - Métricas del sistema"
+	@echo "  $(GREEN)make performance-check$(NC)   - Análisis de performance"
+	@echo "  $(GREEN)make resource-usage$(NC)      - Uso de recursos (CPU/Mem/Disk)"
+	@echo "  $(GREEN)make response-times$(NC)      - Tiempos de respuesta API"
+	@echo ""
+	@echo "$(YELLOW)Monitoreo Ligero:$(NC)"
+	@echo "  $(GREEN)make monitor-start$(NC)       - Iniciar monitor ligero"
+	@echo "  $(GREEN)make monitor-dashboard$(NC)   - Abrir dashboard HTML"
+	@echo "  $(GREEN)make monitor-status$(NC)      - Estado del monitor"
+	@echo "  $(GREEN)make monitor-logs$(NC)        - Ver logs del monitor"
+	@echo ""
+	@echo "$(YELLOW)Salud del Sistema:$(NC)"
+	@echo "  $(GREEN)make doctor$(NC)              - Diagnóstico completo"
+	@echo "  $(GREEN)make health-dashboard$(NC)    - Dashboard de salud"
+	@echo "  $(GREEN)make alerts-check$(NC)        - Verificar alertas activas"
+	@echo "  $(GREEN)make prometheus-metrics$(NC)  - Ver métricas Prometheus"
+	@echo ""
+	@echo "$(YELLOW)Parámetros opcionales:$(NC)"
+	@echo "  LINES=100                 - Número de líneas (default: 50)"
+	@echo "  FOLLOW=true               - Seguir logs (default: false)"
+	@echo "  GREP='error|warning'      - Filtrar logs"
+	@echo "  FORMAT=json               - Formato salida (table/json/csv)"
+	@echo "  VERBOSE=true              - Información detallada"
+
+.PHONY: logs-advanced
+logs-advanced: ## Logs con filtros avanzados
+	@echo "$(BLUE)Mostrando logs con filtros avanzados...$(NC)"
+	@if [ "$(FOLLOW)" = "true" ]; then \
+		FOLLOW_FLAG="-f"; \
+	else \
+		FOLLOW_FLAG=""; \
+	fi; \
+	if [ -n "$(GREP)" ]; then \
+		echo "$(YELLOW)Filtrando por: $(GREP)$(NC)"; \
+		$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail $(LINES) $$FOLLOW_FLAG $(CONTAINER_NAME) 2>&1 | grep -E '$(GREP)'"; \
+	else \
+		$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail $(LINES) $$FOLLOW_FLAG $(CONTAINER_NAME)"; \
+	fi
+
+.PHONY: logs-analyze
+logs-analyze: ## Analizar patrones en logs
+	@echo "$(BLUE)Analizando patrones en logs...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Errores por tipo:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 1000 $(CONTAINER_NAME) 2>&1 | grep -iE 'error|exception' | cut -d' ' -f4- | sort | uniq -c | sort -nr | head -10"
+	@echo ""
+	@echo "$(YELLOW)Endpoints más llamados:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 1000 $(CONTAINER_NAME) 2>&1 | grep -E 'GET|POST|PUT|DELETE' | awk '{print \$$7}' | sort | uniq -c | sort -nr | head -10"
+	@echo ""
+	@echo "$(YELLOW)Tiempos de respuesta promedio:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 1000 $(CONTAINER_NAME) 2>&1 | grep 'ms' | awk -F'[: ]' '{for(i=1;i<=NF;i++) if(\$$i ~ /ms$$/) print \$$i}' | sed 's/ms//' | awk '{sum+=\$$1; count++} END {if(count>0) print \"Promedio: \" sum/count \" ms\"}'"
+
+.PHONY: logs-errors
+logs-errors: ## Mostrar solo errores y warnings
+	@echo "$(RED)═══ ERRORES ═══$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 500 $(CONTAINER_NAME) 2>&1 | grep -iE 'error|fatal|critical' | tail -20"
+	@echo ""
+	@echo "$(YELLOW)═══ WARNINGS ═══$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 500 $(CONTAINER_NAME) 2>&1 | grep -iE 'warning|warn' | tail -10"
+
+.PHONY: logs-tail
+logs-tail: ## Logs en tiempo real
+	@echo "$(BLUE)Siguiendo logs en tiempo real... (Ctrl+C para salir)$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 20 -f $(CONTAINER_NAME)"
+
+.PHONY: metrics
+metrics: ## Mostrar métricas del sistema
+	@echo "$(CYAN)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(CYAN)║                     MÉTRICAS DEL SISTEMA                      ║$(NC)"
+	@echo "$(CYAN)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)📊 Estadísticas de Contenedores:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker stats --no-stream --format 'table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}' | grep -E 'CONTAINER|ai-'"
+	@echo ""
+	@echo "$(YELLOW)💾 Uso de Disco:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "df -h $(NAS_PATH) | tail -1 | awk '{print \"  Usado: \" \$$3 \" / \" \$$2 \" (\" \$$5 \")\"}'"
+	@echo ""
+	@echo "$(YELLOW)🔄 Uptime de Servicios:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -E 'NAMES|ai-'"
+
+.PHONY: performance-check
+performance-check: ## Análisis detallado de performance
+	@echo "$(BLUE)Ejecutando análisis de performance...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)1. Tiempo de respuesta del health check:$(NC)"
+	@START=$$(date +%s%N); \
+	curl -s http://$(NAS_HOST):3003/status > /dev/null; \
+	END=$$(date +%s%N); \
+	DIFF=$$(( (END - START) / 1000000 )); \
+	echo "   Tiempo: $$DIFF ms"
+	@echo ""
+	@echo "$(YELLOW)2. Carga de CPU de los últimos 5 minutos:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "uptime | awk -F'load average:' '{print \"   Load Average:\" \$$2}'"
+	@echo ""
+	@echo "$(YELLOW)3. Conexiones de red activas:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo netstat -an | grep :3003 | grep ESTABLISHED | wc -l | xargs echo '   Conexiones activas:'"
+	@echo ""
+	@echo "$(YELLOW)4. Memoria del sistema:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "free -h | grep Mem | awk '{print \"   Usado: \" \$$3 \" / \" \$$2}'"
+
+.PHONY: resource-usage
+resource-usage: ## Uso detallado de recursos
+	@echo "$(CYAN)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(CYAN)                    USO DE RECURSOS DETALLADO                   $(NC)"
+	@echo "$(CYAN)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)CPU por proceso:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker top $(CONTAINER_NAME) | head -10"
+	@echo ""
+	@echo "$(YELLOW)Memoria detallada:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker exec $(CONTAINER_NAME) cat /proc/meminfo | grep -E 'MemTotal|MemFree|MemAvailable|Cached' | awk '{printf \"  %-15s %10s KB\\n\", \$$1, \$$2}'"
+	@echo ""
+	@echo "$(YELLOW)I/O de Disco:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo iotop -b -n 1 2>/dev/null | grep -E 'Total|$(CONTAINER_NAME)' | head -5 || echo '  iotop no disponible'"
+
+.PHONY: response-times
+response-times: ## Analizar tiempos de respuesta de la API
+	@echo "$(BLUE)Analizando tiempos de respuesta...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Ejecutando 10 requests de prueba:$(NC)"
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		TIME=$$(curl -o /dev/null -s -w '%{time_total}\n' http://$(NAS_HOST):3003/status); \
+		echo "  Request $$i: $${TIME}s"; \
+		sleep 0.5; \
+	done | awk '{sum+=$$3; count++} END {print "\n$(GREEN)Promedio: " sum/count "s$(NC)"}'
+
+.PHONY: doctor
+doctor: ## Diagnóstico completo del sistema
+	@echo "$(MAGENTA)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(MAGENTA)║                    🏥 DOCTOR - DIAGNÓSTICO                    ║$(NC)"
+	@echo "$(MAGENTA)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)1. Verificando servicios...$(NC)"
+	@if curl -s http://$(NAS_HOST):3003/status > /dev/null; then \
+		echo "  $(GREEN)✓ API respondiendo$(NC)"; \
+	else \
+		echo "  $(RED)✗ API no responde$(NC)"; \
+	fi
+	@if $(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker exec $(DB_CONTAINER) pg_isready" > /dev/null 2>&1; then \
+		echo "  $(GREEN)✓ PostgreSQL activo$(NC)"; \
+	else \
+		echo "  $(RED)✗ PostgreSQL no responde$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)2. Verificando recursos...$(NC)"
+	@DISK_USAGE=$$($(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "df -h $(NAS_PATH) | tail -1 | awk '{print \$$5}' | sed 's/%//'"); \
+	if [ $$DISK_USAGE -lt 80 ]; then \
+		echo "  $(GREEN)✓ Disco: $$DISK_USAGE% usado$(NC)"; \
+	elif [ $$DISK_USAGE -lt 90 ]; then \
+		echo "  $(YELLOW)⚠ Disco: $$DISK_USAGE% usado$(NC)"; \
+	else \
+		echo "  $(RED)✗ Disco: $$DISK_USAGE% usado (CRÍTICO)$(NC)"; \
+	fi
+	@MEM_PERCENT=$$($(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "free | grep Mem | awk '{print int(\$$3/\$$2 * 100)}'"); \
+	if [ $$MEM_PERCENT -lt 80 ]; then \
+		echo "  $(GREEN)✓ Memoria: $$MEM_PERCENT% usada$(NC)"; \
+	elif [ $$MEM_PERCENT -lt 90 ]; then \
+		echo "  $(YELLOW)⚠ Memoria: $$MEM_PERCENT% usada$(NC)"; \
+	else \
+		echo "  $(RED)✗ Memoria: $$MEM_PERCENT% usada (CRÍTICO)$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)3. Verificando logs recientes...$(NC)"
+	@ERROR_COUNT=$$($(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 100 $(CONTAINER_NAME) 2>&1 | grep -iE 'error|exception' | wc -l"); \
+	if [ $$ERROR_COUNT -eq 0 ]; then \
+		echo "  $(GREEN)✓ No hay errores recientes$(NC)"; \
+	else \
+		echo "  $(YELLOW)⚠ $$ERROR_COUNT errores en los últimos 100 logs$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)4. Verificando conectividad...$(NC)"
+	@if $(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ping -c 1 google.com" > /dev/null 2>&1; then \
+		echo "  $(GREEN)✓ Conexión a Internet OK$(NC)"; \
+	else \
+		echo "  $(RED)✗ Sin conexión a Internet$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(CYAN)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(CYAN)                     DIAGNÓSTICO COMPLETADO                     $(NC)"
+	@echo "$(CYAN)═══════════════════════════════════════════════════════════════$(NC)"
+
+.PHONY: health-dashboard
+health-dashboard: ## Dashboard visual de salud del sistema
+	@clear
+	@while true; do \
+		echo "$(MAGENTA)╔══════════════════════════════════════════════════════════════╗$(NC)"; \
+		echo "$(MAGENTA)║                   DASHBOARD DE SALUD - $(shell date)$(NC)"; \
+		echo "$(MAGENTA)╚══════════════════════════════════════════════════════════════╝$(NC)"; \
+		echo ""; \
+		STATUS=$$(curl -s http://$(NAS_HOST):3003/status | jq -r '.status' 2>/dev/null || echo "ERROR"); \
+		if [ "$$STATUS" = "healthy" ]; then \
+			echo "Estado API: $(GREEN)● HEALTHY$(NC)"; \
+		else \
+			echo "Estado API: $(RED)● $$STATUS$(NC)"; \
+		fi; \
+		echo ""; \
+		$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker stats --no-stream --format 'CPU: {{.CPUPerc}} | MEM: {{.MemUsage}}' $(CONTAINER_NAME)"; \
+		echo ""; \
+		echo "$(YELLOW)Últimos 5 logs:$(NC)"; \
+		$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --tail 5 $(CONTAINER_NAME) 2>&1 | cut -c1-80"; \
+		echo ""; \
+		echo "$(CYAN)Presiona Ctrl+C para salir$(NC)"; \
+		sleep 5; \
+		clear; \
+	done
+
+.PHONY: alerts-check
+alerts-check: ## Verificar condiciones de alerta
+	@echo "$(RED)🚨 VERIFICANDO ALERTAS 🚨$(NC)"
+	@echo ""
+	@ALERTS=0; \
+	echo "$(YELLOW)Verificando condiciones críticas...$(NC)"; \
+	ERROR_COUNT=$$($(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs --since 5m $(CONTAINER_NAME) 2>&1 | grep -iE 'error|exception' | wc -l"); \
+	if [ $$ERROR_COUNT -gt 10 ]; then \
+		echo "  $(RED)⚠ ALERTA: $$ERROR_COUNT errores en los últimos 5 minutos$(NC)"; \
+		ALERTS=$$((ALERTS + 1)); \
+	fi; \
+	RESPONSE_TIME=$$(curl -o /dev/null -s -w '%{time_total}' http://$(NAS_HOST):3003/status); \
+	if (( $$(echo "$$RESPONSE_TIME > 2" | bc -l) )); then \
+		echo "  $(RED)⚠ ALERTA: Tiempo de respuesta alto: $${RESPONSE_TIME}s$(NC)"; \
+		ALERTS=$$((ALERTS + 1)); \
+	fi; \
+	if ! $(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker ps | grep -q $(CONTAINER_NAME)"; then \
+		echo "  $(RED)⚠ ALERTA: Contenedor $(CONTAINER_NAME) no está corriendo$(NC)"; \
+		ALERTS=$$((ALERTS + 1)); \
+	fi; \
+	echo ""; \
+	if [ $$ALERTS -eq 0 ]; then \
+		echo "$(GREEN)✓ No hay alertas activas$(NC)"; \
+	else \
+		echo "$(RED)✗ $$ALERTS alertas activas$(NC)"; \
+	fi
+
+.PHONY: logs-export
+logs-export: ## Exportar logs a archivo
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	OUTPUT_FILE="logs/ai-service_$$TIMESTAMP.log"; \
+	mkdir -p logs; \
+	echo "$(BLUE)Exportando logs a $$OUTPUT_FILE...$(NC)"; \
+	$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "sudo docker logs $(CONTAINER_NAME)" > $$OUTPUT_FILE 2>&1; \
+	echo "$(GREEN)✓ Logs exportados ($(shell wc -l < $$OUTPUT_FILE) líneas)$(NC)"
+
+# ============================================================================
+# NUEVOS COMANDOS DE MONITOREO LIGERO
+# ============================================================================
+
+.PHONY: monitor-start
+monitor-start: ## Iniciar monitor ligero local
+	@echo "$(BLUE)Iniciando monitor ligero...$(NC)"
+	@if pgrep -f "lightweight-monitor.js" > /dev/null; then \
+		echo "$(YELLOW)⚠ El monitor ya está en ejecución$(NC)"; \
+		echo "  PID: $$(pgrep -f lightweight-monitor.js)"; \
+	else \
+		nohup node monitoring/lightweight-monitor.js > monitoring/monitor.log 2>&1 & \
+		echo "$(GREEN)✓ Monitor iniciado (PID: $$!)$(NC)"; \
+		echo "  Logs: monitoring/monitor.log"; \
+		echo "  Métricas: http://localhost:9090/metrics"; \
+	fi
+
+.PHONY: monitor-dashboard
+monitor-dashboard: ## Abrir dashboard de monitoreo
+	@echo "$(BLUE)Iniciando dashboard de monitoreo...$(NC)"
+	@if pgrep -f "serve-dashboard.js" > /dev/null; then \
+		echo "$(YELLOW)Dashboard ya en ejecución$(NC)"; \
+	else \
+		node monitoring/serve-dashboard.js & \
+	fi
+	@sleep 2
+	@echo "$(GREEN)Abriendo dashboard en el navegador...$(NC)"
+	@if command -v xdg-open > /dev/null; then \
+		xdg-open http://localhost:8080; \
+	elif command -v open > /dev/null; then \
+		open http://localhost:8080; \
+	else \
+		echo "$(YELLOW)Abre manualmente: http://localhost:8080$(NC)"; \
+	fi
+
+.PHONY: monitor-status
+monitor-status: ## Ver estado del monitor ligero
+	@echo "$(CYAN)Estado del Monitor Ligero$(NC)"
+	@echo ""
+	@if pgrep -f "lightweight-monitor.js" > /dev/null; then \
+		PID=$$(pgrep -f lightweight-monitor.js); \
+		echo "$(GREEN)● Monitor activo (PID: $$PID)$(NC)"; \
+		echo ""; \
+		echo "$(YELLOW)Métricas actuales:$(NC)"; \
+		curl -s http://localhost:9090/status | jq . 2>/dev/null || echo "Error obteniendo status"; \
+	else \
+		echo "$(RED)● Monitor no está ejecutándose$(NC)"; \
+		echo "  Usa 'make monitor-start' para iniciarlo"; \
+	fi
+
+.PHONY: monitor-logs
+monitor-logs: ## Ver logs del monitor
+	@if [ -f monitoring/monitor.log ]; then \
+		echo "$(BLUE)Últimas 50 líneas del monitor:$(NC)"; \
+		tail -n 50 monitoring/monitor.log; \
+	else \
+		echo "$(YELLOW)No hay logs disponibles$(NC)"; \
+	fi
+
+.PHONY: monitor-stop
+monitor-stop: ## Detener monitor ligero
+	@echo "$(RED)Deteniendo monitor...$(NC)"
+	@if pgrep -f "lightweight-monitor.js" > /dev/null; then \
+		kill $$(pgrep -f lightweight-monitor.js); \
+		echo "$(GREEN)✓ Monitor detenido$(NC)"; \
+	else \
+		echo "$(YELLOW)El monitor no está en ejecución$(NC)"; \
+	fi
+	@if pgrep -f "serve-dashboard.js" > /dev/null; then \
+		kill $$(pgrep -f serve-dashboard.js); \
+		echo "$(GREEN)✓ Dashboard detenido$(NC)"; \
+	fi
+
+.PHONY: prometheus-metrics
+prometheus-metrics: ## Ver métricas en formato Prometheus
+	@echo "$(CYAN)Métricas Prometheus del servicio principal:$(NC)"
+	@curl -s http://localhost:3000/metrics | head -50
+	@echo ""
+	@echo "$(YELLOW)... (mostrando primeras 50 líneas)$(NC)"
+	@echo ""
+	@echo "Para ver todas las métricas: curl http://localhost:3000/metrics"
+
+.PHONY: monitor-install-service
+monitor-install-service: ## Instalar monitor como servicio systemd
+	@echo "$(BLUE)Instalando monitor como servicio systemd...$(NC)"
+	@echo "$(YELLOW)Requiere permisos sudo$(NC)"
+	@sudo cp monitoring/ai-monitor.service /etc/systemd/system/
+	@sudo systemctl daemon-reload
+	@echo "$(GREEN)✓ Servicio instalado$(NC)"
+	@echo ""
+	@echo "Comandos disponibles:"
+	@echo "  sudo systemctl start ai-monitor    # Iniciar"
+	@echo "  sudo systemctl enable ai-monitor   # Habilitar al inicio"
+	@echo "  sudo systemctl status ai-monitor   # Ver estado"
+	@echo "  sudo journalctl -u ai-monitor -f   # Ver logs"
+
+# Target por defecto
+.DEFAULT_GOAL := help

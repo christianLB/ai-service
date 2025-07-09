@@ -1,0 +1,387 @@
+# Makefile.security - Gestión de Secrets y Seguridad
+# Sistema de gestión segura de credenciales y validación de configuración
+
+# Cargar configuración
+-include .make.env
+
+# Colores
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+PURPLE := \033[0;35m
+NC := \033[0m
+
+# Variables
+ENV_FILES := .env .env.production .env.development .make.env
+REQUIRED_VARS := OPENAI_API_KEY DB_PASSWORD SSHPASS SUDO_PASS
+SENSITIVE_PATTERNS := password|secret|key|token|api_key|private
+
+.PHONY: help
+help: ## Mostrar ayuda de comandos de seguridad
+	@echo "$(PURPLE)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(PURPLE)║              COMANDOS DE SEGURIDAD Y SECRETS                  ║$(NC)"
+	@echo "$(PURPLE)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Validación:$(NC)"
+	@echo "  $(GREEN)make secrets-validate$(NC)    - Validar archivos .env"
+	@echo "  $(GREEN)make env-check$(NC)          - Verificar variables requeridas"
+	@echo "  $(GREEN)make secrets-audit$(NC)      - Auditar archivos sensibles"
+	@echo ""
+	@echo "$(YELLOW)Gestión:$(NC)"
+	@echo "  $(GREEN)make secrets-rotate$(NC)     - Rotar credenciales (interactivo)"
+	@echo "  $(GREEN)make secrets-backup$(NC)     - Backup seguro de secrets"
+	@echo "  $(GREEN)make secrets-restore$(NC)    - Restaurar secrets desde backup"
+	@echo ""
+	@echo "$(YELLOW)Seguridad:$(NC)"
+	@echo "  $(GREEN)make security-scan$(NC)      - Escanear código por secrets"
+	@echo "  $(GREEN)make permissions-check$(NC)  - Verificar permisos de archivos"
+	@echo "  $(GREEN)make ssl-check$(NC)          - Verificar certificados SSL"
+
+.PHONY: secrets-validate
+secrets-validate: ## Validar que todos los archivos .env existen y tienen formato correcto
+	@echo "$(BLUE)Validando archivos de configuración...$(NC)"
+	@ERRORS=0; \
+	for file in $(ENV_FILES); do \
+		if [ -f $$file ]; then \
+			echo -n "  $$file: "; \
+			if grep -E '^[A-Z_]+=' $$file > /dev/null; then \
+				echo "$(GREEN)✓ Válido$(NC)"; \
+			else \
+				echo "$(RED)✗ Formato inválido$(NC)"; \
+				ERRORS=$$((ERRORS + 1)); \
+			fi; \
+		else \
+			echo "  $$file: $(YELLOW)⚠ No existe$(NC)"; \
+		fi; \
+	done; \
+	if [ $$ERRORS -gt 0 ]; then \
+		echo "$(RED)✗ Se encontraron $$ERRORS errores$(NC)"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✓ Todos los archivos son válidos$(NC)"; \
+	fi
+
+.PHONY: env-check
+env-check: ## Verificar que todas las variables requeridas están definidas
+	@echo "$(BLUE)Verificando variables requeridas...$(NC)"
+	@MISSING=0; \
+	for var in $(REQUIRED_VARS); do \
+		echo -n "  $$var: "; \
+		FOUND=0; \
+		for file in $(ENV_FILES); do \
+			if [ -f $$file ] && grep -q "^$$var=" $$file; then \
+				FOUND=1; \
+				break; \
+			fi; \
+		done; \
+		if [ $$FOUND -eq 1 ]; then \
+			echo "$(GREEN)✓ Definida$(NC)"; \
+		else \
+			echo "$(RED)✗ Falta$(NC)"; \
+			MISSING=$$((MISSING + 1)); \
+		fi; \
+	done; \
+	if [ $$MISSING -gt 0 ]; then \
+		echo "$(RED)✗ Faltan $$MISSING variables requeridas$(NC)"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✓ Todas las variables están definidas$(NC)"; \
+	fi
+
+.PHONY: secrets-audit
+secrets-audit: ## Auditar archivos en busca de secrets expuestos
+	@echo "$(BLUE)Auditando archivos en busca de secrets...$(NC)"
+	@echo "$(YELLOW)Verificando archivos de configuración...$(NC)"
+	@for file in $(ENV_FILES); do \
+		if [ -f $$file ]; then \
+			PERMS=$$(stat -c %a $$file 2>/dev/null || stat -f %Lp $$file); \
+			if [ "$$PERMS" != "600" ]; then \
+				echo "  $(YELLOW)⚠ $$file tiene permisos $$PERMS (debería ser 600)$(NC)"; \
+			else \
+				echo "  $(GREEN)✓ $$file tiene permisos correctos$(NC)"; \
+			fi; \
+		fi; \
+	done
+	@echo "$(YELLOW)Buscando secrets en código...$(NC)"
+	@if git grep -iE '$(SENSITIVE_PATTERNS)' --exclude='*.env*' --exclude='Makefile*' --exclude='*.md' | grep -v '^#' | head -5; then \
+		echo "$(RED)✗ Se encontraron posibles secrets en el código$(NC)"; \
+		echo "$(YELLOW)  (mostrando solo las primeras 5 coincidencias)$(NC)"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✓ No se encontraron secrets expuestos en el código$(NC)"; \
+	fi
+
+.PHONY: secrets-rotate
+secrets-rotate: ## Rotar credenciales de forma interactiva
+	@echo "$(PURPLE)═══════════════════════════════════════════════════$(NC)"
+	@echo "$(PURPLE)       ROTACIÓN DE CREDENCIALES - INTERACTIVO       $(NC)"
+	@echo "$(PURPLE)═══════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)¿Qué credenciales deseas rotar?$(NC)"
+	@echo "  1) API Keys (OpenAI, etc.)"
+	@echo "  2) Passwords de Base de Datos"
+	@echo "  3) Credenciales SSH"
+	@echo "  4) Todas las anteriores"
+	@echo ""
+	@read -p "Selecciona una opción (1-4): " OPTION; \
+	case $$OPTION in \
+		1) $(MAKE) rotate-api-keys ;; \
+		2) $(MAKE) rotate-db-passwords ;; \
+		3) $(MAKE) rotate-ssh-credentials ;; \
+		4) $(MAKE) rotate-all ;; \
+		*) echo "$(RED)Opción inválida$(NC)"; exit 1 ;; \
+	esac
+
+.PHONY: rotate-api-keys
+rotate-api-keys: ## Rotar API keys
+	@echo "$(BLUE)Rotando API Keys...$(NC)"
+	@echo "$(YELLOW)NOTA: Debes generar nuevas keys en los proveedores correspondientes$(NC)"
+	@echo ""
+	@for file in .env .env.production; do \
+		if [ -f $$file ]; then \
+			echo "Actualizando $$file..."; \
+			cp $$file $$file.bak; \
+			read -p "Nueva OPENAI_API_KEY: " NEW_KEY; \
+			sed -i "s/^OPENAI_API_KEY=.*/OPENAI_API_KEY=$$NEW_KEY/" $$file; \
+			echo "$(GREEN)✓ $$file actualizado (backup en $$file.bak)$(NC)"; \
+		fi; \
+	done
+
+.PHONY: secrets-backup
+secrets-backup: ## Crear backup cifrado de secrets
+	@echo "$(BLUE)Creando backup cifrado de secrets...$(NC)"
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	BACKUP_DIR="backups/secrets"; \
+	mkdir -p $$BACKUP_DIR; \
+	tar czf - $(ENV_FILES) 2>/dev/null | \
+		openssl enc -aes-256-cbc -pbkdf2 -out $$BACKUP_DIR/secrets_$$TIMESTAMP.tar.gz.enc; \
+	if [ $$? -eq 0 ]; then \
+		echo "$(GREEN)✓ Backup creado: $$BACKUP_DIR/secrets_$$TIMESTAMP.tar.gz.enc$(NC)"; \
+		echo "$(YELLOW)IMPORTANTE: Guarda la contraseña en un lugar seguro$(NC)"; \
+	else \
+		echo "$(RED)✗ Error al crear backup$(NC)"; \
+		exit 1; \
+	fi
+
+.PHONY: secrets-restore
+secrets-restore: ## Restaurar secrets desde backup
+	@echo "$(BLUE)Restaurando secrets desde backup...$(NC)"
+	@BACKUP_DIR="backups/secrets"; \
+	if [ ! -d $$BACKUP_DIR ]; then \
+		echo "$(RED)✗ No se encontró directorio de backups$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(YELLOW)Backups disponibles:$(NC)"; \
+	ls -la $$BACKUP_DIR/*.enc 2>/dev/null || (echo "No hay backups" && exit 1); \
+	read -p "Nombre del archivo a restaurar: " BACKUP_FILE; \
+	if [ -f $$BACKUP_FILE ]; then \
+		openssl enc -aes-256-cbc -pbkdf2 -d -in $$BACKUP_FILE | tar xzf -; \
+		echo "$(GREEN)✓ Secrets restaurados$(NC)"; \
+	else \
+		echo "$(RED)✗ Archivo no encontrado$(NC)"; \
+		exit 1; \
+	fi
+
+.PHONY: security-scan
+security-scan: ## Escanear el proyecto en busca de vulnerabilidades de seguridad
+	@echo "$(BLUE)Escaneando proyecto por vulnerabilidades...$(NC)"
+	@echo "$(YELLOW)1. Verificando archivos sensibles...$(NC)"
+	@find . -type f \( -name "*.pem" -o -name "*.key" -o -name "*.p12" \) \
+		-not -path "./node_modules/*" -not -path "./.git/*" | \
+		while read file; do \
+			echo "  $(YELLOW)⚠ Archivo sensible encontrado: $$file$(NC)"; \
+		done
+	@echo "$(YELLOW)2. Verificando .gitignore...$(NC)"
+	@for pattern in "*.env" "*.pem" "*.key" ".make.env"; do \
+		if grep -q "$$pattern" .gitignore; then \
+			echo "  $(GREEN)✓ $$pattern está en .gitignore$(NC)"; \
+		else \
+			echo "  $(RED)✗ $$pattern NO está en .gitignore$(NC)"; \
+		fi; \
+	done
+	@echo "$(YELLOW)3. Verificando permisos de directorios...$(NC)"
+	@for dir in config backups scripts; do \
+		if [ -d $$dir ]; then \
+			PERMS=$$(stat -c %a $$dir 2>/dev/null || stat -f %Lp $$dir); \
+			echo "  $$dir: permisos $$PERMS"; \
+		fi; \
+	done
+
+.PHONY: permissions-check
+permissions-check: ## Verificar y corregir permisos de archivos sensibles
+	@echo "$(BLUE)Verificando permisos de archivos...$(NC)"
+	@FIXED=0; \
+	for file in $(ENV_FILES); do \
+		if [ -f $$file ]; then \
+			PERMS=$$(stat -c %a $$file 2>/dev/null || stat -f %Lp $$file); \
+			if [ "$$PERMS" != "600" ]; then \
+				echo "  $(YELLOW)Corrigiendo $$file ($$PERMS → 600)$(NC)"; \
+				chmod 600 $$file; \
+				FIXED=$$((FIXED + 1)); \
+			else \
+				echo "  $(GREEN)✓ $$file OK$(NC)"; \
+			fi; \
+		fi; \
+	done; \
+	if [ $$FIXED -gt 0 ]; then \
+		echo "$(GREEN)✓ Se corrigieron $$FIXED archivos$(NC)"; \
+	else \
+		echo "$(GREEN)✓ Todos los permisos están correctos$(NC)"; \
+	fi
+
+.PHONY: ssl-check
+ssl-check: ## Verificar certificados SSL y fechas de expiración
+	@echo "$(BLUE)Verificando certificados SSL...$(NC)"
+	@HOSTS="$(NAS_HOST):3003 $(NAS_HOST):443"; \
+	for HOST in $$HOSTS; do \
+		echo "$(YELLOW)Verificando $$HOST...$(NC)"; \
+		CERT_INFO=$$(echo | openssl s_client -connect $$HOST -servername $$HOST 2>/dev/null | \
+			openssl x509 -noout -dates 2>/dev/null); \
+		if [ -n "$$CERT_INFO" ]; then \
+			echo "$$CERT_INFO" | grep "notAfter"; \
+			EXPIRY=$$(echo "$$CERT_INFO" | grep "notAfter" | cut -d= -f2); \
+			EXPIRY_EPOCH=$$(date -d "$$EXPIRY" +%s 2>/dev/null || date -j -f "%b %d %H:%M:%S %Y %Z" "$$EXPIRY" +%s); \
+			NOW_EPOCH=$$(date +%s); \
+			DAYS_LEFT=$$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 )); \
+			if [ $$DAYS_LEFT -lt 30 ]; then \
+				echo "  $(RED)✗ Expira en $$DAYS_LEFT días$(NC)"; \
+			else \
+				echo "  $(GREEN)✓ Válido por $$DAYS_LEFT días$(NC)"; \
+			fi; \
+		else \
+			echo "  $(YELLOW)⚠ No se pudo verificar SSL (puede no estar configurado)$(NC)"; \
+		fi; \
+	done
+
+.PHONY: generate-secret
+generate-secret: ## Generar un secret aleatorio seguro
+	@echo "$(BLUE)Generando secret seguro...$(NC)"
+	@SECRET=$$(openssl rand -base64 32); \
+	echo "$(GREEN)Secret generado:$(NC) $$SECRET"; \
+	echo "$(YELLOW)NOTA: Copia este valor de forma segura, no se mostrará de nuevo$(NC)"
+
+.PHONY: encrypt-file
+encrypt-file: ## Cifrar un archivo (uso: make encrypt-file FILE=archivo.txt)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica el archivo con FILE=archivo.txt$(NC)"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(FILE)" ]; then \
+		echo "$(RED)Error: El archivo $(FILE) no existe$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Cifrando $(FILE)...$(NC)"
+	@openssl enc -aes-256-cbc -pbkdf2 -in "$(FILE)" -out "$(FILE).enc"
+	@echo "$(GREEN)✓ Archivo cifrado: $(FILE).enc$(NC)"
+	@echo "$(YELLOW)IMPORTANTE: Guarda la contraseña en un lugar seguro$(NC)"
+
+.PHONY: decrypt-file
+decrypt-file: ## Descifrar un archivo (uso: make decrypt-file FILE=archivo.txt.enc)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica el archivo con FILE=archivo.txt.enc$(NC)"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(FILE)" ]; then \
+		echo "$(RED)Error: El archivo $(FILE) no existe$(NC)"; \
+		exit 1; \
+	fi
+	@OUTPUT=$$(echo "$(FILE)" | sed 's/\.enc$$//'); \
+	echo "$(BLUE)Descifrando $(FILE)...$(NC)"; \
+	openssl enc -aes-256-cbc -pbkdf2 -d -in "$(FILE)" -out "$$OUTPUT"; \
+	echo "$(GREEN)✓ Archivo descifrado: $$OUTPUT$(NC)"
+
+# ===== CI/CD SECRETS MANAGEMENT =====
+
+.PHONY: cicd-setup
+cicd-setup: ## Configurar todos los secretos para CI/CD
+	@echo "$(PURPLE)═══════════════════════════════════════════════════$(NC)"
+	@echo "$(PURPLE)        CONFIGURACIÓN DE SECRETOS CI/CD             $(NC)"
+	@echo "$(PURPLE)═══════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@./scripts/secure-secrets-manager.sh setup
+
+.PHONY: ghcr-setup
+ghcr-setup: ## Configurar autenticación para GitHub Container Registry
+	@echo "$(BLUE)Configurando GitHub Container Registry...$(NC)"
+	@./scripts/secure-secrets-manager.sh ghcr
+
+.PHONY: watchtower-config
+watchtower-config: ## Generar configuración de Watchtower para GHCR
+	@echo "$(BLUE)Configurando Watchtower para GHCR...$(NC)"
+	@if [ ! -f config/watchtower/config.json ]; then \
+		echo "$(RED)✗ No se encontró config/watchtower/config.json$(NC)"; \
+		echo "$(YELLOW)Ejecuta 'make ghcr-setup' primero$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ Configuración de Watchtower lista$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Para usar en el NAS:$(NC)"
+	@echo "1. Copia config/watchtower/config.json a $(NAS_PATH)/config/watchtower/"
+	@echo "2. Monta el archivo en Watchtower:"
+	@echo "   -v $(NAS_PATH)/config/watchtower/config.json:/config.json"
+	@echo "3. Configura Watchtower con:"
+	@echo "   DOCKER_CONFIG=/config.json"
+
+.PHONY: github-secrets-docs
+github-secrets-docs: ## Mostrar documentación de secretos de GitHub
+	@echo "$(BLUE)Documentación de secretos de GitHub:$(NC)"
+	@cat docs/GITHUB_SECRETS_SETUP.md | head -50
+	@echo ""
+	@echo "$(YELLOW)Ver archivo completo: docs/GITHUB_SECRETS_SETUP.md$(NC)"
+
+.PHONY: validate-cicd
+validate-cicd: ## Validar configuración de CI/CD
+	@echo "$(BLUE)Validando configuración de CI/CD...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)1. Verificando archivos de configuración...$(NC)"
+	@if [ -f config/watchtower/config.json ]; then \
+		echo "  $(GREEN)✓ config/watchtower/config.json existe$(NC)"; \
+		if grep -q "ghcr.io" config/watchtower/config.json; then \
+			echo "  $(GREEN)✓ Configuración de ghcr.io presente$(NC)"; \
+		else \
+			echo "  $(RED)✗ Falta configuración de ghcr.io$(NC)"; \
+		fi; \
+	else \
+		echo "  $(RED)✗ config/watchtower/config.json no existe$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)2. Verificando template de variables...$(NC)"
+	@if [ -f .env.template ]; then \
+		echo "  $(GREEN)✓ .env.template existe$(NC)"; \
+		VARS=$$(grep -E "^[A-Z_]+=" .env.template | wc -l); \
+		echo "  $(GREEN)✓ $$VARS variables definidas en template$(NC)"; \
+	else \
+		echo "  $(RED)✗ .env.template no existe$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)3. Verificando scripts de seguridad...$(NC)"
+	@if [ -x scripts/secure-secrets-manager.sh ]; then \
+		echo "  $(GREEN)✓ secure-secrets-manager.sh es ejecutable$(NC)"; \
+	else \
+		echo "  $(RED)✗ secure-secrets-manager.sh no es ejecutable$(NC)"; \
+	fi
+
+.PHONY: test-ghcr-auth
+test-ghcr-auth: ## Probar autenticación con GitHub Container Registry
+	@echo "$(BLUE)Probando autenticación con GHCR...$(NC)"
+	@if [ ! -f config/watchtower/config.json ]; then \
+		echo "$(RED)✗ No se encontró configuración de GHCR$(NC)"; \
+		echo "$(YELLOW)Ejecuta 'make ghcr-setup' primero$(NC)"; \
+		exit 1; \
+	fi
+	@AUTH=$$(jq -r '.auths["ghcr.io"].auth' config/watchtower/config.json); \
+	if [ -z "$$AUTH" ] || [ "$$AUTH" = "null" ]; then \
+		echo "$(RED)✗ No se encontró token de autenticación$(NC)"; \
+		exit 1; \
+	fi; \
+	DECODED=$$(echo $$AUTH | base64 -d); \
+	USERNAME=$$(echo $$DECODED | cut -d: -f1); \
+	TOKEN=$$(echo $$DECODED | cut -d: -f2); \
+	echo "$(YELLOW)Probando login con usuario: $$USERNAME$(NC)"; \
+	echo $$TOKEN | docker login ghcr.io -u $$USERNAME --password-stdin 2>&1 | \
+		grep -q "Login Succeeded" && echo "$(GREEN)✓ Autenticación exitosa$(NC)" || \
+		(echo "$(RED)✗ Fallo en autenticación$(NC)" && exit 1)
+
+# Target por defecto
+.DEFAULT_GOAL := help

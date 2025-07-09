@@ -1,0 +1,296 @@
+version: '3.8'
+
+# Configuración optimizada para Synology DS420+ con 10GB RAM
+# Objetivo: Máxima eficiencia de recursos
+
+services:
+  # PostgreSQL con límites estrictos de recursos
+  postgres:
+    image: postgres:16-alpine  # Alpine para menor uso de memoria
+    container_name: ai-service-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ${DB_USER:-ai_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Configuración optimizada para bajo consumo de memoria
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      # Configuración de PostgreSQL para bajo consumo
+      POSTGRES_MAX_CONNECTIONS: 50
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_WORK_MEM: 4MB
+      POSTGRES_WAL_BUFFERS: 8MB
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
+      POSTGRES_RANDOM_PAGE_COST: 1.1
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./config/fix-financial-schema.sql:/docker-entrypoint-initdb.d/02-fix-financial.sql:ro
+    ports:
+      - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ai_user} -d ai_service"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c work_mem=4MB
+      -c max_connections=50
+      -c wal_buffers=8MB
+      -c checkpoint_completion_target=0.9
+      -c random_page_cost=1.1
+      -c log_min_duration_statement=500
+      -c log_checkpoints=on
+
+  # Redis con límites estrictos
+  redis:
+    image: redis:7-alpine
+    container_name: ai-service-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    command: >
+      redis-server
+      --maxmemory 200mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Aplicación principal con límites optimizados
+  ai-service:
+    image: k2600x/ai-service:production
+    container_name: ai-service-app
+    restart: unless-stopped
+    environment:
+      # Base de datos
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ai_service
+      DB_USER: ${DB_USER:-ai_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      
+      # Telegram
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
+      
+      # GoCardless
+      GOCARDLESS_ACCESS_TOKEN: ${GOCARDLESS_ACCESS_TOKEN}
+      GOCARDLESS_ENVIRONMENT: ${GOCARDLESS_ENVIRONMENT:-sandbox}
+      
+      # Node.js optimizaciones
+      NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=1024"
+      
+      # Aplicación
+      PORT: 3001
+      LOG_LEVEL: info
+      ENABLE_METRICS: "true"
+      METRICS_PORT: 9090
+      
+      # Configuración de workers
+      WEB_CONCURRENCY: 2  # Número de procesos worker
+      UV_THREADPOOL_SIZE: 4  # Threads para operaciones I/O
+    ports:
+      - "3001:3001"
+      - "9090:9090"  # Métricas Prometheus
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - document_storage:/app/data/documents
+      - logs:/app/logs
+      - ./frontend/dist:/app/frontend/dist:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Monitor ligero (menos de 50MB RAM)
+  monitor:
+    image: node:20-alpine
+    container_name: ai-service-monitor
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./scripts/nas/monitor.js:/app/monitor.js:ro
+      - monitor_data:/app/data
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ${DB_USER:-ai_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_URL: http://ai-service:3001
+      METRICS_URL: http://ai-service:9090/metrics
+      MONITOR_INTERVAL: 60000  # 1 minuto
+      LOG_RETENTION_DAYS: 7
+      NODE_OPTIONS: "--max-old-space-size=48"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 50M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+    depends_on:
+      - ai-service
+    command: ["node", "monitor.js"]
+
+  # Frontend estático con Nginx ultra-ligero
+  nginx:
+    image: nginx:alpine
+    container_name: ai-service-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./deploy/nas/nginx.conf:/etc/nginx/nginx.conf:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    depends_on:
+      - ai-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backup automático ligero
+  backup:
+    image: postgres:16-alpine
+    container_name: ai-service-backup
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ai_service
+      PGUSER: ${DB_USER:-ai_user}
+      PGPASSWORD: ${DB_PASSWORD}
+      BACKUP_SCHEDULE: "0 2 * * *"  # 2 AM diario
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      - ./scripts/nas/backup.sh:/backup.sh:ro
+      - backups:/backups
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    depends_on:
+      - postgres
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["crond -f -l 8"]
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /volume1/docker/ai-service/data/postgres
+      o: bind
+  
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /volume1/docker/ai-service/data/redis
+      o: bind
+  
+  document_storage:
+    driver: local
+    driver_opts:
+      type: none
+      device: /volume1/docker/ai-service/data/documents
+      o: bind
+  
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      device: /volume1/docker/ai-service/logs
+      o: bind
+  
+  monitor_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /volume1/docker/ai-service/data/monitor
+      o: bind
+  
+  backups:
+    driver: local
+    driver_opts:
+      type: none
+      device: /volume1/docker/ai-service/backups
+      o: bind
+
+networks:
+  default:
+    name: ai-service-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

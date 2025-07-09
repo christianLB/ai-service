@@ -3,10 +3,13 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-const envLocalPath = path.join(__dirname, '../.env.local');
-if (fs.existsSync(envLocalPath)) {
-  dotenv.config({ path: envLocalPath });
-  console.log('📁 Environment variables loaded from .env.local');
+// Only load .env.local in development mode
+if (process.env.NODE_ENV !== 'production') {
+  const envLocalPath = path.join(__dirname, '../.env.local');
+  if (fs.existsSync(envLocalPath)) {
+    dotenv.config({ path: envLocalPath });
+    console.log('📁 Environment variables loaded from .env.local');
+  }
 }
 
 import express from 'express';
@@ -24,6 +27,7 @@ import { TelegramService } from './services/communication/telegram.service';
 import { FinancialDatabaseService } from './services/financial/database.service';
 import { DocumentStorageService } from './services/document-intelligence/storage.service';
 import { neuralOrchestrator } from './services/neural-orchestrator';
+import { forensicLogger, showForensicLogs } from './utils/forensic-logger';
 
 const app = express();
 
@@ -31,8 +35,29 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir archivos estáticos
-app.use('/public', express.static(path.join(__dirname, '../public')));
+// Servir archivos estáticos del frontend
+// En producción, el volumen se monta en /app/public según docker-compose.production.yml
+const frontendPath = process.env.NODE_ENV === 'production' 
+  ? path.join(__dirname, '../public')
+  : path.join(__dirname, '../frontend/dist');
+logger.info(`Serving static files from: ${frontendPath}`);
+
+// Middleware para prevenir caché en archivos HTML
+app.use((req, res, next) => {
+  // Aplicar no-cache solo a archivos HTML y la ruta raíz
+  if (req.path.endsWith('.html') || req.path === '/' || req.path === '') {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    logger.debug(`No-cache headers set for: ${req.path}`);
+  } else if (req.path.startsWith('/assets/') && req.path.match(/\.(js|css)$/)) {
+    // Assets pueden ser cacheados ya que Vite les pone hash en el nombre
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+  next();
+});
+
+app.use(express.static(frontendPath));
 
 // Middleware de métricas (debe ir antes de las rutas)
 app.use(metricsService.createApiMetricsMiddleware());
@@ -50,13 +75,32 @@ app.use((req, res, next) => {
   next();
 });
 
-// Main route - return API info
-app.get('/', (_req: express.Request, res: express.Response) => {
+// API info endpoint
+app.get('/api/info', (_req: express.Request, res: express.Response) => {
   res.json({
     service: 'AI Service API',
     version: process.env.npm_package_version || '1.0.0',
     status: 'running',
-    message: 'Use /status for health check or /api/* for API endpoints'
+    message: 'Use /health for health check or /api/* for API endpoints'
+  });
+});
+
+// Forensic logs endpoint
+app.get('/forensic-logs', (_req: express.Request, res: express.Response) => {
+  const summary = forensicLogger.getSummary();
+  res.json({
+    summary,
+    logFile: forensicLogger.getLogFile(),
+    message: 'Check console for detailed output or view the log file directly'
+  });
+});
+
+// Simple health check endpoint (for Docker healthcheck)
+app.get('/health', (_req: express.Request, res: express.Response) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
@@ -140,6 +184,21 @@ app.get('/neural', async (_req: express.Request, res: express.Response) => {
   }
 });
 
+// Metrics endpoint (Prometheus format)
+app.get('/metrics', async (_req: express.Request, res: express.Response) => {
+  try {
+    const metrics = await metricsService.getMetrics();
+    res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.send(metrics);
+  } catch (error: any) {
+    logger.error('Error getting metrics:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // API Routes
 app.use('/api', flowGen);
 app.use('/api', flowUpdate);
@@ -149,6 +208,10 @@ app.use('/api', versionRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/documents', documentRoutes);
 
+// Catch-all route for SPA - serve index.html for any non-API route
+app.get('*', (_req: express.Request, res: express.Response) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -278,12 +341,22 @@ async function initializeTelegramBot() {
 // Inicialización de servicios
 async function initializeServices() {
   try {
+    console.log('🚀 [CONSOLE] Starting AI Service initialization...');
     logger.info('🚀 Starting AI Service initialization...');
     
     // Inicializar base de datos
+    console.log('📊 [CONSOLE] About to initialize database...');
     logger.info('📊 Initializing database...');
-    await db.initialize();
-    logger.info('✅ Database initialized successfully');
+    
+    try {
+      await db.initialize();
+      console.log('✅ [CONSOLE] Database initialized successfully');
+      logger.info('✅ Database initialized successfully');
+    } catch (dbError: any) {
+      console.error('❌ [CONSOLE] Database initialization failed:', dbError.message);
+      logger.error('❌ Database initialization failed:', dbError);
+      throw dbError;
+    }
     
     // Inicializar métricas
     logger.info('📈 Initializing metrics service...');
@@ -393,7 +466,11 @@ async function startServer() {
 
 // Iniciar el servidor solo si este archivo se ejecuta directamente
 if (require.main === module) {
-  startServer();
+  console.log('🎯 [CONSOLE] Main module detected, starting server...');
+  startServer().catch(error => {
+    console.error('💥 [CONSOLE] Fatal error starting server:', error);
+    process.exit(1);
+  });
 }
 
 export { app, startServer };

@@ -65,7 +65,7 @@ COPY --chown=nodejs:nodejs entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 # Crear directorios necesarios
-RUN mkdir -p logs workflows data/documents/storage data/documents/temp data/documents/thumbnails data/knowledge data/workflows/storage && \
+RUN mkdir -p logs/forensic workflows data/documents/storage data/documents/temp data/documents/thumbnails data/knowledge data/workflows/storage && \
     chown -R nodejs:nodejs logs workflows data
 
 # Configurar usuario
@@ -75,8 +75,8 @@ USER nodejs
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/status || exit 1
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=5 \
+    CMD curl -f http://localhost:3000/health || exit 1
 
 # Comando de inicio
 ENTRYPOINT ["dumb-init", "./entrypoint.sh"]

@@ -144,6 +144,52 @@ export class GoCardlessService {
     }
   }
 
+  async getRequisitionStatus(requisitionId: string): Promise<FinancialApiResponse<GoCardlessRequisition>> {
+    try {
+      console.log(`[getRequisitionStatus] Fetching status for requisition: ${requisitionId}`);
+      
+      const response = await this.api.get(`/requisitions/${requisitionId}/`);
+      const requisition = response.data;
+      
+      console.log(`[getRequisitionStatus] Requisition status retrieved:`, {
+        id: requisition.id,
+        status: requisition.status,
+        accounts: requisition.accounts?.length || 0,
+        created: requisition.created
+      });
+      
+      return {
+        success: true,
+        data: requisition,
+        metadata: {
+          retrievedAt: new Date().toISOString()
+        }
+      };
+    } catch (error: any) {
+      console.error('[getRequisitionStatus] Failed to get requisition status:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          error: 'Requisition not found - The requisition ID does not exist or has been deleted'
+        };
+      }
+      
+      if (error.response?.status === 401) {
+        return {
+          success: false,
+          error: 'Authentication failed - Unable to authenticate with GoCardless API'
+        };
+      }
+      
+      return {
+        success: false,
+        error: `Failed to get requisition status: ${error.message || 'Unknown error occurred'}`
+      };
+    }
+  }
+
   async deleteRequisition(requisitionId: string): Promise<void> {
     try {
       await this.api.delete(`/requisitions/${requisitionId}/`);

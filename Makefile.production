@@ -79,6 +79,101 @@ prod-fix-permissions: ## Arreglar permisos de archivos en el NAS
 	@echo "$(GREEN)✓ Permisos corregidos$(NC)"
 
 # =============================================================================
+# 🔴 COMANDOS DE PRODUCCIÓN - Build y Deploy
+# =============================================================================
+
+.PHONY: prod-build-image
+prod-build-image: ## 🏗️ Construir imagen Docker de producción
+	@echo "$(BLUE)🏗️ Construyendo imagen de producción...$(NC)"
+	@echo "$(YELLOW)1. Compilando TypeScript...$(NC)"
+	@npm run build
+	@echo "$(YELLOW)2. Construyendo imagen Docker...$(NC)"
+	@docker build -f Dockerfile -t ai-service:simple .
+	@echo "$(YELLOW)3. Exportando imagen...$(NC)"
+	@docker save ai-service:simple | gzip > ai-service-production.tar.gz
+	@echo "$(GREEN)✓ Imagen creada: ai-service-production.tar.gz$(NC)"
+	@ls -lh ai-service-production.tar.gz
+
+.PHONY: prod-deploy-image
+prod-deploy-image: ## Deploy imagen Docker a producción con backup automático
+	@echo "$(BLUE)📦 Desplegando imagen Docker a producción...$(NC)"
+	@if [ ! -f ai-service-production.tar.gz ]; then \
+		echo "$(RED)Error: No se encuentra ai-service-production.tar.gz$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)📸 Creando backup pre-deploy...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && ./scripts/emergency/pre-deploy-backup.sh remote"
+	@echo "$(YELLOW)Copiando imagen al NAS...$(NC)"
+	@$(SCP) ai-service-production.tar.gz $(PROD_USER)@$(PROD_HOST):/tmp/
+	@echo "$(YELLOW)Cargando imagen en Docker...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd /tmp && echo '$(SUDO_PASS)' | sudo -S sh -c 'gunzip -c ai-service-production.tar.gz | /usr/local/bin/docker load'"
+	@echo "$(GREEN)✓ Imagen ai-service:simple cargada$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "rm /tmp/ai-service-production.tar.gz"
+	@echo "$(YELLOW)Reiniciando servicios...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d"
+	@echo "$(GREEN)✓ Deploy completado$(NC)"
+	@echo "$(YELLOW)💡 En caso de problemas: make prod-emergency-restore$(NC)"
+	@sleep 5
+	@$(MAKE) prod-health
+
+.PHONY: prod-update-config
+prod-update-config: ## Actualizar configuración de docker-compose en producción con backup
+	@echo "$(BLUE)🔧 Actualizando configuración en producción...$(NC)"
+	@echo "$(YELLOW)📸 Creando backup de configuración...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cp $(PROD_PATH)/docker-compose.yml $(PROD_PATH)/docker-compose.yml.backup-$(shell date +%Y%m%d_%H%M%S) 2>/dev/null || true"
+	@$(SCP) docker-compose.production.yml $(PROD_USER)@$(PROD_HOST):$(PROD_PATH)/docker-compose.yml
+	@echo "$(GREEN)✓ Configuración actualizada$(NC)"
+	@echo "$(YELLOW)Creando directorios necesarios...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mkdir -p $(PROD_PATH)/postgres $(PROD_PATH)/redis $(PROD_PATH)/logs $(PROD_PATH)/documents $(PROD_PATH)/config"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chown -R $(PROD_USER):users $(PROD_PATH)/postgres $(PROD_PATH)/redis $(PROD_PATH)/logs $(PROD_PATH)/documents $(PROD_PATH)/config"
+	@echo "$(YELLOW)Reiniciando servicios...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose down --remove-orphans"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d"
+	@echo "$(GREEN)✓ Servicios reiniciados$(NC)"
+	@echo "$(YELLOW)💡 En caso de problemas: make prod-emergency-restore$(NC)"
+	@sleep 5
+	@echo "$(BLUE)📋 Revisando logs del servicio...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service --tail=20"
+
+.PHONY: prod-logs
+prod-logs: ## Ver logs del servicio AI
+	@echo "$(BLUE)📋 Logs del servicio AI...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service --tail=50"
+
+.PHONY: prod-ps
+prod-ps: ## Ver todos los contenedores
+	@echo "$(BLUE)📋 Contenedores en producción...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker ps -a | grep -E 'ai-|CONTAINER'"
+
+.PHONY: prod-start
+prod-start: ## Iniciar el servicio AI
+	@echo "$(BLUE)🚀 Iniciando servicio AI...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-service"
+	@echo "$(GREEN)✓ Servicio iniciado$(NC)"
+
+.PHONY: prod-logs-full
+prod-logs-full: ## Ver logs completos del servicio AI
+	@echo "$(BLUE)📋 Logs completos del servicio AI...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service"
+
+.PHONY: prod-logs-postgres
+prod-logs-postgres: ## Ver logs de PostgreSQL
+	@echo "$(BLUE)📋 Logs de PostgreSQL...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-postgres --tail=30"
+
+.PHONY: prod-reset-postgres
+prod-reset-postgres: ## Limpiar y reinicializar PostgreSQL
+	@echo "$(RED)⚠️  Limpiando datos de PostgreSQL (versión incompatible)...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose stop"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker rm ai-postgres || true"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S rm -rf $(PROD_PATH)/postgres"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mkdir -p $(PROD_PATH)/postgres"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chown -R $(PROD_USER):users $(PROD_PATH)/postgres"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S ls -la $(PROD_PATH)/postgres/"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d"
+	@echo "$(GREEN)✓ PostgreSQL reinicializado$(NC)"
+
+# =============================================================================
 # 🔴 COMANDOS DE PRODUCCIÓN - Diagnóstico
 # =============================================================================
 

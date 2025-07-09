@@ -1,0 +1,24 @@
+[Unit]
+Description=AI Service Lightweight Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=node
+WorkingDirectory=/app/monitoring
+ExecStart=/usr/bin/node /app/monitoring/lightweight-monitor.js
+Restart=always
+RestartSec=10
+
+# Resource limits - máximo 50MB
+MemoryLimit=50M
+CPUQuota=10%
+
+# Environment
+Environment="NODE_ENV=production"
+Environment="SERVICE_URL=http://localhost:3000"
+Environment="MONITOR_PORT=9090"
+Environment="MONITOR_LOG=/var/log/ai-monitor.log"
+
+[Install]
+WantedBy=multi-user.target

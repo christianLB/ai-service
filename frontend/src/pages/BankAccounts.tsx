@@ -42,6 +42,12 @@ interface BankAccount {
   is_active: boolean;
 }
 
+interface StoredRequisition {
+  requisitionId: string;
+  timestamp: number;
+  bankName: string;
+}
+
 // interface Institution {
 //   id: string;
 //   name: string;
@@ -58,11 +64,59 @@ const BankAccounts: React.FC = () => {
   // const [institutions, setInstitutions] = useState<Institution[]>([]);
   // const [selectedInstitution, setSelectedInstitution] = useState<string>('');
   const [requisitionUrl, setRequisitionUrl] = useState<string>('');
+  const [requisitionId, setRequisitionId] = useState<string>('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [completeLoading, setCompleteLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(false);
+
+  // LocalStorage key for requisition data
+  const REQUISITION_STORAGE_KEY = 'bank_requisition_pending';
+
+  // Helper functions for localStorage with expiration
+  const saveRequisitionToStorage = (requisitionId: string, bankName: string = 'BBVA') => {
+    const data: StoredRequisition = {
+      requisitionId,
+      timestamp: Date.now(),
+      bankName
+    };
+    localStorage.setItem(REQUISITION_STORAGE_KEY, JSON.stringify(data));
+  };
+
+  const getRequisitionFromStorage = (): StoredRequisition | null => {
+    const stored = localStorage.getItem(REQUISITION_STORAGE_KEY);
+    if (!stored) return null;
+
+    try {
+      const data: StoredRequisition = JSON.parse(stored);
+      // Check if data is older than 1 hour (3600000 ms)
+      if (Date.now() - data.timestamp > 3600000) {
+        localStorage.removeItem(REQUISITION_STORAGE_KEY);
+        return null;
+      }
+      return data;
+    } catch {
+      localStorage.removeItem(REQUISITION_STORAGE_KEY);
+      return null;
+    }
+  };
+
+  const clearRequisitionFromStorage = () => {
+    localStorage.removeItem(REQUISITION_STORAGE_KEY);
+  };
 
   // Fetch accounts on component mount
   useEffect(() => {
     fetchAccounts();
     checkSyncStatus();
+    
+    // Check for pending requisition
+    const storedRequisition = getRequisitionFromStorage();
+    if (storedRequisition) {
+      message.info('Tienes una autorización pendiente de completar');
+      setRequisitionId(storedRequisition.requisitionId);
+      setSetupModalVisible(true);
+      setCurrentStep(1);
+    }
   }, []);
 
   const fetchAccounts = async () => {
@@ -108,39 +162,122 @@ const BankAccounts: React.FC = () => {
   const startSetup = () => {
     setSetupModalVisible(true);
     setCurrentStep(0);
+    setRequisitionId('');
+    setRequisitionUrl('');
     // For now, we'll use BBVA as default
     // setSelectedInstitution('BBVA_BBVAESMM');
   };
 
   const handleSetupBBVA = async () => {
+    setAuthLoading(true);
     try {
+      console.log('Iniciando setup BBVA...');
       const response = await axios.post('/api/financial/setup-bbva');
-      if (response.data.success && response.data.data.authUrl) {
-        setRequisitionUrl(response.data.data.authUrl);
+      console.log('Respuesta del servidor:', response.data);
+      
+      if (response.data.success && response.data.data.consentUrl) {
+        const { consentUrl, requisitionId } = response.data.data;
+        console.log('ConsentUrl:', consentUrl);
+        console.log('RequisitionId:', requisitionId);
+        
+        // Save requisition data
+        setRequisitionUrl(consentUrl);
+        setRequisitionId(requisitionId);
+        
+        // Save to localStorage for recovery
+        saveRequisitionToStorage(requisitionId, 'BBVA');
+        
         setCurrentStep(1);
         
         // Open authorization URL in new window
-        window.open(response.data.data.authUrl, '_blank');
+        const authWindow = window.open(consentUrl, '_blank');
+        if (!authWindow) {
+          message.warning('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.');
+        }
         
         message.info('Por favor, autoriza el acceso en la ventana que se abrió');
+      } else {
+        console.error('Respuesta inesperada:', response.data);
+        message.error('No se recibió la URL de autorización');
       }
     } catch (error) {
+      console.error('Setup error:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Error details:', error.response?.data);
+      }
       message.error('Error al iniciar el proceso de autorización');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
   const handleCompleteSetup = async () => {
+    if (!requisitionId) {
+      message.error('No se encontró el ID de requisición. Por favor, intenta nuevamente.');
+      return;
+    }
+
+    setCompleteLoading(true);
     try {
-      const response = await axios.post('/api/financial/complete-setup');
+      const response = await axios.post('/api/financial/complete-setup', {
+        requisitionId
+      });
+      
       if (response.data.success) {
         message.success('¡Configuración completada exitosamente!');
-        setSetupModalVisible(false);
-        fetchAccounts();
+        clearRequisitionFromStorage();
+        setCurrentStep(2);
+        
+        // Wait 2 seconds to show success screen, then close and refresh
+        setTimeout(() => {
+          setSetupModalVisible(false);
+          fetchAccounts();
+        }, 2000);
+      } else {
+        message.error(response.data.error || 'Error al completar la configuración');
       }
-    } catch (error) {
-      message.error('Error al completar la configuración');
+    } catch (error: any) {
+      console.error('Complete setup error:', error);
+      if (error.response?.data?.error) {
+        message.error(error.response.data.error);
+      } else {
+        message.error('Error al completar la configuración. Por favor, intenta nuevamente.');
+      }
+    } finally {
+      setCompleteLoading(false);
     }
   };
+
+  // Optional: Check authorization status periodically
+  const checkAuthorizationStatus = async () => {
+    if (!requisitionId || currentStep !== 1) return;
+    
+    setCheckingAuth(true);
+    try {
+      const response = await axios.get(`/api/financial/requisition-status/${requisitionId}`);
+      if (response.data.success && response.data.data.status === 'LN') {
+        // Linked successfully
+        message.success('¡Autorización detectada! Completando configuración...');
+        await handleCompleteSetup();
+      }
+    } catch (error) {
+      // Silent fail - user can still click the button manually
+      console.log('Status check failed:', error);
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  // Optional: Auto-check authorization status
+  useEffect(() => {
+    if (currentStep === 1 && requisitionId) {
+      const interval = setInterval(() => {
+        checkAuthorizationStatus();
+      }, 10000); // Check every 10 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [currentStep, requisitionId]);
 
   const columns = [
     {
@@ -318,9 +455,31 @@ const BankAccounts: React.FC = () => {
       <Modal
         title="Conectar Cuenta Bancaria"
         visible={setupModalVisible}
-        onCancel={() => setSetupModalVisible(false)}
+        onCancel={() => {
+          if (currentStep === 1 && requisitionId) {
+            Modal.confirm({
+              title: '¿Cancelar proceso?',
+              content: 'Tienes una autorización pendiente. ¿Estás seguro de que quieres cancelar?',
+              onOk: () => {
+                clearRequisitionFromStorage();
+                setSetupModalVisible(false);
+                setCurrentStep(0);
+                setRequisitionId('');
+                setRequisitionUrl('');
+              },
+              okText: 'Sí, cancelar',
+              cancelText: 'No, continuar',
+            });
+          } else {
+            setSetupModalVisible(false);
+            setCurrentStep(0);
+            setRequisitionId('');
+            setRequisitionUrl('');
+          }
+        }}
         footer={null}
         width={700}
+        maskClosable={false}
       >
         <Steps current={currentStep} style={{ marginBottom: 24 }}>
           <Step title="Seleccionar Banco" icon={<BankOutlined />} />
@@ -338,14 +497,20 @@ const BankAccounts: React.FC = () => {
             
             <Card 
               hoverable 
-              style={{ marginTop: 16 }}
-              onClick={handleSetupBBVA}
+              style={{ marginTop: 16, cursor: authLoading ? 'not-allowed' : 'pointer' }}
+              onClick={!authLoading ? handleSetupBBVA : undefined}
             >
               <Space>
-                <BankOutlined style={{ fontSize: 24, color: '#004481' }} />
+                {authLoading ? (
+                  <SyncOutlined spin style={{ fontSize: 24, color: '#1890ff' }} />
+                ) : (
+                  <BankOutlined style={{ fontSize: 24, color: '#004481' }} />
+                )}
                 <div>
                   <Title level={5} style={{ margin: 0 }}>BBVA</Title>
-                  <Text type="secondary">Banco Bilbao Vizcaya Argentaria</Text>
+                  <Text type="secondary">
+                    {authLoading ? 'Iniciando proceso...' : 'Banco Bilbao Vizcaya Argentaria'}
+                  </Text>
                 </div>
               </Space>
             </Card>
@@ -369,15 +534,36 @@ const BankAccounts: React.FC = () => {
             </Paragraph>
             
             <Alert
-              message="Esperando autorización"
-              description="Por favor, completa el proceso de autorización en la ventana del banco."
+              message={checkingAuth ? "Verificando autorización..." : "Esperando autorización"}
+              description={
+                checkingAuth 
+                  ? "Estamos verificando el estado de tu autorización. Por favor, espera un momento."
+                  : "Por favor, completa el proceso de autorización en la ventana del banco."
+              }
               type="info"
               showIcon
+              icon={checkingAuth ? <SyncOutlined spin /> : undefined}
             />
 
+            {requisitionId && (
+              <Alert
+                message="ID de Requisición"
+                description={requisitionId}
+                type="success"
+                showIcon
+                style={{ marginTop: 16 }}
+              />
+            )}
+
             <div style={{ marginTop: 24, textAlign: 'center' }}>
-              <Button type="primary" size="large" onClick={handleCompleteSetup}>
-                He completado la autorización
+              <Button 
+                type="primary" 
+                size="large" 
+                onClick={handleCompleteSetup}
+                loading={completeLoading}
+                disabled={!requisitionId}
+              >
+                {completeLoading ? 'Verificando...' : 'He completado la autorización'}
               </Button>
             </div>
 
@@ -391,6 +577,26 @@ const BankAccounts: React.FC = () => {
                 </Text>
               </Paragraph>
             )}
+
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <Text type="secondary">
+                Este proceso puede tardar hasta 5 minutos en completarse.
+              </Text>
+            </div>
+
+            <div style={{ marginTop: 16, textAlign: 'center' }}>
+              <Button 
+                type="link" 
+                onClick={() => {
+                  clearRequisitionFromStorage();
+                  setCurrentStep(0);
+                  setRequisitionId('');
+                  setRequisitionUrl('');
+                }}
+              >
+                Empezar de nuevo con otro banco
+              </Button>
+            </div>
           </div>
         )}
 

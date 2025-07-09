@@ -71,11 +71,13 @@ const initializeServices = () => {
  */
 router.post('/setup-bbva', async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('[setup-bbva] Initializing BBVA account setup process');
     initializeServices();
     
     const result = await goCardlessService.setupBBVAAccount();
     
     if (result.success) {
+      console.log(`[setup-bbva] Setup initiated successfully. Requisition ID: ${result.data?.requisitionId}`);
       res.json({
         success: true,
         data: result.data,
@@ -88,14 +90,19 @@ router.post('/setup-bbva', async (req: Request, res: Response): Promise<void> =>
         ]
       });
     } else {
-      res.status(400).json(result);
+      console.error(`[setup-bbva] Setup failed: ${result.error}`);
+      res.status(400).json({
+        ...result,
+        message: 'Failed to initiate BBVA account setup. Please check your configuration and try again.'
+      });
     }
   } catch (error) {
-    console.error('Setup BBVA failed:', error);
+    console.error('[setup-bbva] Unexpected error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to setup BBVA account',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      message: 'An unexpected error occurred while setting up your BBVA account. Please try again later.'
     });
   }
 });
@@ -111,20 +118,37 @@ router.post('/complete-setup', async (req: Request, res: Response): Promise<void
     const { requisitionId } = req.body;
     
     if (!requisitionId) {
+      console.error('[complete-setup] Missing requisitionId in request body');
       res.status(400).json({
         success: false,
-        error: 'requisitionId is required'
+        error: 'requisitionId is required',
+        message: 'Please provide a valid requisitionId in the request body'
       });
       return;
     }
 
-    console.log(`Completing setup for requisition: ${requisitionId}`);
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(requisitionId)) {
+      console.error(`[complete-setup] Invalid requisitionId format: ${requisitionId}`);
+      res.status(400).json({
+        success: false,
+        error: 'Invalid requisitionId format',
+        message: 'The requisitionId must be a valid UUID (e.g., 123e4567-e89b-12d3-a456-426614174000)'
+      });
+      return;
+    }
+
+    console.log(`[complete-setup] Starting setup completion for requisition: ${requisitionId}`);
     
     const result = await goCardlessService.completeSetup(requisitionId);
     
     if (result.success) {
+      console.log(`[complete-setup] Setup completed successfully. Accounts: ${result.data!.accounts.length}, Transactions: ${result.data!.transactionsSynced}`);
+      
       // Start the scheduler after successful setup
       if (!schedulerService.isActive()) {
+        console.log('[complete-setup] Starting scheduler service...');
         schedulerService.start();
       }
       
@@ -135,17 +159,152 @@ router.post('/complete-setup', async (req: Request, res: Response): Promise<void
         schedulerStatus: 'Automatic sync started (2x/day)'
       });
     } else {
+      console.error(`[complete-setup] Setup failed: ${result.error}`);
       res.status(400).json(result);
     }
   } catch (error) {
-    console.error('Complete setup failed:', error);
+    console.error('[complete-setup] Unexpected error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to complete setup',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      message: 'An unexpected error occurred while completing the setup. Please try again later.'
     });
   }
 });
+
+/**
+ * GET /api/financial/requisition-status/:requisitionId
+ * Check the status of a requisition including consent status and linked accounts
+ */
+router.get('/requisition-status/:requisitionId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { requisitionId } = req.params;
+    
+    if (!requisitionId) {
+      console.error('[requisition-status] Missing requisitionId in URL parameters');
+      res.status(400).json({
+        success: false,
+        error: 'requisitionId is required',
+        message: 'Please provide a valid requisitionId in the URL path'
+      });
+      return;
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(requisitionId)) {
+      console.error(`[requisition-status] Invalid requisitionId format: ${requisitionId}`);
+      res.status(400).json({
+        success: false,
+        error: 'Invalid requisitionId format',
+        message: 'The requisitionId must be a valid UUID (e.g., 123e4567-e89b-12d3-a456-426614174000)'
+      });
+      return;
+    }
+
+    console.log(`[requisition-status] Checking status for requisition: ${requisitionId}`);
+    
+    // Get requisition status from GoCardless
+    const requisitionStatus = await goCardlessService.getRequisitionStatus(requisitionId);
+    
+    if (!requisitionStatus.success) {
+      console.error(`[requisition-status] Failed to get requisition status: ${requisitionStatus.error}`);
+      res.status(404).json({
+        success: false,
+        error: requisitionStatus.error || 'Requisition not found',
+        message: 'Unable to retrieve requisition status. It may not exist or may have expired.'
+      });
+      return;
+    }
+
+    console.log(`[requisition-status] Retrieved status successfully. Status: ${requisitionStatus.data?.status}, Accounts: ${requisitionStatus.data?.accounts?.length || 0}`);
+    
+    // Check if requisition exists in our database
+    let isSetupComplete = false;
+    let localAccountsCount = 0;
+    
+    try {
+      const dbCheckQuery = `
+        SELECT COUNT(DISTINCT a.id) as account_count
+        FROM financial.accounts a
+        WHERE a.requisition_id = $1
+      `;
+      const dbResult = await databaseService.pool.query(dbCheckQuery, [requisitionId]);
+      localAccountsCount = parseInt(dbResult.rows[0].account_count);
+      isSetupComplete = localAccountsCount > 0;
+      
+      console.log(`[requisition-status] Database check - Accounts found: ${localAccountsCount}, Setup complete: ${isSetupComplete}`);
+    } catch (dbError) {
+      console.error('[requisition-status] Database check failed:', dbError);
+      // Continue without database info
+    }
+
+    // Build comprehensive status response
+    const response = {
+      success: true,
+      data: {
+        requisitionId: requisitionId,
+        status: requisitionStatus.data?.status || 'unknown',
+        consentGiven: requisitionStatus.data?.status === 'LN' || requisitionStatus.data?.status === 'LINKED',
+        consentUrl: requisitionStatus.data?.link || null,
+        accounts: requisitionStatus.data?.accounts || [],
+        accountsCount: requisitionStatus.data?.accounts?.length || 0,
+        createdAt: null, // GoCardless doesn't provide creation date in the response
+        statusDetails: {
+          isExpired: requisitionStatus.data?.status === 'EX',
+          isGivingConsent: requisitionStatus.data?.status === 'GC',
+          isUndergoingAuthentication: requisitionStatus.data?.status === 'UA',
+          isLinked: requisitionStatus.data?.status === 'LN' || requisitionStatus.data?.status === 'LINKED',
+          isRejected: requisitionStatus.data?.status === 'RJ',
+          isSuspended: requisitionStatus.data?.status === 'SU'
+        },
+        setupStatus: {
+          isSetupComplete: isSetupComplete,
+          localAccountsCount: localAccountsCount,
+          requiresSetup: requisitionStatus.data?.status === 'LN' && !isSetupComplete
+        }
+      },
+      message: getStatusMessage(requisitionStatus.data?.status, isSetupComplete)
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('[requisition-status] Unexpected error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check requisition status',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      message: 'An unexpected error occurred while checking the requisition status. Please try again later.'
+    });
+  }
+});
+
+/**
+ * Helper function to generate user-friendly status messages
+ */
+function getStatusMessage(status: string | undefined, isSetupComplete: boolean): string {
+  if (!status) return 'Unable to determine requisition status';
+  
+  const statusMessages: { [key: string]: string } = {
+    'CR': 'Requisition created. Please visit the consent URL to authorize account access.',
+    'GC': 'Currently giving consent. Please complete the authorization process.',
+    'UA': 'Undergoing authentication. Please complete the bank authentication.',
+    'LN': isSetupComplete 
+      ? 'Account is linked and setup is complete. You can now access your financial data.'
+      : 'Account is linked but setup is not complete. Please call /complete-setup to finish configuration.',
+    'LINKED': isSetupComplete 
+      ? 'Account is linked and setup is complete. You can now access your financial data.'
+      : 'Account is linked but setup is not complete. Please call /complete-setup to finish configuration.',
+    'EX': 'Requisition has expired. Please create a new requisition.',
+    'RJ': 'Consent was rejected. Please create a new requisition and grant the necessary permissions.',
+    'SU': 'Account access is suspended. Please contact support or create a new requisition.'
+  };
+  
+  return statusMessages[status] || `Unknown status: ${status}`;
+}
 
 // ============================================================================
 // ACCOUNT MANAGEMENT
@@ -1145,5 +1304,45 @@ router.use('/transactions', transactionsRoutes);
 
 // Mount enhanced dashboard routes
 router.use('/dashboard', dashboardRoutes);
+
+// ============================================================================
+// METRICS & MONITORING
+// ============================================================================
+
+import { metricsService } from '../services/metrics';
+import { logger } from '../utils/log';
+
+// Performance metrics endpoint
+router.get('/metrics/performance', async (req: Request, res: Response) => {
+  try {
+    const hours = parseInt(req.query.hours as string) || 24;
+    const report = await metricsService.getPerformanceReport(hours);
+    res.json(report);
+  } catch (error: any) {
+    logger.error('Error getting performance report:', error);
+    res.status(500).json({
+      error: 'Failed to get performance report',
+      message: error.message
+    });
+  }
+});
+
+// Alerts endpoint
+router.get('/metrics/alerts', async (req: Request, res: Response) => {
+  try {
+    const alerts = await metricsService.checkAlerts();
+    res.json({
+      alerts,
+      count: alerts.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    logger.error('Error checking alerts:', error);
+    res.status(500).json({
+      error: 'Failed to check alerts',
+      message: error.message
+    });
+  }
+});
 
 export default router;

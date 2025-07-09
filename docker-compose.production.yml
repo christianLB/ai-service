@@ -7,42 +7,56 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=ai_user
-      - DB_NAME=ai_service_db
-      - REDIS_HOST=redis
+      - POSTGRES_HOST=ai-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_service
+      - POSTGRES_USER=ai_user
+      - REDIS_HOST=ai-redis
       - REDIS_PORT=6379
     ports:
-      - "3000:3000"
+      - "3003:3000"
     depends_on:
-      - postgres
-      - redis
+      - ai-postgres
+      - ai-redis
     networks:
       - ai-network
     volumes:
-      - /volume1/docker/ai-service/config/.env.production:/app/.env.local:ro
+      - /volume1/docker/ai-service/config/.env.production:/config/.env.production:ro
       - /volume1/docker/ai-service/documents:/app/documents
       - /volume1/docker/ai-service/logs:/app/logs
-      - /volume1/docker/ai-service/frontend/dist:/app/frontend/dist:ro
+      - /volume1/docker/ai-service/frontend/dist:/app/public:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
-  postgres:
+  ai-postgres:
     image: postgres:16-alpine
     container_name: ai-postgres
     restart: unless-stopped
     environment:
       - POSTGRES_USER=ai_user
-      - POSTGRES_DB=ai_service_db
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=ai_service
+      - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - /volume1/docker/ai-service/postgres-data:/var/lib/postgresql/data
+      - /volume1/docker/ai-service/postgres:/var/lib/postgresql/data
       - /volume1/docker/ai-service/config/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     networks:
       - ai-network
 
-  redis:
+  ai-redis:
     image: redis:7-alpine
     container_name: ai-redis
     restart: unless-stopped
@@ -50,7 +64,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - /volume1/docker/ai-service/redis-data:/data
+      - /volume1/docker/ai-service/redis:/data
     networks:
       - ai-network
 
@@ -60,18 +74,30 @@ services:
     restart: unless-stopped
     environment:
       - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_INCLUDE_RESTARTING=false
       - WATCHTOWER_POLL_INTERVAL=300
       - WATCHTOWER_MONITOR_ONLY=false
-      - WATCHTOWER_NOTIFICATIONS=log
+      - WATCHTOWER_NOTIFICATIONS=telegram
+      - WATCHTOWER_NOTIFICATION_TELEGRAM_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - WATCHTOWER_NOTIFICATION_TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - WATCHTOWER_LOG_LEVEL=info
-      - REPO_USER=${GITHUB_USER}
-      - REPO_PASS=${GITHUB_TOKEN}
+      - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_API_TOKEN}
+      - WATCHTOWER_HTTP_API_METRICS=true
+      - WATCHTOWER_HTTP_API_UPDATE=true
+      - DOCKER_CONFIG=/config
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ai-service ai-postgres ai-redis
+      - /volume1/docker/ai-service/config/watchtower:/config:ro
+    command: ai-service
+    ports:
+      - "8080:8080"
     networks:
       - ai-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
 
 networks:
   ai-network:

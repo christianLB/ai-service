@@ -1,6 +1,7 @@
 import { db as DatabaseService } from '../database';
 import { Invoice, InvoiceModel, InvoiceItem } from '../../models/financial/invoice.model';
 import { logger } from '../../utils/log';
+import { auditCatch } from '../../utils/forensic-logger';
 
 export class InvoiceManagementService {
   private database: typeof DatabaseService;
@@ -85,6 +86,7 @@ export class InvoiceManagementService {
     } catch (error: any) {
       await dbClient.query('ROLLBACK');
       logger.error('❌ Error creating invoice:', error);
+      auditCatch('InvoiceManagementService.createInvoice', error, 'logged');
       throw error;
     } finally {
       dbClient.release();

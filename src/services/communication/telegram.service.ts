@@ -6,6 +6,7 @@ import { InvoiceManagementService } from '../financial/invoice-management.servic
 import { ClientManagementService } from '../financial/client-management.service';
 import { FinancialReportingService } from '../financial/reporting.service';
 import { logger } from '../../utils/log';
+import { auditCatch } from '../../utils/forensic-logger';
 
 export class TelegramService {
   private bot: TelegramBot;
@@ -102,6 +103,7 @@ export class TelegramService {
       logger.info(`Alerta enviada: ${alert.type} - ${alert.priority}`);
     } catch (error) {
       logger.error('Error enviando alerta:', error);
+      auditCatch('TelegramService.sendAlert', error, 'silenced');
     }
   }
 
