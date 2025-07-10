@@ -65,6 +65,26 @@ migrate-fix-prod: ## Fix gocardless_data en PRODUCCIÓN
 	@$(MAKE) -f Makefile.migrations migrate-fix-gocardless-prod
 
 # =============================================================================
+# 💰 COMANDOS FINANCIEROS (sincronización de datos)
+# =============================================================================
+
+.PHONY: financial-sync
+financial-sync: ## 🔽 Sincronizar datos financieros de producción a desarrollo
+	@$(MAKE) -f Makefile.financial-sync financial-sync-down
+
+.PHONY: financial-backup
+financial-backup: ## 💾 Crear backup de datos financieros
+	@$(MAKE) -f Makefile.financial-sync financial-backup-prod
+
+.PHONY: financial-validate
+financial-validate: ## ✅ Validar integridad de datos financieros
+	@$(MAKE) -f Makefile.financial-sync financial-validate
+
+.PHONY: financial-diff
+financial-diff: ## 🔍 Comparar datos financieros entre ambientes
+	@$(MAKE) -f Makefile.financial-sync financial-diff
+
+# =============================================================================
 # 🚨 COMANDOS DE EMERGENCIA (recuperación < 30 segundos)
 # =============================================================================
 
@@ -214,6 +234,7 @@ help: ## Mostrar ayuda principal
 	@echo "  $(BLUE)make -f Makefile.quick help$(NC)       - Comandos rápidos"
 	@echo "  $(BLUE)make -f Makefile.security help$(NC)    - Seguridad y secrets"
 	@echo "  $(BLUE)make -f Makefile.monitoring help$(NC)  - Monitoreo y métricas"
+	@echo "  $(BLUE)make -f Makefile.financial-sync help$(NC) - 💰 Sincronización financiera"
 	@echo ""
 	@echo "$(YELLOW)Configuración:$(NC)"
 	@echo "  Asegúrate de tener .make.env configurado con las credenciales"

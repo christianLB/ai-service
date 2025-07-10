@@ -1,0 +1,341 @@
+# Makefile for Financial Data Synchronization
+# ============================================
+# Handles synchronization of financial data between development and production
+# IMPORTANTE: Siempre hace backup automático antes de cualquier operación
+
+SHELL := /bin/bash
+.PHONY: help
+
+# Colors
+GREEN := \033[0;32m
+YELLOW := \033[1;33m
+RED := \033[0;31m
+BLUE := \033[0;34m
+CYAN := \033[0;36m
+NC := \033[0m # No Color
+
+# Check if .make.env exists
+ifneq (,$(wildcard .make.env))
+    include .make.env
+    export
+endif
+
+# Financial schema tables
+FINANCIAL_TABLES := accounts transactions categories currencies transaction_categories \
+                   transaction_documents imported_transactions invoice_sequences \
+                   clients invoices client_statistics client_transactions
+
+# Database configurations
+DEV_DB := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)
+PROD_DB := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(NAS_HOST):5434/$(POSTGRES_DB)
+
+# Timestamp for backups
+TIMESTAMP := $(shell date +%Y%m%d-%H%M%S)
+
+help: ## Show this help message
+	@echo -e "$(BLUE)=== Financial Data Synchronization ===$(NC)"
+	@echo -e "$(YELLOW)Synchronize financial data between development and production$(NC)"
+	@echo ""
+	@echo -e "$(GREEN)Usage:$(NC) make -f Makefile.financial-sync [command]"
+	@echo ""
+	@echo -e "$(CYAN)Available commands:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "$(GREEN)%-30s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo -e "$(YELLOW)⚠️  WARNING:$(NC) These commands modify data. Always review before executing!"
+
+# ============================================================================
+# PULL COMMANDS (Production → Development)
+# ============================================================================
+
+financial-sync-down: check-env financial-backup-dev ## 🔽 Sync financial data from PRODUCTION to DEVELOPMENT
+	@echo -e "$(YELLOW)⚠️  WARNING: This will REPLACE all financial data in development!$(NC)"
+	@echo -e "$(CYAN)Source:$(NC) Production ($(NAS_HOST))"
+	@echo -e "$(CYAN)Target:$(NC) Development (localhost)"
+	@echo ""
+	@read -p "Are you SURE you want to sync production → development? (yes/no): " confirm; \
+	if [ "$$confirm" != "yes" ]; then \
+		echo -e "$(RED)Aborted$(NC)"; \
+		exit 1; \
+	fi
+	@echo -e "$(BLUE)Starting financial data sync...$(NC)"
+	@$(MAKE) -f Makefile.financial-sync _do-sync-down
+	@echo -e "$(GREEN)✅ Financial data synced successfully!$(NC)"
+
+_do-sync-down:
+	@echo -e "$(BLUE)1/5 Creating production backup...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo -e "$(BLUE)2/5 Dumping financial schema from production...$(NC)"
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		cd $(NAS_PATH) && \
+		docker exec ai-service-postgres pg_dump \
+			-U $(POSTGRES_USER) \
+			-d $(POSTGRES_DB) \
+			--schema=financial \
+			--data-only \
+			--disable-triggers \
+			--no-owner \
+			--no-privileges \
+			-f /tmp/financial-sync-$(TIMESTAMP).sql"
+	@echo -e "$(BLUE)3/5 Transferring data...$(NC)"
+	@sshpass -p '$(SSHPASS)' scp $(SSH_OPTS) \
+		$(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/postgres-data/tmp/financial-sync-$(TIMESTAMP).sql \
+		./tmp/financial-sync-$(TIMESTAMP).sql
+	@echo -e "$(BLUE)4/5 Clearing development financial data...$(NC)"
+	@docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
+		TRUNCATE TABLE $(foreach table,$(FINANCIAL_TABLES),financial.$(table)) CASCADE;"
+	@echo -e "$(BLUE)5/5 Importing production data to development...$(NC)"
+	@docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/financial-sync-$(TIMESTAMP).sql
+	@rm -f ./tmp/financial-sync-$(TIMESTAMP).sql
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		docker exec ai-service-postgres rm -f /tmp/financial-sync-$(TIMESTAMP).sql"
+
+# ============================================================================
+# PUSH COMMANDS (Development → Production) - USE WITH EXTREME CAUTION!
+# ============================================================================
+
+financial-sync-up: check-env ## 🔼 Sync financial data from DEVELOPMENT to PRODUCTION (DANGEROUS!)
+	@echo -e "$(RED)⚠️  EXTREME WARNING: This will REPLACE all financial data in PRODUCTION!$(NC)"
+	@echo -e "$(RED)This operation should ONLY be used for initial setup or recovery!$(NC)"
+	@echo -e "$(CYAN)Source:$(NC) Development (localhost)"
+	@echo -e "$(CYAN)Target:$(NC) Production ($(NAS_HOST))"
+	@echo ""
+	@echo -e "$(YELLOW)Please type 'I understand the risks' to continue:$(NC)"
+	@read -p "> " confirm; \
+	if [ "$$confirm" != "I understand the risks" ]; then \
+		echo -e "$(RED)Aborted - confirmation text did not match$(NC)"; \
+		exit 1; \
+	fi
+	@echo -e "$(YELLOW)Are you ABSOLUTELY SURE? Type 'yes' to proceed:$(NC)"
+	@read -p "> " confirm2; \
+	if [ "$$confirm2" != "yes" ]; then \
+		echo -e "$(RED)Aborted$(NC)"; \
+		exit 1; \
+	fi
+	@echo -e "$(BLUE)Creating production backup first...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo -e "$(BLUE)Starting financial data push...$(NC)"
+	@$(MAKE) -f Makefile.financial-sync _do-sync-up
+	@echo -e "$(GREEN)✅ Financial data pushed to production!$(NC)"
+
+_do-sync-up:
+	@echo -e "$(BLUE)1/5 Dumping financial schema from development...$(NC)"
+	@docker exec ai-service-postgres pg_dump \
+		-U $(POSTGRES_USER) \
+		-d $(POSTGRES_DB) \
+		--schema=financial \
+		--data-only \
+		--disable-triggers \
+		--no-owner \
+		--no-privileges \
+		-f /tmp/financial-push-$(TIMESTAMP).sql
+	@docker cp ai-service-postgres:/tmp/financial-push-$(TIMESTAMP).sql ./tmp/financial-push-$(TIMESTAMP).sql
+	@echo -e "$(BLUE)2/5 Transferring data to production...$(NC)"
+	@sshpass -p '$(SSHPASS)' scp $(SSH_OPTS) \
+		./tmp/financial-push-$(TIMESTAMP).sql \
+		$(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/postgres-data/tmp/
+	@echo -e "$(BLUE)3/5 Clearing production financial data...$(NC)"
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		cd $(NAS_PATH) && \
+		docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c '\
+			TRUNCATE TABLE $(foreach table,$(FINANCIAL_TABLES),financial.$(table)) CASCADE;'"
+	@echo -e "$(BLUE)4/5 Importing development data to production...$(NC)"
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		cd $(NAS_PATH) && \
+		docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < /var/lib/postgresql/data/tmp/financial-push-$(TIMESTAMP).sql"
+	@echo -e "$(BLUE)5/5 Cleaning up temporary files...$(NC)"
+	@rm -f ./tmp/financial-push-$(TIMESTAMP).sql
+	@docker exec ai-service-postgres rm -f /tmp/financial-push-$(TIMESTAMP).sql
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		docker exec ai-service-postgres rm -f /var/lib/postgresql/data/tmp/financial-push-$(TIMESTAMP).sql"
+
+# ============================================================================
+# SELECTIVE SYNC COMMANDS
+# ============================================================================
+
+sync-accounts: check-env ## 🏦 Sync only accounts and related data
+	@echo -e "$(BLUE)Syncing accounts data from production...$(NC)"
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=accounts
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=currencies
+	@echo -e "$(GREEN)✅ Accounts synced!$(NC)"
+
+sync-transactions: check-env ## 💸 Sync only transactions
+	@echo -e "$(BLUE)Syncing transactions from production...$(NC)"
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=transactions
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=transaction_categories
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=transaction_documents
+	@echo -e "$(GREEN)✅ Transactions synced!$(NC)"
+
+sync-clients: check-env ## 👥 Sync only clients and invoices
+	@echo -e "$(BLUE)Syncing clients and invoices from production...$(NC)"
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=clients
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=invoices
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=invoice_sequences
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=client_statistics
+	@$(MAKE) -f Makefile.financial-sync _sync-table TABLE=client_transactions
+	@echo -e "$(GREEN)✅ Clients and invoices synced!$(NC)"
+
+_sync-table:
+	@echo -e "$(CYAN)  → Syncing table: financial.$(TABLE)$(NC)"
+	@# Dump from production
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		cd $(NAS_PATH) && \
+		docker exec ai-service-postgres pg_dump \
+			-U $(POSTGRES_USER) \
+			-d $(POSTGRES_DB) \
+			--table=financial.$(TABLE) \
+			--data-only \
+			--disable-triggers \
+			--no-owner \
+			--no-privileges \
+			-f /tmp/sync-$(TABLE)-$(TIMESTAMP).sql"
+	@# Transfer file
+	@sshpass -p '$(SSHPASS)' scp $(SSH_OPTS) \
+		$(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/postgres-data/tmp/sync-$(TABLE)-$(TIMESTAMP).sql \
+		./tmp/sync-$(TABLE)-$(TIMESTAMP).sql
+	@# Clear and import
+	@docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
+		TRUNCATE TABLE financial.$(TABLE) CASCADE;"
+	@docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/sync-$(TABLE)-$(TIMESTAMP).sql
+	@# Cleanup
+	@rm -f ./tmp/sync-$(TABLE)-$(TIMESTAMP).sql
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		docker exec ai-service-postgres rm -f /tmp/sync-$(TABLE)-$(TIMESTAMP).sql"
+
+# ============================================================================
+# BACKUP COMMANDS
+# ============================================================================
+
+financial-backup-dev: ## 💾 Backup development financial data
+	@echo -e "$(BLUE)Creating development financial backup...$(NC)"
+	@mkdir -p ./backups/financial
+	@docker exec ai-service-postgres pg_dump \
+		-U $(POSTGRES_USER) \
+		-d $(POSTGRES_DB) \
+		--schema=financial \
+		--no-owner \
+		--no-privileges \
+		-f /tmp/financial-backup-dev-$(TIMESTAMP).sql
+	@docker cp ai-service-postgres:/tmp/financial-backup-dev-$(TIMESTAMP).sql ./backups/financial/
+	@docker exec ai-service-postgres rm -f /tmp/financial-backup-dev-$(TIMESTAMP).sql
+	@echo -e "$(GREEN)✅ Backup saved to: ./backups/financial/financial-backup-dev-$(TIMESTAMP).sql$(NC)"
+
+financial-backup-prod: check-env ## 💾 Backup production financial data
+	@echo -e "$(BLUE)Creating production financial backup...$(NC)"
+	@mkdir -p ./backups/financial
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		cd $(NAS_PATH) && \
+		docker exec ai-service-postgres pg_dump \
+			-U $(POSTGRES_USER) \
+			-d $(POSTGRES_DB) \
+			--schema=financial \
+			--no-owner \
+			--no-privileges \
+			-f /tmp/financial-backup-prod-$(TIMESTAMP).sql"
+	@sshpass -p '$(SSHPASS)' scp $(SSH_OPTS) \
+		$(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/postgres-data/tmp/financial-backup-prod-$(TIMESTAMP).sql \
+		./backups/financial/
+	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+		docker exec ai-service-postgres rm -f /tmp/financial-backup-prod-$(TIMESTAMP).sql"
+	@echo -e "$(GREEN)✅ Backup saved to: ./backups/financial/financial-backup-prod-$(TIMESTAMP).sql$(NC)"
+
+financial-restore-dev: ## 🔄 Restore development financial data from backup
+	@echo -e "$(BLUE)Available backups:$(NC)"
+	@ls -1t ./backups/financial/financial-backup-dev-*.sql 2>/dev/null | head -10 || echo "No backups found"
+	@echo ""
+	@read -p "Enter backup filename (or full path): " backup_file; \
+	if [ ! -f "$$backup_file" ] && [ ! -f "./backups/financial/$$backup_file" ]; then \
+		echo -e "$(RED)Backup file not found!$(NC)"; \
+		exit 1; \
+	fi; \
+	if [ -f "./backups/financial/$$backup_file" ]; then \
+		backup_file="./backups/financial/$$backup_file"; \
+	fi; \
+	echo -e "$(YELLOW)This will restore: $$backup_file$(NC)"; \
+	read -p "Continue? (yes/no): " confirm; \
+	if [ "$$confirm" != "yes" ]; then \
+		echo -e "$(RED)Aborted$(NC)"; \
+		exit 1; \
+	fi; \
+	echo -e "$(BLUE)Restoring financial data...$(NC)"; \
+	docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
+		TRUNCATE TABLE $(foreach table,$(FINANCIAL_TABLES),financial.$(table)) CASCADE;"; \
+	docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < $$backup_file; \
+	echo -e "$(GREEN)✅ Financial data restored!$(NC)"
+
+# ============================================================================
+# VALIDATION COMMANDS
+# ============================================================================
+
+financial-validate: ## ✅ Validate financial data integrity
+	@echo -e "$(BLUE)Validating financial data integrity...$(NC)"
+	@$(MAKE) -f Makefile.financial-sync _validate-env ENV=development
+	@echo ""
+	@$(MAKE) -f Makefile.financial-sync _validate-env ENV=production
+
+_validate-env:
+	@if [ "$(ENV)" = "development" ]; then \
+		echo -e "$(CYAN)=== Development Environment ===$(NC)"; \
+		DB_CMD="docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)"; \
+	else \
+		echo -e "$(CYAN)=== Production Environment ===$(NC)"; \
+		DB_CMD="sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) 'cd $(NAS_PATH) && docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)'"; \
+	fi; \
+	echo -e "$(YELLOW)Table row counts:$(NC)"; \
+	for table in $(FINANCIAL_TABLES); do \
+		count=$$(eval $$DB_CMD -t -c "SELECT COUNT(*) FROM financial.$$table" | grep -o '[0-9]\+' | head -1); \
+		printf "  %-30s %s\n" "$$table:" "$$count rows"; \
+	done; \
+	echo -e "$(YELLOW)Data integrity checks:$(NC)"; \
+	orphans=$$(eval $$DB_CMD -t -c "SELECT COUNT(*) FROM financial.transactions t LEFT JOIN financial.accounts a ON t.account_id = a.id WHERE a.id IS NULL" | grep -o '[0-9]\+' | head -1); \
+	printf "  %-30s %s\n" "Orphaned transactions:" "$$orphans"; \
+	uncat=$$(eval $$DB_CMD -t -c "SELECT COUNT(*) FROM financial.transactions WHERE category_id IS NULL" | grep -o '[0-9]\+' | head -1); \
+	printf "  %-30s %s\n" "Uncategorized transactions:" "$$uncat"
+
+financial-diff: check-env ## 🔍 Compare financial data between environments
+	@echo -e "$(BLUE)Comparing financial data between development and production...$(NC)"
+	@echo -e "$(YELLOW)Row count differences:$(NC)"
+	@for table in $(FINANCIAL_TABLES); do \
+		dev_count=$$(docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -t -c "SELECT COUNT(*) FROM financial.$$table" | grep -o '[0-9]\+' | head -1); \
+		prod_count=$$(sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -t -c \"SELECT COUNT(*) FROM financial.$$table\"" | grep -o '[0-9]\+' | head -1); \
+		diff=$$((prod_count - dev_count)); \
+		if [ $$diff -ne 0 ]; then \
+			color="$(RED)"; \
+		else \
+			color="$(GREEN)"; \
+		fi; \
+		printf "%-25s Dev: %-8s Prod: %-8s Diff: $${color}%-8s$(NC)\n" "$$table:" "$$dev_count" "$$prod_count" "$$diff"; \
+	done
+
+# ============================================================================
+# UTILITY COMMANDS
+# ============================================================================
+
+check-env: ## 🔍 Check environment configuration
+	@if [ -z "$(SSHPASS)" ] || [ -z "$(NAS_USER)" ] || [ -z "$(NAS_HOST)" ]; then \
+		echo -e "$(RED)Error: SSH configuration not found$(NC)"; \
+		echo -e "$(YELLOW)Please create .make.env with:$(NC)"; \
+		echo "export SSHPASS=your_ssh_password"; \
+		echo "export NAS_USER=k2600x"; \
+		echo "export NAS_HOST=192.168.1.11"; \
+		echo "export NAS_PATH=/volume1/docker/ai-service"; \
+		exit 1; \
+	fi
+	@if [ -z "$(POSTGRES_USER)" ] || [ -z "$(POSTGRES_PASSWORD)" ] || [ -z "$(POSTGRES_DB)" ]; then \
+		echo -e "$(RED)Error: Database configuration not found$(NC)"; \
+		echo -e "$(YELLOW)Please ensure .env.local has:$(NC)"; \
+		echo "POSTGRES_USER=your_db_user"; \
+		echo "POSTGRES_PASSWORD=your_db_password"; \
+		echo "POSTGRES_DB=your_db_name"; \
+		exit 1; \
+	fi
+	@mkdir -p ./tmp ./backups/financial
+
+financial-clean: ## 🧹 Clean temporary sync files
+	@echo -e "$(BLUE)Cleaning temporary files...$(NC)"
+	@rm -f ./tmp/financial-sync-*.sql
+	@rm -f ./tmp/financial-push-*.sql
+	@rm -f ./tmp/sync-*-*.sql
+	@echo -e "$(GREEN)✅ Cleaned!$(NC)"
+
+# SSH options
+SSH_OPTS := -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null

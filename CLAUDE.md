@@ -78,6 +78,7 @@ NAS_PATH=/volume1/docker/ai-service
 - `Makefile.compare` - Herramientas de comparación
 - `Makefile.quick` - Comandos de emergencia
 - `Makefile.migrations` - Sistema de migraciones
+- `Makefile.financial-sync` - 💰 Sincronización de datos financieros
 
 ### 🚨 Protocolo de Depuración:
 
@@ -108,6 +109,12 @@ make prod-status      # Verificar resultado
 make 911              # Ver guía de emergencia
 make prod-logs        # Revisar logs
 make fix              # Aplicar fixes rápidos
+
+# Sincronización de datos financieros
+make financial-sync      # Sincronizar prod → dev
+make financial-backup    # Backup datos financieros
+make financial-validate  # Validar integridad
+make financial-diff      # Comparar ambientes
 ```
 
 ## 🚨 METODOLOGÍA DE DESARROLLO OBLIGATORIA
@@ -128,6 +135,58 @@ make fix              # Aplicar fixes rápidos
 - ✅ Tests automáticos con `make dev-test`
 
 **OBJETIVO**: Zero errores en producción
+
+---
+
+## 💰 SINCRONIZACIÓN DE DATOS FINANCIEROS
+
+### Comandos Principales:
+
+```bash
+# SINCRONIZACIÓN COMPLETA
+make financial-sync         # Sincronizar TODOS los datos financieros prod → dev
+make -f Makefile.financial-sync financial-sync-up  # ⚠️ PELIGROSO: dev → prod
+
+# SINCRONIZACIÓN SELECTIVA
+make -f Makefile.financial-sync sync-accounts      # Solo cuentas bancarias
+make -f Makefile.financial-sync sync-transactions  # Solo transacciones
+make -f Makefile.financial-sync sync-clients       # Solo clientes e invoices
+
+# VALIDACIÓN Y COMPARACIÓN
+make financial-validate     # Validar integridad en ambos ambientes
+make financial-diff         # Comparar diferencias entre prod y dev
+
+# BACKUP Y RESTORE
+make financial-backup       # Backup de producción
+make -f Makefile.financial-sync financial-backup-dev     # Backup de desarrollo
+make -f Makefile.financial-sync financial-restore-dev    # Restaurar backup en dev
+```
+
+### ⚠️ IMPORTANTE:
+
+1. **SIEMPRE** se hace backup automático antes de sincronizar
+2. **NUNCA** usar `financial-sync-up` excepto para setup inicial
+3. **VERIFICAR** con `financial-validate` después de sincronizar
+4. Los datos de GoCardless se sincronizan con las cuentas
+
+### Flujo Típico de Sincronización:
+
+```bash
+# 1. Verificar estado actual
+make financial-diff
+
+# 2. Hacer backup preventivo
+make financial-backup
+
+# 3. Sincronizar datos
+make financial-sync
+
+# 4. Validar resultado
+make financial-validate
+
+# 5. Si hay problemas, restaurar
+make -f Makefile.financial-sync financial-restore-dev
+```
 
 ---
 
