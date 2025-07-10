@@ -621,7 +621,116 @@ async function ensureBaseTables(client: any): Promise<void> {
     ORDER BY month DESC, total_amount DESC
   `);
   
-  logger.info('✅ Base tables ensured');
+  // Create clients table for invoice management
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS financial.clients (
+      id VARCHAR(255) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      business_name VARCHAR(255),
+      tax_id VARCHAR(100) NOT NULL,
+      tax_id_type VARCHAR(20) NOT NULL DEFAULT 'OTHER',
+      email VARCHAR(255) NOT NULL,
+      phone VARCHAR(50),
+      address JSONB,
+      client_type VARCHAR(20) NOT NULL DEFAULT 'business',
+      currency VARCHAR(10) NOT NULL DEFAULT 'EUR',
+      language VARCHAR(10) NOT NULL DEFAULT 'es',
+      timezone VARCHAR(50),
+      payment_terms INTEGER NOT NULL DEFAULT 30,
+      payment_method VARCHAR(20),
+      bank_account VARCHAR(255),
+      credit_limit DECIMAL(15,2) DEFAULT 0,
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
+      total_revenue DECIMAL(15,2) NOT NULL DEFAULT 0,
+      total_invoices INTEGER NOT NULL DEFAULT 0,
+      outstanding_balance DECIMAL(15,2) NOT NULL DEFAULT 0,
+      last_invoice_date TIMESTAMP,
+      average_invoice_amount DECIMAL(15,2),
+      custom_fields JSONB DEFAULT '{}',
+      tags TEXT[] DEFAULT '{}',
+      notes TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_by VARCHAR(255),
+      last_contact_date TIMESTAMP
+    )
+  `);
+  
+  // Create invoice_sequences table for invoice numbering
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS financial.invoice_sequences (
+      id SERIAL PRIMARY KEY,
+      prefix VARCHAR(20) NOT NULL,
+      current_number INTEGER NOT NULL DEFAULT 0,
+      year INTEGER,
+      format VARCHAR(50) NOT NULL DEFAULT 'PREFIX-YYYY-0000',
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT unique_sequence_prefix_year UNIQUE (prefix, year)
+    )
+  `);
+  
+  // Create invoices table
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS financial.invoices (
+      id VARCHAR(255) PRIMARY KEY,
+      invoice_number VARCHAR(50) NOT NULL UNIQUE,
+      client_id VARCHAR(255) REFERENCES financial.clients(id),
+      client_name VARCHAR(255) NOT NULL,
+      client_tax_id VARCHAR(100) NOT NULL,
+      client_address JSONB,
+      type VARCHAR(20) NOT NULL DEFAULT 'invoice',
+      status VARCHAR(20) NOT NULL DEFAULT 'draft',
+      issue_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      due_date DATE NOT NULL,
+      paid_date DATE,
+      service_start_date DATE,
+      service_end_date DATE,
+      currency VARCHAR(10) NOT NULL DEFAULT 'EUR',
+      exchange_rate DECIMAL(10,6),
+      items JSONB NOT NULL DEFAULT '[]',
+      subtotal DECIMAL(15,2) NOT NULL DEFAULT 0,
+      tax_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+      tax_rate DECIMAL(5,2) NOT NULL DEFAULT 21,
+      tax_type VARCHAR(10) NOT NULL DEFAULT 'IVA',
+      discount DECIMAL(15,2),
+      discount_type VARCHAR(10),
+      total DECIMAL(15,2) NOT NULL DEFAULT 0,
+      payment_method VARCHAR(20),
+      payment_terms INTEGER NOT NULL DEFAULT 30,
+      bank_account VARCHAR(255),
+      payment_reference VARCHAR(255),
+      related_documents JSONB DEFAULT '[]',
+      related_transaction_ids TEXT[] DEFAULT '{}',
+      notes TEXT,
+      terms_and_conditions TEXT,
+      custom_fields JSONB DEFAULT '{}',
+      tags TEXT[] DEFAULT '{}',
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      sent_at TIMESTAMP,
+      viewed_at TIMESTAMP,
+      created_by VARCHAR(255),
+      attachments JSONB DEFAULT '[]',
+      pdf_url VARCHAR(500),
+      is_deductible BOOLEAN DEFAULT FALSE,
+      deductible_category VARCHAR(100),
+      deductible_percentage DECIMAL(5,2)
+    )
+  `);
+  
+  // Create indexes for invoice tables
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_clients_status ON financial.clients(status);
+    CREATE INDEX IF NOT EXISTS idx_clients_email ON financial.clients(email);
+    CREATE INDEX IF NOT EXISTS idx_clients_tax_id ON financial.clients(tax_id);
+    CREATE INDEX IF NOT EXISTS idx_invoices_client_id ON financial.invoices(client_id);
+    CREATE INDEX IF NOT EXISTS idx_invoices_status ON financial.invoices(status);
+    CREATE INDEX IF NOT EXISTS idx_invoices_issue_date ON financial.invoices(issue_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_invoices_invoice_number ON financial.invoices(invoice_number);
+  `);
+  
+  logger.info('✅ Base tables ensured (including invoice tables)');
 }
 
 async function ensureMissingColumns(client: any): Promise<void> {
