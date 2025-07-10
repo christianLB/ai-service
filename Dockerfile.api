@@ -21,7 +21,7 @@ COPY scripts/ ./scripts/
 
 # Build TypeScript
 RUN npm install -D typescript @types/node && \
-    npm run build && \
+    npm run build:backend && \
     npm prune --production
 
 # Production stage
