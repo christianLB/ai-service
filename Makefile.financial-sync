@@ -20,6 +20,22 @@ ifneq (,$(wildcard .make.env))
     export
 endif
 
+# Load database configuration from various sources
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
+ifneq (,$(wildcard .env.local))
+    include .env.local
+    export
+endif
+
+# Default database credentials if not set
+POSTGRES_USER ?= ai_user
+POSTGRES_PASSWORD ?= ultra_secure_password_2025
+POSTGRES_DB ?= ai_service
+
 # Financial schema tables
 FINANCIAL_TABLES := accounts transactions categories currencies transaction_categories \
                    transaction_documents imported_transactions invoice_sequences \
@@ -28,6 +44,11 @@ FINANCIAL_TABLES := accounts transactions categories currencies transaction_cate
 # Database configurations
 DEV_DB := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)
 PROD_DB := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(NAS_HOST):5434/$(POSTGRES_DB)
+
+# NAS configuration from .make.env
+NAS_USER ?= k2600x
+NAS_HOST ?= 192.168.1.11
+NAS_PATH ?= /volume1/docker/ai-service
 
 # Timestamp for backups
 TIMESTAMP := $(shell date +%Y%m%d-%H%M%S)
@@ -65,9 +86,13 @@ _do-sync-down:
 	@echo -e "$(BLUE)1/5 Creating production backup...$(NC)"
 	@$(MAKE) -f Makefile.production prod-backup
 	@echo -e "$(BLUE)2/5 Dumping financial schema from production...$(NC)"
-	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+	@# Create SQL dump command for production
+	@echo "pg_dump -U $(POSTGRES_USER) -d $(POSTGRES_DB) --schema=financial --data-only --disable-triggers --no-owner --no-privileges -f /tmp/financial-sync-$(TIMESTAMP).sql" > ./tmp/dump-cmd.txt
+	@# Execute dump via prod-sql-file
+	@$(MAKE) -f Makefile.production prod-sql SQL="COPY (SELECT 'Dumping financial schema...') TO STDOUT;"
+	@sshpass -p '$(SSHPASS)' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $(NAS_USER)@$(NAS_HOST) "\
 		cd $(NAS_PATH) && \
-		docker exec ai-service-postgres pg_dump \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres pg_dump \
 			-U $(POSTGRES_USER) \
 			-d $(POSTGRES_DB) \
 			--schema=financial \
@@ -75,19 +100,22 @@ _do-sync-down:
 			--disable-triggers \
 			--no-owner \
 			--no-privileges \
-			-f /tmp/financial-sync-$(TIMESTAMP).sql"
+			> /tmp/financial-sync-$(TIMESTAMP).sql"
 	@echo -e "$(BLUE)3/5 Transferring data...$(NC)"
-	@sshpass -p '$(SSHPASS)' scp $(SSH_OPTS) \
-		$(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/postgres-data/tmp/financial-sync-$(TIMESTAMP).sql \
+	@sshpass -p '$(SSHPASS)' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+		$(NAS_USER)@$(NAS_HOST):/tmp/financial-sync-$(TIMESTAMP).sql \
 		./tmp/financial-sync-$(TIMESTAMP).sql
 	@echo -e "$(BLUE)4/5 Clearing development financial data...$(NC)"
-	@docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
+	@docker exec ai-service-postgres-1 psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
+		TRUNCATE TABLE $(foreach table,$(FINANCIAL_TABLES),financial.$(table)) CASCADE;" 2>/dev/null || \
+		docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
 		TRUNCATE TABLE $(foreach table,$(FINANCIAL_TABLES),financial.$(table)) CASCADE;"
 	@echo -e "$(BLUE)5/5 Importing production data to development...$(NC)"
-	@docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/financial-sync-$(TIMESTAMP).sql
+	@docker exec -i ai-service-postgres-1 psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/financial-sync-$(TIMESTAMP).sql 2>/dev/null || \
+		docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/financial-sync-$(TIMESTAMP).sql
 	@rm -f ./tmp/financial-sync-$(TIMESTAMP).sql
-	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
-		docker exec ai-service-postgres rm -f /tmp/financial-sync-$(TIMESTAMP).sql"
+	@sshpass -p '$(SSHPASS)' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $(NAS_USER)@$(NAS_HOST) "\
+		rm -f /tmp/financial-sync-$(TIMESTAMP).sql"
 
 # ============================================================================
 # PUSH COMMANDS (Development → Production) - USE WITH EXTREME CAUTION!
@@ -176,10 +204,10 @@ sync-clients: check-env ## 👥 Sync only clients and invoices
 
 _sync-table:
 	@echo -e "$(CYAN)  → Syncing table: financial.$(TABLE)$(NC)"
-	@# Dump from production
-	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+	@# Dump from production using make infrastructure
+	@sshpass -p '$(SSHPASS)' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $(NAS_USER)@$(NAS_HOST) "\
 		cd $(NAS_PATH) && \
-		docker exec ai-service-postgres pg_dump \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres pg_dump \
 			-U $(POSTGRES_USER) \
 			-d $(POSTGRES_DB) \
 			--table=financial.$(TABLE) \
@@ -187,19 +215,22 @@ _sync-table:
 			--disable-triggers \
 			--no-owner \
 			--no-privileges \
-			-f /tmp/sync-$(TABLE)-$(TIMESTAMP).sql"
+			> /tmp/sync-$(TABLE)-$(TIMESTAMP).sql"
 	@# Transfer file
-	@sshpass -p '$(SSHPASS)' scp $(SSH_OPTS) \
-		$(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/postgres-data/tmp/sync-$(TABLE)-$(TIMESTAMP).sql \
+	@sshpass -p '$(SSHPASS)' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+		$(NAS_USER)@$(NAS_HOST):/tmp/sync-$(TABLE)-$(TIMESTAMP).sql \
 		./tmp/sync-$(TABLE)-$(TIMESTAMP).sql
 	@# Clear and import
-	@docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
+	@docker exec ai-service-postgres-1 psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
+		TRUNCATE TABLE financial.$(TABLE) CASCADE;" 2>/dev/null || \
+		docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
 		TRUNCATE TABLE financial.$(TABLE) CASCADE;"
-	@docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/sync-$(TABLE)-$(TIMESTAMP).sql
+	@docker exec -i ai-service-postgres-1 psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/sync-$(TABLE)-$(TIMESTAMP).sql 2>/dev/null || \
+		docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/sync-$(TABLE)-$(TIMESTAMP).sql
 	@# Cleanup
 	@rm -f ./tmp/sync-$(TABLE)-$(TIMESTAMP).sql
-	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
-		docker exec ai-service-postgres rm -f /tmp/sync-$(TABLE)-$(TIMESTAMP).sql"
+	@sshpass -p '$(SSHPASS)' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $(NAS_USER)@$(NAS_HOST) "\
+		rm -f /tmp/sync-$(TABLE)-$(TIMESTAMP).sql"
 
 # ============================================================================
 # BACKUP COMMANDS
@@ -208,34 +239,45 @@ _sync-table:
 financial-backup-dev: ## 💾 Backup development financial data
 	@echo -e "$(BLUE)Creating development financial backup...$(NC)"
 	@mkdir -p ./backups/financial
-	@docker exec ai-service-postgres pg_dump \
+	@# Try both possible container names
+	@docker exec ai-service-postgres-1 pg_dump \
+		-U $(POSTGRES_USER) \
+		-d $(POSTGRES_DB) \
+		--schema=financial \
+		--no-owner \
+		--no-privileges \
+		-f /tmp/financial-backup-dev-$(TIMESTAMP).sql 2>/dev/null || \
+		docker exec ai-service-postgres pg_dump \
 		-U $(POSTGRES_USER) \
 		-d $(POSTGRES_DB) \
 		--schema=financial \
 		--no-owner \
 		--no-privileges \
 		-f /tmp/financial-backup-dev-$(TIMESTAMP).sql
-	@docker cp ai-service-postgres:/tmp/financial-backup-dev-$(TIMESTAMP).sql ./backups/financial/
-	@docker exec ai-service-postgres rm -f /tmp/financial-backup-dev-$(TIMESTAMP).sql
+	@docker cp ai-service-postgres-1:/tmp/financial-backup-dev-$(TIMESTAMP).sql ./backups/financial/ 2>/dev/null || \
+		docker cp ai-service-postgres:/tmp/financial-backup-dev-$(TIMESTAMP).sql ./backups/financial/
+	@docker exec ai-service-postgres-1 rm -f /tmp/financial-backup-dev-$(TIMESTAMP).sql 2>/dev/null || \
+		docker exec ai-service-postgres rm -f /tmp/financial-backup-dev-$(TIMESTAMP).sql
 	@echo -e "$(GREEN)✅ Backup saved to: ./backups/financial/financial-backup-dev-$(TIMESTAMP).sql$(NC)"
 
 financial-backup-prod: check-env ## 💾 Backup production financial data
 	@echo -e "$(BLUE)Creating production financial backup...$(NC)"
 	@mkdir -p ./backups/financial
-	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
+	@# Use make infrastructure for production backup
+	@sshpass -p '$(SSHPASS)' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $(NAS_USER)@$(NAS_HOST) "\
 		cd $(NAS_PATH) && \
-		docker exec ai-service-postgres pg_dump \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres pg_dump \
 			-U $(POSTGRES_USER) \
 			-d $(POSTGRES_DB) \
 			--schema=financial \
 			--no-owner \
 			--no-privileges \
-			-f /tmp/financial-backup-prod-$(TIMESTAMP).sql"
-	@sshpass -p '$(SSHPASS)' scp $(SSH_OPTS) \
-		$(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/postgres-data/tmp/financial-backup-prod-$(TIMESTAMP).sql \
+			> /tmp/financial-backup-prod-$(TIMESTAMP).sql"
+	@sshpass -p '$(SSHPASS)' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+		$(NAS_USER)@$(NAS_HOST):/tmp/financial-backup-prod-$(TIMESTAMP).sql \
 		./backups/financial/
-	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) "\
-		docker exec ai-service-postgres rm -f /tmp/financial-backup-prod-$(TIMESTAMP).sql"
+	@sshpass -p '$(SSHPASS)' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $(NAS_USER)@$(NAS_HOST) "\
+		rm -f /tmp/financial-backup-prod-$(TIMESTAMP).sql"
 	@echo -e "$(GREEN)✅ Backup saved to: ./backups/financial/financial-backup-prod-$(TIMESTAMP).sql$(NC)"
 
 financial-restore-dev: ## 🔄 Restore development financial data from backup
@@ -275,10 +317,10 @@ financial-validate: ## ✅ Validate financial data integrity
 _validate-env:
 	@if [ "$(ENV)" = "development" ]; then \
 		echo -e "$(CYAN)=== Development Environment ===$(NC)"; \
-		DB_CMD="docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)"; \
+		DB_CMD="docker exec ai-service-postgres-1 psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) 2>/dev/null || docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)"; \
 	else \
 		echo -e "$(CYAN)=== Production Environment ===$(NC)"; \
-		DB_CMD="sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(NAS_USER)@$(NAS_HOST) 'cd $(NAS_PATH) && docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)'"; \
+		DB_CMD="$(MAKE) -f Makefile.production prod-sql SQL"; \
 	fi; \
 	echo -e "$(YELLOW)Table row counts:$(NC)"; \
 	for table in $(FINANCIAL_TABLES); do \
@@ -337,5 +379,5 @@ financial-clean: ## 🧹 Clean temporary sync files
 	@rm -f ./tmp/sync-*-*.sql
 	@echo -e "$(GREEN)✅ Cleaned!$(NC)"
 
-# SSH options
-SSH_OPTS := -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+# SSH options (already included from .make.env)
+# Using existing SSH infrastructure from Makefile.production

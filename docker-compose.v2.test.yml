@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Backend API Service
   ai-service-api:
-    image: ghcr.io/christianlb/ai-service-api:latest
+    image: ai-service-api:dev
     container_name: ai-service-api
     restart: unless-stopped
     mem_limit: 400m
@@ -26,9 +26,7 @@ services:
     depends_on:
       - postgres
     ports:
-      - "3001:3001"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "3002:3001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 30s
@@ -38,7 +36,7 @@ services:
 
   # Frontend Service
   ai-service-frontend:
-    image: ghcr.io/christianlb/ai-service-frontend:latest
+    image: ai-service-frontend:dev
     container_name: ai-service-frontend
     restart: unless-stopped
     mem_limit: 150m
@@ -51,9 +49,7 @@ services:
     depends_on:
       - ai-service-api
     ports:
-      - "3000:80"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "3003:80"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
@@ -84,30 +80,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Watchtower for automatic updates
-  watchtower:
-    image: containrrr/watchtower
-    container_name: ai-service-watchtower
-    restart: unless-stopped
-    mem_limit: 100m
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=300
-      - WATCHTOWER_LABEL_ENABLE=true
-      - WATCHTOWER_INCLUDE_STOPPED=false
-      - WATCHTOWER_INCLUDE_RESTARTING=true
-      - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_HTTP_API_TOKEN}
-      - WATCHTOWER_HTTP_API_UPDATE=true
-      - WATCHTOWER_HTTP_API_PERIODIC_POLLS=true
-      - TZ=America/Santiago
-    networks:
-      - ai-service-network
-    ports:
-      - "8085:8080"
-    command: --interval 300 --cleanup --label-enable
 
 networks:
   ai-service-network:

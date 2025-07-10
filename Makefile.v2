@@ -32,22 +32,22 @@ dev-build: ## Build development images locally
 
 dev-up: ## Start development environment
 	@echo -e "$(BLUE)Starting development environment...$(NC)"
-	docker-compose -f docker-compose.dev.yml up -d
+	docker compose -f docker-compose.dev.yml up -d
 	@echo -e "$(GREEN)Frontend: http://localhost:3000$(NC)"
 	@echo -e "$(GREEN)API: http://localhost:3001$(NC)"
 
 dev-down: ## Stop development environment
 	@echo -e "$(YELLOW)Stopping development environment...$(NC)"
-	docker-compose -f docker-compose.dev.yml down
+	docker compose -f docker-compose.dev.yml down
 
 dev-logs-api: ## Show API logs
-	docker-compose -f docker-compose.dev.yml logs -f ai-service-api
+	docker compose -f docker-compose.dev.yml logs -f ai-service-api
 
 dev-logs-frontend: ## Show Frontend logs
-	docker-compose -f docker-compose.dev.yml logs -f ai-service-frontend
+	docker compose -f docker-compose.dev.yml logs -f ai-service-frontend
 
 dev-logs: ## Show all logs
-	docker-compose -f docker-compose.dev.yml logs -f
+	docker compose -f docker-compose.dev.yml logs -f
 
 # ============================================================================
 # PRODUCTION
@@ -82,8 +82,8 @@ prod-switch-to-v2: check-ssh-config ## Switch to v2 architecture
 	@echo -e "$(YELLOW)Updating production containers...$(NC)"
 	@sshpass -p '$(SSHPASS)' ssh $(SSH_OPTS) $(SSH_USER)@$(SSH_HOST) "\
 		cd $(REMOTE_PATH) && \
-		docker-compose pull && \
-		docker-compose up -d --remove-orphans \
+		docker compose pull && \
+		docker compose up -d --remove-orphans \
 	"
 	@echo -e "$(GREEN)✅ v2 architecture deployed!$(NC)"
 
@@ -99,8 +99,8 @@ prod-rollback-v2: check-ssh-config ## Rollback to previous architecture
 		cd $(REMOTE_PATH) && \
 		if [ -f docker-compose.production.yml.backup-* ]; then \
 			cp \$$(ls -t docker-compose.production.yml.backup-* | head -1) docker-compose.production.yml && \
-			docker-compose down && \
-			docker-compose up -d && \
+			docker compose down && \
+			docker compose up -d && \
 			echo 'Rollback completed'; \
 		else \
 			echo 'No backup found!'; \
@@ -114,14 +114,14 @@ prod-rollback-v2: check-ssh-config ## Rollback to previous architecture
 
 test-v2-local: ## Test v2 architecture locally
 	@echo -e "$(BLUE)Testing v2 architecture locally...$(NC)"
-	docker-compose -f docker-compose.production.v2.yml up -d
+	docker compose -f docker-compose.production.v2.yml up -d
 	@sleep 5
 	@echo -e "$(YELLOW)Testing health endpoints...$(NC)"
 	@curl -f http://localhost:3000/health && echo -e " $(GREEN)✓ Frontend healthy$(NC)" || echo -e " $(RED)✗ Frontend unhealthy$(NC)"
 	@curl -f http://localhost:3001/health && echo -e " $(GREEN)✓ API healthy$(NC)" || echo -e " $(RED)✗ API unhealthy$(NC)"
 	@echo -e "$(YELLOW)Testing API proxy...$(NC)"
 	@curl -f http://localhost:3000/api/health && echo -e " $(GREEN)✓ API proxy working$(NC)" || echo -e " $(RED)✗ API proxy failed$(NC)"
-	docker-compose -f docker-compose.production.v2.yml down
+	docker compose -f docker-compose.production.v2.yml down
 
 # ============================================================================
 # MONITORING
