@@ -128,6 +128,9 @@ services:
       - WATCHTOWER_HTTP_API_UPDATE=true
       - WATCHTOWER_HTTP_API_PERIODIC_POLLS=true
       - TZ=America/Santiago
+      # GitHub Container Registry Authentication
+      - REPO_USER=${GITHUB_USERNAME}
+      - REPO_PASS=${GHCR_TOKEN}
     networks:
       - ai-service-network
     ports:
