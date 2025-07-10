@@ -207,7 +207,9 @@ const Dashboard: React.FC = () => {
 
   // Helper function to format currency
   const formatCurrency = (amount: string | number, currencyCode = currency) => {
+    if (amount == null) return `0.00 ${currencyCode}`;
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return `0.00 ${currencyCode}`;
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: currencyCode,
@@ -339,7 +341,7 @@ const Dashboard: React.FC = () => {
                         <div style={{ marginTop: 8 }}>
                           <Tag color={getGrowthColor(revenueMetrics.growth.revenueGrowth)}>
                             {getGrowthIcon(revenueMetrics.growth.revenueGrowth)}
-                            {revenueMetrics.growth.revenueGrowth.toFixed(1)}%
+                            {revenueMetrics.growth.revenueGrowth != null && !isNaN(revenueMetrics.growth.revenueGrowth) ? revenueMetrics.growth.revenueGrowth.toFixed(1) : '0.0'}%
                           </Tag>
                         </div>
                       )}
@@ -723,7 +725,10 @@ const Dashboard: React.FC = () => {
                                 title: '% del Total',
                                 dataIndex: 'revenuePercentage',
                                 key: 'revenuePercentage',
-                                render: (value) => `${parseFloat(value).toFixed(1)}%`,
+                                render: (value) => {
+                                const parsed = parseFloat(value);
+                                return `${!isNaN(parsed) ? parsed.toFixed(1) : '0.0'}%`;
+                              },
                               },
                               {
                                 title: 'Estado',

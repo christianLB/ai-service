@@ -37,7 +37,7 @@ const InvoiceList: React.FC = () => {
       title: 'Total',
       dataIndex: 'total',
       key: 'total',
-      render: (value: number) => `${value.toFixed(2)} EUR`,
+      render: (value: number) => `${value != null && !isNaN(value) ? value.toFixed(2) : '0.00'} EUR`,
     },
     {
       title: 'Acciones',

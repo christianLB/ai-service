@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Table,
@@ -15,7 +15,7 @@ import {
   Typography,
   Switch,
   Tooltip,
-} from 'antd';
+} from "antd";
 import {
   BankOutlined,
   SyncOutlined,
@@ -24,14 +24,14 @@ import {
   ClockCircleOutlined,
   CalendarOutlined,
   LinkOutlined,
-} from '@ant-design/icons';
-import axios from 'axios';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/es';
+} from "@ant-design/icons";
+import axios from "axios";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/es";
 
 dayjs.extend(relativeTime);
-dayjs.locale('es');
+dayjs.locale("es");
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
@@ -70,8 +70,8 @@ const BankAccounts: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   // const [institutions, setInstitutions] = useState<Institution[]>([]);
   // const [selectedInstitution, setSelectedInstitution] = useState<string>('');
-  const [requisitionUrl, setRequisitionUrl] = useState<string>('');
-  const [requisitionId, setRequisitionId] = useState<string>('');
+  const [requisitionUrl, setRequisitionUrl] = useState<string>("");
+  const [requisitionId, setRequisitionId] = useState<string>("");
   const [authLoading, setAuthLoading] = useState(false);
   const [completeLoading, setCompleteLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(false);
@@ -80,14 +80,17 @@ const BankAccounts: React.FC = () => {
   const [toggleLoading, setToggleLoading] = useState(false);
 
   // LocalStorage key for requisition data
-  const REQUISITION_STORAGE_KEY = 'bank_requisition_pending';
+  const REQUISITION_STORAGE_KEY = "bank_requisition_pending";
 
   // Helper functions for localStorage with expiration
-  const saveRequisitionToStorage = (requisitionId: string, bankName: string = 'BBVA') => {
+  const saveRequisitionToStorage = (
+    requisitionId: string,
+    bankName: string = "BBVA"
+  ) => {
     const data: StoredRequisition = {
       requisitionId,
       timestamp: Date.now(),
-      bankName
+      bankName,
     };
     localStorage.setItem(REQUISITION_STORAGE_KEY, JSON.stringify(data));
   };
@@ -119,11 +122,11 @@ const BankAccounts: React.FC = () => {
     fetchAccounts();
     checkSyncStatus();
     fetchSyncStatus();
-    
+
     // Check for pending requisition
     const storedRequisition = getRequisitionFromStorage();
     if (storedRequisition) {
-      message.info('Tienes una autorización pendiente de completar');
+      message.info("Tienes una autorización pendiente de completar");
       setRequisitionId(storedRequisition.requisitionId);
       setSetupModalVisible(true);
       setCurrentStep(1);
@@ -133,25 +136,28 @@ const BankAccounts: React.FC = () => {
   const fetchAccounts = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/financial/accounts');
+      const response = await axios.get("/api/financial/accounts");
       if (response.data.success) {
         // Map backend data to frontend interface
         const mappedAccounts = response.data.data.map((account: any) => ({
           id: account.id,
           name: account.name,
-          institution: account.metadata?.institution_name || account.institutionId || 'BBVA',
+          institution:
+            account.metadata?.institution_name ||
+            account.institutionId ||
+            "BBVA",
           iban: account.iban,
           balance: account.balance ? parseFloat(account.balance) : 0,
           available_balance: account.balance ? parseFloat(account.balance) : 0, // Same as balance for now
-          currency: account.currencyId || 'EUR',
+          currency: account.currencyId || "EUR",
           type: account.type,
           last_sync: account.metadata?.last_sync || account.updatedAt,
-          is_active: account.isActive
+          is_active: account.isActive,
         }));
         setAccounts(mappedAccounts);
       }
     } catch (error) {
-      message.error('Error al cargar las cuentas bancarias');
+      message.error("Error al cargar las cuentas bancarias");
     } finally {
       setLoading(false);
     }
@@ -159,40 +165,46 @@ const BankAccounts: React.FC = () => {
 
   const checkSyncStatus = async () => {
     try {
-      const response = await axios.get('/api/financial/sync-status');
+      const response = await axios.get("/api/financial/sync-status");
       if (response.data.success) {
         // Update UI based on sync status
       }
     } catch (error) {
-      console.error('Error checking sync status:', error);
+      console.error("Error checking sync status:", error);
     }
   };
 
   const fetchSyncStatus = async () => {
     try {
-      const response = await axios.get('/api/financial/sync-status');
+      const response = await axios.get("/api/financial/sync-status");
       if (response.data.success) {
         setSyncStatus(response.data.data);
         setAutoSyncEnabled(response.data.data.scheduler.isRunning);
       }
     } catch (error) {
-      console.error('Error fetching sync status:', error);
+      console.error("Error fetching sync status:", error);
     }
   };
 
   const toggleAutoSync = async () => {
     setToggleLoading(true);
     try {
-      const endpoint = autoSyncEnabled ? '/api/financial/scheduler/stop' : '/api/financial/scheduler/start';
+      const endpoint = autoSyncEnabled
+        ? "/api/financial/scheduler/stop"
+        : "/api/financial/scheduler/start";
       const response = await axios.post(endpoint);
-      
+
       if (response.data.success) {
         setAutoSyncEnabled(!autoSyncEnabled);
-        message.success(autoSyncEnabled ? 'Sincronización automática desactivada' : 'Sincronización automática activada');
+        message.success(
+          autoSyncEnabled
+            ? "Sincronización automática desactivada"
+            : "Sincronización automática activada"
+        );
         fetchSyncStatus();
       }
     } catch (error) {
-      message.error('Error al cambiar el estado de sincronización automática');
+      message.error("Error al cambiar el estado de sincronización automática");
     } finally {
       setToggleLoading(false);
     }
@@ -201,14 +213,14 @@ const BankAccounts: React.FC = () => {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const response = await axios.post('/api/financial/sync');
+      const response = await axios.post("/api/financial/sync");
       if (response.data.success) {
-        message.success('Sincronización completada');
+        message.success("Sincronización completada");
         fetchAccounts();
         fetchSyncStatus(); // Update sync stats
       }
     } catch (error) {
-      message.error('Error al sincronizar cuentas');
+      message.error("Error al sincronizar cuentas");
     } finally {
       setSyncing(false);
     }
@@ -217,8 +229,8 @@ const BankAccounts: React.FC = () => {
   const startSetup = () => {
     setSetupModalVisible(true);
     setCurrentStep(0);
-    setRequisitionId('');
-    setRequisitionUrl('');
+    setRequisitionId("");
+    setRequisitionUrl("");
     // For now, we'll use BBVA as default
     // setSelectedInstitution('BBVA_BBVAESMM');
   };
@@ -226,41 +238,45 @@ const BankAccounts: React.FC = () => {
   const handleSetupBBVA = async () => {
     setAuthLoading(true);
     try {
-      console.log('Iniciando setup BBVA...');
-      const response = await axios.post('/api/financial/setup-bbva');
-      console.log('Respuesta del servidor:', response.data);
-      
+      console.log("Iniciando setup BBVA...");
+      const response = await axios.post("/api/financial/setup-bbva");
+      console.log("Respuesta del servidor:", response.data);
+
       if (response.data.success && response.data.data.consentUrl) {
         const { consentUrl, requisitionId } = response.data.data;
-        console.log('ConsentUrl:', consentUrl);
-        console.log('RequisitionId:', requisitionId);
-        
+        console.log("ConsentUrl:", consentUrl);
+        console.log("RequisitionId:", requisitionId);
+
         // Save requisition data
         setRequisitionUrl(consentUrl);
         setRequisitionId(requisitionId);
-        
+
         // Save to localStorage for recovery
-        saveRequisitionToStorage(requisitionId, 'BBVA');
-        
+        saveRequisitionToStorage(requisitionId, "BBVA");
+
         setCurrentStep(1);
-        
+
         // Open authorization URL in new window
-        const authWindow = window.open(consentUrl, '_blank');
+        const authWindow = window.open(consentUrl, "_blank");
         if (!authWindow) {
-          message.warning('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.');
+          message.warning(
+            "El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio."
+          );
         }
-        
-        message.info('Por favor, autoriza el acceso en la ventana que se abrió');
+
+        message.info(
+          "Por favor, autoriza el acceso en la ventana que se abrió"
+        );
       } else {
-        console.error('Respuesta inesperada:', response.data);
-        message.error('No se recibió la URL de autorización');
+        console.error("Respuesta inesperada:", response.data);
+        message.error("No se recibió la URL de autorización");
       }
     } catch (error) {
-      console.error('Setup error:', error);
+      console.error("Setup error:", error);
       if (axios.isAxiosError(error)) {
-        console.error('Error details:', error.response?.data);
+        console.error("Error details:", error.response?.data);
       }
-      message.error('Error al iniciar el proceso de autorización');
+      message.error("Error al iniciar el proceso de autorización");
     } finally {
       setAuthLoading(false);
     }
@@ -268,35 +284,41 @@ const BankAccounts: React.FC = () => {
 
   const handleCompleteSetup = async () => {
     if (!requisitionId) {
-      message.error('No se encontró el ID de requisición. Por favor, intenta nuevamente.');
+      message.error(
+        "No se encontró el ID de requisición. Por favor, intenta nuevamente."
+      );
       return;
     }
 
     setCompleteLoading(true);
     try {
-      const response = await axios.post('/api/financial/complete-setup', {
-        requisitionId
+      const response = await axios.post("/api/financial/complete-setup", {
+        requisitionId,
       });
-      
+
       if (response.data.success) {
-        message.success('¡Configuración completada exitosamente!');
+        message.success("¡Configuración completada exitosamente!");
         clearRequisitionFromStorage();
         setCurrentStep(2);
-        
+
         // Wait 2 seconds to show success screen, then close and refresh
         setTimeout(() => {
           setSetupModalVisible(false);
           fetchAccounts();
         }, 2000);
       } else {
-        message.error(response.data.error || 'Error al completar la configuración');
+        message.error(
+          response.data.error || "Error al completar la configuración"
+        );
       }
     } catch (error: any) {
-      console.error('Complete setup error:', error);
+      console.error("Complete setup error:", error);
       if (error.response?.data?.error) {
         message.error(error.response.data.error);
       } else {
-        message.error('Error al completar la configuración. Por favor, intenta nuevamente.');
+        message.error(
+          "Error al completar la configuración. Por favor, intenta nuevamente."
+        );
       }
     } finally {
       setCompleteLoading(false);
@@ -306,18 +328,22 @@ const BankAccounts: React.FC = () => {
   // Optional: Check authorization status periodically
   const checkAuthorizationStatus = async () => {
     if (!requisitionId || currentStep !== 1) return;
-    
+
     setCheckingAuth(true);
     try {
-      const response = await axios.get(`/api/financial/requisition-status/${requisitionId}`);
-      if (response.data.success && response.data.data.status === 'LN') {
+      const response = await axios.get(
+        `/api/financial/requisition-status/${requisitionId}`
+      );
+      if (response.data.success && response.data.data.status === "LN") {
         // Linked successfully
-        message.success('¡Autorización detectada! Completando configuración...');
+        message.success(
+          "¡Autorización detectada! Completando configuración..."
+        );
         await handleCompleteSetup();
       }
     } catch (error) {
       // Silent fail - user can still click the button manually
-      console.log('Status check failed:', error);
+      console.log("Status check failed:", error);
     } finally {
       setCheckingAuth(false);
     }
@@ -336,9 +362,9 @@ const BankAccounts: React.FC = () => {
 
   const columns = [
     {
-      title: 'Banco',
-      dataIndex: 'institution',
-      key: 'institution',
+      title: "Banco",
+      dataIndex: "institution",
+      key: "institution",
       render: (text: string) => (
         <Space>
           <BankOutlined />
@@ -347,14 +373,17 @@ const BankAccounts: React.FC = () => {
       ),
     },
     {
-      title: 'Cuenta',
-      dataIndex: 'name',
-      key: 'name',
+      title: "Cuenta",
+      dataIndex: "name",
+      key: "name",
       render: (text: string, record: BankAccount) => (
         <div>
           <Text>{text}</Text>
           {record.iban && (
-            <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>
+            <Text
+              type="secondary"
+              style={{ display: "block", fontSize: "12px" }}
+            >
               {record.iban}
             </Text>
           )}
@@ -362,50 +391,56 @@ const BankAccounts: React.FC = () => {
       ),
     },
     {
-      title: 'Saldo',
-      dataIndex: 'balance',
-      key: 'balance',
-      align: 'right' as const,
+      title: "Saldo",
+      dataIndex: "balance",
+      key: "balance",
+      align: "right" as const,
       render: (balance: number, record: BankAccount) => (
         <Statistic
           value={balance}
           precision={2}
-          prefix={record.currency === 'EUR' ? '€' : '$'}
-          valueStyle={{ fontSize: '16px', color: balance >= 0 ? '#52c41a' : '#f5222d' }}
+          prefix={record.currency === "EUR" ? "€" : "$"}
+          valueStyle={{
+            fontSize: "16px",
+            color: balance >= 0 ? "#52c41a" : "#f5222d",
+          }}
         />
       ),
     },
     {
-      title: 'Disponible',
-      dataIndex: 'available_balance',
-      key: 'available_balance',
-      align: 'right' as const,
+      title: "Disponible",
+      dataIndex: "available_balance",
+      key: "available_balance",
+      align: "right" as const,
       render: (balance: number | undefined, record: BankAccount) => (
         <Text type="secondary">
-          {record.currency === 'EUR' ? '€' : '$'} {balance != null && !isNaN(Number(balance)) ? Number(balance).toFixed(2) : '0.00'}
+          {record.currency === "EUR" ? "€" : "$"}{" "}
+          {balance != null && !isNaN(Number(balance))
+            ? Number(balance).toFixed(2)
+            : "0.00"}
         </Text>
       ),
     },
     {
-      title: 'Última Sincronización',
-      dataIndex: 'last_sync',
-      key: 'last_sync',
+      title: "Última Sincronización",
+      dataIndex: "last_sync",
+      key: "last_sync",
       render: (date: string) => (
         <Space>
           <ClockCircleOutlined />
           <Text type="secondary">
-            {date ? dayjs(date).format('DD/MM/YYYY HH:mm') : 'Nunca'}
+            {date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "Nunca"}
           </Text>
         </Space>
       ),
     },
     {
-      title: 'Estado',
-      dataIndex: 'is_active',
-      key: 'is_active',
+      title: "Estado",
+      dataIndex: "is_active",
+      key: "is_active",
       render: (active: boolean) => (
-        <Tag color={active ? 'green' : 'red'}>
-          {active ? 'Activa' : 'Inactiva'}
+        <Tag color={active ? "green" : "red"}>
+          {active ? "Activa" : "Inactiva"}
         </Tag>
       ),
     },
@@ -423,7 +458,7 @@ const BankAccounts: React.FC = () => {
               value={totalBalance}
               precision={2}
               prefix="€"
-              valueStyle={{ color: totalBalance >= 0 ? '#52c41a' : '#f5222d' }}
+              valueStyle={{ color: totalBalance >= 0 ? "#52c41a" : "#f5222d" }}
             />
           </Card>
         </Col>
@@ -431,7 +466,7 @@ const BankAccounts: React.FC = () => {
           <Card>
             <Statistic
               title="Cuentas Activas"
-              value={accounts.filter(a => a.is_active).length}
+              value={accounts.filter((a) => a.is_active).length}
               suffix={`/ ${accounts.length}`}
               prefix={<BankOutlined />}
             />
@@ -444,7 +479,7 @@ const BankAccounts: React.FC = () => {
               value={
                 syncStatus?.stats?.summary?.last_sync
                   ? dayjs(syncStatus.stats.summary.last_sync).fromNow()
-                  : 'Nunca'
+                  : "Nunca"
               }
               prefix={<SyncOutlined />}
             />
@@ -454,15 +489,17 @@ const BankAccounts: React.FC = () => {
           <Card>
             <Statistic
               title="Sincronizaciones Hoy"
-              value={
-                syncStatus?.stats?.summary?.total_syncs || 0
-              }
+              value={syncStatus?.stats?.summary?.total_syncs || 0}
               suffix="/ 2"
               prefix={<CalendarOutlined />}
             />
             {syncStatus?.scheduler?.nextSyncEstimate && (
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: '8px' }}>
-                Próxima: {dayjs(syncStatus.scheduler.nextSyncEstimate).format('HH:mm')}
+              <Text
+                type="secondary"
+                style={{ fontSize: "12px", display: "block", marginTop: "8px" }}
+              >
+                Próxima:{" "}
+                {dayjs(syncStatus.scheduler.nextSyncEstimate).format("HH:mm")}
               </Text>
             )}
           </Card>
@@ -490,11 +527,7 @@ const BankAccounts: React.FC = () => {
                 />
               </Space>
             </Tooltip>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={startSetup}
-            >
+            <Button type="primary" icon={<PlusOutlined />} onClick={startSetup}>
               Conectar Cuenta
             </Button>
             <Button
@@ -528,21 +561,24 @@ const BankAccounts: React.FC = () => {
               loading={loading}
               pagination={false}
             />
-            {syncStatus?.stats?.recentSyncs && syncStatus.stats.recentSyncs.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Últimas sincronizaciones: 
-                  {syncStatus.stats.recentSyncs.slice(0, 3).map((sync: any, index: number) => (
-                    <span key={index}>
-                      {' '}
-                      {dayjs(sync.created_at).format('DD/MM HH:mm')}
-                      {sync.success ? ' ✓' : ' ✗'}
-                      {index < 2 && ','}
-                    </span>
-                  ))}
-                </Text>
-              </div>
-            )}
+            {syncStatus?.stats?.recentSyncs &&
+              syncStatus.stats.recentSyncs.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                    Últimas sincronizaciones:
+                    {syncStatus.stats.recentSyncs
+                      .slice(0, 3)
+                      .map((sync: any, index: number) => (
+                        <span key={index}>
+                          {" "}
+                          {dayjs(sync.created_at).format("DD/MM HH:mm")}
+                          {sync.success ? " ✓" : " ✗"}
+                          {index < 2 && ","}
+                        </span>
+                      ))}
+                  </Text>
+                </div>
+              )}
           </>
         )}
       </Card>
@@ -554,23 +590,24 @@ const BankAccounts: React.FC = () => {
         onCancel={() => {
           if (currentStep === 1 && requisitionId) {
             Modal.confirm({
-              title: '¿Cancelar proceso?',
-              content: 'Tienes una autorización pendiente. ¿Estás seguro de que quieres cancelar?',
+              title: "¿Cancelar proceso?",
+              content:
+                "Tienes una autorización pendiente. ¿Estás seguro de que quieres cancelar?",
               onOk: () => {
                 clearRequisitionFromStorage();
                 setSetupModalVisible(false);
                 setCurrentStep(0);
-                setRequisitionId('');
-                setRequisitionUrl('');
+                setRequisitionId("");
+                setRequisitionUrl("");
               },
-              okText: 'Sí, cancelar',
-              cancelText: 'No, continuar',
+              okText: "Sí, cancelar",
+              cancelText: "No, continuar",
             });
           } else {
             setSetupModalVisible(false);
             setCurrentStep(0);
-            setRequisitionId('');
-            setRequisitionUrl('');
+            setRequisitionId("");
+            setRequisitionUrl("");
           }
         }}
         footer={null}
@@ -587,25 +624,36 @@ const BankAccounts: React.FC = () => {
           <div>
             <Title level={4}>Selecciona tu banco</Title>
             <Paragraph>
-              Utilizamos conexiones seguras PSD2 para acceder a tu información bancaria.
-              Tus credenciales nunca se almacenan en nuestros servidores.
+              Utilizamos conexiones seguras PSD2 para acceder a tu información
+              bancaria. Tus credenciales nunca se almacenan en nuestros
+              servidores.
             </Paragraph>
-            
-            <Card 
-              hoverable 
-              style={{ marginTop: 16, cursor: authLoading ? 'not-allowed' : 'pointer' }}
+
+            <Card
+              hoverable
+              style={{
+                marginTop: 16,
+                cursor: authLoading ? "not-allowed" : "pointer",
+              }}
               onClick={!authLoading ? handleSetupBBVA : undefined}
             >
               <Space>
                 {authLoading ? (
-                  <SyncOutlined spin style={{ fontSize: 24, color: '#1890ff' }} />
+                  <SyncOutlined
+                    spin
+                    style={{ fontSize: 24, color: "#1890ff" }}
+                  />
                 ) : (
-                  <BankOutlined style={{ fontSize: 24, color: '#004481' }} />
+                  <BankOutlined style={{ fontSize: 24, color: "#004481" }} />
                 )}
                 <div>
-                  <Title level={5} style={{ margin: 0 }}>BBVA</Title>
+                  <Title level={5} style={{ margin: 0 }}>
+                    BBVA
+                  </Title>
                   <Text type="secondary">
-                    {authLoading ? 'Iniciando proceso...' : 'Banco Bilbao Vizcaya Argentaria'}
+                    {authLoading
+                      ? "Iniciando proceso..."
+                      : "Banco Bilbao Vizcaya Argentaria"}
                   </Text>
                 </div>
               </Space>
@@ -625,14 +673,18 @@ const BankAccounts: React.FC = () => {
           <div>
             <Title level={4}>Autoriza el acceso</Title>
             <Paragraph>
-              Se ha abierto una nueva ventana donde debes autorizar el acceso a tu cuenta bancaria.
-              Una vez completado, haz clic en continuar.
+              Se ha abierto una nueva ventana donde debes autorizar el acceso a
+              tu cuenta bancaria. Una vez completado, haz clic en continuar.
             </Paragraph>
-            
+
             <Alert
-              message={checkingAuth ? "Verificando autorización..." : "Esperando autorización"}
+              message={
+                checkingAuth
+                  ? "Verificando autorización..."
+                  : "Esperando autorización"
+              }
               description={
-                checkingAuth 
+                checkingAuth
                   ? "Estamos verificando el estado de tu autorización. Por favor, espera un momento."
                   : "Por favor, completa el proceso de autorización en la ventana del banco."
               }
@@ -651,43 +703,50 @@ const BankAccounts: React.FC = () => {
               />
             )}
 
-            <div style={{ marginTop: 24, textAlign: 'center' }}>
-              <Button 
-                type="primary" 
-                size="large" 
+            <div style={{ marginTop: 24, textAlign: "center" }}>
+              <Button
+                type="primary"
+                size="large"
                 onClick={handleCompleteSetup}
                 loading={completeLoading}
                 disabled={!requisitionId}
               >
-                {completeLoading ? 'Verificando...' : 'He completado la autorización'}
+                {completeLoading
+                  ? "Verificando..."
+                  : "He completado la autorización"}
               </Button>
             </div>
 
             {requisitionUrl && (
-              <Paragraph style={{ marginTop: 16, textAlign: 'center' }}>
+              <Paragraph style={{ marginTop: 16, textAlign: "center" }}>
                 <Text type="secondary">
-                  Si la ventana no se abrió, 
-                  <a href={requisitionUrl} target="_blank" rel="noopener noreferrer">
-                    {' '}haz clic aquí
+                  Si la ventana no se abrió,
+                  <a
+                    href={requisitionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {" "}
+                    haz clic aquí
                   </a>
                 </Text>
               </Paragraph>
             )}
 
-            <div style={{ marginTop: 24, textAlign: 'center' }}>
+            <div style={{ marginTop: 24, textAlign: "center" }}>
               <Text type="secondary">
                 Este proceso puede tardar hasta 5 minutos en completarse.
               </Text>
             </div>
 
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <Button 
-                type="link" 
+            <div style={{ marginTop: 16, textAlign: "center" }}>
+              <Button
+                type="link"
                 onClick={() => {
                   clearRequisitionFromStorage();
                   setCurrentStep(0);
-                  setRequisitionId('');
-                  setRequisitionUrl('');
+                  setRequisitionId("");
+                  setRequisitionUrl("");
                 }}
               >
                 Empezar de nuevo con otro banco
@@ -697,11 +756,14 @@ const BankAccounts: React.FC = () => {
         )}
 
         {currentStep === 2 && (
-          <div style={{ textAlign: 'center' }}>
-            <CheckCircleOutlined style={{ fontSize: 64, color: '#52c41a' }} />
-            <Title level={4} style={{ marginTop: 16 }}>¡Cuenta conectada exitosamente!</Title>
+          <div style={{ textAlign: "center" }}>
+            <CheckCircleOutlined style={{ fontSize: 64, color: "#52c41a" }} />
+            <Title level={4} style={{ marginTop: 16 }}>
+              ¡Cuenta conectada exitosamente!
+            </Title>
             <Paragraph>
-              Tu cuenta bancaria ha sido conectada y las transacciones se sincronizarán automáticamente.
+              Tu cuenta bancaria ha sido conectada y las transacciones se
+              sincronizarán automáticamente.
             </Paragraph>
           </div>
         )}

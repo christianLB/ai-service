@@ -163,7 +163,7 @@ const ClientList: React.FC = () => {
       key: 'totalRevenue',
       render: (value: number, record: Client) => (
         <div>
-          <div>{value.toFixed(2)} {record.currency}</div>
+          <div>{value != null && !isNaN(value) ? value.toFixed(2) : '0.00'} {record.currency}</div>
           <div style={{ fontSize: '12px', color: '#666' }}>
             {record.totalInvoices} facturas
           </div>
@@ -256,7 +256,7 @@ const ClientList: React.FC = () => {
           <Card>
             <Statistic
               title="Ingresos Totales"
-              value={clients.reduce((sum, c) => sum + c.totalRevenue, 0).toFixed(2)}
+              value={clients.reduce((sum, c) => sum + (c.totalRevenue || 0), 0).toFixed(2)}
               suffix="EUR"
               valueStyle={{ color: '#1890ff' }}
             />

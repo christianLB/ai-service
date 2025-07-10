@@ -74,6 +74,49 @@ watchtower-check-auth: ## 🔐 Verificar autenticación de Watchtower
 	@echo "🧪 Probando pull de imagen..."
 	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo ${SSHPASS}  < /dev/null |  sudo -S /usr/local/bin/docker pull ghcr.io/christianlb/ai-service:latest 2>&1 | grep -E \"(Pulling|Downloaded|up to date|unauthorized|denied)\" | tail -5"
 
+.PHONY: watchtower-fix-telegram
+watchtower-fix-telegram: ## 🔧 Arreglar Watchtower quitando notificaciones Telegram
+	@echo "🔧 Arreglando Watchtower - eliminando notificaciones Telegram..."
+	@echo ""
+	@echo "1️⃣ Copiando nueva configuración al NAS..."
+	@sshpass -e scp -o StrictHostKeyChecking=no docker-compose.production.yml k2600x@192.168.1.11:/volume1/docker/ai-service/docker-compose.yml
+	@echo "✅ Configuración actualizada"
+	@echo ""
+	@echo "2️⃣ Deteniendo Watchtower actual..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker stop ai-watchtower 2>/dev/null || echo '⚠️  No estaba corriendo'"
+	@echo ""
+	@echo "3️⃣ Eliminando contenedor problemático..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker rm -f ai-watchtower"
+	@echo ""
+	@echo "4️⃣ Recreando Watchtower con la configuración corregida..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "cd /volume1/docker/ai-service && echo '${SSHPASS}' | sudo -S /usr/local/bin/docker compose up -d watchtower"
+	@echo ""
+	@echo "5️⃣ Verificando estado..."
+	@sleep 5
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker ps | grep watchtower"
+	@echo ""
+	@echo "✅ Watchtower arreglado! Ahora debería funcionar correctamente."
+	@echo ""
+	@echo "Para verificar que esté funcionando:"
+	@echo "  make watchtower-logs"
+	@echo "  make watchtower-test"
+
+.PHONY: watchtower-enable-periodic
+watchtower-enable-periodic: ## 🔄 Habilitar chequeos periódicos de Watchtower
+	@echo "🔄 Habilitando chequeos periódicos de Watchtower..."
+	@echo ""
+	@echo "1️⃣ Reiniciando Watchtower con configuración correcta..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker rm -f ai-watchtower"
+	@echo ""
+	@echo "2️⃣ Recreando con chequeos cada 5 minutos..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "cd /volume1/docker/ai-service && echo '${SSHPASS}' | sudo -S /usr/local/bin/docker run -d --name ai-watchtower --restart unless-stopped -e WATCHTOWER_CLEANUP=true -e WATCHTOWER_POLL_INTERVAL=300 -e WATCHTOWER_INCLUDE_RESTARTING=false -e WATCHTOWER_LOG_LEVEL=info -e DOCKER_CONFIG=/config -v /var/run/docker.sock:/var/run/docker.sock -v /volume1/docker/ai-service/config/watchtower:/config:ro -p 8080:8080 containrrr/watchtower ai-service"
+	@echo ""
+	@echo "3️⃣ Verificando estado..."
+	@sleep 3
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker logs ai-watchtower --tail 10"
+	@echo ""
+	@echo "✅ Watchtower configurado para chequear cada 5 minutos!"
+
 .PHONY: watchtower-fix-container
 watchtower-fix-container: ## 🔧 Arreglar contenedor ai-service para usar imagen de ghcr.io
 	@echo "🔧 Arreglando contenedor ai-service para usar imagen correcta..."
