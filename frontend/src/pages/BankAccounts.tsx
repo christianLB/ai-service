@@ -13,6 +13,8 @@ import {
   Col,
   Statistic,
   Typography,
+  Switch,
+  Tooltip,
 } from 'antd';
 import {
   BankOutlined,
@@ -25,6 +27,11 @@ import {
 } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/es';
+
+dayjs.extend(relativeTime);
+dayjs.locale('es');
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
@@ -35,7 +42,7 @@ interface BankAccount {
   institution: string;
   iban?: string;
   balance: number;
-  available_balance: number;
+  available_balance?: number;
   currency: string;
   type: string;
   last_sync?: string;
@@ -68,6 +75,9 @@ const BankAccounts: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const [completeLoading, setCompleteLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
 
   // LocalStorage key for requisition data
   const REQUISITION_STORAGE_KEY = 'bank_requisition_pending';
@@ -108,6 +118,7 @@ const BankAccounts: React.FC = () => {
   useEffect(() => {
     fetchAccounts();
     checkSyncStatus();
+    fetchSyncStatus();
     
     // Check for pending requisition
     const storedRequisition = getRequisitionFromStorage();
@@ -124,7 +135,20 @@ const BankAccounts: React.FC = () => {
     try {
       const response = await axios.get('/api/financial/accounts');
       if (response.data.success) {
-        setAccounts(response.data.data);
+        // Map backend data to frontend interface
+        const mappedAccounts = response.data.data.map((account: any) => ({
+          id: account.id,
+          name: account.name,
+          institution: account.metadata?.institution_name || account.institutionId || 'BBVA',
+          iban: account.iban,
+          balance: parseFloat(account.balance) || 0,
+          available_balance: parseFloat(account.balance) || 0, // Same as balance for now
+          currency: account.currencyId || 'EUR',
+          type: account.type,
+          last_sync: account.metadata?.last_sync || account.updatedAt,
+          is_active: account.isActive
+        }));
+        setAccounts(mappedAccounts);
       }
     } catch (error) {
       message.error('Error al cargar las cuentas bancarias');
@@ -144,6 +168,36 @@ const BankAccounts: React.FC = () => {
     }
   };
 
+  const fetchSyncStatus = async () => {
+    try {
+      const response = await axios.get('/api/financial/sync-status');
+      if (response.data.success) {
+        setSyncStatus(response.data.data);
+        setAutoSyncEnabled(response.data.data.scheduler.isRunning);
+      }
+    } catch (error) {
+      console.error('Error fetching sync status:', error);
+    }
+  };
+
+  const toggleAutoSync = async () => {
+    setToggleLoading(true);
+    try {
+      const endpoint = autoSyncEnabled ? '/api/financial/scheduler/stop' : '/api/financial/scheduler/start';
+      const response = await axios.post(endpoint);
+      
+      if (response.data.success) {
+        setAutoSyncEnabled(!autoSyncEnabled);
+        message.success(autoSyncEnabled ? 'Sincronización automática desactivada' : 'Sincronización automática activada');
+        fetchSyncStatus();
+      }
+    } catch (error) {
+      message.error('Error al cambiar el estado de sincronización automática');
+    } finally {
+      setToggleLoading(false);
+    }
+  };
+
   const handleSync = async () => {
     setSyncing(true);
     try {
@@ -151,6 +205,7 @@ const BankAccounts: React.FC = () => {
       if (response.data.success) {
         message.success('Sincronización completada');
         fetchAccounts();
+        fetchSyncStatus(); // Update sync stats
       }
     } catch (error) {
       message.error('Error al sincronizar cuentas');
@@ -325,9 +380,9 @@ const BankAccounts: React.FC = () => {
       dataIndex: 'available_balance',
       key: 'available_balance',
       align: 'right' as const,
-      render: (balance: number, record: BankAccount) => (
+      render: (balance: number | undefined, record: BankAccount) => (
         <Text type="secondary">
-          {record.currency === 'EUR' ? '€' : '$'} {balance.toFixed(2)}
+          {record.currency === 'EUR' ? '€' : '$'} {balance !== undefined ? balance.toFixed(2) : '0.00'}
         </Text>
       ),
     },
@@ -386,7 +441,11 @@ const BankAccounts: React.FC = () => {
           <Card>
             <Statistic
               title="Última Sincronización"
-              value={accounts.length > 0 ? 'Hace 2 horas' : 'Nunca'}
+              value={
+                syncStatus?.stats?.summary?.last_sync
+                  ? dayjs(syncStatus.stats.summary.last_sync).fromNow()
+                  : 'Nunca'
+              }
               prefix={<SyncOutlined />}
             />
           </Card>
@@ -394,10 +453,18 @@ const BankAccounts: React.FC = () => {
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="Transacciones Hoy"
-              value={0}
+              title="Sincronizaciones Hoy"
+              value={
+                syncStatus?.stats?.summary?.total_syncs || 0
+              }
+              suffix="/ 2"
               prefix={<CalendarOutlined />}
             />
+            {syncStatus?.scheduler?.nextSyncEstimate && (
+              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: '8px' }}>
+                Próxima: {dayjs(syncStatus.scheduler.nextSyncEstimate).format('HH:mm')}
+              </Text>
+            )}
           </Card>
         </Col>
       </Row>
@@ -411,6 +478,18 @@ const BankAccounts: React.FC = () => {
         }
         extra={
           <Space>
+            <Tooltip title="Activar/desactivar sincronización automática (2 veces al día)">
+              <Space>
+                <span>Auto-sync:</span>
+                <Switch
+                  checked={autoSyncEnabled}
+                  onChange={toggleAutoSync}
+                  loading={toggleLoading}
+                  checkedChildren="ON"
+                  unCheckedChildren="OFF"
+                />
+              </Space>
+            </Tooltip>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -441,13 +520,30 @@ const BankAccounts: React.FC = () => {
             }
           />
         ) : (
-          <Table
-            columns={columns}
-            dataSource={accounts}
-            rowKey="id"
-            loading={loading}
-            pagination={false}
-          />
+          <>
+            <Table
+              columns={columns}
+              dataSource={accounts}
+              rowKey="id"
+              loading={loading}
+              pagination={false}
+            />
+            {syncStatus?.stats?.recentSyncs && syncStatus.stats.recentSyncs.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  Últimas sincronizaciones: 
+                  {syncStatus.stats.recentSyncs.slice(0, 3).map((sync: any, index: number) => (
+                    <span key={index}>
+                      {' '}
+                      {dayjs(sync.created_at).format('DD/MM HH:mm')}
+                      {sync.success ? ' ✓' : ' ✗'}
+                      {index < 2 && ','}
+                    </span>
+                  ))}
+                </Text>
+              </div>
+            )}
+          </>
         )}
       </Card>
 
