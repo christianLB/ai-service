@@ -137,7 +137,7 @@ const BankAccounts: React.FC = () => {
     setLoading(true);
     try {
       const response = await axios.get("/api/financial/accounts");
-      if (response.data.success) {
+      if (response.data.success && Array.isArray(response.data.data)) {
         // Map backend data to frontend interface
         const mappedAccounts = response.data.data.map((account: any) => ({
           id: account.id,
@@ -395,31 +395,34 @@ const BankAccounts: React.FC = () => {
       dataIndex: "balance",
       key: "balance",
       align: "right" as const,
-      render: (balance: number, record: BankAccount) => (
-        <Statistic
-          value={balance}
-          precision={2}
-          prefix={record.currency === "EUR" ? "€" : "$"}
-          valueStyle={{
-            fontSize: "16px",
-            color: balance >= 0 ? "#52c41a" : "#f5222d",
-          }}
-        />
-      ),
+      render: (balance: number, record: BankAccount) => {
+        const balanceValue = typeof balance === 'number' && !isNaN(balance) ? balance : 0;
+        return (
+          <Statistic
+            value={balanceValue}
+            precision={2}
+            prefix={record.currency === "EUR" ? "€" : "$"}
+            valueStyle={{
+              fontSize: "16px",
+              color: balanceValue >= 0 ? "#52c41a" : "#f5222d",
+            }}
+          />
+        );
+      },
     },
     {
       title: "Disponible",
       dataIndex: "available_balance",
       key: "available_balance",
       align: "right" as const,
-      render: (balance: number | undefined, record: BankAccount) => (
-        <Text type="secondary">
-          {record.currency === "EUR" ? "€" : "$"}{" "}
-          {balance != null && !isNaN(Number(balance))
-            ? Number(balance).toFixed(2)
-            : "0.00"}
-        </Text>
-      ),
+      render: (balance: number | undefined, record: BankAccount) => {
+        const balanceValue = typeof balance === 'number' && !isNaN(balance) ? balance : 0;
+        return (
+          <Text type="secondary">
+            {record.currency === "EUR" ? "€" : "$"} {balanceValue.toFixed(2)}
+          </Text>
+        );
+      },
     },
     {
       title: "Última Sincronización",
