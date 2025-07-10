@@ -1,8 +1,37 @@
 import { logger } from '../utils/log';
 
+async function ensureMigrationsTable(client: any): Promise<void> {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS public.schema_migrations (
+      version VARCHAR(255) PRIMARY KEY,
+      applied_at TIMESTAMPTZ DEFAULT NOW(),
+      checksum VARCHAR(64),
+      description TEXT
+    )
+  `);
+}
+
+async function hasMigrationBeenApplied(client: any, version: string): Promise<boolean> {
+  const result = await client.query(
+    'SELECT 1 FROM public.schema_migrations WHERE version = $1',
+    [version]
+  );
+  return result.rows.length > 0;
+}
+
+async function recordMigration(client: any, version: string, description: string): Promise<void> {
+  await client.query(
+    'INSERT INTO public.schema_migrations (version, description) VALUES ($1, $2) ON CONFLICT (version) DO NOTHING',
+    [version, description]
+  );
+}
+
 export async function migrateFinancialSchema(client: any): Promise<void> {
   try {
     logger.info('🔧 Starting financial schema migration...');
+    
+    // Ensure migrations tracking table exists
+    await ensureMigrationsTable(client);
     
     // Enable pg_trgm extension for fuzzy string matching
     try {
@@ -14,6 +43,9 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
     
     // Step 0: Ensure base tables exist first
     await ensureBaseTables(client);
+    
+    // Step 0.5: Ensure all required columns exist (for GoCardless and crypto support)
+    await ensureMissingColumns(client);
     
     // PRIORITY 1: Add wallet_address column if missing (this is the critical issue)
     const walletCheck = await client.query(`
@@ -353,17 +385,9 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
 async function ensureBaseTables(client: any): Promise<void> {
   logger.info('🏗️ Ensuring base tables exist...');
   
-  // For fresh install, drop and recreate to avoid type conflicts
-  logger.info('🧹 Cleaning up existing financial schema for fresh start...');
-  await client.query(`
-    DROP TABLE IF EXISTS financial.transaction_categorizations CASCADE;
-    DROP TABLE IF EXISTS financial.categories CASCADE;
-    DROP TABLE IF EXISTS financial.transactions CASCADE;
-    DROP TABLE IF EXISTS financial.accounts CASCADE;
-    DROP TABLE IF EXISTS financial.currencies CASCADE;
-    DROP VIEW IF EXISTS financial.categorized_transactions CASCADE;
-    DROP VIEW IF EXISTS financial.monthly_category_summary CASCADE;
-  `);
+  // CRITICAL: Never drop existing tables - this was destroying production data!
+  // Only create tables if they don't exist
+  logger.info('📊 Ensuring financial schema exists...');
   
   // Create currencies table
   await client.query(`
@@ -413,7 +437,7 @@ async function ensureBaseTables(client: any): Promise<void> {
     )
   `);
   
-  // Create transactions table (without legacy category column)
+  // Create transactions table with all required columns
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.transactions (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -432,7 +456,17 @@ async function ensureBaseTables(client: any): Promise<void> {
       metadata JSONB DEFAULT '{}',
       tags TEXT[],
       fee_amount DECIMAL(20, 8),
-      fee_currency_id UUID REFERENCES financial.currencies(id)
+      fee_currency_id UUID REFERENCES financial.currencies(id),
+      -- GoCardless specific
+      gocardless_data JSONB,
+      -- Crypto specific
+      transaction_hash VARCHAR(255),
+      block_number INTEGER,
+      gas_used VARCHAR(255),
+      gas_price VARCHAR(255),
+      from_address VARCHAR(255),
+      to_address VARCHAR(255),
+      counterparty_account VARCHAR(255)
     )
   `);
   
@@ -588,4 +622,60 @@ async function ensureBaseTables(client: any): Promise<void> {
   `);
   
   logger.info('✅ Base tables ensured');
+}
+
+async function ensureMissingColumns(client: any): Promise<void> {
+  logger.info('🔧 Ensuring all required columns exist...');
+  
+  // Check if this migration has already been applied
+  const migrationVersion = '002_add_gocardless_crypto_columns';
+  if (await hasMigrationBeenApplied(client, migrationVersion)) {
+    logger.info('✅ Missing columns migration already applied');
+    return;
+  }
+  
+  // Add missing columns to transactions table if they don't exist
+  const columnsToAdd = [
+    { name: 'gocardless_data', type: 'JSONB' },
+    { name: 'transaction_hash', type: 'VARCHAR(255)' },
+    { name: 'block_number', type: 'INTEGER' },
+    { name: 'gas_used', type: 'VARCHAR(255)' },
+    { name: 'gas_price', type: 'VARCHAR(255)' },
+    { name: 'from_address', type: 'VARCHAR(255)' },
+    { name: 'to_address', type: 'VARCHAR(255)' },
+    { name: 'counterparty_account', type: 'VARCHAR(255)' }
+  ];
+
+  for (const column of columnsToAdd) {
+    try {
+      await client.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'financial' 
+            AND table_name = 'transactions' 
+            AND column_name = '${column.name}'
+          ) THEN
+            ALTER TABLE financial.transactions ADD COLUMN ${column.name} ${column.type};
+            RAISE NOTICE 'Added column ${column.name}';
+          END IF;
+        END $$;
+      `);
+      logger.info(`✅ Column ${column.name} ensured`);
+    } catch (error) {
+      logger.error(`Failed to add column ${column.name}:`, error);
+    }
+  }
+  
+  // Create indexes for performance
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_transactions_transaction_hash 
+    ON financial.transactions(transaction_hash);
+  `);
+  
+  // Record this migration as applied
+  await recordMigration(client, migrationVersion, 'Add GoCardless and crypto columns to transactions table');
+  
+  logger.info('✅ All missing columns ensured');
 }
