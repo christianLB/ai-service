@@ -159,6 +159,15 @@ prod-deploy-image: ## Deploy imagen Docker a producción con backup automático
 	@sleep 5
 	@$(MAKE) prod-health
 
+.PHONY: prod-force-recreate
+prod-force-recreate: ## Forzar recreación de contenedores con última imagen
+	@echo "$(BLUE)🔄 Forzando recreación de contenedores...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose pull"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d --force-recreate"
+	@echo "$(GREEN)✓ Contenedores recreados con última versión$(NC)"
+	@sleep 5
+	@$(MAKE) prod-health
+
 .PHONY: prod-update-config
 prod-update-config: ## Actualizar configuración de docker-compose en producción con backup
 	@echo "$(BLUE)🔧 Actualizando configuración en producción...$(NC)"
@@ -166,12 +175,15 @@ prod-update-config: ## Actualizar configuración de docker-compose en producció
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cp $(PROD_PATH)/docker-compose.yml $(PROD_PATH)/docker-compose.yml.backup-$(shell date +%Y%m%d_%H%M%S) 2>/dev/null || true"
 	@$(SCP) docker-compose.production.yml $(PROD_USER)@$(PROD_HOST):$(PROD_PATH)/docker-compose.yml
 	@echo "$(GREEN)✓ Configuración actualizada$(NC)"
+	@echo "$(YELLOW)Copiando archivo .env.production...$(NC)"
+	@$(SCP) config/.env.production $(PROD_USER)@$(PROD_HOST):$(PROD_PATH)/config/.env.production
+	@echo "$(GREEN)✓ Variables de entorno actualizadas$(NC)"
 	@echo "$(YELLOW)Creando directorios necesarios...$(NC)"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mkdir -p $(PROD_PATH)/postgres $(PROD_PATH)/redis $(PROD_PATH)/logs $(PROD_PATH)/documents $(PROD_PATH)/config"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chown -R $(PROD_USER):users $(PROD_PATH)/postgres $(PROD_PATH)/redis $(PROD_PATH)/logs $(PROD_PATH)/documents $(PROD_PATH)/config"
 	@echo "$(YELLOW)Reiniciando servicios...$(NC)"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose down --remove-orphans"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d --force-recreate"
 	@echo "$(GREEN)✓ Servicios reiniciados$(NC)"
 	@echo "$(YELLOW)💡 En caso de problemas: make prod-emergency-restore$(NC)"
 	@sleep 5

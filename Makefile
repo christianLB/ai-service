@@ -552,6 +552,12 @@ deploy: ## Deploy completo con backup automático (migración + restart)
 	@echo "$(BLUE)📝 Aplicando migraciones...$(NC)"
 	@$(MAKE) apply-financial-migration
 	@echo "$(BLUE)🔄 Reiniciando servicios...$(NC)"
+
+.PHONY: deploy-force
+deploy-force: ## 🚀 Deploy forzando recreación de contenedores
+	@echo "$(BLUE)=== DEPLOYMENT FORZADO CON RECREACIÓN ===$(NC)"
+	@$(MAKE) -f Makefile.production prod-update-config
+	@$(MAKE) -f Makefile.production prod-force-recreate
 	@$(MAKE) restart-service
 	@echo "$(GREEN)=== DEPLOYMENT COMPLETADO ===$(NC)"
 	@echo "$(YELLOW)💡 En caso de problemas: make emergency-rollback$(NC)"

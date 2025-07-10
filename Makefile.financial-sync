@@ -37,9 +37,9 @@ POSTGRES_PASSWORD ?= ultra_secure_password_2025
 POSTGRES_DB ?= ai_service
 
 # Financial schema tables
-FINANCIAL_TABLES := accounts transactions categories currencies transaction_categories \
-                   transaction_documents imported_transactions invoice_sequences \
-                   clients invoices client_statistics client_transactions
+FINANCIAL_TABLES := accounts transactions categories currencies transaction_categorizations \
+                   transaction_matching_patterns invoice_sequences \
+                   clients invoices client_transaction_links
 
 # Database configurations
 DEV_DB := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)
@@ -52,6 +52,10 @@ NAS_PATH ?= /volume1/docker/ai-service
 
 # Timestamp for backups
 TIMESTAMP := $(shell date +%Y%m%d-%H%M%S)
+
+# Helper variables
+comma := ,
+space := $(empty) $(empty)
 
 help: ## Show this help message
 	@echo -e "$(BLUE)=== Financial Data Synchronization ===$(NC)"
@@ -107,9 +111,9 @@ _do-sync-down:
 		./tmp/financial-sync-$(TIMESTAMP).sql
 	@echo -e "$(BLUE)4/5 Clearing development financial data...$(NC)"
 	@docker exec ai-service-postgres-1 psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
-		TRUNCATE TABLE $(foreach table,$(FINANCIAL_TABLES),financial.$(table)) CASCADE;" 2>/dev/null || \
+		TRUNCATE TABLE $(subst $(space),$(comma)$(space),$(foreach table,$(FINANCIAL_TABLES),financial.$(table))) CASCADE;" 2>/dev/null || \
 		docker exec ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "\
-		TRUNCATE TABLE $(foreach table,$(FINANCIAL_TABLES),financial.$(table)) CASCADE;"
+		TRUNCATE TABLE $(subst $(space),$(comma)$(space),$(foreach table,$(FINANCIAL_TABLES),financial.$(table))) CASCADE;"
 	@echo -e "$(BLUE)5/5 Importing production data to development...$(NC)"
 	@docker exec -i ai-service-postgres-1 psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/financial-sync-$(TIMESTAMP).sql 2>/dev/null || \
 		docker exec -i ai-service-postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./tmp/financial-sync-$(TIMESTAMP).sql
