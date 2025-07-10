@@ -287,15 +287,8 @@ router.get('/invoice-stats', async (req: Request, res: Response): Promise<void> 
           SUM(total) as amount
         FROM financial.invoices
         WHERE currency = $1 AND status IN ('sent', 'viewed', 'overdue')
-        GROUP BY aging_bucket
-        ORDER BY 
-          CASE aging_bucket 
-            WHEN 'not_due' THEN 1
-            WHEN '1_30_days' THEN 2
-            WHEN '31_60_days' THEN 3
-            WHEN '61_90_days' THEN 4
-            WHEN 'over_90_days' THEN 5
-          END
+        GROUP BY 1
+        ORDER BY 1
       `;
 
       const agingResult = await databaseService.pool.query(agingQuery, [currency]);
@@ -529,7 +522,7 @@ router.get('/client-metrics', async (req: Request, res: Response): Promise<void>
         c.total_revenue,
         c.total_invoices,
         c.status,
-        (c.total_revenue / $1.total_revenue * 100) as revenue_percentage
+        (c.total_revenue / tr.total_revenue * 100) as revenue_percentage
       FROM financial.clients c,
            (SELECT SUM(total_revenue) as total_revenue FROM financial.clients WHERE status = 'active') tr
       WHERE c.status = 'active' AND c.total_revenue > 0
@@ -698,7 +691,7 @@ router.get('/cash-flow', async (req: Request, res: Response): Promise<void> => {
           t.counterparty_name,
           t.type
         FROM financial.transactions t
-        JOIN financial.accounts a ON t.account_id = a.id
+        JOIN financial.accounts a ON t.account_id = a.id::varchar
         WHERE a.currency_id = (SELECT id FROM financial.currencies WHERE code = $1)
           AND t.date >= $2
           AND t.status = 'confirmed'

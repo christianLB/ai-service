@@ -64,46 +64,76 @@ const Dashboard: React.FC = () => {
   const [cashFlow, setCashFlow] = useState<any>(null);
   const [currency, setCurrency] = useState('EUR');
   const [activeTab, setActiveTab] = useState('overview');
+  const [errors, setErrors] = useState<{
+    revenue?: string;
+    invoice?: string;
+    client?: string;
+    cashFlow?: string;
+  }>({});
 
   const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const [
-        revenueResponse, 
-        invoiceResponse, 
-        clientResponse, 
-        cashFlowResponse
-      ] = await Promise.all([
-        dashboardService.getRevenueMetrics({ currency, period: 'monthly' }),
-        dashboardService.getInvoiceStats({ currency }),
-        dashboardService.getClientMetrics({}),
-        dashboardService.getCashFlowProjections({ currency }),
-      ]);
+    setLoading(true);
+    const newErrors: typeof errors = {};
 
+    // Fetch revenue metrics
+    try {
+      const revenueResponse = await dashboardService.getRevenueMetrics({ currency, period: 'monthly' });
       if (revenueResponse.success && revenueResponse.data) {
         setRevenueMetrics(revenueResponse.data);
       }
+    } catch (error) {
+      console.error('Error fetching revenue metrics:', error);
+      newErrors.revenue = 'No se pudieron cargar las métricas de ingresos';
+    }
 
+    // Fetch invoice stats
+    try {
+      const invoiceResponse = await dashboardService.getInvoiceStats({ currency });
       if (invoiceResponse.success && invoiceResponse.data) {
         setInvoiceStats(invoiceResponse.data);
       }
+    } catch (error) {
+      console.error('Error fetching invoice stats:', error);
+      newErrors.invoice = 'No se pudieron cargar las estadísticas de facturas';
+    }
 
+    // Fetch client metrics
+    try {
+      const clientResponse = await dashboardService.getClientMetrics({});
       if (clientResponse.success && clientResponse.data) {
         setClientMetrics(clientResponse.data);
       }
+    } catch (error) {
+      console.error('Error fetching client metrics:', error);
+      newErrors.client = 'No se pudieron cargar las métricas de clientes';
+    }
 
+    // Fetch cash flow
+    try {
+      const cashFlowResponse = await dashboardService.getCashFlowProjections({ currency });
       if (cashFlowResponse.success && cashFlowResponse.data) {
         setCashFlow(cashFlowResponse.data);
       }
-
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      notification.error({
-        message: 'Error',
-        description: 'No se pudieron cargar los datos del dashboard',
+      console.error('Error fetching cash flow:', error);
+      newErrors.cashFlow = 'No se pudieron cargar las proyecciones de flujo de caja';
+    }
+
+    setErrors(newErrors);
+    setLoading(false);
+
+    // Show notification only if there are errors
+    if (Object.keys(newErrors).length > 0) {
+      notification.warning({
+        message: 'Algunos datos no se pudieron cargar',
+        description: 'Mostrando información disponible. Algunas secciones pueden estar incompletas.',
+        duration: 0,
+        btn: (
+          <Button size="small" type="primary" onClick={fetchDashboardData}>
+            Reintentar
+          </Button>
+        ),
       });
-    } finally {
-      setLoading(false);
     }
   };
 
