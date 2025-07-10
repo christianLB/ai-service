@@ -69,7 +69,10 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  ErrorBoundaryState
+> {
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -80,7 +83,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('BankAccounts Error:', error, errorInfo);
+    console.error("BankAccounts Error:", error, errorInfo);
   }
 
   render() {
@@ -111,12 +114,12 @@ const safeFormatNumber = (value: any, decimals: number = 2): string => {
   try {
     const num = Number(value);
     if (isNaN(num) || num === null || num === undefined) {
-      return '0.00';
+      return "0.00";
     }
     return num.toFixed(decimals);
   } catch (error) {
-    console.error('Error formatting number:', value, error);
-    return '0.00';
+    console.error("Error formatting number:", value, error);
+    return "0.00";
   }
 };
 
@@ -454,15 +457,18 @@ const BankAccountsContent: React.FC = () => {
       key: "balance",
       align: "right" as const,
       render: (balance: number, record: BankAccount) => {
-        const balanceValue = typeof balance === 'number' && !isNaN(balance) ? balance : 0;
+        const balanceValue =
+          typeof balance === "number" && !isNaN(balance) ? balance : 0;
         const formattedBalance = safeFormatNumber(balanceValue);
         return (
-          <div style={{ 
-            textAlign: 'right', 
-            fontSize: '16px', 
-            color: balanceValue >= 0 ? "#52c41a" : "#f5222d",
-            fontWeight: 500
-          }}>
+          <div
+            style={{
+              textAlign: "right",
+              fontSize: "16px",
+              color: balanceValue >= 0 ? "#52c41a" : "#f5222d",
+              fontWeight: 500,
+            }}
+          >
             {record.currency === "EUR" ? "€" : "$"} {formattedBalance}
           </div>
         );
@@ -507,18 +513,24 @@ const BankAccountsContent: React.FC = () => {
   ];
 
   const totalBalance = accounts.reduce((sum, acc) => {
-    const balance = typeof acc.balance === 'number' && !isNaN(acc.balance) ? acc.balance : 0;
+    const balance =
+      typeof acc.balance === "number" && !isNaN(acc.balance) ? acc.balance : 0;
     return sum + balance;
   }, 0);
 
   return (
     <div>
+      test
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
               title="Balance Total"
-              value={typeof totalBalance === 'number' && !isNaN(totalBalance) ? totalBalance : 0}
+              value={
+                typeof totalBalance === "number" && !isNaN(totalBalance)
+                  ? totalBalance
+                  : 0
+              }
               precision={2}
               prefix="€"
               valueStyle={{ color: totalBalance >= 0 ? "#52c41a" : "#f5222d" }}
@@ -568,7 +580,6 @@ const BankAccountsContent: React.FC = () => {
           </Card>
         </Col>
       </Row>
-
       <Card
         title={
           <Space>
@@ -645,7 +656,6 @@ const BankAccountsContent: React.FC = () => {
           </>
         )}
       </Card>
-
       {/* Setup Modal */}
       <Modal
         title="Conectar Cuenta Bancaria"
