@@ -27,6 +27,12 @@ RUN npm install -D typescript @types/node && \
 # Production stage
 FROM node:18-alpine
 
+# Build arguments for version info
+ARG VERSION=latest
+ARG BUILD_DATE=unknown
+ARG COMMIT=unknown
+ARG COMMIT_SHORT=unknown
+
 # Install runtime dependencies
 RUN apk add --no-cache \
     postgresql-client \
@@ -46,6 +52,12 @@ COPY --from=builder /app/package*.json ./
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
     chown -R nodejs:nodejs /app
+
+# Set environment variables from build args
+ENV VERSION=${VERSION}
+ENV BUILD_DATE=${BUILD_DATE}
+ENV COMMIT=${COMMIT}
+ENV COMMIT_SHORT=${COMMIT_SHORT}
 
 USER nodejs
 
