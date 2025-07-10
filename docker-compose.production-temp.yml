@@ -1,16 +1,17 @@
 version: "3.8"
 
 services:
-  # Backend API Service
-  ai-service-api:
-    image: ghcr.io/christianlb/ai-service-api:latest
-    container_name: ai-service-api
+  # Temporary monolithic service (until v2 images are built)
+  ai-service:
+    image: ghcr.io/christianlb/ai-service:latest
+    container_name: ai-service
     restart: unless-stopped
-    mem_limit: 600m
-    memswap_limit: 600m
+    mem_limit: 550m
+    memswap_limit: 550m
+    cpus: 2
     environment:
       - NODE_ENV=production
-      - PORT=3001
+      - PORT=3003
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB}
@@ -33,39 +34,15 @@ services:
       - postgres
       - redis
     ports:
-      - "3000:3001"
+      - "3003:3003"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 40s
-
-  # Frontend Service
-  ai-service-frontend:
-    image: ghcr.io/christianlb/ai-service-frontend:latest
-    container_name: ai-service-frontend
-    restart: unless-stopped
-    mem_limit: 150m
-    memswap_limit: 150m
-    environment:
-      - NODE_ENV=production
-    networks:
-      - ai-service-network
-    depends_on:
-      - ai-service-api
-    ports:
-      - "3003:8080"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
 
   # PostgreSQL Database
   postgres:
