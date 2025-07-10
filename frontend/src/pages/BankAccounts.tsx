@@ -141,8 +141,8 @@ const BankAccounts: React.FC = () => {
           name: account.name,
           institution: account.metadata?.institution_name || account.institutionId || 'BBVA',
           iban: account.iban,
-          balance: parseFloat(account.balance) || 0,
-          available_balance: parseFloat(account.balance) || 0, // Same as balance for now
+          balance: account.balance ? parseFloat(account.balance) : 0,
+          available_balance: account.balance ? parseFloat(account.balance) : 0, // Same as balance for now
           currency: account.currencyId || 'EUR',
           type: account.type,
           last_sync: account.metadata?.last_sync || account.updatedAt,
@@ -382,7 +382,7 @@ const BankAccounts: React.FC = () => {
       align: 'right' as const,
       render: (balance: number | undefined, record: BankAccount) => (
         <Text type="secondary">
-          {record.currency === 'EUR' ? '€' : '$'} {balance !== undefined ? balance.toFixed(2) : '0.00'}
+          {record.currency === 'EUR' ? '€' : '$'} {balance != null && !isNaN(Number(balance)) ? Number(balance).toFixed(2) : '0.00'}
         </Text>
       ),
     },
