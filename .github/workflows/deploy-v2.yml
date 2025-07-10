@@ -8,8 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  API_IMAGE_NAME: ${{ github.repository }}-api
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}-frontend
+  API_IMAGE_NAME: christianlb/ai-service-api
+  FRONTEND_IMAGE_NAME: christianlb/ai-service-frontend
 
 jobs:
   # Detect what changed
@@ -58,7 +58,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ secrets.GHCR_TOKEN }}
 
     - name: Extract metadata
       id: meta
@@ -108,7 +108,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ secrets.GHCR_TOKEN }}
 
     - name: Extract metadata
       id: meta
