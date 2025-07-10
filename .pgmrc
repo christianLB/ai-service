@@ -1,0 +1,13 @@
+{
+  "migrations-dir": "./migrations",
+  "migrations-table": "pgmigrations",
+  "migrations-schema": "public",
+  "check-order": true,
+  "single-transaction": true,
+  "no-lock": false,
+  "migration-filename-format": "utc",
+  "create-migrations-schema": false,
+  "create-schema": false,
+  "schema": ["financial", "public"],
+  "database-url-var": "DATABASE_URL"
+}

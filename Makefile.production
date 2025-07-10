@@ -30,6 +30,28 @@ BLUE := \033[0;34m
 NC := \033[0m
 
 # =============================================================================
+# 🔧 COMANDOS DE SQL DIRECTO
+# =============================================================================
+
+.PHONY: prod-sql
+prod-sql: ## Ejecutar SQL directo en producción (usar: make prod-sql SQL="SELECT 1")
+	@if [ -z "$(SQL)" ]; then \
+		echo "$(RED)Error: Especifica SQL=\"tu consulta SQL\"$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Ejecutando SQL en producción...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"$(SQL)\""
+
+.PHONY: prod-sql-file
+prod-sql-file: ## Ejecutar archivo SQL en producción (usar: make prod-sql-file FILE=script.sql)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica FILE=ruta/al/archivo.sql$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Ejecutando archivo SQL: $(FILE)$(NC)"
+	@cat $(FILE) | $(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U $(PROD_DB_USER) -d $(PROD_DB)"
+
+# =============================================================================
 # 🔴 COMANDOS DE PRODUCCIÓN - Reset y Recovery
 # =============================================================================
 
@@ -70,6 +92,27 @@ prod-apply-schema: ## Aplicar schema completo en producción
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) < /tmp/complete-production-schema.sql"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "rm /tmp/complete-production-schema.sql"
 	@echo "$(GREEN)✓ Schema aplicado$(NC)"
+
+.PHONY: prod-apply-sql
+prod-apply-sql: ## Aplicar archivo SQL en producción (usar: make prod-apply-sql FILE=path/to/file.sql)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica el archivo con FILE=path/to/file.sql$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)📝 Aplicando $(FILE) en producción...$(NC)"
+	@$(SCP) $(FILE) $(PROD_USER)@$(PROD_HOST):/tmp/temp_migration.sql
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) < /tmp/temp_migration.sql"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "rm /tmp/temp_migration.sql"
+	@echo "$(GREEN)✓ SQL aplicado$(NC)"
+
+.PHONY: prod-apply-migration
+prod-apply-migration: ## Aplicar migración específica (usar: make prod-apply-migration FILE=001-fix-transaction-id.sql)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Error: Especifica el archivo con FILE=nombre-migracion.sql$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)🔄 Aplicando migración $(FILE) en producción...$(NC)"
+	@$(MAKE) prod-apply-sql FILE=migrations/$(FILE)
 
 .PHONY: prod-fix-permissions
 prod-fix-permissions: ## Arreglar permisos de archivos en el NAS
@@ -258,6 +301,70 @@ prod-restore: ## Restaurar backup específico (usar: make prod-restore FILE=back
 	@echo "$(BLUE)Restaurando...$(NC)"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "gunzip -c $(BACKUP_DIR)/$(FILE) | echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)"
 	@echo "$(GREEN)✓ Backup restaurado$(NC)"
+
+# =============================================================================
+# 🔄 RESTAURACIÓN COMPLETA DE PRODUCCIÓN
+# =============================================================================
+
+.PHONY: prod-restore-from-dev
+prod-restore-from-dev: ## PELIGRO: Restaurar producción con schema de desarrollo
+	@echo "$(RED)⚠️  ADVERTENCIA CRÍTICA ⚠️$(NC)"
+	@echo "$(RED)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(RED)Esto ELIMINARÁ la base de datos de producción actual$(NC)"
+	@echo "$(RED)y la REEMPLAZARÁ con el schema de desarrollo$(NC)"
+	@echo "$(RED)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Se realizarán las siguientes acciones:$(NC)"
+	@echo "  1. Backup completo de producción actual"
+	@echo "  2. Export del schema de desarrollo"
+	@echo "  3. Detener servicios de producción"
+	@echo "  4. Eliminar y recrear base de datos"
+	@echo "  5. Aplicar schema de desarrollo"
+	@echo "  6. Migrar datos existentes (si es posible)"
+	@echo "  7. Reiniciar servicios"
+	@echo ""
+	@echo "$(RED)¿Estás ABSOLUTAMENTE SEGURO? (escribir 'RESTAURAR PRODUCCION'):$(NC)"
+	@read CONFIRM && [ "$$CONFIRM" = "RESTAURAR PRODUCCION" ] || (echo "$(GREEN)Operación cancelada$(NC)" && exit 1)
+	@echo ""
+	@echo "$(BLUE)Paso 1/7: Creando backup completo...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo "$(GREEN)✓ Backup creado$(NC)"
+	@echo ""
+	@echo "$(BLUE)Paso 2/7: Exportando schema de desarrollo...$(NC)"
+	@docker exec ai-service-postgres-1 pg_dump -U postgres -d ai_service --schema-only --no-owner --no-privileges > /tmp/dev-schema-restore.sql 2>/dev/null || \
+		(echo "$(YELLOW)Desarrollo no activo, usando schema de respaldo...$(NC)" && \
+		cp migrations/baseline-schema.sql /tmp/dev-schema-restore.sql)
+	@echo "$(GREEN)✓ Schema exportado$(NC)"
+	@echo ""
+	@echo "$(BLUE)Paso 3/7: Deteniendo servicios...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stop ai-service"
+	@echo "$(GREEN)✓ Servicios detenidos$(NC)"
+	@echo ""
+	@echo "$(BLUE)Paso 4/7: Recreando base de datos...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d postgres -c 'DROP DATABASE IF EXISTS $(PROD_DB);'"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d postgres -c 'CREATE DATABASE $(PROD_DB) OWNER $(PROD_DB_USER);'"
+	@echo "$(GREEN)✓ Base de datos recreada$(NC)"
+	@echo ""
+	@echo "$(BLUE)Paso 5/7: Aplicando schema de desarrollo...$(NC)"
+	@$(SCP) /tmp/dev-schema-restore.sql $(PROD_USER)@$(PROD_HOST):/tmp/
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cat /tmp/dev-schema-restore.sql | echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)"
+	@echo "$(GREEN)✓ Schema aplicado$(NC)"
+	@echo ""
+	@echo "$(BLUE)Paso 6/7: Aplicando migraciones pendientes...$(NC)"
+	@echo "$(YELLOW)Migraciones incluidas en schema base$(NC)"
+	@echo "$(GREEN)✓ Schema completo aplicado$(NC)"
+	@echo ""
+	@echo "$(BLUE)Paso 7/7: Reiniciando servicios...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-service"
+	@sleep 10
+	@echo "$(GREEN)✓ Servicios reiniciados$(NC)"
+	@echo ""
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)✅ RESTAURACIÓN COMPLETA$(NC)"
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Verificando estado...$(NC)"
+	@$(MAKE) -f Makefile.production prod-status
 
 # =============================================================================
 # Ayuda

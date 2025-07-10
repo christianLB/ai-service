@@ -1,0 +1,112 @@
+# Makefile para configuración de Watchtower
+
+.PHONY: watchtower-setup
+watchtower-setup: ## 🔧 Configurar Watchtower completo
+	@echo "🔧 Configurando Watchtower para CI/CD automático..."
+	@if [ -z "$$GITHUB_TOKEN" ]; then \
+		echo "❌ Error: GITHUB_TOKEN no configurado"; \
+		echo ""; \
+		echo "export GITHUB_TOKEN='tu_token_de_github'"; \
+		echo ""; \
+		echo "El token debe tener permisos: read:packages"; \
+		exit 1; \
+	fi
+	@./setup-watchtower-complete.sh
+
+.PHONY: watchtower-copy
+watchtower-copy: ## 📤 Copiar configuración al NAS
+	@echo "📤 Copiando archivos al NAS..."
+	@scp config/watchtower/config.json k2600x@192.168.1.11:/volume1/docker/ai-service/config/watchtower/
+	@scp install-watchtower-nas.sh k2600x@192.168.1.11:/volume1/docker/ai-service/
+	@scp docker-compose.production.yml k2600x@192.168.1.11:/volume1/docker/ai-service/docker-compose.yml
+	@echo "✅ Archivos copiados"
+
+.PHONY: watchtower-install
+watchtower-install: ## 🚀 Instalar Watchtower en el NAS
+	@echo "🚀 Instalando Watchtower en el NAS..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker rm -f ai-watchtower 2>/dev/null || true"
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker run -d --name ai-watchtower --restart unless-stopped -e WATCHTOWER_CLEANUP=true -e WATCHTOWER_POLL_INTERVAL=300 -e WATCHTOWER_INCLUDE_RESTARTING=false -e DOCKER_CONFIG=/config -v /var/run/docker.sock:/var/run/docker.sock -v /volume1/docker/ai-service/config/watchtower:/config:ro containrrr/watchtower:latest ai-service"
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker ps | grep watchtower"
+	@echo "✅ Watchtower instalado!"
+
+.PHONY: watchtower-logs
+watchtower-logs: ## 📋 Ver logs de Watchtower
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker logs ai-watchtower --tail 50"
+
+.PHONY: watchtower-test
+watchtower-test: ## 🧪 Probar que Watchtower funciona
+	@echo "🧪 Probando Watchtower..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker exec ai-watchtower /watchtower --run-once ai-service"
+
+.PHONY: watchtower-status
+watchtower-status: ## 📊 Ver estado de Watchtower
+	@echo "📊 Estado de Watchtower:"
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker ps | grep watchtower || echo '❌ Watchtower no está corriendo'"
+
+.PHONY: watchtower-restart
+watchtower-restart: ## 🔄 Reiniciar Watchtower
+	@echo "🔄 Reiniciando Watchtower..."
+	@sshpass -p "$${SSHPASS}" ssh -t k2600x@192.168.1.11 'echo "$${SSHPASS}" | sudo -S docker restart ai-watchtower && echo "✅ Watchtower reiniciado"'
+
+.PHONY: fix-cicd
+fix-cicd: watchtower-setup watchtower-copy watchtower-install ## 🔧 Arreglar CI/CD completo
+	@echo ""
+	@echo "✅ CI/CD configurado completamente!"
+	@echo ""
+	@echo "Ahora cada push a main resultará en:"
+	@echo "1. Build automático en GitHub Actions"
+	@echo "2. Push a ghcr.io"
+	@echo "3. Deploy automático via Watchtower"
+	@echo ""
+	@echo "Para verificar: make watchtower-logs"
+.PHONY: wlogs
+wlogs: ## 📋 Ver logs de Watchtower (simple)
+	@echo "📋 Conectándose al NAS para ver logs de Watchtower..."
+	@echo "Ejecuta: sudo docker logs ai-watchtower --tail 50"
+	@ssh k2600x@192.168.1.11
+
+
+.PHONY: watchtower-check-auth
+watchtower-check-auth: ## 🔐 Verificar autenticación de Watchtower
+	@echo "🔐 Verificando autenticación..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "ls -la /volume1/docker/ai-service/config/watchtower/config.json 2>/dev/null && echo ✅ config.json existe || echo ❌ config.json NO existe"
+	@echo ""
+	@echo "🧪 Probando pull de imagen..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo ${SSHPASS}  < /dev/null |  sudo -S /usr/local/bin/docker pull ghcr.io/christianlb/ai-service:latest 2>&1 | grep -E \"(Pulling|Downloaded|up to date|unauthorized|denied)\" | tail -5"
+
+.PHONY: watchtower-fix-container
+watchtower-fix-container: ## 🔧 Arreglar contenedor ai-service para usar imagen de ghcr.io
+	@echo "🔧 Arreglando contenedor ai-service para usar imagen correcta..."
+	@echo ""
+	@echo "1️⃣ Verificando estado actual del contenedor..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}' | grep -E '(NAMES|ai-service)' || echo '❌ Contenedor ai-service no encontrado'"
+	@echo ""
+	@echo "2️⃣ Deteniendo contenedor existente..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker stop ai-service 2>/dev/null || echo '⚠️  No había contenedor corriendo'"
+	@echo ""
+	@echo "3️⃣ Eliminando contenedor viejo..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker rm -f ai-service 2>/dev/null || echo '⚠️  No había contenedor para eliminar'"
+	@echo ""
+	@echo "4️⃣ Verificando autenticación con ghcr.io..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "ls -la /volume1/docker/ai-service/config/watchtower/config.json 2>/dev/null && echo '✅ config.json existe' || echo '❌ config.json NO existe - ejecuta: make watchtower-setup'"
+	@echo ""
+	@echo "5️⃣ Actualizando docker-compose.yml con imagen correcta..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "cd /volume1/docker/ai-service && echo '${SSHPASS}' | sudo -S sed -i 's|image: ai-service:simple|image: ghcr.io/christianlb/ai-service:latest|g' docker-compose.yml && echo '✅ docker-compose.yml actualizado'"
+	@echo ""
+	@echo "6️⃣ Recreando contenedor con docker-compose..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "cd /volume1/docker/ai-service && echo '${SSHPASS}' | sudo -S /usr/local/bin/docker compose up -d ai-service"
+	@echo ""
+	@echo "7️⃣ Verificando nueva imagen..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}' | grep -E '(NAMES|ai-service)'"
+	@echo ""
+	@echo "8️⃣ Verificando que Watchtower puede monitorear el contenedor..."
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "echo '${SSHPASS}' | sudo -S /usr/local/bin/docker exec ai-watchtower /watchtower --run-once ai-service 2>&1 | grep -E '(Checking|Found|Updated|up-to-date|ai-service)' | head -10 || echo '⚠️  Verifica que Watchtower esté corriendo'"
+	@echo ""
+	@echo "✅ Contenedor ai-service arreglado y monitoreado por Watchtower!"
+	@echo ""
+	@echo "Para verificar actualizaciones automáticas:"
+	@echo "  make watchtower-logs"
+	@echo ""
+	@echo "Para forzar una actualización:"
+	@echo "  make watchtower-test"
+

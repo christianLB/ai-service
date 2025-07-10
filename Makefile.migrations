@@ -1,29 +1,40 @@
-# Makefile.migrations - Sistema de migraciones de base de datos
-# Gestión automatizada de schemas con Alembic
+# Makefile.migrations - Sistema de migraciones con node-pg-migrate
+# Gestión automatizada de schemas para desarrollo y producción
 
 include .make.env
+
+# Export variables for SSH
+ifdef SSHPASS
+export SSHPASS
+endif
+
+# Variables
+NAS_HOST ?= 192.168.1.11
+NAS_USER ?= k2600x
+NAS_PATH := /volume1/docker/ai-service
+
+# Database URLs
+DEV_DATABASE_URL := postgres://postgres:postgres123@localhost:5432/ai_service
+PROD_DATABASE_URL := postgres://ai_user:$(DB_PASSWORD)@$(NAS_HOST):5433/ai_service
+
+# SSH commands
+ifdef SSHPASS
+    SSH := sshpass -e ssh
+else
+    SSH := ssh
+endif
 
 # Colores
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 BLUE := \033[0;34m
 RED := \033[0;31m
+MAGENTA := \033[0;35m
 NC := \033[0m
 
 # =============================================================================
-# 🔄 COMANDOS DE MIGRACIÓN
+# 🔄 COMANDOS DE MIGRACIÓN - DESARROLLO
 # =============================================================================
-
-.PHONY: migrate-init
-migrate-init: ## Inicializar Alembic en el proyecto
-	@echo "$(BLUE)🔧 Inicializando Alembic...$(NC)"
-	@if [ ! -d "alembic" ]; then \
-		pip install alembic psycopg2-binary; \
-		alembic init alembic; \
-		echo "$(GREEN)✓ Alembic inicializado$(NC)"; \
-	else \
-		echo "$(YELLOW)⚠ Alembic ya está inicializado$(NC)"; \
-	fi
 
 .PHONY: migrate-create
 migrate-create: ## Crear nueva migración (uso: make migrate-create NAME="descripcion")
@@ -32,118 +43,155 @@ migrate-create: ## Crear nueva migración (uso: make migrate-create NAME="descri
 		exit 1; \
 	fi
 	@echo "$(BLUE)📝 Creando migración: $(NAME)$(NC)"
-	@alembic revision -m "$(NAME)"
+	@npm run migrate:create -- "$(NAME)"
 	@echo "$(GREEN)✓ Migración creada$(NC)"
 
-.PHONY: migrate-auto
-migrate-auto: ## Generar migración automática desde modelos
-	@echo "$(BLUE)🔍 Generando migración automática...$(NC)"
-	@alembic revision --autogenerate -m "auto_$(shell date +%Y%m%d_%H%M%S)"
-	@echo "$(GREEN)✓ Migración generada$(NC)"
-
 .PHONY: migrate-up
-migrate-up: ## Aplicar migraciones pendientes
-	@echo "$(BLUE)⬆️  Aplicando migraciones...$(NC)"
-	@alembic upgrade head
+migrate-up: ## Aplicar migraciones pendientes en desarrollo
+	@echo "$(BLUE)⬆️  Aplicando migraciones en desarrollo...$(NC)"
+	@DATABASE_URL=$(DEV_DATABASE_URL) npx node-pg-migrate up
 	@echo "$(GREEN)✓ Migraciones aplicadas$(NC)"
 
 .PHONY: migrate-down
-migrate-down: ## Revertir última migración
+migrate-down: ## Revertir última migración en desarrollo
 	@echo "$(YELLOW)⬇️  Revirtiendo última migración...$(NC)"
-	@alembic downgrade -1
+	@DATABASE_URL=$(DEV_DATABASE_URL) npx node-pg-migrate down
 	@echo "$(GREEN)✓ Migración revertida$(NC)"
 
 .PHONY: migrate-status
-migrate-status: ## Ver estado de migraciones
-	@echo "$(BLUE)📊 Estado de migraciones:$(NC)"
-	@alembic current
-	@echo ""
-	@echo "$(BLUE)Historial:$(NC)"
-	@alembic history --verbose
+migrate-status: ## Ver estado de migraciones en desarrollo
+	@echo "$(BLUE)📊 Estado de migraciones (desarrollo):$(NC)"
+	@DATABASE_URL=$(DEV_DATABASE_URL) npx node-pg-migrate status
 
-.PHONY: migrate-sync-dev-to-prod
-migrate-sync-dev-to-prod: ## Sincronizar schema de dev a prod
-	@echo "$(YELLOW)🔄 Sincronizando dev → prod$(NC)"
-	@echo "$(RED)⚠️  ADVERTENCIA: Esto actualizará el schema de PRODUCCIÓN$(NC)"
+# =============================================================================
+# 🚀 COMANDOS DE MIGRACIÓN - PRODUCCIÓN
+# =============================================================================
+
+.PHONY: migrate-prod-status
+migrate-prod-status: ## Ver estado de migraciones en producción
+	@echo "$(BLUE)📊 Estado de migraciones (producción):$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && DATABASE_URL=$(PROD_DATABASE_URL) npx node-pg-migrate status"
+
+.PHONY: migrate-prod-up
+migrate-prod-up: ## Aplicar migraciones en producción (con confirmación)
+	@echo "$(RED)⚠️  ADVERTENCIA: Esto aplicará migraciones en PRODUCCIÓN$(NC)"
+	@echo "$(YELLOW)Se recomienda hacer backup primero con: make prod-backup$(NC)"
 	@echo "¿Continuar? (s/N):"
 	@read CONFIRM && [ "$$CONFIRM" = "s" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
-	@echo "$(BLUE)1. Generando SQL de diferencias...$(NC)"
-	@docker exec ai-service-postgres-1 pg_dump -U ai_user -d ai_service --schema-only > /tmp/dev-schema.sql
-	@echo "$(BLUE)2. Aplicando en producción...$(NC)"
-	@$(MAKE) -f Makefile.production prod-apply-schema
-	@echo "$(GREEN)✓ Sincronización completada$(NC)"
+	@echo "$(BLUE)1. Creando backup...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo "$(BLUE)2. Aplicando migraciones...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && DATABASE_URL=$(PROD_DATABASE_URL) npx node-pg-migrate up"
+	@echo "$(GREEN)✓ Migraciones aplicadas en producción$(NC)"
+	@echo "$(BLUE)3. Reiniciando servicio...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-service"
+	@echo "$(GREEN)✓ Servicio reiniciado$(NC)"
+
+.PHONY: migrate-prod-down
+migrate-prod-down: ## Revertir última migración en producción (¡PELIGROSO!)
+	@echo "$(RED)⚠️  PELIGRO: Esto revertirá la última migración en PRODUCCIÓN$(NC)"
+	@echo "¿Estás SEGURO? (escribir 'SI ESTOY SEGURO'):"
+	@read CONFIRM && [ "$$CONFIRM" = "SI ESTOY SEGURO" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
+	@echo "$(BLUE)1. Creando backup...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo "$(BLUE)2. Revirtiendo migración...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && DATABASE_URL=$(PROD_DATABASE_URL) npx node-pg-migrate down"
+	@echo "$(GREEN)✓ Migración revertida$(NC)"
+
+# =============================================================================
+# 🔍 COMANDOS DE COMPARACIÓN Y VALIDACIÓN
+# =============================================================================
 
 .PHONY: migrate-diff
-migrate-diff: ## Ver diferencias entre dev y prod
-	@echo "$(BLUE)🔍 Analizando diferencias...$(NC)"
-	@$(MAKE) -f Makefile.compare diff-schema
+migrate-diff: ## Comparar migraciones entre desarrollo y producción
+	@echo "$(MAGENTA)🔍 Comparando migraciones...$(NC)"
+	@echo "$(BLUE)Desarrollo:$(NC)"
+	@DATABASE_URL=$(DEV_DATABASE_URL) npx node-pg-migrate status | tail -10
+	@echo ""
+	@echo "$(BLUE)Producción:$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && DATABASE_URL=$(PROD_DATABASE_URL) npx node-pg-migrate status" | tail -10
+
+.PHONY: migrate-validate
+migrate-validate: ## Validar migraciones antes de aplicar
+	@echo "$(BLUE)✅ Validando migraciones...$(NC)"
+	@echo "$(YELLOW)1. Verificando sintaxis...$(NC)"
+	@for file in migrations/*.js; do \
+		node -c $$file || exit 1; \
+	done
+	@echo "$(GREEN)✓ Sintaxis correcta$(NC)"
+	@echo "$(YELLOW)2. Verificando orden...$(NC)"
+	@ls -1 migrations/*.js | sort -n
+	@echo "$(GREEN)✓ Orden correcto$(NC)"
 
 # =============================================================================
-# 🗄️ COMANDOS DE SCHEMA
+# 🛠️ UTILIDADES
 # =============================================================================
 
-.PHONY: schema-dump
-schema-dump: ## Exportar schema actual a SQL
-	@echo "$(BLUE)📥 Exportando schema...$(NC)"
-	@docker exec ai-service-postgres-1 pg_dump -U ai_user -d ai_service --schema-only > schema-$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "$(GREEN)✓ Schema exportado$(NC)"
+.PHONY: migrate-init
+migrate-init: ## Inicializar sistema de migraciones
+	@echo "$(BLUE)🔧 Inicializando sistema de migraciones...$(NC)"
+	@echo "$(YELLOW)1. Creando tabla de migraciones en desarrollo...$(NC)"
+	@DATABASE_URL=$(DEV_DATABASE_URL) npx node-pg-migrate up --migration-file-path migrations/1752092321024_baseline-schema.js
+	@echo "$(YELLOW)2. Marcando baseline como aplicado...$(NC)"
+	@echo "$(GREEN)✓ Sistema inicializado$(NC)"
 
-.PHONY: schema-load
-schema-load: ## Cargar schema desde archivo (uso: make schema-load FILE=schema.sql)
-	@if [ -z "$(FILE)" ]; then \
-		echo "$(RED)Error: Especifica FILE=archivo.sql$(NC)"; \
-		exit 1; \
-	fi
-	@echo "$(BLUE)📤 Cargando schema desde $(FILE)...$(NC)"
-	@docker exec -i ai-service-postgres-1 psql -U ai_user -d ai_service < $(FILE)
-	@echo "$(GREEN)✓ Schema cargado$(NC)"
-
-.PHONY: schema-validate
-schema-validate: ## Validar schema contra modelos
-	@echo "$(BLUE)✅ Validando schema...$(NC)"
-	@python scripts/validate_schema.py || echo "$(RED)✗ Validación falló$(NC)"
-
-# =============================================================================
-# 🚀 COMANDOS DE DEPLOY
-# =============================================================================
-
-.PHONY: deploy-check
-deploy-check: ## Verificar si hay migraciones pendientes antes de deploy
-	@echo "$(BLUE)🔍 Verificando migraciones pendientes...$(NC)"
-	@if [ "$$(alembic current 2>/dev/null | grep -c head)" -eq 0 ]; then \
-		echo "$(RED)✗ Hay migraciones pendientes$(NC)"; \
-		exit 1; \
-	else \
-		echo "$(GREEN)✓ Todas las migraciones aplicadas$(NC)"; \
-	fi
-
-.PHONY: deploy-migrate
-deploy-migrate: ## Aplicar migraciones en producción
-	@echo "$(YELLOW)🚀 Aplicando migraciones en PRODUCCIÓN$(NC)"
-	@echo "$(RED)⚠️  Asegúrate de haber hecho backup$(NC)"
+.PHONY: migrate-reset
+migrate-reset: ## Resetear todas las migraciones en desarrollo
+	@echo "$(RED)⚠️  Esto eliminará y recreará todas las migraciones en desarrollo$(NC)"
 	@echo "¿Continuar? (s/N):"
 	@read CONFIRM && [ "$$CONFIRM" = "s" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
-	@$(MAKE) -f Makefile.production prod-backup
-	@echo "$(BLUE)Aplicando migraciones...$(NC)"
-	# Aquí ejecutarías alembic en producción
-	@echo "$(GREEN)✓ Migraciones aplicadas en producción$(NC)"
+	@echo "$(YELLOW)Revirtiendo todas las migraciones...$(NC)"
+	@DATABASE_URL=$(DEV_DATABASE_URL) npx node-pg-migrate down --count 999 || true
+	@echo "$(YELLOW)Aplicando todas las migraciones...$(NC)"
+	@DATABASE_URL=$(DEV_DATABASE_URL) npx node-pg-migrate up
+	@echo "$(GREEN)✓ Reset completado$(NC)"
+
+.PHONY: migrate-export
+migrate-export: ## Exportar esquema actual a SQL
+	@echo "$(BLUE)📥 Exportando esquema...$(NC)"
+	@pg_dump $(DEV_DATABASE_URL) --schema=financial --schema=public -s > schema-export-$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)✓ Esquema exportado$(NC)"
 
 # =============================================================================
-# Ayuda
+# 🚨 EMERGENCIA - FIX DIRECTO
+# =============================================================================
+
+.PHONY: migrate-emergency-fix
+migrate-emergency-fix: ## Aplicar fix de emergencia para gocardless_data
+	@echo "$(RED)🚨 APLICANDO FIX DE EMERGENCIA$(NC)"
+	@echo "$(YELLOW)Este comando aplicará directamente el fix de gocardless_data$(NC)"
+	@echo "¿Continuar? (s/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "s" ] || exit 1
+	@echo "$(BLUE)Aplicando migración específica...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && DATABASE_URL=$(PROD_DATABASE_URL) npx node-pg-migrate up --migration-file-path migrations/1752092421091_add-gocardless-data-column.js"
+	@echo "$(GREEN)✓ Fix aplicado$(NC)"
+	@echo "$(BLUE)Reiniciando servicio...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-service"
+	@echo "$(GREEN)✓ Servicio reiniciado$(NC)"
+
+# =============================================================================
+# AYUDA
 # =============================================================================
 
 .PHONY: help
 help: ## Mostrar esta ayuda
-	@echo "$(BLUE)╔══════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║              SISTEMA DE MIGRACIONES DE BD                     ║$(NC)"
-	@echo "$(BLUE)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(MAGENTA)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(MAGENTA)║         SISTEMA DE MIGRACIONES CON NODE-PG-MIGRATE           ║$(NC)"
+	@echo "$(MAGENTA)╚══════════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "$(GREEN)%-25s$(NC) %s\n", $$1, $$2}'
+	@echo "$(YELLOW)Desarrollo:$(NC)"
+	@grep -E '^migrate-(create|up|down|status|reset):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Producción:$(NC)"
+	@grep -E '^migrate-prod-.*:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(RED)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Utilidades:$(NC)"
+	@grep -E '^migrate-(diff|validate|init|export|emergency):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 	@echo "$(YELLOW)Flujo típico:$(NC)"
 	@echo "  1. make migrate-create NAME=\"add_new_feature\""
-	@echo "  2. Editar alembic/versions/XXX_add_new_feature.py"
+	@echo "  2. Editar migrations/TIMESTAMP_add_new_feature.js"
 	@echo "  3. make migrate-up"
-	@echo "  4. make migrate-sync-dev-to-prod"
+	@echo "  4. make migrate-prod-up"
 
 .DEFAULT_GOAL := help

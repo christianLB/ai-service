@@ -48,6 +48,22 @@ NC := \033[0m # No Color
 # 🎯 COMANDOS PRINCIPALES (atajos directos)
 # =============================================================================
 
+.PHONY: migrate
+migrate: ## Ver estado de migraciones
+	@$(MAKE) -f Makefile.migrations migrate-status
+
+.PHONY: migrate-up
+migrate-up: ## Aplicar migraciones pendientes
+	@$(MAKE) -f Makefile.migrations migrate-up
+
+.PHONY: migrate-fix
+migrate-fix: ## Fix rápido para gocardless_data
+	@$(MAKE) -f Makefile.migrations migrate-fix-gocardless
+
+.PHONY: migrate-fix-prod
+migrate-fix-prod: ## Fix gocardless_data en PRODUCCIÓN
+	@$(MAKE) -f Makefile.migrations migrate-fix-gocardless-prod
+
 # =============================================================================
 # 🚨 COMANDOS DE EMERGENCIA (recuperación < 30 segundos)
 # =============================================================================
@@ -146,6 +162,22 @@ help-all: ## Ver TODOS los comandos
 .PHONY: doctor
 doctor: ## Diagnóstico completo del sistema
 	@$(MAKE) -f Makefile.monitoring doctor
+
+# =============================================================================
+# 🔄 SCHEMA SYNC COMMANDS
+# =============================================================================
+
+.PHONY: schema-fix
+schema-fix: ## 🚨 Fix urgente de schema en producción
+	@$(MAKE) -f Makefile.schema schema-hotfix
+
+.PHONY: schema
+schema: ## 🔄 Sincronización automática de schemas
+	@$(MAKE) -f Makefile.schema schema-sync
+
+.PHONY: schema-help
+schema-help: ## 📘 Ver ayuda de comandos de schema
+	@$(MAKE) -f Makefile.schema help
 
 .PHONY: secrets-validate
 secrets-validate: ## Validar configuración de secrets
@@ -701,3 +733,8 @@ init: setup ## Inicializar proyecto completo
 
 # Target por defecto
 .DEFAULT_GOAL := help
+.PHONY: prod-update
+prod-update: ## 🚀 Actualizar producción manualmente (pull latest image)
+	@echo "$$(tput setaf 3)🚀 Actualizando producción con última imagen...$$(tput sgr0)"
+	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "cd /volume1/docker/ai-service && echo '${SSHPASS}' | sudo -S /usr/local/bin/docker pull ghcr.io/christianlb/ai-service:latest && echo '${SSHPASS}' | sudo -S /usr/local/bin/docker-compose up -d ai-service && echo '✅ Update completado!'"
+-include Makefile.watchtower

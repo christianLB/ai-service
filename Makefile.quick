@@ -44,10 +44,26 @@ db: ## Conectar a BD producción
 	@$(MAKE) -f Makefile.multi-env db-shell ENV=production
 
 .PHONY: fix
-fix: ## Aplicar fix de schema financiero en producción
-	@echo "$(YELLOW)🔧 Aplicando fix rápido...$(NC)"
-	@sshpass -e ssh $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c 'CREATE TABLE IF NOT EXISTS financial.account_insights (id UUID PRIMARY KEY DEFAULT gen_random_uuid());'"
-	@$(MAKE) restart
+fix: ## Aplicar fix de schema financiero en producción (gocardless_data + account_insights)
+	@echo "$(YELLOW)🔧 Aplicando fix de schema financiero...$(NC)"
+	@echo "$(RED)Este comando arreglará:$(NC)"
+	@echo "  - Column gocardless_data missing en transactions"
+	@echo "  - View account_insights missing"
+	@echo ""
+	@$(MAKE) -f Makefile.production prod-apply-sql FILE=migrations/fix-production-schema.sql
+	@echo "$(GREEN)✓ Fix aplicado$(NC)"
+	@sleep 2
+	@echo "$(YELLOW)Verificando resultado...$(NC)"
+	@curl -s http://$(NAS_HOST):3003/api/financial/dashboard/overview | python3 -m json.tool | head -5 || echo "$(RED)Dashboard aún con errores$(NC)"
+
+.PHONY: fix-simple
+fix-simple: ## Fix rápido sin usar SSH (requiere estar en el NAS)
+	@echo "$(YELLOW)🔧 Aplicando fix directo (ejecutar desde el NAS)...$(NC)"
+	@echo "Ejecuta este comando directamente en el NAS:"
+	@echo ""
+	@echo "cd /volume1/docker/ai-service && sudo docker exec -i ai-postgres psql -U ai_user -d ai_service < migrations/fix-production-schema.sql"
+	@echo ""
+	@echo "O usa: make fix (requiere credenciales SSH configuradas)"
 
 # =============================================================================
 # 🚨 COMANDOS DE EMERGENCIA

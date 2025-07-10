@@ -42,3 +42,14 @@ docker-compose.override.yml
 .tmp/
 temp/
 .make.env
+
+# Logs
+*.log
+logs/
+
+# Archive directory
+archive/
+
+# Temporary scripts
+scripts/temp-*.sh
+scripts/test-*.sh

@@ -1,0 +1,121 @@
+# Makefile.cleanup - Limpieza de archivos obsoletos
+# Creado: 2025-01-10
+
+# Colores
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+BLUE := \033[0;34m
+NC := \033[0m
+
+# Directorio de archivo
+ARCHIVE_DIR := archive/$(shell date +%Y%m%d-%H%M%S)
+
+# =============================================================================
+# 🧹 COMANDOS DE LIMPIEZA
+# =============================================================================
+
+.PHONY: clean-prepare
+clean-prepare: ## Preparar directorios para limpieza
+	@echo "$(BLUE)📁 Creando directorio de archivo: $(ARCHIVE_DIR)$(NC)"
+	@mkdir -p $(ARCHIVE_DIR)/scripts
+	@mkdir -p $(ARCHIVE_DIR)/watchtower
+	@mkdir -p $(ARCHIVE_DIR)/migrations
+	@mkdir -p $(ARCHIVE_DIR)/docs
+	@echo "$(GREEN)✓ Directorios creados$(NC)"
+
+.PHONY: archive-watchtower
+archive-watchtower: ## Archivar archivos de Watchtower
+	@echo "$(YELLOW)📦 Archivando archivos de Watchtower...$(NC)"
+	@mv -f check-watchtower-*.sh $(ARCHIVE_DIR)/watchtower/ 2>/dev/null || true
+	@mv -f fix-watchtower-*.sh $(ARCHIVE_DIR)/watchtower/ 2>/dev/null || true
+	@mv -f diagnose-watchtower.sh $(ARCHIVE_DIR)/watchtower/ 2>/dev/null || true
+	@mv -f install-watchtower-*.sh $(ARCHIVE_DIR)/watchtower/ 2>/dev/null || true
+	@mv -f setup-watchtower-*.sh $(ARCHIVE_DIR)/watchtower/ 2>/dev/null || true
+	@mv -f redeploy-watchtower.sh $(ARCHIVE_DIR)/watchtower/ 2>/dev/null || true
+	@mv -f copy-watchtower-files.sh $(ARCHIVE_DIR)/watchtower/ 2>/dev/null || true
+	@mv -f docker-compose.watchtower.yml $(ARCHIVE_DIR)/watchtower/ 2>/dev/null || true
+	@echo "$(GREEN)✓ Archivos de Watchtower archivados$(NC)"
+
+.PHONY: archive-fix-scripts
+archive-fix-scripts: ## Archivar scripts de fixes temporales
+	@echo "$(YELLOW)📦 Archivando scripts de fixes...$(NC)"
+	@cd scripts && mv -f check-all-columns.sh check-column-exists.sql check-columns.sql \
+		check-database-context.sh check-env-file.sh check-gocardless-column.sql \
+		check-init-sql.sh check-schema-status.sh debug-schema-issue.sh \
+		diagnose-production-schema.sh diagnose-transactions.sh direct-alter-table.sh \
+		direct-fix-gocardless.sh fix-missing-columns.sh fix-production-startup.sh \
+		force-add-column.sh list-all-columns.sh restart-ai-service.sh \
+		start-production*.sh test-api-fix.sh test-transaction-query.sql \
+		test-transactions-api.sh verify-final-fix.sh verify-gocardless-column.sh \
+		verify-restoration.sh verify-schema-fix.sql \
+		apply-gocardless-*.sh ../$(ARCHIVE_DIR)/scripts/ 2>/dev/null || true
+	@echo "$(GREEN)✓ Scripts de fixes archivados$(NC)"
+
+.PHONY: archive-temp-docs
+archive-temp-docs: ## Archivar documentación temporal
+	@echo "$(YELLOW)📦 Archivando documentación temporal...$(NC)"
+	@mv -f FIX_*.md $(ARCHIVE_DIR)/docs/ 2>/dev/null || true
+	@mv -f DEPLOY_FIX_SUMMARY.md $(ARCHIVE_DIR)/docs/ 2>/dev/null || true
+	@mv -f DEPLOYMENT_FINANCIAL_FIX.md $(ARCHIVE_DIR)/docs/ 2>/dev/null || true
+	@echo "$(GREEN)✓ Documentación temporal archivada$(NC)"
+
+.PHONY: archive-emergency-sql
+archive-emergency-sql: ## Archivar SQLs de emergencia
+	@echo "$(YELLOW)📦 Archivando SQLs de emergencia...$(NC)"
+	@cd migrations && mv -f emergency-gocardless-fix.sql \
+		direct-apply-gocardless-fix.sql force-add-gocardless.sql \
+		fix-production-schema.sql ../$(ARCHIVE_DIR)/migrations/ 2>/dev/null || true
+	@echo "$(GREEN)✓ SQLs de emergencia archivados$(NC)"
+
+.PHONY: clean-logs
+clean-logs: ## Limpiar archivos de logs
+	@echo "$(YELLOW)🗑️  Eliminando archivos de logs...$(NC)"
+	@rm -f *.log
+	@rm -rf logs/
+	@echo "$(GREEN)✓ Logs eliminados$(NC)"
+
+.PHONY: clean-temp-files
+clean-temp-files: ## Limpiar archivos temporales
+	@echo "$(YELLOW)🗑️  Eliminando archivos temporales...$(NC)"
+	@rm -f check-current-image.sh check-update-status.sh update-production-now.sh
+	@rm -f check-watchtower-auth migrate-config.ts
+	@rm -f scripts/simple-create-invoices.sql scripts/ultra-simple-invoices.sql
+	@rm -f scripts/create-all-invoice-tables.sql scripts/apply-financial-tables*.sh
+	@rm -f scripts/apply-invoices-schema.sh scripts/apply-missing-tables.sh
+	@rm -f scripts/check-deployment-status.sh scripts/verify-all-columns.sh
+	@echo "$(GREEN)✓ Archivos temporales eliminados$(NC)"
+
+.PHONY: update-gitignore
+update-gitignore: ## Actualizar .gitignore
+	@echo "$(BLUE)📝 Actualizando .gitignore...$(NC)"
+	@echo "" >> .gitignore
+	@echo "# Logs" >> .gitignore
+	@echo "*.log" >> .gitignore
+	@echo "logs/" >> .gitignore
+	@echo "" >> .gitignore
+	@echo "# Archive directory" >> .gitignore
+	@echo "archive/" >> .gitignore
+	@echo "" >> .gitignore
+	@echo "# Temporary scripts" >> .gitignore
+	@echo "scripts/temp-*.sh" >> .gitignore
+	@echo "scripts/test-*.sh" >> .gitignore
+	@echo "$(GREEN)✓ .gitignore actualizado$(NC)"
+
+.PHONY: clean-all
+clean-all: clean-prepare archive-watchtower archive-fix-scripts archive-temp-docs archive-emergency-sql clean-logs clean-temp-files update-gitignore ## Ejecutar limpieza completa
+	@echo "$(GREEN)✨ Limpieza completa terminada$(NC)"
+	@echo "$(BLUE)📊 Resumen:$(NC)"
+	@echo "  - Archivos archivados en: $(ARCHIVE_DIR)"
+	@echo "  - Logs eliminados"
+	@echo "  - .gitignore actualizado"
+	@echo ""
+	@echo "$(YELLOW)⚠️  Revisa $(ARCHIVE_DIR) antes de hacer commit$(NC)"
+
+.PHONY: help
+help: ## Mostrar ayuda
+	@echo "$(BLUE)🧹 Sistema de Limpieza de Archivos Obsoletos$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+
+.DEFAULT_GOAL := help

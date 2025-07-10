@@ -1,0 +1,390 @@
+# Makefile.schema - Automatic Schema Synchronization System
+# Zero-error production deployments through automated schema management
+
+include .make.env
+
+# Export variables for subshells
+ifdef SSHPASS
+export SSHPASS
+endif
+
+ifdef SUDO_PASS
+export SUDO_PASS
+endif
+
+# Variables
+NAS_HOST ?= 192.168.1.11
+NAS_USER ?= k2600x
+
+# SSH commands with sshpass if available
+ifdef SSHPASS
+    SSH := sshpass -e ssh
+    SCP := sshpass -e scp
+else
+    SSH := ssh
+    SCP := scp
+endif
+
+# Colors
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+BLUE := \033[0;34m
+MAGENTA := \033[0;35m
+NC := \033[0m
+
+# =============================================================================
+# 🚨 EMERGENCY FIXES
+# =============================================================================
+
+.PHONY: schema-hotfix
+schema-hotfix: ## Apply emergency schema fix to production
+	@echo "$(RED)🚨 APPLYING EMERGENCY SCHEMA FIX$(NC)"
+	@echo "$(YELLOW)This will apply: migrations/001-fix-transaction-id.sql$(NC)"
+	@echo "Continue? (y/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "y" ] || exit 1
+	@echo "$(BLUE)1. Creating backup...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo "$(BLUE)2. Applying fix...$(NC)"
+	@echo "$(YELLOW)Applying migration...$(NC)"
+	@cat migrations/001-fix-transaction-id.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+	@echo "$(GREEN)✅ Hotfix applied successfully$(NC)"
+	@echo "$(BLUE)Verifying schema changes...$(NC)"
+	@cat scripts/verify-schema-fix.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+
+.PHONY: schema-complete-fix
+schema-complete-fix: ## Apply complete production schema fix (gocardless_data + account_insights)
+	@echo "$(RED)🔧 APPLYING COMPLETE SCHEMA FIX$(NC)"
+	@echo "$(YELLOW)This will fix:$(NC)"
+	@echo "  - gocardless_data column in transactions"
+	@echo "  - account_insights view"
+	@echo "  - All missing columns"
+	@echo "Continue? (y/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "y" ] || exit 1
+	@echo "$(BLUE)1. Creating backup...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo "$(BLUE)2. Applying complete fix...$(NC)"
+	@cat migrations/fix-production-schema.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+	@echo "$(GREEN)✅ Complete fix applied successfully$(NC)"
+
+.PHONY: schema-verify-fix
+schema-verify-fix: ## Verify the transaction_id fix was applied
+	@echo "$(BLUE)🔍 Verifying schema fix...$(NC)"
+	@echo "$(YELLOW)Checking transaction_id column...$(NC)"
+	@cat scripts/verify-schema-fix.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+
+.PHONY: schema-check-columns
+schema-check-columns: ## Check all columns in transactions table
+	@echo "$(BLUE)📋 Checking all columns in transactions table...$(NC)"
+	@cat scripts/check-columns.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+
+.PHONY: schema-test-query
+schema-test-query: ## Test transaction query with all columns
+	@echo "$(BLUE)🧪 Testing transaction query...$(NC)"
+	@cat scripts/test-transaction-query.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+
+.PHONY: schema-restart-service
+schema-restart-service: ## Restart AI service to pick up schema changes
+	@echo "$(YELLOW)🔄 Restarting AI service...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-service"
+	@echo "$(BLUE)Waiting for service to be ready...$(NC)"
+	@sleep 10
+	@echo "$(GREEN)✅ Service restarted$(NC)"
+
+.PHONY: schema-fix-gocardless
+schema-fix-gocardless: ## Apply just the gocardless_data column fix
+	@echo "$(RED)🔧 Adding gocardless_data column...$(NC)"
+	@cat migrations/002-add-gocardless-data.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+	@echo "$(GREEN)✅ Column added$(NC)"
+
+.PHONY: schema-emergency-fix
+schema-emergency-fix: ## Apply emergency gocardless fix
+	@echo "$(RED)🚨 Applying emergency fix...$(NC)"
+	@cat migrations/emergency-gocardless-fix.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+	@echo "$(GREEN)✅ Emergency fix applied$(NC)"
+
+.PHONY: schema-apply-missing-columns
+schema-apply-missing-columns: ## Apply complete missing columns migration
+	@echo "$(RED)🔧 Applying missing columns migration...$(NC)"
+	@echo "$(YELLOW)This will add all required columns for GoCardless and crypto support$(NC)"
+	@echo "Continue? (y/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "y" ] || exit 1
+	@echo "$(BLUE)Applying migration...$(NC)"
+	@cat migrations/003-complete-missing-columns.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+	@echo "$(GREEN)✅ Migration applied$(NC)"
+	@echo "$(BLUE)Restarting service...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-service"
+	@sleep 10
+	@echo "$(GREEN)✅ Service restarted$(NC)"
+
+.PHONY: schema-deploy-init-files
+schema-deploy-init-files: ## Deploy init SQL files to production
+	@echo "$(BLUE)📤 Deploying init SQL files to production...$(NC)"
+	@echo "$(YELLOW)Copying init-financial.sql...$(NC)"
+	@$(SCP) config/init-financial.sql $(NAS_USER)@$(NAS_HOST):/volume1/docker/ai-service/config/
+	@echo "$(GREEN)✅ Files deployed$(NC)"
+	@echo "$(YELLOW)Note: PostgreSQL container must be recreated to apply init files$(NC)"
+
+.PHONY: schema-direct-fix
+schema-direct-fix: ## Apply direct SQL fix for gocardless_data and account_insights
+	@echo "$(RED)🚨 Applying direct SQL fix...$(NC)"
+	@cat migrations/direct-apply-gocardless-fix.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+	@echo "$(GREEN)✅ Direct fix applied$(NC)"
+	@echo "$(BLUE)Restarting service...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-service"
+	@sleep 10
+	@echo "$(GREEN)✅ Service restarted$(NC)"
+
+# =============================================================================
+# 🔄 AUTOMATIC SYNC COMMANDS
+# =============================================================================
+
+.PHONY: schema-compare
+schema-compare: ## Compare dev vs prod schemas
+	@echo "$(MAGENTA)🔍 Schema Comparison$(NC)"
+	@npx ts-node scripts/schema-sync.ts compare
+
+.PHONY: schema-validate
+schema-validate: ## Validate schema integrity
+	@echo "$(MAGENTA)✅ Schema Validation$(NC)"
+	@npx ts-node scripts/schema-sync.ts validate
+
+.PHONY: schema-generate
+schema-generate: ## Generate migration from differences
+	@echo "$(MAGENTA)📝 Generating Migration$(NC)"
+	@npx ts-node scripts/schema-sync.ts generate $(NAME)
+
+.PHONY: schema-apply-dev
+schema-apply-dev: ## Apply pending migrations to development
+	@echo "$(BLUE)📦 Applying to Development$(NC)"
+	@npx ts-node scripts/schema-sync.ts apply development
+
+.PHONY: schema-apply-prod
+schema-apply-prod: ## Apply pending migrations to production
+	@echo "$(RED)📦 Applying to PRODUCTION$(NC)"
+	@echo "$(YELLOW)⚠️  This will modify production database!$(NC)"
+	@echo "Continue? (y/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "y" ] || exit 1
+	@$(MAKE) -f Makefile.production prod-backup
+	@npx ts-node scripts/schema-sync.ts apply production
+
+# =============================================================================
+# 🤖 AUTOMATED WORKFLOWS
+# =============================================================================
+
+.PHONY: schema-sync
+schema-sync: ## Full automatic sync (compare → generate → apply)
+	@echo "$(MAGENTA)🔄 Automatic Schema Synchronization$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(BLUE)Step 1: Comparing schemas...$(NC)"
+	@$(MAKE) schema-compare
+	@echo ""
+	@echo "$(BLUE)Step 2: Validating integrity...$(NC)"
+	@$(MAKE) schema-validate
+	@echo ""
+	@echo "$(BLUE)Step 3: Generating migration...$(NC)"
+	@$(MAKE) schema-generate NAME=auto-sync-$$(date +%Y%m%d)
+	@echo ""
+	@echo "$(BLUE)Step 4: Applying to development...$(NC)"
+	@$(MAKE) schema-apply-dev
+	@echo ""
+	@echo "$(GREEN)✅ Schema sync complete!$(NC)"
+	@echo "$(YELLOW)Review changes and run 'make schema-apply-prod' when ready$(NC)"
+
+.PHONY: schema-drift-check
+schema-drift-check: ## Check for schema drift (CI/CD)
+	@echo "$(MAGENTA)🔍 Drift Detection$(NC)"
+	@if $(MAKE) schema-compare | grep -q "Schema drift detected"; then \
+		echo "$(RED)❌ Schema drift detected!$(NC)"; \
+		echo "Run 'make schema-sync' to fix"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✅ No schema drift$(NC)"; \
+	fi
+
+# =============================================================================
+# 📊 MONITORING
+# =============================================================================
+
+.PHONY: schema-monitor
+schema-monitor: ## Monitor schema changes in real-time
+	@echo "$(MAGENTA)📊 Schema Monitor$(NC)"
+	@while true; do \
+		clear; \
+		echo "$(BLUE)Schema Status - $$(date)$(NC)"; \
+		echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"; \
+		$(MAKE) -f Makefile.compare diff-counts --no-print-directory; \
+		echo ""; \
+		echo "$(BLUE)Recent Migrations:$(NC)"; \
+		ls -la migrations/*.sql 2>/dev/null | tail -5 || echo "No migrations"; \
+		sleep 10; \
+	done
+
+.PHONY: schema-history
+schema-history: ## Show migration history
+	@echo "$(MAGENTA)📜 Migration History$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(BLUE)Development:$(NC)"
+	@docker exec ai-service-postgres-1 psql -U postgres -d ai_service -c \
+		"SELECT filename, applied_at FROM schema_migrations ORDER BY applied_at DESC LIMIT 10;" 2>/dev/null || \
+		echo "No migration history"
+	@echo ""
+	@echo "$(BLUE)Production:$(NC)"
+	@sshpass -e ssh $(NAS_USER)@$(NAS_HOST) \
+		"echo '$(SUDO_PASS)' | sudo -S docker exec ai-postgres psql -U ai_user -d ai_service -c \
+		'SELECT filename, applied_at FROM schema_migrations ORDER BY applied_at DESC LIMIT 10;'" 2>/dev/null || \
+		echo "No migration history"
+
+# =============================================================================
+# 🔄 AUTO SCHEMA EXPORT/SYNC
+# =============================================================================
+
+.PHONY: schema-auto-export
+schema-auto-export: ## Automatically export current dev schema
+	@echo "$(BLUE)📥 Auto-exporting development schema...$(NC)"
+	@mkdir -p schemas/auto
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S)
+	@docker exec ai-service-postgres-1 pg_dump -U postgres -d ai_service \
+		--schema-only --no-owner --no-privileges \
+		> schemas/auto/dev-schema-$$TIMESTAMP.sql 2>/dev/null || \
+		(echo "$(RED)Development database not running$(NC)" && exit 1)
+	@ln -sf auto/dev-schema-$$TIMESTAMP.sql schemas/latest-dev.sql
+	@echo "$(GREEN)✓ Schema exported: schemas/auto/dev-schema-$$TIMESTAMP.sql$(NC)"
+	@echo "$(GREEN)✓ Symlink updated: schemas/latest-dev.sql$(NC)"
+
+.PHONY: schema-auto-sync
+schema-auto-sync: ## Auto sync schema from dev to file
+	@echo "$(MAGENTA)🔄 Auto Schema Sync$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(BLUE)1. Exporting current dev schema...$(NC)"
+	@$(MAKE) schema-auto-export
+	@echo ""
+	@echo "$(BLUE)2. Comparing with baseline...$(NC)"
+	@if [ -f migrations/baseline-schema.sql ]; then \
+		diff -u migrations/baseline-schema.sql schemas/latest-dev.sql > schemas/schema-diff.patch 2>/dev/null || \
+		echo "$(YELLOW)Schema differences detected$(NC)"; \
+	else \
+		echo "$(YELLOW)No baseline found$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)3. Updating baseline...$(NC)"
+	@cp schemas/latest-dev.sql migrations/baseline-schema.sql
+	@echo "$(GREEN)✓ Baseline updated$(NC)"
+
+.PHONY: schema-watch
+schema-watch: ## Watch for schema changes and auto-export
+	@echo "$(MAGENTA)👀 Schema Watcher$(NC)"
+	@echo "$(YELLOW)Monitoring schema changes every 30 seconds...$(NC)"
+	@echo "Press Ctrl+C to stop"
+	@while true; do \
+		clear; \
+		echo "$(BLUE)Schema Watch - $$(date)$(NC)"; \
+		echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"; \
+		$(MAKE) schema-auto-export --no-print-directory 2>/dev/null || echo "$(RED)Export failed$(NC)"; \
+		echo ""; \
+		echo "$(BLUE)Latest exports:$(NC)"; \
+		ls -la schemas/auto/*.sql 2>/dev/null | tail -5 || echo "No exports"; \
+		sleep 30; \
+	done
+
+.PHONY: schema-prod-apply-latest
+schema-prod-apply-latest: ## Apply latest dev schema to production
+	@echo "$(RED)⚠️  WARNING: Apply latest dev schema to PRODUCTION$(NC)"
+	@echo "$(YELLOW)This will use: schemas/latest-dev.sql$(NC)"
+	@echo "Continue? (y/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "y" ] || exit 1
+	@echo "$(BLUE)1. Creating backup...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo "$(BLUE)2. Applying schema...$(NC)"
+	@cat schemas/latest-dev.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+	@echo "$(GREEN)✓ Schema applied$(NC)"
+	@echo "$(BLUE)3. Restarting service...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker restart ai-service"
+	@echo "$(GREEN)✓ Service restarted$(NC)"
+
+.PHONY: schema-restore-invoices
+schema-restore-invoices: ## Restore missing invoice tables (clients, invoices, invoice_sequences)
+	@echo "$(RED)🔧 Restoring missing invoice tables$(NC)"
+	@echo "$(YELLOW)This will create: clients, invoices, invoice_sequences$(NC)"
+	@echo "Continue? (y/N):"
+	@read CONFIRM && [ "$$CONFIRM" = "y" ] || exit 1
+	@echo "$(BLUE)1. Creating backup...$(NC)"
+	@$(MAKE) -f Makefile.production prod-backup
+	@echo "$(BLUE)2. Applying invoice tables...$(NC)"
+	@cat scripts/restore-financial-tables.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service"
+	@echo "$(GREEN)✓ Invoice tables created$(NC)"
+	@echo "$(BLUE)3. Verifying tables...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'financial' ORDER BY table_name;\""
+	@echo "$(GREEN)✓ Tables verified$(NC)"
+
+.PHONY: schema-create-invoices-simple
+schema-create-invoices-simple: ## Create just the invoices table
+	@echo "$(RED)🔧 Creating invoices table$(NC)"
+	@echo "$(BLUE)Applying SQL...$(NC)"
+	@cat scripts/simple-create-invoices.sql | $(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U ai_user -d ai_service 2>&1"
+	@echo "$(BLUE)Verifying...$(NC)"
+	@$(SSH) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'financial' AND table_name = 'invoices';\""
+
+# =============================================================================
+# 🛠️ UTILITIES
+# =============================================================================
+
+.PHONY: schema-export
+schema-export: ## Export current schemas to files
+	@echo "$(BLUE)📥 Exporting schemas...$(NC)"
+	@mkdir -p exports
+	@docker exec ai-service-postgres-1 pg_dump -U postgres -d ai_service \
+		--schema-only --no-owner --no-privileges > exports/dev-schema-$$(date +%Y%m%d-%H%M%S).sql
+	@echo "$(GREEN)✅ Development schema exported$(NC)"
+	@$(MAKE) -f Makefile.production prod-dump-schema > exports/prod-schema-$$(date +%Y%m%d-%H%M%S).sql
+	@echo "$(GREEN)✅ Production schema exported$(NC)"
+
+.PHONY: schema-rollback
+schema-rollback: ## Rollback last migration
+	@echo "$(RED)⚠️  Rolling back last migration$(NC)"
+	@echo "Which environment? (dev/prod):"
+	@read ENV && \
+	if [ "$$ENV" = "prod" ]; then \
+		$(MAKE) -f Makefile.production prod-backup; \
+	fi && \
+	echo "$(YELLOW)TODO: Implement rollback logic$(NC)"
+
+# =============================================================================
+# 🚀 CI/CD INTEGRATION
+# =============================================================================
+
+.PHONY: schema-ci-check
+schema-ci-check: ## CI/CD schema validation
+	@echo "$(MAGENTA)🔍 CI/CD Schema Check$(NC)"
+	@$(MAKE) schema-validate
+	@$(MAKE) schema-drift-check
+	@echo "$(GREEN)✅ All schema checks passed$(NC)"
+
+# =============================================================================
+# HELP
+# =============================================================================
+
+.PHONY: help
+help: ## Show this help
+	@echo "$(MAGENTA)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(MAGENTA)║           AUTOMATIC SCHEMA SYNCHRONIZATION SYSTEM             ║$(NC)"
+	@echo "$(MAGENTA)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Emergency:$(NC)"
+	@grep -E '^schema-hotfix:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(RED)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Automatic Sync:$(NC)"
+	@grep -E '^schema-(compare|validate|generate|apply|sync|drift):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Monitoring:$(NC)"
+	@grep -E '^schema-(monitor|history):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Utilities:$(NC)"
+	@grep -E '^schema-(export|rollback):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(MAGENTA)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Example workflow:$(NC)"
+	@echo "  1. make schema-hotfix      # Fix immediate issue"
+	@echo "  2. make schema-sync        # Full automatic sync"
+	@echo "  3. make schema-monitor     # Monitor in real-time"
+
+.DEFAULT_GOAL := help

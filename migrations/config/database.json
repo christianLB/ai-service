@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "driver": "pg",
+    "host": "localhost",
+    "port": 5432,
+    "database": "ai_service",
+    "user": "postgres",
+    "password": "postgres123",
+    "schema": "financial"
+  },
+  "production": {
+    "driver": "pg",
+    "host": "192.168.1.11",
+    "port": 5433,
+    "database": "ai_service",
+    "user": "ai_user",
+    "password": {"ENV": "DB_PASSWORD"},
+    "schema": "financial"
+  }
+}
