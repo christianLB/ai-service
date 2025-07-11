@@ -6,6 +6,9 @@ import esES from 'antd/locale/es_ES';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
 
+import { AuthProvider } from './contexts/AuthContext';
+import { PrivateRoute } from './components/auth/PrivateRoute';
+import { Login } from './pages/auth/Login';
 import AppLayout from './components/layout/AppLayout';
 import Dashboard from './pages/Dashboard';
 import ClientList from './pages/clients/ClientList';
@@ -48,9 +51,14 @@ const App: React.FC = () => {
           },
         }}
       >
-        <Router>
-          <Routes>
-            <Route path="/" element={<AppLayout />}>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<Login />} />
+              
+              {/* Protected routes */}
+              <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
               
               {/* Client Routes */}
@@ -80,8 +88,9 @@ const App: React.FC = () => {
             </Route>
           </Routes>
         </Router>
-      </ConfigProvider>
-    </QueryClientProvider>
+      </AuthProvider>
+    </ConfigProvider>
+  </QueryClientProvider>
   );
 };
 

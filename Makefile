@@ -80,6 +80,26 @@ financial-diff: ## 🔍 Comparar datos financieros entre ambientes
 	@$(MAKE) -f Makefile.financial-sync financial-diff
 
 # =============================================================================
+# 🔐 COMANDOS DE AUTENTICACIÓN
+# =============================================================================
+
+.PHONY: auth-setup
+auth-setup: ## 🔐 Configurar sistema de autenticación completo
+	@$(MAKE) -f Makefile.auth auth-setup
+
+.PHONY: auth-bypass-on
+auth-bypass-on: ## 🔓 Activar bypass de auth para desarrollo
+	@$(MAKE) -f Makefile.auth auth-bypass-on
+
+.PHONY: auth-bypass-off
+auth-bypass-off: ## 🔒 Desactivar bypass de auth
+	@$(MAKE) -f Makefile.auth auth-bypass-off
+
+.PHONY: auth-test
+auth-test: ## 🧪 Probar sistema de autenticación
+	@$(MAKE) -f Makefile.auth auth-test
+
+# =============================================================================
 # 🚨 COMANDOS DE EMERGENCIA (recuperación < 30 segundos)
 # =============================================================================
 

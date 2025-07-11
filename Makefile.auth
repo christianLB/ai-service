@@ -1,0 +1,137 @@
+# Authentication Management Makefile
+# This file contains commands for managing authentication in the AI Service
+
+.PHONY: auth-help auth-setup auth-migrate auth-seed auth-bypass-on auth-bypass-off auth-test auth-status auth-clean
+
+# Default target
+auth-help:
+	@echo "🔐 Authentication Management Commands"
+	@echo "====================================="
+	@echo "make auth-setup        - Complete auth setup (migrate + seed)"
+	@echo "make auth-migrate      - Run auth database migrations"
+	@echo "make auth-seed         - Create default admin user"
+	@echo "make auth-bypass-on    - Enable auth bypass for development"
+	@echo "make auth-bypass-off   - Disable auth bypass"
+	@echo "make auth-test         - Test authentication system"
+	@echo "make auth-status       - Check auth configuration status"
+	@echo "make auth-clean        - Remove auth tables (DANGEROUS!)"
+	@echo "make auth-generate-secret - Generate secure JWT secret"
+
+# Complete authentication setup
+auth-setup: auth-migrate auth-seed
+	@echo "✅ Authentication setup completed!"
+	@echo "Default admin credentials:"
+	@echo "  Email: admin@ai-service.local"
+	@echo "  Password: admin123"
+	@echo "⚠️  IMPORTANT: Change the default password immediately!"
+
+# Run authentication migrations
+auth-migrate:
+	@echo "🔄 Running authentication migrations..."
+	@docker-compose exec -T postgres psql -U ai_user -d ai_service -f /docker-entrypoint-initdb.d/migrations/005-create-users-auth.sql || \
+		psql -h localhost -U ai_user -d ai_service -f migrations/005-create-users-auth.sql
+	@docker-compose exec -T postgres psql -U ai_user -d ai_service -f /docker-entrypoint-initdb.d/migrations/006-create-security-logs.sql || \
+		psql -h localhost -U ai_user -d ai_service -f migrations/006-create-security-logs.sql
+	@echo "✅ Migrations completed"
+
+# Seed admin user
+auth-seed:
+	@echo "🌱 Seeding admin user..."
+	@npm run ts-node scripts/seed-admin-user.ts || npx ts-node scripts/seed-admin-user.ts
+	@echo "✅ Admin user seeded"
+
+# Enable authentication bypass for development
+auth-bypass-on:
+	@echo "🔓 Enabling authentication bypass for development..."
+	@if [ -f .env.local ]; then \
+		if grep -q "AUTH_BYPASS" .env.local; then \
+			sed -i.bak 's/AUTH_BYPASS=.*/AUTH_BYPASS=true/' .env.local; \
+		else \
+			echo "AUTH_BYPASS=true" >> .env.local; \
+		fi; \
+	else \
+		echo "NODE_ENV=development" > .env.local; \
+		echo "AUTH_BYPASS=true" >> .env.local; \
+	fi
+	@echo "✅ Auth bypass enabled (restart services to apply)"
+
+# Disable authentication bypass
+auth-bypass-off:
+	@echo "🔒 Disabling authentication bypass..."
+	@if [ -f .env.local ]; then \
+		sed -i.bak 's/AUTH_BYPASS=.*/AUTH_BYPASS=false/' .env.local; \
+	fi
+	@echo "✅ Auth bypass disabled (restart services to apply)"
+
+# Test authentication system
+auth-test:
+	@echo "🧪 Testing authentication system..."
+	@echo "1. Testing login endpoint..."
+	@curl -s -X POST http://localhost:3001/api/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"email":"admin@ai-service.local","password":"admin123"}' | jq '.' || echo "❌ Login test failed"
+	@echo "\n2. Testing protected endpoint without token..."
+	@curl -s -X GET http://localhost:3001/api/financial/health | jq '.' || echo "❌ Protected endpoint test failed"
+	@echo "\n3. Testing auth status..."
+	@curl -s -X GET http://localhost:3001/api/auth/me \
+		-H "Authorization: Bearer invalid-token" | jq '.' || echo "❌ Auth status test failed"
+
+# Check authentication configuration status
+auth-status:
+	@echo "🔍 Authentication Configuration Status"
+	@echo "====================================="
+	@echo -n "Environment: "
+	@grep NODE_ENV .env.local 2>/dev/null || echo "NODE_ENV=production (default)"
+	@echo -n "Auth Bypass: "
+	@grep AUTH_BYPASS .env.local 2>/dev/null || echo "AUTH_BYPASS=false (default)"
+	@echo -n "JWT Secret: "
+	@if grep -q JWT_SECRET .env.local 2>/dev/null; then echo "✅ Configured"; else echo "⚠️  Using default (insecure!)"; fi
+	@echo -n "Database Tables: "
+	@docker-compose exec -T postgres psql -U ai_user -d ai_service -c "SELECT COUNT(*) FROM users;" 2>/dev/null && echo "✅ Users table exists" || echo "❌ Users table missing"
+
+# Clean authentication tables (DANGEROUS!)
+auth-clean:
+	@echo "⚠️  WARNING: This will delete all authentication data!"
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	@echo "🗑️  Dropping authentication tables..."
+	@docker-compose exec -T postgres psql -U ai_user -d ai_service -c "DROP TABLE IF EXISTS security_logs, login_attempts, refresh_tokens, users CASCADE;"
+	@echo "✅ Authentication tables removed"
+
+# Generate secure JWT secret
+auth-generate-secret:
+	@echo "🔑 Generating secure JWT secret..."
+	@echo "Add this to your .env.local or .env.production file:"
+	@echo "JWT_SECRET=$$(openssl rand -base64 32)"
+	@echo ""
+	@echo "🔑 Generating secure session secret..."
+	@echo "SESSION_SECRET=$$(openssl rand -base64 32)"
+
+# Development helpers
+auth-dev-login:
+	@echo "🔐 Getting development auth token..."
+	@TOKEN=$$(curl -s -X POST http://localhost:3001/api/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"email":"admin@ai-service.local","password":"admin123"}' | jq -r '.accessToken') && \
+	echo "Access Token: $$TOKEN" && \
+	echo "" && \
+	echo "Use with: curl -H \"Authorization: Bearer $$TOKEN\" ..."
+
+# Production helpers
+auth-prod-check:
+	@echo "🔍 Checking production auth configuration..."
+	@if [ -f .env.production ]; then \
+		echo -n "JWT_SECRET: "; \
+		if grep -q "JWT_SECRET=CHANGE_THIS" .env.production; then \
+			echo "❌ Still using default!"; \
+		else \
+			echo "✅ Customized"; \
+		fi; \
+		echo -n "ALLOW_REGISTRATION: "; \
+		grep "ALLOW_REGISTRATION" .env.production || echo "false (default)"; \
+		echo -n "CORS_ORIGIN: "; \
+		grep "CORS_ORIGIN" .env.production || echo "* (default - insecure!)"; \
+	else \
+		echo "❌ No .env.production file found!"; \
+		echo "Run: cp .env.production.template .env.production"; \
+	fi

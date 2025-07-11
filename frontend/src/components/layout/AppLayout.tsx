@@ -17,6 +17,7 @@ import {
   BankOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import dashboardService from '../../services/dashboardService';
 import type { HealthStatus } from '../../types';
 
@@ -27,6 +28,7 @@ const AppLayout: React.FC = () => {
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -91,10 +93,10 @@ const AppLayout: React.FC = () => {
     navigate(key);
   };
 
-  const handleUserMenuClick = ({ key }: { key: string }) => {
+  const handleUserMenuClick = async ({ key }: { key: string }) => {
     if (key === 'logout') {
       // Handle logout
-      localStorage.removeItem('auth_token');
+      await logout();
       navigate('/login');
     } else {
       navigate(`/${key}`);
@@ -343,7 +345,7 @@ const AppLayout: React.FC = () => {
             >
               <Space style={{ cursor: 'pointer' }}>
                 <Avatar icon={<UserOutlined />} />
-                <span>Admin</span>
+                <span>{user?.fullName || user?.email || 'Usuario'}</span>
               </Space>
             </Dropdown>
           </Space>
