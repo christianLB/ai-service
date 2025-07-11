@@ -520,7 +520,6 @@ const BankAccountsContent: React.FC = () => {
 
   return (
     <div>
-      test
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} md={6}>
           <Card>
