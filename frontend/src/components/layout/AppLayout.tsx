@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Layout, Menu, theme, Avatar, Dropdown, Badge, Space, Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, theme, Avatar, Dropdown, Badge, Space, Button, Tooltip } from 'antd';
 import {
   DashboardOutlined,
   UserOutlined,
@@ -10,15 +10,21 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  SafetyCertificateOutlined,
   SyncOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  CloseCircleOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import dashboardService from '../../services/dashboardService';
+import type { HealthStatus } from '../../types';
 
 const { Header, Sider, Content } = Layout;
 
 const AppLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -43,14 +49,14 @@ const AppLayout: React.FC = () => {
       label: 'Facturas',
     },
     {
+      key: '/bank-accounts',
+      icon: <BankOutlined />,
+      label: 'Cuentas Bancarias',
+    },
+    {
       key: '/documents',
       icon: <FolderOutlined />,
       label: 'Documentos',
-    },
-    {
-      key: '/health',
-      icon: <SafetyCertificateOutlined />,
-      label: 'Estado del Sistema',
     },
     {
       key: '/settings',
@@ -95,6 +101,45 @@ const AppLayout: React.FC = () => {
     }
   };
 
+  const fetchHealthStatus = async () => {
+    try {
+      const response = await dashboardService.getHealthCheck();
+      setHealthStatus(response);
+    } catch (error) {
+      console.error('Error fetching health status:', error);
+      setHealthStatus({
+        success: false,
+        status: 'unhealthy',
+        services: {
+          database: 'error',
+          gocardless: 'error',
+          scheduler: 'error',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchHealthStatus();
+    const interval = setInterval(fetchHealthStatus, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'healthy':
+      case 'connected':
+      case 'authenticated':
+      case 'running':
+        return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+      case 'warning':
+        return <ExclamationCircleOutlined style={{ color: '#faad14' }} />;
+      default:
+        return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
+    }
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider 
@@ -124,13 +169,130 @@ const AppLayout: React.FC = () => {
           </div>
         </div>
         
-        <Menu
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={handleMenuClick}
-          style={{ borderRight: 0, marginTop: 8 }}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}>
+          <Menu
+            mode="inline"
+            selectedKeys={[location.pathname]}
+            items={menuItems}
+            onClick={handleMenuClick}
+            style={{ borderRight: 0, marginTop: 8, flex: 1 }}
+          />
+          
+          {/* System Status Footer */}
+          <div style={{ 
+            padding: collapsed ? '8px' : '12px 16px', 
+            borderTop: '1px solid #f0f0f0',
+            background: '#fafafa',
+            transition: 'all 0.3s'
+          }}>
+            {!collapsed && (
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                Estado del Sistema
+              </div>
+            )}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: collapsed ? '1fr' : '1fr 1fr',
+              gap: '8px'
+            }}>
+              {/* General Status */}
+              <Tooltip title={collapsed ? 'Estado General' : null} placement="right">
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: collapsed ? 'transparent' : '#fff',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => navigate('/health')}
+                >
+                  {getStatusIcon(healthStatus?.status || 'error')}
+                  {!collapsed && (
+                    <span style={{ marginLeft: '6px', fontSize: '11px' }}>
+                      General
+                    </span>
+                  )}
+                </div>
+              </Tooltip>
+
+              {/* Database Status */}
+              <Tooltip title={collapsed ? 'Base de Datos' : null} placement="right">
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: collapsed ? 'transparent' : '#fff',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => navigate('/health')}
+                >
+                  {getStatusIcon(healthStatus?.services.database || 'error')}
+                  {!collapsed && (
+                    <span style={{ marginLeft: '6px', fontSize: '11px' }}>
+                      Database
+                    </span>
+                  )}
+                </div>
+              </Tooltip>
+
+              {/* GoCardless Status */}
+              <Tooltip title={collapsed ? 'GoCardless' : null} placement="right">
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: collapsed ? 'transparent' : '#fff',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => navigate('/health')}
+                >
+                  {getStatusIcon(healthStatus?.services.gocardless || 'error')}
+                  {!collapsed && (
+                    <span style={{ marginLeft: '6px', fontSize: '11px' }}>
+                      GoCardless
+                    </span>
+                  )}
+                </div>
+              </Tooltip>
+
+              {/* Scheduler Status */}
+              <Tooltip title={collapsed ? 'Scheduler' : null} placement="right">
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: collapsed ? 'transparent' : '#fff',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => navigate('/health')}
+                >
+                  {getStatusIcon(healthStatus?.services.scheduler || 'error')}
+                  {!collapsed && (
+                    <span style={{ marginLeft: '6px', fontSize: '11px' }}>
+                      Scheduler
+                    </span>
+                  )}
+                </div>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
       </Sider>
       
       <Layout>

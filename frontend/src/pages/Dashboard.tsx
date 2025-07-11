@@ -20,8 +20,6 @@ import {
   DollarOutlined,
   ReloadOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
-  CloseCircleOutlined,
   FileTextOutlined,
   TeamOutlined,
   LineChartOutlined,
@@ -48,7 +46,6 @@ import {
 import dashboardService from '../services/dashboardService';
 import BankAccounts from './BankAccounts';
 import type { 
-  HealthStatus, 
   RevenueMetrics, 
   ClientMetrics
 } from '../types';
@@ -57,7 +54,6 @@ import VersionIndicator from '../components/VersionIndicator';
 
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
   const [invoiceStats, setInvoiceStats] = useState<any>(null);
   const [clientMetrics, setClientMetrics] = useState<ClientMetrics | null>(null);
@@ -137,25 +133,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const fetchHealthStatus = async () => {
-    try {
-      const response = await dashboardService.getHealthCheck();
-      setHealthStatus(response);
-    } catch (error) {
-      console.error('Error fetching health status:', error);
-      setHealthStatus({
-        success: false,
-        status: 'unhealthy',
-        services: {
-          database: 'error',
-          gocardless: 'error',
-          scheduler: 'error',
-        },
-        timestamp: new Date().toISOString(),
-      });
-    }
-  };
-
   const handleManualSync = async () => {
     try {
       const response = await dashboardService.performManualSync();
@@ -176,23 +153,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-    fetchHealthStatus();
   }, [currency]);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'healthy':
-      case 'connected':
-      case 'authenticated':
-      case 'running':
-        return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-      case 'warning':
-        return <ExclamationCircleOutlined style={{ color: '#faad14' }} />;
-      default:
-        return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
-    }
-  };
-
 
   const categoryColors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#fa8c16'];
 
@@ -229,7 +190,7 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       {/* Header Actions */}
-      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }} className="dashboard-header">
         <Col>
           <Space direction="vertical" size="small">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -276,60 +237,17 @@ const Dashboard: React.FC = () => {
           {
             key: 'overview',
             label: (
-              <span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <DollarOutlined />
                 Vista General
               </span>
             ),
             children: (
               <div>
-                {/* Health Status */}
-                <Card title="Estado del Sistema" style={{ marginBottom: 24 }}>
-                  <Row gutter={16}>
-                    <Col span={6}>
-                      <Card size="small">
-                        <Statistic
-                          title="Estado General"
-                          value={healthStatus?.status === 'healthy' ? 'Saludable' : 'Con problemas'}
-                          prefix={getStatusIcon(healthStatus?.status || 'error')}
-                          valueStyle={{ color: healthStatus?.status === 'healthy' ? '#52c41a' : '#ff4d4f' }}
-                        />
-                      </Card>
-                    </Col>
-                    <Col span={6}>
-                      <Card size="small">
-                        <Statistic
-                          title="Base de Datos"
-                          value={healthStatus?.services.database || 'Error'}
-                          prefix={getStatusIcon(healthStatus?.services.database || 'error')}
-                        />
-                      </Card>
-                    </Col>
-                    <Col span={6}>
-                      <Card size="small">
-                        <Statistic
-                          title="GoCardless"
-                          value={healthStatus?.services.gocardless || 'Error'}
-                          prefix={getStatusIcon(healthStatus?.services.gocardless || 'error')}
-                        />
-                      </Card>
-                    </Col>
-                    <Col span={6}>
-                      <Card size="small">
-                        <Statistic
-                          title="Scheduler"
-                          value={healthStatus?.services.scheduler || 'Error'}
-                          prefix={getStatusIcon(healthStatus?.services.scheduler || 'error')}
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
-                </Card>
-
                 {/* Quick Revenue Stats */}
-                <Row gutter={16} style={{ marginBottom: 24 }}>
-                  <Col span={6}>
-                    <Card>
+                <Row gutter={16} className="dashboard-metric-row">
+                  <Col xs={24} sm={12} md={6}>
+                    <Card className="metric-card">
                       <Statistic
                         title="Ingresos del Mes"
                         value={revenueMetrics?.currentPeriod.totalRevenue || '0'}
@@ -347,8 +265,8 @@ const Dashboard: React.FC = () => {
                       )}
                     </Card>
                   </Col>
-                  <Col span={6}>
-                    <Card>
+                  <Col xs={24} sm={12} md={6}>
+                    <Card className="metric-card">
                       <Statistic
                         title="Facturas Pagadas"
                         value={revenueMetrics?.currentPeriod.paidRevenue || '0'}
@@ -363,8 +281,8 @@ const Dashboard: React.FC = () => {
                       </div>
                     </Card>
                   </Col>
-                  <Col span={6}>
-                    <Card>
+                  <Col xs={24} sm={12} md={6}>
+                    <Card className="metric-card">
                       <Statistic
                         title="Pendientes de Cobro"
                         value={revenueMetrics?.currentPeriod.pendingRevenue || '0'}
@@ -374,8 +292,8 @@ const Dashboard: React.FC = () => {
                       />
                     </Card>
                   </Col>
-                  <Col span={6}>
-                    <Card>
+                  <Col xs={24} sm={12} md={6}>
+                    <Card className="metric-card">
                       <Statistic
                         title="Vencidas"
                         value={revenueMetrics?.currentPeriod.overdueRevenue || '0'}
@@ -457,7 +375,7 @@ const Dashboard: React.FC = () => {
           {
             key: 'invoices',
             label: (
-              <span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <FileTextOutlined />
                 Facturas
               </span>
@@ -466,9 +384,9 @@ const Dashboard: React.FC = () => {
               <div>
                 {/* Invoice Status Distribution */}
                 {invoiceStats && (
-                  <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={6}>
-                      <Card>
+                  <Row gutter={16} className="dashboard-metric-row">
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Total Facturas"
                           value={invoiceStats.overview?.totalInvoices || 0}
@@ -476,8 +394,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Pagadas"
                           value={invoiceStats.overview?.paidInvoices || 0}
@@ -486,8 +404,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Pendientes"
                           value={(invoiceStats.overview?.sentInvoices || 0) + (invoiceStats.overview?.viewedInvoices || 0)}
@@ -496,8 +414,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Vencidas"
                           value={invoiceStats.overview?.overdueInvoices || 0}
@@ -512,7 +430,7 @@ const Dashboard: React.FC = () => {
                 {/* Invoice Status Chart */}
                 {invoiceStats?.overview && (
                   <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={12}>
+                    <Col xs={24} lg={12}>
                       <Card title="Distribución por Estado">
                         <ResponsiveContainer width="100%" height={300}>
                           <PieChart>
@@ -540,7 +458,7 @@ const Dashboard: React.FC = () => {
                         </ResponsiveContainer>
                       </Card>
                     </Col>
-                    <Col span={12}>
+                    <Col xs={24} lg={12}>
                       <Card title="Creación Mensual">
                         {invoiceStats.trends?.monthlyCreation && (
                           <ResponsiveContainer width="100%" height={300}>
@@ -609,7 +527,7 @@ const Dashboard: React.FC = () => {
           {
             key: 'clients',
             label: (
-              <span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <TeamOutlined />
                 Clientes
               </span>
@@ -618,9 +536,9 @@ const Dashboard: React.FC = () => {
               <div>
                 {/* Client Summary Stats */}
                 {clientMetrics && (
-                  <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={6}>
-                      <Card>
+                  <Row gutter={16} className="dashboard-metric-row">
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Total Clientes"
                           value={clientMetrics.summary.totalClients}
@@ -628,8 +546,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Clientes Activos"
                           value={clientMetrics.summary.activeClients}
@@ -638,8 +556,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Ingresos Promedio"
                           value={clientMetrics.summary.avgClientRevenue}
@@ -648,8 +566,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Balance Pendiente Total"
                           value={clientMetrics.summary.totalOutstandingBalance}
@@ -665,7 +583,7 @@ const Dashboard: React.FC = () => {
                 {/* Risk Distribution */}
                 {clientMetrics?.riskDistribution && (
                   <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={8}>
+                    <Col xs={24} md={8}>
                       <Card title="Distribución de Riesgo">
                         {clientMetrics.riskDistribution.map((riskLevel) => (
                           <div key={riskLevel.riskScore} style={{ marginBottom: 16 }}>
@@ -688,7 +606,7 @@ const Dashboard: React.FC = () => {
                         ))}
                       </Card>
                     </Col>
-                    <Col span={16}>
+                    <Col xs={24} md={16}>
                       <Card title="Mejores Clientes por Ingresos">
                         {clientMetrics.topRevenueClients && (
                           <Table
@@ -753,7 +671,7 @@ const Dashboard: React.FC = () => {
           {
             key: 'cashflow',
             label: (
-              <span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <LineChartOutlined />
                 Flujo de Caja
               </span>
@@ -762,9 +680,9 @@ const Dashboard: React.FC = () => {
               <div>
                 {/* Current Cash Position */}
                 {cashFlow && (
-                  <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={6}>
-                      <Card>
+                  <Row gutter={16} className="dashboard-metric-row">
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Posición Actual"
                           value={cashFlow.currentPosition?.currentCashBalance || '0'}
@@ -776,8 +694,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Ingresos Esperados (30d)"
                           value={cashFlow.currentPosition?.expectedCollections || '0'}
@@ -787,8 +705,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Con Riesgo"
                           value={cashFlow.riskAnalysis?.highRisk?.amount || '0'}
@@ -798,8 +716,8 @@ const Dashboard: React.FC = () => {
                         />
                       </Card>
                     </Col>
-                    <Col span={6}>
-                      <Card>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card className="metric-card">
                         <Statistic
                           title="Tasa de Cobranza"
                           value={cashFlow.currentPosition?.collectionRate || '0%'}
@@ -852,7 +770,7 @@ const Dashboard: React.FC = () => {
                 {cashFlow?.riskAnalysis && (
                   <Card title="Análisis de Riesgo">
                     <Row gutter={16}>
-                      <Col span={8}>
+                      <Col xs={24} md={8}>
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                             <span>Bajo Riesgo ({cashFlow.riskAnalysis.lowRisk?.count || 0} facturas)</span>
@@ -887,7 +805,7 @@ const Dashboard: React.FC = () => {
                           />
                         </div>
                       </Col>
-                      <Col span={16}>
+                      <Col xs={24} md={16}>
                         <div style={{ padding: '20px', backgroundColor: '#fafafa', borderRadius: '6px' }}>
                           <h4>Recomendaciones</h4>
                           <ul style={{ marginBottom: 0 }}>
@@ -907,7 +825,7 @@ const Dashboard: React.FC = () => {
           {
             key: 'bank-accounts',
             label: (
-              <span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <BankOutlined />
                 Cuentas Bancarias
               </span>

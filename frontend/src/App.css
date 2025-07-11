@@ -1,4 +1,8 @@
 /* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
 #root {
   margin: 0;
   padding: 0;
@@ -14,6 +18,7 @@
 body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 /* Ant Design customizations */
@@ -23,6 +28,45 @@ body {
 
 .ant-layout-content {
   overflow: auto;
+}
+
+/* Fix metric tiles alignment */
+.ant-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ant-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ant-statistic {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ant-statistic-content {
+  flex: 1;
+}
+
+/* Ensure equal height for metric cards */
+.metric-card {
+  min-height: 150px;
+}
+
+/* Fix sidebar scrolling */
+.ant-layout-sider {
+  overflow: hidden;
+}
+
+.ant-layout-sider-children {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Custom app styles */
@@ -46,10 +90,92 @@ body {
 }
 
 /* Responsive adjustments */
+@media (max-width: 1200px) {
+  .ant-col-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+}
+
 @media (max-width: 768px) {
   .ant-layout-content {
-    margin: 16px;
+    margin: 12px;
     padding: 16px;
+  }
+  
+  .ant-col-6,
+  .ant-col-8,
+  .ant-col-12,
+  .ant-col-16 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  
+  .ant-statistic-title {
+    font-size: 12px;
+  }
+  
+  .ant-statistic-content-value {
+    font-size: 20px;
+  }
+  
+  /* Hide sidebar on mobile by default */
+  .ant-layout-sider {
+    position: fixed;
+    height: 100vh;
+    z-index: 999;
+    left: 0;
+  }
+  
+  .ant-layout-sider-collapsed {
+    transform: translateX(-100%);
+  }
+  
+  /* Adjust header for mobile */
+  .ant-layout-header {
+    padding: 0 12px;
+  }
+  
+  /* Stack dashboard header on mobile */
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+  
+  /* Full width tabs on mobile */
+  .ant-tabs-nav {
+    width: 100%;
+  }
+  
+  .ant-tabs-tab {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small devices */
+  .ant-layout-content {
+    margin: 8px;
+    padding: 12px;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  
+  .ant-table {
+    font-size: 12px;
+  }
+  
+  /* Hide less important columns on very small screens */
+  .ant-table-column-mobile-hide {
+    display: none;
   }
 }
 
@@ -64,9 +190,63 @@ body {
 }
 
 /* Card hover effects */
+.ant-card {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
 .ant-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s ease;
+  transform: translateY(-2px);
+}
+
+/* Smooth transitions */
+.ant-btn, .ant-menu-item, .ant-tag, .ant-statistic {
+  transition: all 0.3s ease;
+}
+
+/* Better focus styles */
+.ant-btn:focus,
+.ant-input:focus,
+.ant-select-focused {
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Loading states */
+.ant-spin-nested-loading > div > .ant-spin {
+  max-height: none;
+}
+
+/* Table improvements */
+.ant-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.ant-table-row:hover > td {
+  background: #f5f5f5;
+}
+
+/* Tab improvements */
+.ant-tabs-tab {
+  padding: 12px 16px;
+  font-weight: 500;
+}
+
+.ant-tabs-tab-active {
+  font-weight: 600;
+}
+
+/* Tag improvements */
+.ant-tag {
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
 }
 
 /* Status indicators */
@@ -80,4 +260,143 @@ body {
 
 .status-error {
   color: #ff4d4f;
+}
+
+/* Dashboard specific styles */
+.dashboard-metric-row {
+  margin-bottom: 24px;
+}
+
+.dashboard-metric-row .ant-col {
+  margin-bottom: 16px;
+}
+
+/* Version indicator improvements */
+.version-indicator {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Sidebar improvements */
+.ant-layout-sider {
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.ant-menu-item-selected {
+  background-color: #e6f7ff !important;
+  border-right: 3px solid #1890ff;
+}
+
+.ant-menu-item {
+  margin: 4px 8px;
+  border-radius: 4px;
+}
+
+/* System status footer styles */
+.system-status-item {
+  transition: all 0.2s ease;
+}
+
+.system-status-item:hover {
+  background-color: #f0f0f0 !important;
+  transform: translateY(-1px);
+}
+
+/* Header improvements */
+.ant-layout-header {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+}
+
+/* Notification improvements */
+.ant-notification {
+  border-radius: 8px;
+}
+
+.ant-notification-notice {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Chart responsiveness */
+.recharts-responsive-container {
+  min-height: 300px;
+}
+
+@media (max-width: 768px) {
+  .recharts-responsive-container {
+    min-height: 200px;
+  }
+}
+
+/* Improve touch targets for mobile */
+@media (pointer: coarse) {
+  .ant-btn {
+    min-height: 44px;
+    padding: 8px 16px;
+  }
+  
+  .ant-menu-item {
+    min-height: 44px;
+  }
+  
+  .ant-dropdown-trigger {
+    padding: 8px;
+  }
+  
+  .ant-tabs-tab {
+    min-height: 44px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-color: #1890ff;
+    --bg-color: #141414;
+    --text-color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+/* Accessibility improvements */
+.ant-btn:focus-visible,
+.ant-menu-item:focus-visible,
+a:focus-visible {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .ant-layout-sider,
+  .ant-layout-header {
+    display: none;
+  }
+  
+  .ant-layout-content {
+    margin: 0;
+    padding: 0;
+  }
 }
