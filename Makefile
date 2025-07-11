@@ -175,6 +175,18 @@ st: ## Status ultra-rápido
 911: ## Guía de emergencia
 	@$(MAKE) -f Makefile.quick 911
 
+.PHONY: fix
+fix: ## Fix schema financiero en producción (gocardless_data + account_insights)
+	@./scripts/apply-production-fix.sh
+
+.PHONY: migrate-test
+migrate-test: ## Test SSH connection for migrations
+	@$(MAKE) -f Makefile.migrate-simple test
+
+.PHONY: migrate-verify
+migrate-verify: ## Verify endpoints are working
+	@$(MAKE) -f Makefile.migrate-simple verify
+
 .PHONY: help-all
 help-all: ## Ver TODOS los comandos
 	@$(MAKE) -f Makefile.quick help-all

@@ -1,0 +1,101 @@
+# Makefile.migrate-simple - Simple migration commands that work
+# No password prompts, uses SSH key authentication
+
+# Production settings
+PROD_HOST := 192.168.1.11
+PROD_USER := k2600x
+PROD_DB := ai_service
+PROD_DB_USER := ai_user
+PROD_CONTAINER := ai-postgres
+
+# Colors
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+MAGENTA := \033[0;35m
+NC := \033[0m
+
+# =============================================================================
+# SIMPLE MIGRATION COMMANDS
+# =============================================================================
+
+.PHONY: help
+help: ## Show this help
+	@echo "$(MAGENTA)Simple Migration Commands$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Usage:$(NC)"
+	@echo "  make -f Makefile.migrate-simple [command]"
+	@echo ""
+	@echo "$(YELLOW)Commands:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Example:$(NC)"
+	@echo "  make -f Makefile.migrate-simple fix"
+
+.PHONY: test
+test: ## Test SSH connection
+	@echo "$(BLUE)Testing SSH connection...$(NC)"
+	@ssh -o BatchMode=yes -o ConnectTimeout=5 $(PROD_USER)@$(PROD_HOST) echo "Connection OK" || \
+		(echo "$(RED)❌ SSH connection failed. Set up SSH key authentication first.$(NC)" && exit 1)
+	@echo "$(GREEN)✅ SSH connection successful$(NC)"
+
+.PHONY: fix
+fix: ## Fix production endpoints (creates missing schemas/tables)
+	@echo "$(MAGENTA)🔧 Fixing production endpoints$(NC)"
+	@echo "$(YELLOW)Applying fix from migrations/quick-fix-endpoints.sql...$(NC)"
+	@ssh $(PROD_USER)@$(PROD_HOST) "sudo docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)" < migrations/quick-fix-endpoints.sql
+	@echo "$(YELLOW)Restarting API...$(NC)"
+	@ssh $(PROD_USER)@$(PROD_HOST) "sudo docker restart ai-service-api"
+	@echo "$(GREEN)✅ Fix applied successfully$(NC)"
+
+.PHONY: check
+check: ## Check if schemas exist
+	@echo "$(BLUE)📋 Checking schemas...$(NC)"
+	@ssh $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"SELECT schema_name FROM information_schema.schemata WHERE schema_name IN ('documents', 'financial') ORDER BY schema_name;\""
+
+.PHONY: tables
+tables: ## List tables in financial schema
+	@echo "$(BLUE)📋 Financial schema tables:$(NC)"
+	@ssh $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'financial' ORDER BY table_name;\""
+
+.PHONY: verify
+verify: ## Verify endpoints are working
+	@echo "$(BLUE)🔍 Verifying endpoints...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)1. Documents:$(NC)"
+	@curl -s http://$(PROD_HOST):3000/api/documents | python3 -c "import sys, json; d=json.load(sys.stdin); print('   ✅ Working' if d.get('success') else f'   ❌ Error: {d.get(\"error\")}')" 2>/dev/null || echo "   ❌ Failed to connect"
+	@echo ""
+	@echo "$(YELLOW)2. Cash-flow:$(NC)"
+	@curl -s http://$(PROD_HOST):3000/api/financial/dashboard/cash-flow | python3 -c "import sys, json; d=json.load(sys.stdin); print('   ✅ Working' if d.get('success') else f'   ❌ Error: {d.get(\"error\")}')" 2>/dev/null || echo "   ❌ Failed to connect"
+	@echo ""
+	@echo "$(YELLOW)3. Clients:$(NC)"
+	@curl -s http://$(PROD_HOST):3000/api/financial/clients | python3 -c "import sys, json; d=json.load(sys.stdin); print('   ✅ Working' if d.get('success') else f'   ❌ Error: {d.get(\"error\")}')" 2>/dev/null || echo "   ❌ Failed to connect"
+
+.PHONY: apply
+apply: ## Apply a migration file (use: make apply FILE=filename)
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)❌ Error: Specify FILE=filename (without .sql)$(NC)"; \
+		echo "$(YELLOW)Available:$(NC)"; \
+		ls migrations/*.sql 2>/dev/null | sed 's|migrations/||g' | sed 's|\.sql||g' | awk '{print "  - " $$1}'; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)📝 Applying migration: $(FILE).sql$(NC)"
+	@ssh $(PROD_USER)@$(PROD_HOST) "sudo docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)" < migrations/$(FILE).sql
+	@echo "$(GREEN)✅ Migration applied$(NC)"
+
+.PHONY: sql
+sql: ## Execute SQL directly (use: make sql CMD="SELECT 1")
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(RED)❌ Error: Specify CMD=\"your SQL\"$(NC)"; \
+		exit 1; \
+	fi
+	@ssh $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"$(CMD)\""
+
+.PHONY: backup
+backup: ## Create database backup
+	@echo "$(BLUE)💾 Creating backup...$(NC)"
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S) && \
+	ssh $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_CONTAINER) pg_dump -U $(PROD_DB_USER) $(PROD_DB) | gzip > /volume1/docker/ai-service/backups/backup_$$TIMESTAMP.sql.gz && echo '$(GREEN)✅ Backup created: backup_$$TIMESTAMP.sql.gz$(NC)'"
+
+.DEFAULT_GOAL := help
