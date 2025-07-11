@@ -4,14 +4,9 @@
 # Cargar configuración local si existe
 -include .make.env
 
-# Exportar las variables para que estén disponibles en los subprocesos
-ifdef SSHPASS
+# Export variables for SSH authentication
 export SSHPASS
-endif
-
-ifdef SUDO_PASS
 export SUDO_PASS
-endif
 
 # Los Makefiles modulares se llaman directamente con -f
 # No los incluimos aquí para evitar conflictos

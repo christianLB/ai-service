@@ -3,6 +3,10 @@
 
 include .make.env
 
+# Export variables for SSH authentication
+export SSHPASS
+export SUDO_PASS
+
 # Variables de producción
 PROD_HOST := 192.168.1.11
 PROD_USER := k2600x
@@ -100,9 +104,9 @@ prod-apply-sql: ## Aplicar archivo SQL en producción (usar: make prod-apply-sql
 		exit 1; \
 	fi
 	@echo "$(BLUE)📝 Aplicando $(FILE) en producción...$(NC)"
-	@$(SCP) $(FILE) $(PROD_USER)@$(PROD_HOST):/tmp/temp_migration.sql
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) < /tmp/temp_migration.sql"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "rm /tmp/temp_migration.sql"
+	@scp $(FILE) $(PROD_USER)@$(PROD_HOST):/tmp/temp_migration.sql
+	@ssh $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) < /tmp/temp_migration.sql"
+	@ssh $(PROD_USER)@$(PROD_HOST) "rm /tmp/temp_migration.sql"
 	@echo "$(GREEN)✓ SQL aplicado$(NC)"
 
 .PHONY: prod-apply-migration
@@ -112,7 +116,7 @@ prod-apply-migration: ## Aplicar migración específica (usar: make prod-apply-m
 		exit 1; \
 	fi
 	@echo "$(BLUE)🔄 Aplicando migración $(FILE) en producción...$(NC)"
-	@$(MAKE) prod-apply-sql FILE=migrations/$(FILE)
+	@SSHPASS='$(SSHPASS)' SUDO_PASS='$(SUDO_PASS)' $(MAKE) -f Makefile.production prod-apply-sql FILE=migrations/$(FILE)
 
 .PHONY: prod-fix-permissions
 prod-fix-permissions: ## Arreglar permisos de archivos en el NAS
@@ -377,6 +381,23 @@ prod-restore-from-dev: ## PELIGRO: Restaurar producción con schema de desarroll
 	@echo ""
 	@echo "$(YELLOW)Verificando estado...$(NC)"
 	@$(MAKE) -f Makefile.production prod-status
+
+# =============================================================================
+# 🔐 TEST DE AUTENTICACIÓN
+# =============================================================================
+
+.PHONY: test-auth
+test-auth: ## Test authentication (SSH and sudo)
+	@echo "$(BLUE)🔐 Testing authentication...$(NC)"
+	@echo "1. Checking variables are defined:"
+	@echo "   SSHPASS: $$([ -n '$(SSHPASS)' ] && echo '✓ Defined' || echo '✗ Not defined')"
+	@echo "   SUDO_PASS: $$([ -n '$(SUDO_PASS)' ] && echo '✓ Defined' || echo '✗ Not defined')"
+	@echo ""
+	@echo "2. Testing SSH connection:"
+	@SSHPASS='$(SSHPASS)' sshpass -e ssh -o StrictHostKeyChecking=no $(PROD_USER)@$(PROD_HOST) "echo '   ✓ SSH connection successful'" || echo "   ✗ SSH failed"
+	@echo ""
+	@echo "3. Testing sudo with password:"
+	@SSHPASS='$(SSHPASS)' sshpass -e ssh -o StrictHostKeyChecking=no $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S echo '   ✓ Sudo authentication successful'" || echo "   ✗ Sudo failed"
 
 # =============================================================================
 # Ayuda
