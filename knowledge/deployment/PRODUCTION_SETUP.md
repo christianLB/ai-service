@@ -5,12 +5,14 @@
 **Archivo**: `docker-compose.production.yml`
 
 ### ✅ Servicios Incluidos:
+
 - **PostgreSQL** - Base de datos con esquemas financieros
 - **Redis** - Cache y sesiones
 - **Prometheus** - Métricas del sistema
 - **AI Service** - Servicio principal completo
 
 ### ❌ Servicios Removidos:
+
 - **N8N** - No se usa funcionalmente
 - **Grafana** - Causa problemas de despliegue
 
@@ -29,8 +31,8 @@ TELEGRAM_CHAT_ID=5015255679
 TELEGRAM_WEBHOOK_URL=https://ai-service.anaxi.net/api/telegram/webhook
 
 # GoCardless Financial Integration
-GO_SECRET_ID=6b4b7fe5-5863-4432-880a-aab64d52a1e6
-GO_SECRET_KEY=8246fb5525c80628d4d13de48c0d7ea4c38fc01e100f8ab5270977b0f0898ce6469d68e09667e77da588f172c9147a83748aa026b8382b9139b13c8d8e9cb79b
+GO_SECRET_ID=
+GO_SECRET_KEY=
 GO_REDIRECT_URI=https://ai-service.anaxi.net/financial/callback
 
 # Dashboard Configuration
@@ -50,12 +52,14 @@ CLAUDE_API_KEY=tu_claude_api_key_aqui
 ### **Pasos de Inicialización Obligatorios**:
 
 #### **1. Esperar que el servicio inicie completamente**
+
 ```bash
 # Verificar que AI Service está running
 curl https://ai-service.anaxi.net/status
 ```
 
 #### **2. Inicializar esquemas de base de datos**
+
 ```bash
 # Crear esquemas base del AI Service
 curl -X POST https://ai-service.anaxi.net/api/init-db
@@ -65,6 +69,7 @@ curl -X POST https://ai-service.anaxi.net/api/financial/init-db
 ```
 
 #### **3. Configurar integración GoCardless/BBVA**
+
 ```bash
 # Configurar conexión BBVA
 curl -X POST https://ai-service.anaxi.net/api/financial/setup-bbva \
@@ -84,6 +89,7 @@ curl -X POST https://ai-service.anaxi.net/api/financial/sync
 ```
 
 ### **Verificación de Esquemas**:
+
 ```bash
 # Conectar a la base de datos y verificar
 docker exec -it ai-service-db psql -U ai_user -d ai_service
@@ -100,6 +106,7 @@ docker exec -it ai-service-db psql -U ai_user -d ai_service
 ## 📱 Funcionalidades Disponibles
 
 ### **Sistema Financiero Completo**:
+
 - ✅ Sincronización BBVA real via GoCardless
 - ✅ Categorización automática con IA
 - ✅ Dashboard web en tiempo real
@@ -107,6 +114,7 @@ docker exec -it ai-service-db psql -U ai_user -d ai_service
 - ✅ Alertas automáticas
 
 ### **Telegram Bot (8 comandos)**:
+
 ```bash
 /start     - Inicialización y bienvenida
 /help      - Lista completa de comandos
@@ -119,6 +127,7 @@ docker exec -it ai-service-db psql -U ai_user -d ai_service
 ```
 
 ### **APIs Disponibles**:
+
 ```bash
 # Core System
 GET  /status                          # Health check
@@ -151,16 +160,18 @@ GET  /api/metrics/json                # Métricas sistema
 ## 🔍 Verificación del Despliegue
 
 ### **1. Verificar Contenedores**
+
 ```bash
 docker ps
 # Debe mostrar 4 contenedores running:
 # - ai-service-prod
-# - ai-service-db  
+# - ai-service-db
 # - ai-service-redis
 # - ai-service-prometheus
 ```
 
 ### **2. Verificar Servicios**
+
 ```bash
 # AI Service
 curl https://ai-service.anaxi.net/status
@@ -176,6 +187,7 @@ curl -X POST https://ai-service.anaxi.net/api/telegram/test
 ```
 
 ### **3. Verificar Base de Datos**
+
 ```bash
 # Conectar a PostgreSQL
 docker exec -it ai-service-db psql -U ai_user -d ai_service
@@ -192,19 +204,22 @@ docker exec -it ai-service-db psql -U ai_user -d ai_service
 ## 🚨 Troubleshooting
 
 ### **Si falla el despliegue**:
+
 1. Verificar todas las variables de entorno configuradas
 2. Verificar que existen los directorios de volúmenes
 3. Revisar logs: `docker logs ai-service-prod`
 
 ### **Si el sistema financiero no funciona**:
+
 1. Verificar esquemas de DB: `\dt financial.*`
 2. Ejecutar inicialización: `/api/financial/init-db`
 3. Seguir proceso de configuración GoCardless
 
 ### **Si Telegram no responde**:
+
 1. Verificar webhook: `/api/telegram/webhook`
 2. Probar endpoint: `/api/telegram/test`
-3. Verificar variables TELEGRAM_*
+3. Verificar variables TELEGRAM\_\*
 
 ---
 
@@ -226,6 +241,7 @@ docker exec -it ai-service-db psql -U ai_user -d ai_service
 ## 🎯 Sistema Final Operativo
 
 **Resultado**: AI Service 95% funcional sin N8N ni Grafana
+
 - ✅ Base de datos PostgreSQL completa
 - ✅ Sistema financiero BBVA real
 - ✅ Bot Telegram 8 comandos

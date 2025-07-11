@@ -47,17 +47,17 @@ POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 POSTGRES_DB=ai_service
 POSTGRES_USER=ai_user
-POSTGRES_PASSWORD=ultra_secure_password_2025
+POSTGRES_PASSWORD=
 
 # Redis
 REDIS_HOST=redis
 REDIS_PORT=6379
-REDIS_PASSWORD=redis_secure_password_2025
+REDIS_PASSWORD=
 
 # Telegram
-TELEGRAM_BOT_TOKEN=7675285244:AAHcM733tpyttgRPWITfeQOAGnrtbrWThpE
-TELEGRAM_CHAT_ID=5015255679
-TELEGRAM_WEBHOOK_URL=https://ai-service.anaxi.net/api/telegram/webhook
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+TELEGRAM_WEBHOOK_URL=
 TELEGRAM_ALERTS_ENABLED=true
 
 # N8N
@@ -65,13 +65,13 @@ N8N_API_URL=http://n8n:5678
 N8N_ADMIN_PASSWORD=n8n_admin_2025
 
 # GoCardless (Sistema Financiero)
-GO_SECRET_ID=6b4b7fe5-5863-4432-880a-aab64d52a1e6
-GO_SECRET_KEY=8246fb5525c80628d4d13de48c0d7ea4c38fc01e100f8ab5270977b0f0898ce6469d68e09667e77da588f172c9147a83748aa026b8382b9139b13c8d8e9cb79b
+GO_SECRET_ID=
+GO_SECRET_KEY=
 GO_REDIRECT_URI=https://ai-service.anaxi.net/financial/callback
 
 # Dashboard
-DASHBOARD_URL=https://ai-service.anaxi.net/dashboard
-GRAFANA_ADMIN_PASSWORD=grafana_admin_password_2025
+DASHBOARD_URL=https://domain.com/dashboard
+GRAFANA_ADMIN_PASSWORD=
 ```
 
 ### Paso 3: Desplegar con Docker Compose
@@ -115,37 +115,41 @@ docker logs ai-service-grafana
 Configurar en Synology DSM > Control Panel > Application Portal > Reverse Proxy:
 
 #### AI Service Principal
-- **Source**: `ai-service.anaxi.net` (puerto 443)
+
+- **Source**: `domain.com` (puerto 443)
 - **Destination**: `localhost:3003`
 
 #### Grafana Dashboard
-- **Source**: `ai-service.anaxi.net:3001` (puerto 3001)
+
+- **Source**: `domain.com:3001` (puerto 3001)
 - **Destination**: `localhost:3001`
 
 #### Prometheus
-- **Source**: `ai-service.anaxi.net:9090` (puerto 9090)
+
+- **Source**: `domain.com:9090` (puerto 9090)
 - **Destination**: `localhost:9090`
 
 #### N8N
-- **Source**: `ai-service.anaxi.net:5678` (puerto 5678)
+
+- **Source**: `domain.com:5678` (puerto 5678)
 - **Destination**: `localhost:5678`
 
 ### Paso 6: Configurar Sistema Financiero
 
 ```bash
 # Inicializar base de datos financiera
-curl -X POST https://ai-service.anaxi.net/api/financial/init-db
+curl -X POST https://domain.com/api/financial/init-db
 
 # Configurar conexión BBVA
-curl -X POST https://ai-service.anaxi.net/api/financial/setup-bbva \
+curl -X POST https://domain.com/api/financial/setup-bbva \
   -H "Content-Type: application/json" \
   -d '{
     "bank": "BBVA_ES",
-    "redirect_uri": "https://ai-service.anaxi.net/financial/callback"
+    "redirect_uri": "https://domain.com/financial/callback"
   }'
 
 # Ejecutar primera sincronización
-curl -X POST https://ai-service.anaxi.net/api/financial/sync
+curl -X POST https://domain.com/api/financial/sync
 ```
 
 ### Paso 7: Configurar Telegram Bot
@@ -165,6 +169,7 @@ curl -X POST https://ai-service.anaxi.net/api/telegram/test
 ## 📊 Servicios Disponibles
 
 ### URLs de Acceso
+
 - **AI Service**: https://ai-service.anaxi.net
 - **Dashboard**: https://ai-service.anaxi.net/dashboard
 - **Grafana**: https://ai-service.anaxi.net:3001
@@ -172,13 +177,15 @@ curl -X POST https://ai-service.anaxi.net/api/telegram/test
 - **N8N**: https://ai-service.anaxi.net:5678
 
 ### Credenciales
-- **Grafana**: admin / grafana_admin_password_2025
-- **N8N**: admin / n8n_admin_2025
-- **PostgreSQL**: ai_user / ultra_secure_password_2025
+
+- **Grafana**: admin / password
+- **N8N**: admin / password
+- **PostgreSQL**: ai_user / password
 
 ## 🔧 Comandos Útiles
 
 ### Gestión de Contenedores
+
 ```bash
 # Ver estado
 docker ps
@@ -194,6 +201,7 @@ docker exec -it ai-service-prod /bin/bash
 ```
 
 ### Gestión de Base de Datos
+
 ```bash
 # Acceder a PostgreSQL
 docker exec -it ai-service-db psql -U ai_user -d ai_service
@@ -206,6 +214,7 @@ docker exec -i ai-service-db psql -U ai_user ai_service < backup.sql
 ```
 
 ### Gestión Financiera
+
 ```bash
 # Sincronizar transacciones
 curl -X POST https://ai-service.anaxi.net/api/financial/sync
@@ -227,6 +236,7 @@ curl https://ai-service.anaxi.net/api/financial/dashboard/overview
 4. **Telegram bot no funciona**: Verificar webhook configurado
 
 ### Comandos de Diagnóstico
+
 ```bash
 # Verificar conectividad de red
 docker network ls
@@ -245,11 +255,13 @@ docker inspect ai-service-prod
 ## 📈 Monitoreo
 
 ### Métricas Disponibles
+
 - **Prometheus**: https://ai-service.anaxi.net:9090
 - **Grafana**: https://ai-service.anaxi.net:3001
 - **Logs**: Docker logs + archivo logs
 
 ### Alertas
+
 - **Telegram**: Notificaciones automáticas
 - **Dashboard**: Métricas en tiempo real
 - **Health checks**: Verificación automática de servicios
@@ -257,6 +269,7 @@ docker inspect ai-service-prod
 ## 🔄 Actualizaciones
 
 ### Actualizar Imagen
+
 ```bash
 # Descargar nueva imagen
 docker pull k2600x/ai-service:latest
@@ -266,6 +279,7 @@ docker-compose -f docker-compose.synology.yml up -d --no-deps ai-service
 ```
 
 ### Backup Completo
+
 ```bash
 # Backup de datos
 tar -czf ai-service-backup-$(date +%Y%m%d).tar.gz /volume1/docker/ai-service/

@@ -39,7 +39,9 @@ El sistema de categorización inteligente transforma datos bancarios brutos en i
 ### Tablas Principales
 
 #### `financial.categories`
+
 Categorías principales (Ingresos, Gastos, Transferencias)
+
 ```sql
 - id (UUID)
 - name (VARCHAR) - "Housing", "Food & Dining", etc.
@@ -49,14 +51,18 @@ Categorías principales (Ingresos, Gastos, Transferencias)
 ```
 
 #### `financial.subcategories`
+
 Subcategorías detalladas
+
 ```sql
 - category_id (FK) → categories
 - name (VARCHAR) - "Rent", "Groceries", "Fuel", etc.
 ```
 
 #### `financial.ai_tags`
+
 Tags inteligentes para auto-categorización
+
 ```sql
 - keywords (TEXT[]) - Array de palabras clave
 - merchant_patterns (TEXT[]) - Patrones regex para comercios
@@ -66,7 +72,9 @@ Tags inteligentes para auto-categorización
 ```
 
 #### `financial.transaction_categorizations`
+
 Vínculo entre transacciones y categorías
+
 ```sql
 - transaction_id (FK) → transactions
 - category_id (FK) → categories
@@ -78,16 +86,20 @@ Vínculo entre transacciones y categorías
 ### Vistas Inteligentes
 
 #### `financial.categorized_transactions`
+
 Transacciones con información completa de categorización
+
 ```sql
-SELECT t.*, cat.name as category_name, cat.type, 
+SELECT t.*, cat.name as category_name, cat.type,
        subcat.name as subcategory_name, tc.confidence_score
-FROM transactions t 
+FROM transactions t
 LEFT JOIN transaction_categorizations tc ON...
 ```
 
 #### `financial.monthly_category_summary`
+
 Resúmenes mensuales por categoría
+
 ```sql
 SELECT DATE_TRUNC('month', date) as month,
        category_name, SUM(amount), COUNT(*), AVG(amount)
@@ -99,14 +111,16 @@ GROUP BY month, category_id
 ### Métodos de Categorización (por orden de confianza)
 
 #### 1. **Patrones de Comercios** (Confianza: 90-98%)
+
 ```javascript
 // Ejemplos de patrones
 'MERCADONA.*'     → Food & Dining → Groceries
-'REPSOL.*'        → Transportation → Fuel  
+'REPSOL.*'        → Transportation → Fuel
 '.*ALQUILER.*'    → Housing → Rent
 ```
 
 #### 2. **Análisis de Palabras Clave** (Confianza: 60-90%)
+
 ```javascript
 // Keywords en descripción/comercio
 ['nomina', 'sueldo', 'salary'] → Salary
@@ -115,6 +129,7 @@ GROUP BY month, category_id
 ```
 
 #### 3. **Patrones de Importe** (Confianza: 60-85%)
+
 ```javascript
 // Importes recurrentes o típicos
 amount: 800.00, recurring: monthly → Housing → Rent
@@ -122,6 +137,7 @@ amount: 1200.00, keywords: ['nomina'] → Salary
 ```
 
 #### 4. **Análisis de Frecuencia** (Confianza: 50-75%)
+
 ```javascript
 // Transacciones recurrentes del mismo comercio
 same_counterparty + monthly_pattern → Recurring expense
@@ -130,14 +146,16 @@ same_counterparty + monthly_pattern → Recurring expense
 ### Sistema de Aprendizaje
 
 #### Feedback Loop
+
 ```
 User Confirms → Update Success Rate → Improve Confidence
 User Corrects → Create New Tag → Learn Pattern
 ```
 
 #### Métricas de Performance
+
 - **Accuracy**: % de predicciones correctas
-- **Coverage**: % de transacciones categorizadas automáticamente  
+- **Coverage**: % de transacciones categorizadas automáticamente
 - **Confidence**: Confianza promedio de las predicciones
 
 ## 📈 Sistema de Reportes
@@ -145,18 +163,20 @@ User Corrects → Create New Tag → Learn Pattern
 ### Reportes Disponibles
 
 #### 1. **Dashboard Overview** (`/dashboard`)
+
 - Métricas del mes actual vs anterior
 - Top categorías de gastos
 - Transacciones recientes
 - Balance de cuentas
 
 #### 2. **Reporte Comprensivo** (`/api/financial/reports/comprehensive`)
+
 ```json
 {
   "period": { "start": "2025-07-01", "end": "2025-07-31", "type": "month" },
   "summary": {
     "totalIncome": "3500.00",
-    "totalExpenses": "2800.00", 
+    "totalExpenses": "2800.00",
     "netAmount": "700.00",
     "transactionCount": 85
   },
@@ -173,6 +193,7 @@ User Corrects → Create New Tag → Learn Pattern
 ```
 
 #### 3. **Métricas en Tiempo Real** (`/api/financial/metrics/realtime`)
+
 - Comparación mes actual vs anterior
 - Tendencias (↗️ ↘️)
 - Alertas automáticas
@@ -181,6 +202,7 @@ User Corrects → Create New Tag → Learn Pattern
 ### APIs Disponibles
 
 #### Categorización
+
 ```bash
 # Obtener categorías
 GET /api/financial/categories?type=expense
@@ -195,6 +217,7 @@ POST /api/financial/transactions/{id}/categorize
 ```
 
 #### Reportes
+
 ```bash
 # Transacciones categorizadas
 GET /api/financial/transactions/categorized?startDate=2025-07-01&categoryId=uuid
@@ -211,16 +234,19 @@ GET /api/financial/dashboard/quick-stats?currency=EUR&period=month
 ### Características del Dashboard
 
 #### Responsive Design
+
 - Grid adaptativo para móviles y desktop
 - Métricas principales destacadas
 - Gráficos interactivos (preparado para Chart.js)
 
 #### Métricas en Tiempo Real
+
 - **Auto-refresh** cada 5 minutos
 - **Estado de conexión** visual
 - **Indicadores de tendencia** (↗️ ↘️)
 
 #### Diseño Modular
+
 ```
 ┌─────────────────────────────────────────┐
 │           HEADER + STATUS               │
@@ -236,6 +262,7 @@ GET /api/financial/dashboard/quick-stats?currency=EUR&period=month
 ```
 
 ### Acceso al Dashboard
+
 ```bash
 # URL directa
 http://localhost:3000/dashboard
@@ -247,6 +274,7 @@ http://localhost:3000/public/financial-dashboard.html
 ## 🚀 Instalación y Configuración
 
 ### 1. Actualizar Esquema de Base de Datos
+
 ```bash
 # Aplicar categorización a DB existente
 ./scripts/update-categorization-schema.sh
@@ -256,22 +284,25 @@ http://localhost:3000/public/financial-dashboard.html
 ```
 
 ### 2. Instalar Dependencias
+
 ```bash
 npm install
 ```
 
 ### 3. Configurar Variables de Entorno
+
 ```bash
 # .env.local
-GO_SECRET_ID=your_gocardless_secret_id
-GO_SECRET_KEY=your_gocardless_secret_key
-POSTGRES_HOST=localhost
+GO_SECRET_ID=
+GO_SECRET_KEY=
+POSTGRES_HOST=
 POSTGRES_DB=ai_service
 POSTGRES_USER=ai_user
-POSTGRES_PASSWORD=ultra_secure_password_2025
+POSTGRES_PASSWORD=
 ```
 
 ### 4. Iniciar Servicio
+
 ```bash
 npm run dev
 # o
@@ -279,6 +310,7 @@ node dist/index.js
 ```
 
 ### 5. Verificar Instalación
+
 ```bash
 curl http://localhost:3000/api/financial/health
 curl http://localhost:3000/api/financial/categories
@@ -287,18 +319,21 @@ curl http://localhost:3000/api/financial/categories
 ## 📋 Flujo de Trabajo Típico
 
 ### Setup Inicial
+
 1. **Configurar BBVA** → `POST /api/financial/setup-bbva`
 2. **Completar autorización** → Browser consent flow
 3. **Finalizar setup** → `POST /api/financial/complete-setup`
 4. **Activar sync automático** → Cada 12 horas
 
 ### Categorización Automática
+
 1. **Transacciones nuevas** → Auto-sync desde GoCardless
 2. **IA analiza patrones** → Keywords, merchants, amounts
 3. **Categorización automática** → Alta confianza = auto-apply
 4. **Review manual** → Baja confianza = sugerencia
 
 ### Generación de Reportes
+
 1. **Dashboard diario** → Overview de métricas clave
 2. **Reportes mensuales** → Análisis detallado por categorías
 3. **Análisis de tendencias** → Comparaciones temporales
@@ -307,22 +342,25 @@ curl http://localhost:3000/api/financial/categories
 ## 🔧 Configuración Avanzada
 
 ### Crear Tags de IA Personalizados
+
 ```sql
 INSERT INTO financial.ai_tags (name, keywords, category_id, confidence_score)
-VALUES ('My Custom Tag', 
-        ARRAY['keyword1', 'keyword2'], 
+VALUES ('My Custom Tag',
+        ARRAY['keyword1', 'keyword2'],
         (SELECT id FROM financial.categories WHERE name = 'Shopping'),
         0.85);
 ```
 
 ### Ajustar Patrones de Comercios
+
 ```sql
-UPDATE financial.ai_tags 
+UPDATE financial.ai_tags
 SET merchant_patterns = ARRAY['AMAZON.*', 'AMZN.*', '.*AMAZON.*']
 WHERE name = 'Online Shopping';
 ```
 
 ### Configurar Alertas Personalizadas
+
 ```sql
 -- (Próxima implementación)
 -- Sistema de alertas basado en reglas definidas por usuario
@@ -331,12 +369,14 @@ WHERE name = 'Online Shopping';
 ## 📊 Métricas de Performance
 
 ### KPIs del Sistema
+
 - **Categorization Rate**: 85%+ de transacciones categorizadas automáticamente
 - **Accuracy**: 92%+ de predicciones correctas
 - **Coverage**: 100% de transacciones procesadas
 - **Response Time**: <200ms para APIs de reportes
 
 ### Monitoreo
+
 ```bash
 # Estado del sistema
 GET /api/financial/health
@@ -345,14 +385,15 @@ GET /api/financial/health
 GET /api/financial/ai/performance
 
 # Stats de categorización
-SELECT method, COUNT(*), AVG(confidence_score) 
-FROM financial.transaction_categorizations 
+SELECT method, COUNT(*), AVG(confidence_score)
+FROM financial.transaction_categorizations
 GROUP BY method;
 ```
 
 ## 🎯 Próximos Pasos
 
 ### Funcionalidades Planificadas
+
 1. **Presupuestos Inteligentes** - Límites automáticos por categoría
 2. **Alertas Avanzadas** - Notificaciones proactivas
 3. **Proyecciones Financieras** - ML para predicción de gastos
@@ -360,6 +401,7 @@ GROUP BY method;
 5. **Mobile App** - Dashboard nativo móvil
 
 ### Integraciones Futuras
+
 - **Telegram Bot** → Alertas instantáneas
 - **Slack Integration** → Reportes automáticos
 - **Email Reports** → Resúmenes semanales/mensuales
@@ -376,6 +418,6 @@ Has implementado exitosamente:
 ✅ **Dashboard visual interactivo**  
 ✅ **APIs completas** para integración  
 ✅ **Base de datos optimizada** con vistas analíticas  
-✅ **Sistema de aprendizaje** continuo  
+✅ **Sistema de aprendizaje** continuo
 
 **Tu financial service ahora es una extensión ultra poderosa del cerebro humano para gestión financiera inteligente! 🚀**
