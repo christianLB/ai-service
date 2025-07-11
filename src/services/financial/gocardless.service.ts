@@ -379,15 +379,15 @@ export class GoCardlessService {
       for (const gcTransaction of transactions) {
         try {
           // Validate transaction has required data
-          if (!gcTransaction.transaction_amount?.amount) {
-            console.log('Skipping transaction without amount:', gcTransaction.transaction_id);
+          if (!gcTransaction.transactionAmount?.amount) {
+            console.log('Skipping transaction without amount:', gcTransaction.transactionId);
             continue;
           }
 
           // Check if transaction already exists
           const existingTransaction = await this.db.query(
             'SELECT id FROM financial.transactions WHERE reference = $1',
-            [gcTransaction.transaction_id]
+            [gcTransaction.transactionId]
           );
 
           if (existingTransaction.rows.length > 0) {
@@ -398,19 +398,19 @@ export class GoCardlessService {
           const transaction = await this.db.createTransaction({
             accountId: dbAccountId,
             type: 'bank_transfer',
-            status: gcTransaction.booking_date ? 'confirmed' : 'pending',
-            amount: gcTransaction.transaction_amount.amount,
+            status: gcTransaction.bookingDate ? 'confirmed' : 'pending',
+            amount: gcTransaction.transactionAmount.amount,
             currencyId: eurCurrency.id,
-            description: gcTransaction.remittance_information_unstructured || 'Bank transaction',
-            reference: gcTransaction.transaction_id,
-            date: new Date(gcTransaction.booking_date || gcTransaction.value_date),
+            description: gcTransaction.remittanceInformationUnstructured || 'Bank transaction',
+            reference: gcTransaction.transactionId,
+            date: new Date(gcTransaction.bookingDate || gcTransaction.valueDate),
             gocardlessData: gcTransaction,
-            counterpartyName: gcTransaction.creditor_name || gcTransaction.debtor_name,
-            counterpartyAccount: gcTransaction.creditor_account?.iban || gcTransaction.debtor_account?.iban,
+            counterpartyName: gcTransaction.creditorName || gcTransaction.debtorName,
+            counterpartyAccount: gcTransaction.creditorAccount?.iban || gcTransaction.debtorAccount?.iban,
             metadata: {
-              internal_transaction_id: gcTransaction.internal_transaction_id,
-              bank_transaction_code: gcTransaction.bank_transaction_code,
-              additional_information: gcTransaction.additional_information,
+              internal_transaction_id: gcTransaction.internalTransactionId,
+              bank_transaction_code: gcTransaction.bankTransactionCode,
+              additional_information: gcTransaction.additionalInformation,
               sync_date: new Date().toISOString(),
               sync_batch: `initial-${days}days`
             }
@@ -422,7 +422,7 @@ export class GoCardlessService {
             console.log(`Synced ${syncedCount}/${transactions.length} transactions`);
           }
         } catch (error) {
-          console.error('Failed to sync individual transaction:', gcTransaction.transaction_id, error);
+          console.error('Failed to sync individual transaction:', gcTransaction.transactionId, error);
           // Continue with next transaction
         }
       }

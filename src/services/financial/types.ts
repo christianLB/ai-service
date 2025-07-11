@@ -194,25 +194,26 @@ export interface GoCardlessAccount {
 }
 
 export interface GoCardlessTransaction {
-  transaction_id: string;
-  booking_date: string;
-  value_date: string;
-  transaction_amount: {
+  transactionId: string;
+  mandateId?: string;
+  bookingDate: string;
+  valueDate: string;
+  transactionAmount: {
     amount: string;
     currency: string;
   };
-  creditor_name?: string;
-  creditor_account?: {
+  creditorName?: string;
+  creditorAccount?: {
     iban?: string;
   };
-  debtor_name?: string;
-  debtor_account?: {
+  debtorName?: string;
+  debtorAccount?: {
     iban?: string;
   };
-  remittance_information_unstructured?: string;
-  bank_transaction_code?: string;
-  additional_information?: string;
-  internal_transaction_id: string;
+  remittanceInformationUnstructured?: string;
+  bankTransactionCode?: string;
+  additionalInformation?: string;
+  internalTransactionId: string;
 }
 
 export interface GoCardlessRequisition {

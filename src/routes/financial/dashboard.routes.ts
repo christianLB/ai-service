@@ -431,7 +431,7 @@ router.get('/client-metrics', async (req: Request, res: Response): Promise<void>
         SUM(CASE WHEN i.status = 'paid' THEN i.total ELSE 0 END) as paid_amount_current,
         SUM(CASE WHEN i.status IN ('sent', 'viewed', 'overdue') THEN i.total ELSE 0 END) as outstanding_amount_current
       FROM financial.clients c
-      LEFT JOIN financial.client_statistics cs ON c.id = cs.client_id
+      LEFT JOIN financial.client_statistics cs ON c.id::uuid = cs.client_id
       LEFT JOIN financial.invoices i ON c.id = i.client_id AND i.currency = $1
       WHERE ($2 = 'true' OR c.status = 'active')
       GROUP BY c.id, c.name, c.business_name, c.email, c.status, c.total_revenue, 
@@ -487,7 +487,7 @@ router.get('/client-metrics', async (req: Request, res: Response): Promise<void>
         SUM(c.total_revenue) as total_revenue,
         SUM(c.outstanding_balance) as total_outstanding
       FROM financial.client_statistics cs
-      JOIN financial.clients c ON cs.client_id = c.id
+      JOIN financial.clients c ON cs.client_id = c.id::uuid
       WHERE c.status = 'active'
       GROUP BY risk_score
     `;
@@ -506,7 +506,7 @@ router.get('/client-metrics', async (req: Request, res: Response): Promise<void>
         COUNT(*) as client_count,
         AVG(c.total_revenue) as avg_revenue
       FROM financial.clients c
-      JOIN financial.client_statistics cs ON c.id = cs.client_id
+      JOIN financial.client_statistics cs ON c.id::uuid = cs.client_id
       WHERE c.status = 'active' AND cs.average_payment_days IS NOT NULL
       GROUP BY payment_category
     `;
@@ -671,7 +671,7 @@ router.get('/cash-flow', async (req: Request, res: Response): Promise<void> => {
         END as payment_probability
       FROM financial.invoices i
       JOIN financial.clients c ON i.client_id = c.id
-      LEFT JOIN financial.client_statistics cs ON c.id = cs.client_id
+      LEFT JOIN financial.client_statistics cs ON c.id::uuid = cs.client_id
       WHERE i.currency = $1 
         AND i.status IN ('sent', 'viewed', 'overdue')
         AND i.due_date <= $2
@@ -691,7 +691,7 @@ router.get('/cash-flow', async (req: Request, res: Response): Promise<void> => {
           t.counterparty_name,
           t.type
         FROM financial.transactions t
-        JOIN financial.accounts a ON t.account_id = a.id::varchar
+        JOIN financial.accounts a ON t.account_id = a.id::text
         WHERE a.currency_id = (SELECT id FROM financial.currencies WHERE code = $1)
           AND t.date >= $2
           AND t.status = 'confirmed'
