@@ -33,7 +33,7 @@ services:
       - postgres
       - redis
     ports:
-      - "3000:3001"
+      - "3002:3001"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
@@ -62,6 +62,35 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - frontend_dist:/usr/share/nginx/html
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: ai-service-nginx
+    restart: unless-stopped
+    mem_limit: 50m
+    memswap_limit: 50m
+    networks:
+      - ai-service-network
+    ports:
+      - "80:80"
+      - "8080:8080"  # Status page
+    volumes:
+      - ./deploy/nas/nginx.conf:/etc/nginx/nginx.conf:ro
+      - frontend_dist:/usr/share/nginx/html:ro
+    depends_on:
+      - ai-service-api
+      - ai-service-frontend
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -143,4 +172,6 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  frontend_dist:
     driver: local
