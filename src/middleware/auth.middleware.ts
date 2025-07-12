@@ -9,7 +9,10 @@ export interface AuthRequest extends Request {
   };
 }
 
-export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
+// Type assertion helper
+export const authMiddlewareWrapper = (middleware: any) => middleware as any;
+
+export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): void {
   // Development bypass
   if (process.env.NODE_ENV === 'development' && process.env.AUTH_BYPASS === 'true') {
     req.user = {
@@ -17,13 +20,15 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
       email: 'dev@local',
       role: 'admin'
     };
-    return next();
+    next();
+    return;
   }
 
   // Get token from header
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
+    res.status(401).json({ error: 'No token provided' });
+    return;
   }
 
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
@@ -43,21 +48,25 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({ error: 'Token expired' });
+      res.status(401).json({ error: 'Token expired' });
+      return;
     }
-    return res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: 'Invalid token' });
+    return;
   }
 }
 
 // Role-based access control middleware
 export function requireRole(...roles: string[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Forbidden' });
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
 
     next();

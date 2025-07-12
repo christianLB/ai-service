@@ -30,7 +30,13 @@
     "migrate:up": "DATABASE_URL=postgres://postgres:postgres123@localhost:5432/ai_service node-pg-migrate up",
     "migrate:down": "DATABASE_URL=postgres://postgres:postgres123@localhost:5432/ai_service node-pg-migrate down",
     "migrate:redo": "npm run migrate:down && npm run migrate:up",
-    "migrate:status": "DATABASE_URL=postgres://postgres:postgres123@localhost:5432/ai_service node-pg-migrate status"
+    "migrate:status": "DATABASE_URL=postgres://postgres:postgres123@localhost:5432/ai_service node-pg-migrate status",
+    "docker:dev": "./scripts/start-dev.sh",
+    "docker:dev:clean": "./scripts/start-dev.sh --clean",
+    "docker:dev:logs": "./scripts/start-dev.sh --no-start --logs",
+    "docker:stop": "docker-compose down",
+    "docker:test:auth": "./scripts/test-auth-docker.sh",
+    "test:auth": "npm run docker:dev && npm run docker:test:auth"
   },
   "keywords": [],
   "author": "",
@@ -75,6 +81,7 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/handlebars": "^4.1.0",
     "@types/jest": "^30.0.0",

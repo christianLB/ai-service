@@ -115,6 +115,173 @@ dev-rebuild: ## Reconstruir imagen de desarrollo
 	@echo "$(GREEN)✓ Imagen reconstruida$(NC)"
 
 # =============================================================================
+# 🟢 COMANDOS DE DESARROLLO - Authentication Management
+# =============================================================================
+
+.PHONY: dev-auth-reset-attempts
+dev-auth-reset-attempts: ## Limpiar todos los intentos de login
+	@echo "$(YELLOW)🔓 Resetting login attempts...$(NC)"
+	@docker exec ai-service-postgres psql -U ai_user -d ai_service -c "DELETE FROM login_attempts;" 2>/dev/null || \
+		echo "$(RED)❌ Could not reset attempts. Check if database is running.$(NC)"
+	@echo "$(GREEN)✅ Login attempts cleared$(NC)"
+
+.PHONY: dev-auth-reset-password
+dev-auth-reset-password: ## Resetear contraseña de usuario
+	@echo "$(BLUE)🔑 Reset user password$(NC)"
+	@read -p "Enter email: " email; \
+	read -s -p "Enter new password: " password; \
+	echo; \
+	docker exec ai-service-api-dev node -e " \
+		const bcrypt = require('bcrypt'); \
+		const { Pool } = require('pg'); \
+		const pool = new Pool({ \
+			host: 'postgres', \
+			port: 5432, \
+			database: 'ai_service', \
+			user: 'ai_user', \
+			password: 'ultra_secure_password_2025' \
+		}); \
+		(async () => { \
+			const hash = await bcrypt.hash('$$password', 10); \
+			const result = await pool.query( \
+				'UPDATE users SET password_hash = \$$1 WHERE email = \$$2 RETURNING email', \
+				[hash, '$$email'] \
+			); \
+			if (result.rowCount > 0) { \
+				console.log('✅ Password updated for', result.rows[0].email); \
+			} else { \
+				console.log('❌ User not found'); \
+			} \
+			await pool.end(); \
+		})();"
+
+.PHONY: dev-auth-create-user
+dev-auth-create-user: ## Crear nuevo usuario
+	@echo "$(BLUE)👤 Create new user$(NC)"
+	@read -p "Enter email: " email; \
+	read -p "Enter full name: " name; \
+	read -s -p "Enter password: " password; \
+	echo; \
+	read -p "Enter role (admin/user) [user]: " role; \
+	role=$${role:-user}; \
+	docker exec ai-service-api-dev node -e " \
+		const bcrypt = require('bcrypt'); \
+		const { Pool } = require('pg'); \
+		const pool = new Pool({ \
+			host: 'postgres', \
+			port: 5432, \
+			database: 'ai_service', \
+			user: 'ai_user', \
+			password: 'ultra_secure_password_2025' \
+		}); \
+		(async () => { \
+			try { \
+				const hash = await bcrypt.hash('$$password', 10); \
+				const result = await pool.query( \
+					'INSERT INTO users (email, password_hash, full_name, role) VALUES (\$$1, \$$2, \$$3, \$$4) RETURNING email', \
+					['$$email', hash, '$$name', '$$role'] \
+				); \
+				console.log('✅ User created:', result.rows[0].email); \
+			} catch (error) { \
+				if (error.code === '23505') { \
+					console.log('❌ User already exists'); \
+				} else { \
+					console.log('❌ Error:', error.message); \
+				} \
+			} \
+			await pool.end(); \
+		})();"
+
+.PHONY: dev-auth-list-users
+dev-auth-list-users: ## Listar todos los usuarios
+	@echo "$(BLUE)📋 Listing all users...$(NC)"
+	@docker exec ai-service-postgres psql -U ai_user -d ai_service -c \
+		"SELECT email, full_name, role, is_active, created_at FROM users ORDER BY created_at DESC;" 2>/dev/null || \
+		echo "$(RED)❌ Could not list users. Check if database is running.$(NC)"
+
+.PHONY: dev-auth-check-attempts
+dev-auth-check-attempts: ## Ver intentos recientes de login
+	@echo "$(BLUE)🔍 Checking recent login attempts...$(NC)"
+	@docker exec ai-service-postgres psql -U ai_user -d ai_service -c \
+		"SELECT email, ip_address, success, attempted_at FROM login_attempts ORDER BY attempted_at DESC LIMIT 20;" 2>/dev/null || \
+		echo "$(RED)❌ Could not check attempts. Check if database is running.$(NC)"
+
+.PHONY: dev-auth-create-admin
+dev-auth-create-admin: ## Crear/resetear usuario admin (admin@ai-service.local / admin123)
+	@echo "$(BLUE)👤 Creating/resetting admin user...$(NC)"
+	@docker exec ai-service-api-dev node -e " \
+		const bcrypt = require('bcrypt'); \
+		const { Pool } = require('pg'); \
+		const pool = new Pool({ \
+			host: 'postgres', \
+			port: 5432, \
+			database: 'ai_service', \
+			user: 'ai_user', \
+			password: 'ultra_secure_password_2025' \
+		}); \
+		(async () => { \
+			try { \
+				const hash = await bcrypt.hash('admin123', 10); \
+				const result = await pool.query( \
+					'INSERT INTO users (email, password_hash, full_name, role) VALUES (\$$1, \$$2, \$$3, \$$4) RETURNING email', \
+					['admin@ai-service.local', hash, 'Admin User', 'admin'] \
+				); \
+				console.log('✅ Admin user created:', result.rows[0].email); \
+				console.log('📧 Email: admin@ai-service.local'); \
+				console.log('🔑 Password: admin123'); \
+			} catch (error) { \
+				if (error.code === '23505') { \
+					const hash = await bcrypt.hash('admin123', 10); \
+					await pool.query( \
+						'UPDATE users SET password_hash = \$$1 WHERE email = \$$2', \
+						[hash, 'admin@ai-service.local'] \
+					); \
+					console.log('✅ Admin password reset to: admin123'); \
+				} else { \
+					console.log('❌ Error:', error.message); \
+				} \
+			} \
+			await pool.end(); \
+		})();"
+
+.PHONY: dev-auth-unblock-ip
+dev-auth-unblock-ip: ## Desbloquear una IP específica
+	@echo "$(BLUE)🔓 Unblock IP address$(NC)"
+	@read -p "Enter IP to unblock: " ip; \
+	docker exec ai-service-postgres psql -U postgres -d ai_service_dev -c \
+		"DELETE FROM login_attempts WHERE ip_address = '$$ip'::inet;" 2>/dev/null && \
+		echo "$(GREEN)✅ IP unblocked$(NC)" || \
+		echo "$(RED)❌ Could not unblock IP$(NC)"
+
+.PHONY: dev-auth-check
+dev-auth-check: ## 🔍 Verificar salud completa del sistema de autenticación
+	@../scripts/check-auth.sh
+
+.PHONY: dev-auth-test-endpoints  
+dev-auth-test-endpoints: ## 🌐 Probar todos los endpoints protegidos
+	@echo "$(BLUE)🔐 Testing authenticated endpoints...$(NC)"
+	@../scripts/check-auth.sh
+
+# =============================================================================
+# 🟢 COMANDOS DE DESARROLLO - Database Fixes
+# =============================================================================
+
+.PHONY: dev-fix-missing-views
+dev-fix-missing-views: ## 🔧 Create missing database views
+	@echo "$(BLUE)🔧 Creating missing database views...$(NC)"
+	@cat migrations/005-create-client-statistics-view.sql | docker exec -i $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -d $(DEV_DB_NAME)
+	@echo "$(GREEN)✅ Views created successfully$(NC)"
+
+.PHONY: dev-check-db-health  
+dev-check-db-health: ## 🏥 Check database health and missing objects
+	@echo "$(BLUE)🏥 Checking database health...$(NC)"
+	@echo "$(YELLOW)Tables in financial schema:$(NC)"
+	@docker exec $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -d $(DEV_DB_NAME) -c "\dt financial.*" 2>/dev/null | grep -E "table|view" || echo "None found"
+	@echo ""
+	@echo "$(YELLOW)Views in financial schema:$(NC)"
+	@docker exec $(DEV_CONTAINER_PREFIX)-postgres-1 psql -U $(DEV_DB_USER) -d $(DEV_DB_NAME) -c "\dv financial.*" 2>/dev/null | grep -E "view" || echo "None found"
+
+# =============================================================================
 # 🟢 COMANDOS DE DESARROLLO - Testing
 # =============================================================================
 

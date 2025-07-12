@@ -157,12 +157,12 @@ export class AuthService {
       role: user.role
     };
 
-    return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn });
+    return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn } as any);
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {
     const payload = { userId, type: 'refresh' };
-    const token = jwt.sign(payload, this.jwtSecret, { expiresIn: this.refreshTokenExpiresIn });
+    const token = jwt.sign(payload, this.jwtSecret, { expiresIn: this.refreshTokenExpiresIn } as any);
     
     // Store token hash in database
     const tokenHash = await bcrypt.hash(token, 10);

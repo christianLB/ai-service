@@ -109,7 +109,7 @@ export const Login: React.FC = () => {
             </Button>
           </Form.Item>
 
-          {process.env.NODE_ENV === 'development' && (
+          {import.meta.env.DEV && (
             <div style={{ 
               marginTop: 16, 
               padding: 12, 

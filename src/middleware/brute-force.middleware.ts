@@ -10,12 +10,13 @@ interface BruteForceOptions {
 export function createBruteForceProtection(pool: Pool, options: BruteForceOptions) {
   const { maxAttempts, windowMs, blockDurationMs } = options;
 
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const email = req.body.email;
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
 
     if (!email) {
-      return next();
+      next();
+      return;
     }
 
     try {
@@ -51,10 +52,11 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
             [email, ip, false]
           );
 
-          return res.status(429).json({
+          res.status(429).json({
             error: 'Too many failed login attempts. Please try again later.',
             retryAfter: Math.ceil(blockDurationMs / 1000)
           });
+          return;
         }
       }
 

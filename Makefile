@@ -99,6 +99,55 @@ auth-bypass-off: ## 🔒 Desactivar bypass de auth
 auth-test: ## 🧪 Probar sistema de autenticación
 	@$(MAKE) -f Makefile.auth auth-test
 
+.PHONY: auth-check
+auth-check: ## 🔍 Verificar salud completa del sistema de autenticación
+	@./scripts/check-auth.sh
+
+.PHONY: auth-test-endpoints
+auth-test-endpoints: ## 🌐 Probar todos los endpoints protegidos con token
+	@echo "$(BLUE)🔐 Probando endpoints con autenticación...$(NC)"
+	@./scripts/check-auth.sh
+
+.PHONY: fix-db
+fix-db: ## 🔧 Arreglar vistas y objetos faltantes en la base de datos
+	@$(MAKE) -f Makefile.development dev-fix-missing-views
+
+.PHONY: check-db
+check-db: ## 🏥 Verificar salud de la base de datos
+	@$(MAKE) -f Makefile.development dev-check-db-health
+
+# =============================================================================
+# 🔐 COMANDOS DE AUTENTICACIÓN (atajos rápidos)
+# =============================================================================
+
+.PHONY: auth-reset
+auth-reset: ## Limpiar todos los intentos de login
+	@$(MAKE) -f Makefile.development dev-auth-reset-attempts
+
+.PHONY: auth-password
+auth-password: ## Resetear contraseña de usuario
+	@$(MAKE) -f Makefile.development dev-auth-reset-password
+
+.PHONY: auth-create
+auth-create: ## Crear nuevo usuario
+	@$(MAKE) -f Makefile.development dev-auth-create-user
+
+.PHONY: auth-admin
+auth-admin: ## Crear/resetear admin (admin@ai-service.local / admin123)
+	@$(MAKE) -f Makefile.development dev-auth-create-admin
+
+.PHONY: auth-list
+auth-list: ## Listar todos los usuarios
+	@$(MAKE) -f Makefile.development dev-auth-list-users
+
+.PHONY: auth-status
+auth-status: ## Ver intentos recientes de login
+	@$(MAKE) -f Makefile.development dev-auth-check-attempts
+
+.PHONY: auth-unblock
+auth-unblock: ## Desbloquear IP específica
+	@$(MAKE) -f Makefile.development dev-auth-unblock-ip
+
 # =============================================================================
 # 🚨 COMANDOS DE EMERGENCIA (recuperación < 30 segundos)
 # =============================================================================
