@@ -400,6 +400,68 @@ test-auth: ## Test authentication (SSH and sudo)
 	@SSHPASS='$(SSHPASS)' sshpass -e ssh -o StrictHostKeyChecking=no $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S echo '   ✓ Sudo authentication successful'" || echo "   ✗ Sudo failed"
 
 # =============================================================================
+# 🔑 COMANDOS DE PRODUCCIÓN - Authentication Management
+# =============================================================================
+
+.PHONY: prod-auth-create-admin
+prod-auth-create-admin: ## Crear usuario admin (admin@ai-service.prod / admin123)
+	@echo "$(BLUE)👤 Creating admin user in production...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"INSERT INTO users (email, password_hash, full_name, role) VALUES ('admin@ai-service.prod', '\\\$$2b\\\$$10\\\$$8YzH7X1vKpFdKjb8rqOAOe8uEpZ4UjQn9mGxK7bgQqFvI9o1aWVKq', 'Admin User', 'admin') ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;\" 2>/dev/null" && \
+	echo "$(GREEN)✅ Admin user created/updated$(NC)" && \
+	echo "📧 Email: admin@ai-service.prod" && \
+	echo "🔑 Password: admin123" || \
+	echo "$(RED)❌ Failed to create admin user$(NC)"
+
+.PHONY: prod-auth-list-users
+prod-auth-list-users: ## Listar todos los usuarios en producción
+	@echo "$(BLUE)📋 Listing production users...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"SELECT email, full_name, role, is_active, created_at FROM users ORDER BY created_at DESC;\" 2>/dev/null" || \
+	echo "$(RED)❌ Could not list users. Check if auth tables exist.$(NC)"
+
+.PHONY: prod-auth-reset-attempts
+prod-auth-reset-attempts: ## Limpiar todos los intentos de login en producción
+	@echo "$(YELLOW)🔓 Resetting login attempts in production...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"DELETE FROM login_attempts;\" 2>/dev/null" && \
+	echo "$(GREEN)✅ Login attempts cleared$(NC)" || \
+	echo "$(RED)❌ Could not reset attempts. Check if auth tables exist.$(NC)"
+
+.PHONY: prod-auth-check-attempts
+prod-auth-check-attempts: ## Ver intentos recientes de login en producción
+	@echo "$(BLUE)🔍 Checking recent login attempts in production...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"SELECT email, ip_address, success, attempted_at FROM login_attempts ORDER BY attempted_at DESC LIMIT 20;\" 2>/dev/null" || \
+	echo "$(RED)❌ Could not check attempts. Check if auth tables exist.$(NC)"
+
+.PHONY: prod-auth-reset-password
+prod-auth-reset-password: ## Resetear contraseña de usuario en producción (interactivo)
+	@echo "$(BLUE)🔑 Reset user password in production$(NC)"
+	@read -p "Enter email: " email; \
+	read -s -p "Enter new password: " password; \
+	echo; \
+	if [ -z "$$email" ] || [ -z "$$password" ]; then \
+		echo "$(RED)❌ Email and password are required$(NC)"; \
+		exit 1; \
+	fi; \
+	HASH=$$(docker run --rm node:20-alpine sh -c "npm install bcrypt && node -e \"const bcrypt = require('bcrypt'); bcrypt.hash('$$password', 10).then(h => console.log(h))\"" 2>/dev/null | tail -1); \
+	if [ -z "$$HASH" ]; then \
+		echo "$(RED)❌ Failed to generate password hash$(NC)"; \
+		exit 1; \
+	fi; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"UPDATE users SET password_hash = '$$HASH' WHERE email = '$$email' RETURNING email;\" 2>/dev/null" | grep -q "1 row" && \
+	echo "$(GREEN)✅ Password updated for $$email$(NC)" || \
+	echo "$(RED)❌ User not found or update failed$(NC)"
+
+.PHONY: prod-auth-check-tables
+prod-auth-check-tables: ## Verificar si existen las tablas de autenticación
+	@echo "$(BLUE)🔍 Checking auth tables in production...$(NC)"
+	@TABLES=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -t -c \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('users', 'refresh_tokens', 'login_attempts');\" 2>/dev/null" | tr -d ' \n'); \
+	if [ -z "$$TABLES" ]; then \
+		echo "$(RED)❌ Auth tables not found$(NC)"; \
+		echo "$(YELLOW)Run 'make prod-sql-file FILE=migrations/006-minimal-auth-tables.sql' to create them$(NC)"; \
+	else \
+		echo "$(GREEN)✅ Auth tables found: $$TABLES$(NC)"; \
+	fi
+
+# =============================================================================
 # Ayuda
 # =============================================================================
 

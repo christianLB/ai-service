@@ -117,6 +117,10 @@ services:
       GOCARDLESS_ACCESS_TOKEN: ${GOCARDLESS_ACCESS_TOKEN}
       GOCARDLESS_ENVIRONMENT: ${GOCARDLESS_ENVIRONMENT:-sandbox}
       
+      # Authentication
+      JWT_SECRET: ${JWT_SECRET:-ultra_secure_production_jwt_secret_2025_min_32_chars}
+      # AUTH_BYPASS not set - defaults to false for production security
+      
       # Node.js optimizaciones
       NODE_ENV: production
       NODE_OPTIONS: "--max-old-space-size=1024"
