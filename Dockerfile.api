@@ -18,6 +18,7 @@ RUN npm ci --only=production && \
 COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY scripts/ ./scripts/
+COPY config/ ./config/
 
 # Build TypeScript
 RUN npm install -D typescript @types/node && \
@@ -46,6 +47,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/config ./config
 COPY --from=builder /app/package*.json ./
 
 # Create non-root user

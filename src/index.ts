@@ -13,6 +13,10 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import { createAuthRoutes } from './routes/auth/auth.routes';
+import { authMiddleware } from './middleware/auth.middleware';
 import flowGen from './routes/flow-gen';
 import flowUpdate from './routes/flow-update';
 import flowTest from './routes/flow-test';
@@ -30,6 +34,36 @@ import { neuralOrchestrator } from './services/neural-orchestrator';
 import { forensicLogger, showForensicLogs } from './utils/forensic-logger';
 
 const app = express();
+
+// Security middleware - Elena's implementation
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"]
+    }
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Middleware básico
 app.use(express.json({ limit: '50mb' }));
@@ -75,7 +109,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// API info endpoint
+// Public endpoints (no auth required)
+const authRoutes = createAuthRoutes(db.pool);
+app.use('/api/auth', authRoutes);
+
+// API info endpoint (public)
 app.get('/api/info', (_req: express.Request, res: express.Response) => {
   res.json({
     service: 'AI Service API',
@@ -199,18 +237,21 @@ app.get('/metrics', async (_req: express.Request, res: express.Response) => {
   }
 });
 
-// API Routes
-app.use('/api', flowGen);
-app.use('/api', flowUpdate);
-app.use('/api', flowTest);
-app.use('/api/financial', financialRoutes);
-app.use('/api', versionRoutes);
-app.use('/api/telegram', telegramRoutes);
-app.use('/api/documents', documentRoutes);
+// Protected API Routes - Apply auth middleware to all
+app.use('/api', authMiddleware, flowGen);
+app.use('/api', authMiddleware, flowUpdate);
+app.use('/api', authMiddleware, flowTest);
+app.use('/api/financial', authMiddleware, financialRoutes);
+app.use('/api', authMiddleware, versionRoutes);
+app.use('/api/telegram', authMiddleware, telegramRoutes);
+app.use('/api/documents', authMiddleware, documentRoutes);
 
 // Catch-all route for SPA - serve index.html for any non-API route
 app.get('*', (_req: express.Request, res: express.Response) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  const indexPath = process.env.NODE_ENV === 'production' 
+    ? path.join(__dirname, '../public/index.html')
+    : path.join(__dirname, '../frontend/dist/index.html');
+  res.sendFile(indexPath);
 });
 
 // Global error handler
