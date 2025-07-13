@@ -20,7 +20,6 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis123}
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
-      - AUTH_BYPASS=${AUTH_BYPASS:-false}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-development}
     networks:

@@ -18,7 +18,6 @@ export const config = {
   // Security
   security: {
     allowRegistration: process.env.ALLOW_REGISTRATION === 'true',
-    authBypass: process.env.NODE_ENV === 'development' && process.env.AUTH_BYPASS === 'true',
     corsOrigin: process.env.CORS_ORIGIN || '*'
   },
   

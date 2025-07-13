@@ -1,7 +1,7 @@
 # Authentication Management Makefile
 # This file contains commands for managing authentication in the AI Service
 
-.PHONY: auth-help auth-setup auth-migrate auth-seed auth-bypass-on auth-bypass-off auth-test auth-status auth-clean
+.PHONY: auth-help auth-setup auth-migrate auth-seed auth-test auth-status auth-clean
 
 # Default target
 auth-help:
@@ -10,8 +10,6 @@ auth-help:
 	@echo "make auth-setup        - Complete auth setup (migrate + seed)"
 	@echo "make auth-migrate      - Run auth database migrations"
 	@echo "make auth-seed         - Create default admin user"
-	@echo "make auth-bypass-on    - Enable auth bypass for development"
-	@echo "make auth-bypass-off   - Disable auth bypass"
 	@echo "make auth-test         - Test authentication system"
 	@echo "make auth-status       - Check auth configuration status"
 	@echo "make auth-clean        - Remove auth tables (DANGEROUS!)"
@@ -40,28 +38,6 @@ auth-seed:
 	@npm run ts-node scripts/seed-admin-user.ts || npx ts-node scripts/seed-admin-user.ts
 	@echo "✅ Admin user seeded"
 
-# Enable authentication bypass for development
-auth-bypass-on:
-	@echo "🔓 Enabling authentication bypass for development..."
-	@if [ -f .env.local ]; then \
-		if grep -q "AUTH_BYPASS" .env.local; then \
-			sed -i.bak 's/AUTH_BYPASS=.*/AUTH_BYPASS=true/' .env.local; \
-		else \
-			echo "AUTH_BYPASS=true" >> .env.local; \
-		fi; \
-	else \
-		echo "NODE_ENV=development" > .env.local; \
-		echo "AUTH_BYPASS=true" >> .env.local; \
-	fi
-	@echo "✅ Auth bypass enabled (restart services to apply)"
-
-# Disable authentication bypass
-auth-bypass-off:
-	@echo "🔒 Disabling authentication bypass..."
-	@if [ -f .env.local ]; then \
-		sed -i.bak 's/AUTH_BYPASS=.*/AUTH_BYPASS=false/' .env.local; \
-	fi
-	@echo "✅ Auth bypass disabled (restart services to apply)"
 
 # Test authentication system
 auth-test:
@@ -82,8 +58,6 @@ auth-status:
 	@echo "====================================="
 	@echo -n "Environment: "
 	@grep NODE_ENV .env.local 2>/dev/null || echo "NODE_ENV=production (default)"
-	@echo -n "Auth Bypass: "
-	@grep AUTH_BYPASS .env.local 2>/dev/null || echo "AUTH_BYPASS=false (default)"
 	@echo -n "JWT Secret: "
 	@if grep -q JWT_SECRET .env.local 2>/dev/null; then echo "✅ Configured"; else echo "⚠️  Using default (insecure!)"; fi
 	@echo -n "Database Tables: "

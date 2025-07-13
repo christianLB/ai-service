@@ -37,10 +37,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Development bypass
-  const isDevelopmentBypass = 
-    import.meta.env.MODE === 'development' && 
-    import.meta.env.VITE_AUTH_BYPASS === 'true';
 
   useEffect(() => {
     checkAuth();
@@ -48,18 +44,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      // Development bypass
-      if (isDevelopmentBypass) {
-        setUser({
-          id: '00000000-0000-0000-0000-000000000001',
-          email: 'dev@local',
-          fullName: 'Development User',
-          role: 'admin',
-          isActive: true
-        });
-        setIsLoading(false);
-        return;
-      }
 
       // Check if we have a token
       const token = localStorage.getItem('auth_token');

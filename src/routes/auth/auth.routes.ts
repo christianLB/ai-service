@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { AuthService } from '../../services/auth/auth.service';
+import { AuthService, AuthTokens } from '../../services/auth/auth.service';
 import { authMiddleware, AuthRequest } from '../../middleware/auth.middleware';
 import { createBruteForceProtection } from '../../middleware/brute-force.middleware';
 import { SecurityLoggerService } from '../../services/security/security-logger.service';
@@ -31,8 +31,8 @@ export function createAuthRoutes(pool: Pool): Router {
   // Login endpoint
   router.post(
     '/login',
-    // loginLimiter,        // TODO: Re-enable after testing
-    // bruteForceProtection, // TODO: Re-enable after testing
+    loginLimiter,
+    bruteForceProtection,
     [
       body('email').isEmail().normalizeEmail(),
       body('password').notEmpty().trim()
@@ -48,35 +48,32 @@ export function createAuthRoutes(pool: Pool): Router {
 
         const { email, password } = req.body;
 
-        // Get request details
         const ip = req.ip || req.connection.remoteAddress || 'unknown';
         const userAgent = req.get('user-agent') || 'unknown';
-        
-        // Log login attempt to database
-        await pool.query(
-          'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
-          [email, ip, false]
-        );
 
-        // Log security event
-        await securityLogger.logSecurityEvent({
-          event_type: 'login_attempt',
-          email,
-          ip_address: ip,
-          user_agent: userAgent,
-          success: false
-        });
+        let tokens: AuthTokens;
+        try {
+          tokens = await authService.login({ email, password });
+        } catch (error: any) {
+          await pool.query(
+            'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
+            [email, ip, false]
+          );
+          await securityLogger.logSecurityEvent({
+            event_type: 'login_failed',
+            email,
+            ip_address: ip,
+            user_agent: userAgent,
+            success: false,
+            details: { error: error.message }
+          });
+          throw error;
+        }
 
-        // Attempt login
-        const tokens = await authService.login({ email, password });
-
-        // Log successful login
         await pool.query(
           'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
           [email, ip, true]
         );
-        
-        // Log security event for successful login
         await securityLogger.logSecurityEvent({
           event_type: 'login_success',
           email,
@@ -93,20 +90,6 @@ export function createAuthRoutes(pool: Pool): Router {
         return;
       } catch (error: any) {
         console.error('Login error:', error);
-        
-        // Log failed login security event
-        const ip = req.ip || req.connection.remoteAddress || 'unknown';
-        const userAgent = req.get('user-agent') || 'unknown';
-        
-        await securityLogger.logSecurityEvent({
-          event_type: 'login_failed',
-          email: req.body.email,
-          ip_address: ip,
-          user_agent: userAgent,
-          success: false,
-          details: { error: error.message }
-        });
-        
         res.status(401).json({ error: error.message || 'Authentication failed' });
         return;
       }
