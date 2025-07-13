@@ -19,6 +19,18 @@ npm run dev
 # Luego visita: http://localhost:3000/dashboard
 ```
 
+### **🧪 Testing con Sandbox (GoCardless)**
+```bash
+# Activar modo sandbox en .env.local
+GO_SANDBOX_MODE=true
+
+# Iniciar setup con banco mock
+curl -X POST http://localhost:3000/api/financial/setup-sandbox
+
+# Ver documentación completa
+cat docs/SANDBOX_TESTING.md
+```
+
 ---
 
 ## 📋 Documentación Principal
@@ -28,6 +40,7 @@ npm run dev
 | **[CENTRO_COMUNICACION.md](./CENTRO_COMUNICACION.md)** | 📊 Estado completo del proyecto y roadmap |
 | **[TELEGRAM_BOT_SETUP.md](./TELEGRAM_BOT_SETUP.md)** | 🤖 Configuración paso a paso del bot |
 | **[TELEGRAM_SLACK_INTEGRATION.md](./TELEGRAM_SLACK_INTEGRATION.md)** | 📡 Documentación técnica de integraciones |
+| **[SANDBOX_TESTING.md](./docs/SANDBOX_TESTING.md)** | 🧪 Testing con datos bancarios mock |
 | **[INFRASTRUCTURE.md](./INFRASTRUCTURE.md)** | 🏗️ Infraestructura Synology + Cloudflare |
 | **[.env.example](./.env.example)** | ⚙️ Variables de entorno requeridas |
 | **[INSTALLATION_GUIDE.md](./docs/INSTALLATION_GUIDE.md)** | 🚀 Guía rápida de instalación |

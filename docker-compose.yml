@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # Backend API Service (Development)
@@ -20,7 +20,6 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis123}
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
-      - AUTH_BYPASS=${AUTH_BYPASS:-false}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-development}
     networks:
@@ -34,7 +33,7 @@ services:
       # Mount source for hot reload
       - ./src:/app/src:ro
       - ./migrations:/app/migrations:ro
-      - ./.env.local:/app/.env:ro
+      - ./.env.local:/app/.env.local:ro
       - ./documents:/app/documents
       - ./logs:/app/logs
 
@@ -73,7 +72,11 @@ services:
     ports:
       - "5434:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ai_service_dev}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ai_service_dev}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -91,7 +94,15 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-redis123}", "ping"]
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "--no-auth-warning",
+          "-a",
+          "${REDIS_PASSWORD:-redis123}",
+          "ping",
+        ]
       interval: 10s
       timeout: 5s
       retries: 3

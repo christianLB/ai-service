@@ -16,12 +16,24 @@ export class GoCardlessService {
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
   private db: FinancialDatabaseService;
+  private isSandboxMode: boolean = false;
+  private sandboxInstitutionId: string = '';
 
   constructor(
     private config: GoCardlessConfig,
     database: FinancialDatabaseService
   ) {
     this.db = database;
+    
+    // Check if we're in sandbox mode
+    this.isSandboxMode = process.env.NODE_ENV === 'development' && process.env.GO_SANDBOX_MODE === 'true';
+    this.sandboxInstitutionId = process.env.GO_SANDBOX_TOKEN || 'SANDBOXFINANCE_SFIN0000';
+    
+    if (this.isSandboxMode) {
+      console.log('🧪 GoCardless Service running in SANDBOX MODE');
+      console.log(`🏦 Using sandbox institution: ${this.sandboxInstitutionId}`);
+    }
+    
     this.api = axios.create({
       baseURL: config.baseUrl,
       timeout: 30000,
@@ -452,8 +464,16 @@ export class GoCardlessService {
     requisitionId: string;
   }>> {
     try {
-      // Create requisition for BBVA Spain
-      const requisition = await this.createRequisition('BBVA_BBVAESMM', `bbva-setup-${Date.now()}`);
+      // Use sandbox institution if in sandbox mode
+      const institutionId = this.isSandboxMode ? this.sandboxInstitutionId : 'BBVA_BBVAESMM';
+      const reference = this.isSandboxMode ? `sandbox-setup-${Date.now()}` : `bbva-setup-${Date.now()}`;
+      
+      if (this.isSandboxMode) {
+        console.log(`🧪 Setting up SANDBOX account with institution: ${institutionId}`);
+      }
+      
+      // Create requisition
+      const requisition = await this.createRequisition(institutionId, reference);
       
       return {
         success: true,
@@ -463,14 +483,61 @@ export class GoCardlessService {
           requisitionId: requisition.id
         },
         metadata: {
-          message: 'Visit the consent URL to authorize access to your BBVA account',
-          nextSteps: 'After consent, call completeSetup with the requisition ID'
+          message: this.isSandboxMode 
+            ? '🧪 SANDBOX MODE: Visit the consent URL to authorize access to the mock bank account'
+            : 'Visit the consent URL to authorize access to your BBVA account',
+          nextSteps: 'After consent, call completeSetup with the requisition ID',
+          sandboxMode: this.isSandboxMode
         }
       };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to setup BBVA account'
+      };
+    }
+  }
+
+  async setupSandboxAccount(): Promise<FinancialApiResponse<{
+    requisition: GoCardlessRequisition;
+    consentUrl: string;
+    requisitionId: string;
+  }>> {
+    if (!this.isSandboxMode) {
+      return {
+        success: false,
+        error: 'Sandbox mode is not enabled. Set GO_SANDBOX_MODE=true in your environment.'
+      };
+    }
+
+    try {
+      console.log(`🧪 Setting up Sandbox Finance test account`);
+      
+      // Create requisition for Sandbox Finance
+      const requisition = await this.createRequisition(
+        this.sandboxInstitutionId, 
+        `sandbox-test-${Date.now()}`
+      );
+      
+      return {
+        success: true,
+        data: {
+          requisition,
+          consentUrl: requisition.link,
+          requisitionId: requisition.id
+        },
+        metadata: {
+          message: '🧪 SANDBOX MODE: Visit the consent URL to test with Sandbox Finance mock bank',
+          institution: 'Sandbox Finance (Mock Bank)',
+          institutionId: this.sandboxInstitutionId,
+          nextSteps: 'Complete the mock authorization flow and then call completeSetup',
+          testCredentials: 'Use any mock credentials provided by GoCardless sandbox'
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to setup sandbox account'
       };
     }
   }
@@ -640,12 +707,107 @@ export class GoCardlessService {
 
       return {
         success: true,
-        data: accounts.rows
+        data: accounts.rows,
+        metadata: {
+          sandboxMode: this.isSandboxMode
+        }
       };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get account status'
+      };
+    }
+  }
+
+  // ============================================================================
+  // SANDBOX UTILITIES
+  // ============================================================================
+
+  async getSandboxStatus(): Promise<FinancialApiResponse<{
+    enabled: boolean;
+    institutionId: string;
+    institutionName: string;
+    environment: string;
+    baseUrl: string;
+    testAccountsAvailable: boolean;
+  }>> {
+    try {
+      return {
+        success: true,
+        data: {
+          enabled: this.isSandboxMode,
+          institutionId: this.sandboxInstitutionId,
+          institutionName: 'Sandbox Finance (Mock Bank)',
+          environment: process.env.NODE_ENV || 'unknown',
+          baseUrl: this.config.baseUrl,
+          testAccountsAvailable: this.isSandboxMode
+        },
+        metadata: {
+          message: this.isSandboxMode 
+            ? '🧪 Sandbox mode is ACTIVE - using mock bank data'
+            : '🏦 Production mode - using real bank connections',
+          instructions: this.isSandboxMode 
+            ? 'You can test with mock data without real bank accounts'
+            : 'Set GO_SANDBOX_MODE=true to enable sandbox testing'
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get sandbox status'
+      };
+    }
+  }
+
+  async resetSandboxData(): Promise<FinancialApiResponse<{
+    accountsDeleted: number;
+    transactionsDeleted: number;
+  }>> {
+    if (!this.isSandboxMode) {
+      return {
+        success: false,
+        error: 'Cannot reset data - sandbox mode is not enabled'
+      };
+    }
+
+    try {
+      // Start a transaction
+      await this.db.query('BEGIN');
+
+      // Delete sandbox transactions
+      const transactionsResult = await this.db.query(`
+        DELETE FROM financial.transactions t
+        USING financial.accounts a
+        WHERE t.account_id = a.id 
+        AND a.institution_id = $1
+        RETURNING t.id
+      `, [this.sandboxInstitutionId]);
+
+      // Delete sandbox accounts
+      const accountsResult = await this.db.query(`
+        DELETE FROM financial.accounts
+        WHERE institution_id = $1
+        RETURNING id
+      `, [this.sandboxInstitutionId]);
+
+      await this.db.query('COMMIT');
+
+      return {
+        success: true,
+        data: {
+          accountsDeleted: accountsResult.rowCount || 0,
+          transactionsDeleted: transactionsResult.rowCount || 0
+        },
+        metadata: {
+          message: '🧪 Sandbox data has been reset successfully'
+        }
+      };
+    } catch (error) {
+      await this.db.query('ROLLBACK');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reset sandbox data'
       };
     }
   }

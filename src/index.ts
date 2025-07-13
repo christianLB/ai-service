@@ -12,6 +12,11 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
+const defaultJwt = 'your-secret-key-change-in-production';
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === defaultJwt) {
+  console.warn('⚠️  JWT_SECRET is using the default value. Please change it in production.');
+}
+
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -25,6 +30,7 @@ import versionRoutes from './routes/version';
 import telegramRoutes from './routes/telegram';
 import documentRoutes from './routes/documents';
 import { createCryptoRoutes } from './routes/crypto.routes';
+import realEstateRoutes from './routes/real-estate';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
@@ -243,8 +249,11 @@ app.use('/api', authMiddleware, flowGen);
 app.use('/api', authMiddleware, flowUpdate);
 app.use('/api', authMiddleware, flowTest);
 app.use('/api/financial', authMiddleware, financialRoutes);
+
 const cryptoRoutes = createCryptoRoutes(db.pool);
+
 app.use('/api', authMiddleware, cryptoRoutes);
+app.use('/api/real-estate', authMiddleware, realEstateRoutes);
 app.use('/api', authMiddleware, versionRoutes);
 app.use('/api/telegram', authMiddleware, telegramRoutes);
 app.use('/api/documents', authMiddleware, documentRoutes);
