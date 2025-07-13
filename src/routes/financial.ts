@@ -62,6 +62,106 @@ const initializeServices = () => {
 };
 
 // ============================================================================
+// SANDBOX ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/financial/sandbox-status
+ * Check sandbox mode status and configuration
+ */
+router.get('/sandbox-status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const status = await goCardlessService.getSandboxStatus();
+    
+    res.json(status);
+  } catch (error) {
+    console.error('Get sandbox status failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get sandbox status',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/setup-sandbox
+ * Start sandbox account setup process (development only)
+ */
+router.post('/setup-sandbox', async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('[setup-sandbox] Initializing sandbox account setup process');
+    initializeServices();
+    
+    const result = await goCardlessService.setupSandboxAccount();
+    
+    if (result.success) {
+      console.log(`[setup-sandbox] Sandbox setup initiated successfully. Requisition ID: ${result.data?.requisitionId}`);
+      res.json({
+        success: true,
+        data: result.data,
+        message: '🧪 SANDBOX MODE: Visit the consentUrl to test with mock bank data',
+        instructions: [
+          '1. Open the consentUrl in your browser',
+          '2. Complete the mock authorization flow',
+          '3. Use any test credentials provided by GoCardless',
+          '4. Call POST /api/financial/complete-setup with the requisitionId'
+        ],
+        metadata: result.metadata
+      });
+    } else {
+      console.error(`[setup-sandbox] Setup failed: ${result.error}`);
+      res.status(400).json({
+        ...result,
+        message: 'Failed to initiate sandbox account setup. Check sandbox configuration.'
+      });
+    }
+  } catch (error) {
+    console.error('[setup-sandbox] Unexpected error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to setup sandbox account',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      message: 'An unexpected error occurred while setting up sandbox account.'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/sandbox-reset
+ * Reset all sandbox data (development only)
+ */
+router.post('/sandbox-reset', async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('[sandbox-reset] Resetting sandbox data');
+    initializeServices();
+    
+    const result = await goCardlessService.resetSandboxData();
+    
+    if (result.success) {
+      console.log(`[sandbox-reset] Reset completed: ${result.data?.accountsDeleted} accounts, ${result.data?.transactionsDeleted} transactions`);
+      res.json({
+        success: true,
+        data: result.data,
+        message: '🧪 Sandbox data has been reset successfully'
+      });
+    } else {
+      console.error(`[sandbox-reset] Reset failed: ${result.error}`);
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('[sandbox-reset] Unexpected error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reset sandbox data',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================================
 // SETUP AND CONFIGURATION
 // ============================================================================
 

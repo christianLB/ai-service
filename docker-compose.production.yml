@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_service}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+      - ./config/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./config/fix-financial-schema.sql:/docker-entrypoint-initdb.d/02-fix-financial.sql:ro
+    # Puerto no expuesto - solo accesible dentro de la red Docker
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_user} -d ${POSTGRES_DB:-ai_service}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ai-service-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ai-redis
+    restart: unless-stopped
+    # Puerto no expuesto - solo accesible dentro de la red Docker
+    # ports:
+    #   - "6379:6379"
+    volumes:
+      - ./redis:/data
+    command: >
+      redis-server
+      --maxmemory 200mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai-service-network
+
+  # Main Application
+  ai-service:
+    image: ghcr.io/christianlb/ai-service:latest
+    container_name: ai-service
+    restart: unless-stopped
+    environment:
+      # Core
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      
+      # Database - Override .env values for container names
+      POSTGRES_HOST: ai-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-ai_service}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD}@ai-postgres:5432/${POSTGRES_DB:-ai_service}
+      
+      # Redis - Override .env values for container names
+      REDIS_HOST: ai-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      
+      # AI APIs
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
+      
+      # Telegram
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
+      TELEGRAM_ALERTS_ENABLED: ${TELEGRAM_ALERTS_ENABLED:-true}
+      
+      # GoCardless
+      GOCARDLESS_ACCESS_TOKEN: ${GOCARDLESS_ACCESS_TOKEN}
+      GOCARDLESS_ENVIRONMENT: ${GOCARDLESS_ENVIRONMENT:-sandbox}
+      
+      # Authentication
+      JWT_SECRET: ${JWT_SECRET:-ultra_secure_production_jwt_secret_2025_min_32_chars}
+      # AUTH_BYPASS not set - defaults to false for production security
+      
+      # Metrics
+      ENABLE_METRICS: "true"
+      METRICS_PORT: 9090
+      
+      # Node.js
+      NODE_OPTIONS: "--max-old-space-size=1024"
+    ports:
+      - "3001:3000"
+      - "9090:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./documents:/app/data/documents
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ai-service-network
+
+networks:
+  ai-service-network:
+    name: ai-service-network
+    driver: bridge

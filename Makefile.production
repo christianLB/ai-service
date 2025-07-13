@@ -16,15 +16,9 @@ PROD_DB_USER := ai_user
 PROD_CONTAINER := ai-postgres
 BACKUP_DIR := $(PROD_PATH)/backups
 
-# SSH con autenticación
-ifdef SSHPASS
-    export SSHPASS
-    SSH := sshpass -e ssh
-    SCP := sshpass -e scp
-else
-    SSH := ssh
-    SCP := scp
-endif
+# SSH con clave SSH (sin contraseña)
+SSH := ssh
+SCP := scp
 
 # Colores
 RED := \033[0;31m
@@ -44,7 +38,7 @@ prod-sql: ## Ejecutar SQL directo en producción (usar: make prod-sql SQL="SELEC
 		exit 1; \
 	fi
 	@echo "$(BLUE)Ejecutando SQL en producción...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"$(SQL)\""
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec ai-postgres psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"$(SQL)\""
 
 .PHONY: prod-sql-file
 prod-sql-file: ## Ejecutar archivo SQL en producción (usar: make prod-sql-file FILE=script.sql)
@@ -53,7 +47,7 @@ prod-sql-file: ## Ejecutar archivo SQL en producción (usar: make prod-sql-file 
 		exit 1; \
 	fi
 	@echo "$(BLUE)Ejecutando archivo SQL: $(FILE)$(NC)"
-	@cat $(FILE) | $(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i ai-postgres psql -U $(PROD_DB_USER) -d $(PROD_DB)"
+	@cat $(FILE) | $(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec -i ai-postgres psql -U $(PROD_DB_USER) -d $(PROD_DB)"
 
 # =============================================================================
 # 🔴 COMANDOS DE PRODUCCIÓN - Reset y Recovery
@@ -73,27 +67,27 @@ prod-reset-db: ## Reset completo de BD en PRODUCCIÓN (con confirmación)
 .PHONY: prod-reset-db-force
 prod-reset-db-force: ## Reset sin confirmación (solo para emergencias)
 	@echo "$(RED)🔥 RESET FORZADO EN PRODUCCIÓN$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stop ai-service ai-postgres ai-redis || true"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S rm -rf $(PROD_PATH)/postgres-data/*"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-postgres"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker stop ai-service ai-postgres ai-redis || true"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo rm -rf $(PROD_PATH)/postgres-data/*"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker start ai-postgres"
 	@sleep 10
 	@$(MAKE) prod-create-db
 	@$(MAKE) prod-apply-schema
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-redis ai-service"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker start ai-redis ai-service"
 	@sleep 10
 	@$(MAKE) prod-health
 
 .PHONY: prod-create-db
 prod-create-db: ## Crear base de datos en producción si no existe
 	@echo "$(BLUE)📊 Creando base de datos si no existe...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d template1 -tc \"SELECT 1 FROM pg_database WHERE datname = '$(PROD_DB)'\" | grep -q 1 || echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d template1 -c 'CREATE DATABASE $(PROD_DB);'"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d template1 -tc \"SELECT 1 FROM pg_database WHERE datname = '$(PROD_DB)'\" | grep -q 1 || sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d template1 -c 'CREATE DATABASE $(PROD_DB);'"
 	@echo "$(GREEN)✓ Base de datos verificada/creada$(NC)"
 
 .PHONY: prod-apply-schema
 prod-apply-schema: ## Aplicar schema completo en producción
 	@echo "$(BLUE)📝 Aplicando schema en producción...$(NC)"
 	@$(SCP) scripts/complete-production-schema.sql $(PROD_USER)@$(PROD_HOST):/tmp/
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) < /tmp/complete-production-schema.sql"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) < /tmp/complete-production-schema.sql"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "rm /tmp/complete-production-schema.sql"
 	@echo "$(GREEN)✓ Schema aplicado$(NC)"
 
@@ -121,8 +115,8 @@ prod-apply-migration: ## Aplicar migración específica (usar: make prod-apply-m
 .PHONY: prod-fix-permissions
 prod-fix-permissions: ## Arreglar permisos de archivos en el NAS
 	@echo "$(BLUE)🔧 Arreglando permisos...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chmod -R 644 $(PROD_PATH)/config/*.sql"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chown -R $(PROD_USER):users $(PROD_PATH)/config/"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo chmod -R 644 $(PROD_PATH)/config/*.sql"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo chown -R $(PROD_USER):users $(PROD_PATH)/config/"
 	@echo "$(GREEN)✓ Permisos corregidos$(NC)"
 
 # =============================================================================
@@ -153,11 +147,11 @@ prod-deploy-image: ## Deploy imagen Docker a producción con backup automático
 	@echo "$(YELLOW)Copiando imagen al NAS...$(NC)"
 	@$(SCP) ai-service-production.tar.gz $(PROD_USER)@$(PROD_HOST):/tmp/
 	@echo "$(YELLOW)Cargando imagen en Docker...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd /tmp && echo '$(SUDO_PASS)' | sudo -S sh -c 'gunzip -c ai-service-production.tar.gz | /usr/local/bin/docker load'"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd /tmp && sudo sh -c 'gunzip -c ai-service-production.tar.gz | /usr/local/bin/docker load'"
 	@echo "$(GREEN)✓ Imagen ai-service:simple cargada$(NC)"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "rm /tmp/ai-service-production.tar.gz"
 	@echo "$(YELLOW)Reiniciando servicios...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose up -d"
 	@echo "$(GREEN)✓ Deploy completado$(NC)"
 	@echo "$(YELLOW)💡 En caso de problemas: make prod-emergency-restore$(NC)"
 	@sleep 5
@@ -166,8 +160,8 @@ prod-deploy-image: ## Deploy imagen Docker a producción con backup automático
 .PHONY: prod-force-recreate
 prod-force-recreate: ## Forzar recreación de contenedores con última imagen
 	@echo "$(BLUE)🔄 Forzando recreación de contenedores...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose pull"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d --force-recreate"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose pull"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose up -d --force-recreate"
 	@echo "$(GREEN)✓ Contenedores recreados con última versión$(NC)"
 	@sleep 5
 	@$(MAKE) prod-health
@@ -179,57 +173,66 @@ prod-update-config: ## Actualizar configuración de docker-compose en producció
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cp $(PROD_PATH)/docker-compose.yml $(PROD_PATH)/docker-compose.yml.backup-$(shell date +%Y%m%d_%H%M%S) 2>/dev/null || true"
 	@$(SCP) docker-compose.production.yml $(PROD_USER)@$(PROD_HOST):$(PROD_PATH)/docker-compose.yml
 	@echo "$(GREEN)✓ Configuración actualizada$(NC)"
-	@echo "$(YELLOW)Copiando archivo .env.production...$(NC)"
-	@$(SCP) config/.env.production $(PROD_USER)@$(PROD_HOST):$(PROD_PATH)/config/.env.production
+	@echo "$(YELLOW)Copiando archivo .env...$(NC)"
+	@$(SCP) .env $(PROD_USER)@$(PROD_HOST):/tmp/.env.tmp
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo mv /tmp/.env.tmp $(PROD_PATH)/.env && sudo chown $(PROD_USER):users $(PROD_PATH)/.env"
 	@echo "$(GREEN)✓ Variables de entorno actualizadas$(NC)"
 	@echo "$(YELLOW)Creando directorios necesarios...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mkdir -p $(PROD_PATH)/postgres $(PROD_PATH)/redis $(PROD_PATH)/logs $(PROD_PATH)/documents $(PROD_PATH)/config"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chown -R $(PROD_USER):users $(PROD_PATH)/postgres $(PROD_PATH)/redis $(PROD_PATH)/logs $(PROD_PATH)/documents $(PROD_PATH)/config"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo mkdir -p $(PROD_PATH)/postgres $(PROD_PATH)/redis $(PROD_PATH)/logs $(PROD_PATH)/documents $(PROD_PATH)/config"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo chown -R $(PROD_USER):users $(PROD_PATH)/postgres $(PROD_PATH)/redis $(PROD_PATH)/logs $(PROD_PATH)/documents $(PROD_PATH)/config"
 	@echo "$(YELLOW)Reiniciando servicios...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose down --remove-orphans"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d --force-recreate"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose down --remove-orphans"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose up -d --force-recreate"
 	@echo "$(GREEN)✓ Servicios reiniciados$(NC)"
 	@echo "$(YELLOW)💡 En caso de problemas: make prod-emergency-restore$(NC)"
 	@sleep 5
 	@echo "$(BLUE)📋 Revisando logs del servicio...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service --tail=20"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker logs ai-service --tail=20"
 
 .PHONY: prod-logs
 prod-logs: ## Ver logs del servicio AI
 	@echo "$(BLUE)📋 Logs del servicio AI...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service --tail=50"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker logs ai-service --tail=50"
+
+.PHONY: prod-up
+prod-up: ## Levantar todos los servicios con docker-compose
+	@echo "$(BLUE)🚀 Levantando servicios en producción...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose up -d"
+	@echo "$(GREEN)✓ Servicios iniciados$(NC)"
+	@sleep 5
+	@$(MAKE) -f Makefile.production prod-status
 
 .PHONY: prod-ps
 prod-ps: ## Ver todos los contenedores
 	@echo "$(BLUE)📋 Contenedores en producción...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker ps -a | grep -E 'ai-|CONTAINER'"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker ps -a | grep -E 'ai-|CONTAINER'"
 
 .PHONY: prod-start
 prod-start: ## Iniciar el servicio AI
 	@echo "$(BLUE)🚀 Iniciando servicio AI...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-service"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker start ai-service"
 	@echo "$(GREEN)✓ Servicio iniciado$(NC)"
 
 .PHONY: prod-logs-full
 prod-logs-full: ## Ver logs completos del servicio AI
 	@echo "$(BLUE)📋 Logs completos del servicio AI...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker logs ai-service"
 
 .PHONY: prod-logs-postgres
 prod-logs-postgres: ## Ver logs de PostgreSQL
 	@echo "$(BLUE)📋 Logs de PostgreSQL...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-postgres --tail=30"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker logs ai-postgres --tail=30"
 
 .PHONY: prod-reset-postgres
 prod-reset-postgres: ## Limpiar y reinicializar PostgreSQL
 	@echo "$(RED)⚠️  Limpiando datos de PostgreSQL (versión incompatible)...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose stop"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker rm ai-postgres || true"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S rm -rf $(PROD_PATH)/postgres"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mkdir -p $(PROD_PATH)/postgres"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S chown -R $(PROD_USER):users $(PROD_PATH)/postgres"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S ls -la $(PROD_PATH)/postgres/"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose stop"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker rm ai-postgres || true"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo rm -rf $(PROD_PATH)/postgres"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo mkdir -p $(PROD_PATH)/postgres"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo chown -R $(PROD_USER):users $(PROD_PATH)/postgres"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo ls -la $(PROD_PATH)/postgres/"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose up -d"
 	@echo "$(GREEN)✓ PostgreSQL reinicializado$(NC)"
 
 # =============================================================================
@@ -244,7 +247,7 @@ prod-status: ## Estado completo del sistema en producción
 	@-curl -s http://$(PROD_HOST):3003/status | python3 -m json.tool | head -20
 	@echo ""
 	@echo "$(BLUE)Contenedores:$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '(ai-|postgres|redis|watchtower)' || echo 'No hay contenedores AI corriendo'"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '(ai-|postgres|redis|watchtower)' || echo 'No hay contenedores AI corriendo'"
 	@echo ""
 	@echo "$(BLUE)Base de datos:$(NC)"
 	@$(MAKE) -f Makefile.production prod-check-db --no-print-directory
@@ -252,19 +255,19 @@ prod-status: ## Estado completo del sistema en producción
 .PHONY: prod-check-containers
 prod-check-containers: ## Ver todos los contenedores en el NAS
 	@echo "$(BLUE)🐳 Contenedores en producción:$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' | head -20"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' | head -20"
 
 .PHONY: prod-check-db
 prod-check-db: ## Verificar BD y tablas en producción
 	@echo "$(BLUE)🗄️  Verificando base de datos...$(NC)"
 	@echo -n "Conexión: "
-	@if $(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) pg_isready -U $(PROD_DB_USER) -d $(PROD_DB)" >/dev/null 2>&1; then \
+	@if $(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) pg_isready -U $(PROD_DB_USER) -d $(PROD_DB)" >/dev/null 2>&1; then \
 		echo "$(GREEN)✓ OK$(NC)"; \
 	else \
 		echo "$(RED)✗ ERROR$(NC)"; \
 	fi
 	@echo -n "Tablas financial: "
-	@COUNT=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -t -c \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'financial';\"" 2>/dev/null | tr -d ' '); \
+	@COUNT=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -t -c \"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'financial';\"" 2>/dev/null | tr -d ' '); \
 	echo "$(GREEN)$$COUNT tablas$(NC)"
 
 .PHONY: prod-health
@@ -294,9 +297,9 @@ prod-health: ## Health check completo de producción
 prod-backup: ## Backup de producción con timestamp
 	@echo "$(BLUE)💾 Creando backup de producción...$(NC)"
 	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mkdir -p $(BACKUP_DIR)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) pg_dump -U $(PROD_DB_USER) -d $(PROD_DB) | gzip > /tmp/backup_$$TIMESTAMP.sql.gz"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S mv /tmp/backup_$$TIMESTAMP.sql.gz $(BACKUP_DIR)/"; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo mkdir -p $(BACKUP_DIR)"; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) pg_dump -U $(PROD_DB_USER) -d $(PROD_DB) | gzip > /tmp/backup_$$TIMESTAMP.sql.gz"; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo mv /tmp/backup_$$TIMESTAMP.sql.gz $(BACKUP_DIR)/"; \
 	echo "$(GREEN)✓ Backup creado: backup_$$TIMESTAMP.sql.gz$(NC)"
 
 .PHONY: prod-backup-list
@@ -315,7 +318,7 @@ prod-restore: ## Restaurar backup específico (usar: make prod-restore FILE=back
 	@echo "$(RED)Esto reemplazará TODOS los datos actuales. ¿Continuar? (s/N):$(NC)"
 	@read CONFIRM && [ "$$CONFIRM" = "s" ] || (echo "$(GREEN)Cancelado$(NC)" && exit 1)
 	@echo "$(BLUE)Restaurando...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "gunzip -c $(BACKUP_DIR)/$(FILE) | echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "gunzip -c $(BACKUP_DIR)/$(FILE) | sudo /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)"
 	@echo "$(GREEN)✓ Backup restaurado$(NC)"
 
 # =============================================================================
@@ -353,17 +356,17 @@ prod-restore-from-dev: ## PELIGRO: Restaurar producción con schema de desarroll
 	@echo "$(GREEN)✓ Schema exportado$(NC)"
 	@echo ""
 	@echo "$(BLUE)Paso 3/7: Deteniendo servicios...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stop ai-service"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker stop ai-service"
 	@echo "$(GREEN)✓ Servicios detenidos$(NC)"
 	@echo ""
 	@echo "$(BLUE)Paso 4/7: Recreando base de datos...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d postgres -c 'DROP DATABASE IF EXISTS $(PROD_DB);'"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d postgres -c 'CREATE DATABASE $(PROD_DB) OWNER $(PROD_DB_USER);'"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d postgres -c 'DROP DATABASE IF EXISTS $(PROD_DB);'"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d postgres -c 'CREATE DATABASE $(PROD_DB) OWNER $(PROD_DB_USER);'"
 	@echo "$(GREEN)✓ Base de datos recreada$(NC)"
 	@echo ""
 	@echo "$(BLUE)Paso 5/7: Aplicando schema de desarrollo...$(NC)"
 	@$(SCP) /tmp/dev-schema-restore.sql $(PROD_USER)@$(PROD_HOST):/tmp/
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cat /tmp/dev-schema-restore.sql | echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cat /tmp/dev-schema-restore.sql | sudo /usr/local/bin/docker exec -i $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB)"
 	@echo "$(GREEN)✓ Schema aplicado$(NC)"
 	@echo ""
 	@echo "$(BLUE)Paso 6/7: Aplicando migraciones pendientes...$(NC)"
@@ -371,7 +374,7 @@ prod-restore-from-dev: ## PELIGRO: Restaurar producción con schema de desarroll
 	@echo "$(GREEN)✓ Schema completo aplicado$(NC)"
 	@echo ""
 	@echo "$(BLUE)Paso 7/7: Reiniciando servicios...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker start ai-service"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker start ai-service"
 	@sleep 10
 	@echo "$(GREEN)✓ Servicios reiniciados$(NC)"
 	@echo ""
@@ -397,7 +400,7 @@ test-auth: ## Test authentication (SSH and sudo)
 	@SSHPASS='$(SSHPASS)' sshpass -e ssh -o StrictHostKeyChecking=no $(PROD_USER)@$(PROD_HOST) "echo '   ✓ SSH connection successful'" || echo "   ✗ SSH failed"
 	@echo ""
 	@echo "3. Testing sudo with password:"
-	@SSHPASS='$(SSHPASS)' sshpass -e ssh -o StrictHostKeyChecking=no $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S echo '   ✓ Sudo authentication successful'" || echo "   ✗ Sudo failed"
+	@SSHPASS='$(SSHPASS)' sshpass -e ssh -o StrictHostKeyChecking=no $(PROD_USER)@$(PROD_HOST) "sudo echo '   ✓ Sudo authentication successful'" || echo "   ✗ Sudo failed"
 
 # =============================================================================
 # 🔑 COMANDOS DE PRODUCCIÓN - Authentication Management
@@ -406,7 +409,7 @@ test-auth: ## Test authentication (SSH and sudo)
 .PHONY: prod-auth-create-admin
 prod-auth-create-admin: ## Crear usuario admin (admin@ai-service.prod / admin123)
 	@echo "$(BLUE)👤 Creating admin user in production...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"INSERT INTO users (email, password_hash, full_name, role) VALUES ('admin@ai-service.prod', '\\\$$2b\\\$$10\\\$$8YzH7X1vKpFdKjb8rqOAOe8uEpZ4UjQn9mGxK7bgQqFvI9o1aWVKq', 'Admin User', 'admin') ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;\" 2>/dev/null" && \
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"INSERT INTO users (email, password_hash, full_name, role) VALUES ('admin@ai-service.prod', '\\\$$2b\\\$$10\\\$$8YzH7X1vKpFdKjb8rqOAOe8uEpZ4UjQn9mGxK7bgQqFvI9o1aWVKq', 'Admin User', 'admin') ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;\" 2>/dev/null" && \
 	echo "$(GREEN)✅ Admin user created/updated$(NC)" && \
 	echo "📧 Email: admin@ai-service.prod" && \
 	echo "🔑 Password: admin123" || \
@@ -415,20 +418,20 @@ prod-auth-create-admin: ## Crear usuario admin (admin@ai-service.prod / admin123
 .PHONY: prod-auth-list-users
 prod-auth-list-users: ## Listar todos los usuarios en producción
 	@echo "$(BLUE)📋 Listing production users...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"SELECT email, full_name, role, is_active, created_at FROM users ORDER BY created_at DESC;\" 2>/dev/null" || \
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"SELECT email, full_name, role, is_active, created_at FROM users ORDER BY created_at DESC;\" 2>/dev/null" || \
 	echo "$(RED)❌ Could not list users. Check if auth tables exist.$(NC)"
 
 .PHONY: prod-auth-reset-attempts
 prod-auth-reset-attempts: ## Limpiar todos los intentos de login en producción
 	@echo "$(YELLOW)🔓 Resetting login attempts in production...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"DELETE FROM login_attempts;\" 2>/dev/null" && \
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"DELETE FROM login_attempts;\" 2>/dev/null" && \
 	echo "$(GREEN)✅ Login attempts cleared$(NC)" || \
 	echo "$(RED)❌ Could not reset attempts. Check if auth tables exist.$(NC)"
 
 .PHONY: prod-auth-check-attempts
 prod-auth-check-attempts: ## Ver intentos recientes de login en producción
 	@echo "$(BLUE)🔍 Checking recent login attempts in production...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"SELECT email, ip_address, success, attempted_at FROM login_attempts ORDER BY attempted_at DESC LIMIT 20;\" 2>/dev/null" || \
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"SELECT email, ip_address, success, attempted_at FROM login_attempts ORDER BY attempted_at DESC LIMIT 20;\" 2>/dev/null" || \
 	echo "$(RED)❌ Could not check attempts. Check if auth tables exist.$(NC)"
 
 .PHONY: prod-auth-reset-password
@@ -446,14 +449,14 @@ prod-auth-reset-password: ## Resetear contraseña de usuario en producción (int
 		echo "$(RED)❌ Failed to generate password hash$(NC)"; \
 		exit 1; \
 	fi; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"UPDATE users SET password_hash = '$$HASH' WHERE email = '$$email' RETURNING email;\" 2>/dev/null" | grep -q "1 row" && \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"UPDATE users SET password_hash = '$$HASH' WHERE email = '$$email' RETURNING email;\" 2>/dev/null" | grep -q "1 row" && \
 	echo "$(GREEN)✅ Password updated for $$email$(NC)" || \
 	echo "$(RED)❌ User not found or update failed$(NC)"
 
 .PHONY: prod-auth-check-tables
 prod-auth-check-tables: ## Verificar si existen las tablas de autenticación
 	@echo "$(BLUE)🔍 Checking auth tables in production...$(NC)"
-	@TABLES=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -t -c \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('users', 'refresh_tokens', 'login_attempts');\" 2>/dev/null" | tr -d ' \n'); \
+	@TABLES=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -t -c \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('users', 'refresh_tokens', 'login_attempts');\" 2>/dev/null" | tr -d ' \n'); \
 	if [ -z "$$TABLES" ]; then \
 		echo "$(RED)❌ Auth tables not found$(NC)"; \
 		echo "$(YELLOW)Run 'make prod-sql-file FILE=migrations/006-minimal-auth-tables.sql' to create them$(NC)"; \
