@@ -29,6 +29,7 @@ import financialRoutes from './routes/financial';
 import versionRoutes from './routes/version';
 import telegramRoutes from './routes/telegram';
 import documentRoutes from './routes/documents';
+import { createCryptoRoutes } from './routes/crypto.routes';
 import realEstateRoutes from './routes/real-estate';
 import { logger } from './utils/log';
 import { db } from './services/database';
@@ -248,6 +249,10 @@ app.use('/api', authMiddleware, flowGen);
 app.use('/api', authMiddleware, flowUpdate);
 app.use('/api', authMiddleware, flowTest);
 app.use('/api/financial', authMiddleware, financialRoutes);
+
+const cryptoRoutes = createCryptoRoutes(db.pool);
+
+app.use('/api', authMiddleware, cryptoRoutes);
 app.use('/api/real-estate', authMiddleware, realEstateRoutes);
 app.use('/api', authMiddleware, versionRoutes);
 app.use('/api/telegram', authMiddleware, telegramRoutes);
