@@ -30,6 +30,7 @@ npm run dev
 | **[TELEGRAM_SLACK_INTEGRATION.md](./TELEGRAM_SLACK_INTEGRATION.md)** | 📡 Documentación técnica de integraciones |
 | **[INFRASTRUCTURE.md](./INFRASTRUCTURE.md)** | 🏗️ Infraestructura Synology + Cloudflare |
 | **[.env.example](./.env.example)** | ⚙️ Variables de entorno requeridas |
+| **[INSTALLATION_GUIDE.md](./docs/INSTALLATION_GUIDE.md)** | 🚀 Guía rápida de instalación |
 
 ---
 
@@ -153,6 +154,7 @@ open http://localhost:3000/dashboard
 - **Dashboard interactivo** en tiempo real
 - **Reportes empresariales** automáticos
 - **Base crypto-ready** (Bitcoin, Ethereum)
+- **Sincronización con exchanges** mediante `/api/crypto/sync`
 
 ### **📡 Comunicación Total**
 - **Telegram Bot** con 8 comandos
