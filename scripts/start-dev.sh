@@ -59,7 +59,6 @@ REDIS_PASSWORD=redis123
 JWT_SECRET=dev-jwt-secret-key-change-in-production
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
-AUTH_BYPASS=false
 ALLOW_REGISTRATION=false
 
 # Security Configuration
@@ -136,11 +135,11 @@ echo -e "\n${GREEN}✅ All services started successfully!${NC}"
 echo -e "\n📊 Service Status:"
 $DOCKER_COMPOSE ps
 
-# Create default admin user if AUTH_BYPASS is false
-if [ "${AUTH_BYPASS:-false}" == "false" ] && [ "${ALLOW_REGISTRATION:-false}" == "true" ]; then
+# Always create default admin user
+if [ "${ALLOW_REGISTRATION:-false}" == "true" ]; then
     echo -e "\n${YELLOW}👤 Creating default admin user...${NC}"
     sleep 5  # Wait for API to be fully ready
-    
+
     curl -X POST http://localhost:3001/api/auth/register \
         -H "Content-Type: application/json" \
         -d '{

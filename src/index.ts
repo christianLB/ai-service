@@ -12,6 +12,11 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
+const defaultJwt = 'your-secret-key-change-in-production';
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === defaultJwt) {
+  console.warn('⚠️  JWT_SECRET is using the default value. Please change it in production.');
+}
+
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';

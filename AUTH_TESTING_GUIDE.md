@@ -5,7 +5,6 @@
 ✅ **Completado:**
 - Migraciones de base de datos aplicadas
 - Usuario admin creado (`admin@ai-service.local` / `admin123`)
-- AUTH_BYPASS activado para desarrollo
 - Frontend compilado y corriendo en `http://localhost:5173/`
 
 ## 🚀 Cómo Probar
@@ -68,25 +67,18 @@ node test-auth.js
 
 ## 🔧 Configuración
 
-### Desarrollo (AUTH_BYPASS activado)
+### Desarrollo
 
 En `.env.local`:
 ```env
 NODE_ENV=development
-AUTH_BYPASS=true
 ```
-
-Con AUTH_BYPASS activado:
-- Las rutas siguen protegidas pero aceptan cualquier token
-- Se asigna automáticamente un usuario admin
-- Útil para desarrollo sin necesidad de login
 
 ### Producción
 
 En `.env.production`:
 ```env
 NODE_ENV=production
-AUTH_BYPASS=false
 JWT_SECRET=[generar con: openssl rand -base64 32]
 ```
 

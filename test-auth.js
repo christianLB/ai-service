@@ -101,11 +101,6 @@ async function testAuth() {
   console.log('\n✅ Authentication tests completed!');
 }
 
-// Check if auth bypass is enabled
-console.log('📋 Checking AUTH_BYPASS status...');
-if (process.env.AUTH_BYPASS === 'true') {
-  console.log('⚠️  AUTH_BYPASS is enabled - authentication might be bypassed');
-}
 
 // Run tests
 testAuth();

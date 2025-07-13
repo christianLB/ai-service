@@ -13,16 +13,6 @@ export interface AuthRequest extends Request {
 export const authMiddlewareWrapper = (middleware: any) => middleware as any;
 
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): void {
-  // Development bypass
-  if (process.env.NODE_ENV === 'development' && process.env.AUTH_BYPASS === 'true') {
-    req.user = {
-      userId: '00000000-0000-0000-0000-000000000001',
-      email: 'dev@local',
-      role: 'admin'
-    };
-    next();
-    return;
-  }
 
   // Get token from header
   const authHeader = req.headers.authorization;
@@ -37,7 +27,17 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   try {
     // Verify token
     const decoded = jwt.verify(token, jwtSecret) as any;
-    
+
+    if (decoded.type !== 'access') {
+      res.status(401).json({ error: 'Invalid token type' });
+      return;
+    }
+
+    if (!decoded.userId || !decoded.email || !decoded.role) {
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
+
     // Add user info to request
     req.user = {
       userId: decoded.userId,

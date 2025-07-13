@@ -93,7 +93,7 @@ services:
       
       # Authentication
       JWT_SECRET: ${JWT_SECRET:-ultra_secure_production_jwt_secret_2025_min_32_chars}
-      # AUTH_BYPASS not set - defaults to false for production security
+      # AUTH_BYPASS removed - real authentication required
       
       # Metrics
       ENABLE_METRICS: "true"
