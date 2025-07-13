@@ -175,12 +175,14 @@ export class AuthService {
   }
 
   private generateAccessToken(user: any): string {
+    console.log('Generating access token for user:', user);
     const payload = {
       userId: user.id,
       email: user.email,
       role: user.role,
       type: 'access'
     };
+    console.log('Token payload:', payload);
 
     return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn } as any);
   }

@@ -11,14 +11,6 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3001
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=${POSTGRES_DB:-ai_service_dev}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis123}
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-development}
@@ -34,7 +26,7 @@ services:
       - ./src:/app/src:ro
       - ./migrations:/app/migrations:ro
       - ./.env.local:/app/.env.local:ro
-      - ./documents:/app/documents
+      - ./data/documents:/app/documents:rw
       - ./logs:/app/logs
 
   # Frontend Service (Development)

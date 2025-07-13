@@ -149,6 +149,7 @@ export function createAuthRoutes(pool: Pool): Router {
         return;
       }
 
+      console.log('Getting user with ID:', req.user.userId);
       const user = await authService.getCurrentUser(req.user.userId);
       res.json({
         id: user.id,
@@ -160,6 +161,7 @@ export function createAuthRoutes(pool: Pool): Router {
       return;
     } catch (error) {
       console.error('Get user error:', error);
+      console.error('User ID was:', req.user?.userId);
       res.status(500).json({ error: 'Failed to get user information' });
       return;
     }
