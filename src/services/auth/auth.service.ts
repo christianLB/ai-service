@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 import { Pool } from 'pg';
 import { config } from '../../config';
 
@@ -32,6 +33,29 @@ export class AuthService {
     this.jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
     this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '15m';
     this.refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private parseDuration(duration: string): number {
+    const match = duration.match(/^(\d+)([smhd])$/);
+    if (!match) return 0;
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    switch (unit) {
+      case 's':
+        return value * 1000;
+      case 'm':
+        return value * 60 * 1000;
+      case 'h':
+        return value * 60 * 60 * 1000;
+      case 'd':
+        return value * 24 * 60 * 60 * 1000;
+      default:
+        return 0;
+    }
   }
 
   async login(credentials: LoginCredentials): Promise<AuthTokens> {
@@ -77,7 +101,7 @@ export class AuthService {
 
   async logout(userId: string, refreshToken: string): Promise<void> {
     // Revoke refresh token
-    const tokenHash = await bcrypt.hash(refreshToken, 10);
+    const tokenHash = this.hashToken(refreshToken);
     await this.pool.query(
       'UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND token_hash = $2',
       [userId, tokenHash]
@@ -90,7 +114,7 @@ export class AuthService {
     const userId = decoded.userId;
 
     // Check if token exists and is not revoked
-    const tokenHash = await bcrypt.hash(refreshToken, 10);
+    const tokenHash = this.hashToken(refreshToken);
     const tokenQuery = `
       SELECT * FROM refresh_tokens
       WHERE user_id = $1 AND token_hash = $2 AND revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP
@@ -154,7 +178,8 @@ export class AuthService {
     const payload = {
       userId: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      type: 'access'
     };
 
     return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn } as any);
@@ -165,9 +190,8 @@ export class AuthService {
     const token = jwt.sign(payload, this.jwtSecret, { expiresIn: this.refreshTokenExpiresIn } as any);
     
     // Store token hash in database
-    const tokenHash = await bcrypt.hash(token, 10);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    const tokenHash = this.hashToken(token);
+    const expiresAt = new Date(Date.now() + this.parseDuration(this.refreshTokenExpiresIn));
 
     await this.pool.query(
       'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
@@ -177,17 +201,5 @@ export class AuthService {
     return token;
   }
 
-  // Development bypass method
-  async getDevUser(): Promise<User | null> {
-    if (process.env.NODE_ENV === 'development' && process.env.AUTH_BYPASS === 'true') {
-      return {
-        id: '00000000-0000-0000-0000-000000000001',
-        email: 'dev@local',
-        full_name: 'Development User',
-        role: 'admin',
-        is_active: true
-      };
-    }
-    return null;
-  }
+  // AUTH_BYPASS removed - development now requires a real user
 }

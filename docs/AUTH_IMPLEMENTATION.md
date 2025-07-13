@@ -162,14 +162,12 @@ Content-Security-Policy: [política estricta]
 ### Desarrollo (.env.local)
 ```env
 NODE_ENV=development
-AUTH_BYPASS=true
 JWT_SECRET=development-secret
 ```
 
 ### Producción (.env.production)
 ```env
 NODE_ENV=production
-AUTH_BYPASS=false
 JWT_SECRET=[32+ caracteres aleatorios]
 ALLOW_REGISTRATION=false
 CORS_ORIGIN=https://your-domain.com
@@ -217,7 +215,6 @@ CORS_ORIGIN=https://your-domain.com
 - [ ] Cambiar contraseña del usuario admin por defecto
 - [ ] Generar JWT_SECRET fuerte (min 32 caracteres)
 - [ ] Configurar CORS_ORIGIN con dominio específico
-- [ ] Deshabilitar AUTH_BYPASS
 - [ ] Configurar HTTPS en Nginx
 - [ ] Habilitar HSTS headers
 - [ ] Configurar firewall

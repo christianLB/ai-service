@@ -1,5 +1,4 @@
--- Minimal auth tables for production (no real users)
--- This allows the system to work with AUTH_BYPASS=true
+-- Minimal auth tables for production
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
