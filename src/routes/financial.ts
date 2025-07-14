@@ -22,11 +22,12 @@ let transactionMatchingService: TransactionMatchingService;
 // Initialize services with config
 const initializeServices = () => {
   if (!goCardlessService) {
+    // Initialize with empty config - credentials will be loaded from database
     const config = {
-      secretId: process.env.GO_SECRET_ID || '',
-      secretKey: process.env.GO_SECRET_KEY || '',
+      secretId: '',
+      secretKey: '',
       baseUrl: 'https://bankaccountdata.gocardless.com/api/v2',
-      redirectUri: process.env.GO_REDIRECT_URI || 'https://localhost:3000/callback'
+      redirectUri: ''
     };
 
     // Validate required environment variables
@@ -748,22 +749,37 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
   try {
     initializeServices();
     
-    // Test database connection
-    await databaseService.query('SELECT NOW()');
-    
-    // Test GoCardless authentication
-    await goCardlessService.authenticate();
-    
-    res.json({
+    const healthStatus: any = {
       success: true,
       status: 'healthy',
-      services: {
-        database: 'connected',
-        gocardless: 'authenticated',
-        scheduler: schedulerService.isActive() ? 'running' : 'stopped'
-      },
+      services: {},
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    // Test database connection
+    try {
+      await databaseService.query('SELECT NOW()');
+      healthStatus.services.database = 'connected';
+    } catch (dbError) {
+      healthStatus.services.database = 'disconnected';
+      healthStatus.status = 'degraded';
+    }
+    
+    // Check GoCardless configuration (without authentication)
+    try {
+      const hasCredentials = await goCardlessService.hasCredentials();
+      healthStatus.services.gocardless = hasCredentials ? 'configured' : 'not_configured';
+    } catch (gcError) {
+      healthStatus.services.gocardless = 'error';
+      healthStatus.status = 'degraded';
+    }
+    
+    // Check scheduler status
+    healthStatus.services.scheduler = schedulerService.isActive() ? 'running' : 'stopped';
+    
+    // Return appropriate status code based on health
+    const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
+    res.status(statusCode).json(healthStatus);
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(503).json({
@@ -771,6 +787,53 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
       status: 'unhealthy',
       error: error instanceof Error ? error.message : 'Health check failed',
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * POST /api/financial/test-gocardless
+ * Test GoCardless authentication and connectivity
+ */
+router.post('/test-gocardless', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    // Check if credentials are configured
+    const hasCredentials = await goCardlessService.hasCredentials();
+    if (!hasCredentials) {
+      res.status(400).json({
+        success: false,
+        error: 'GoCardless credentials not configured',
+        message: 'Please configure GoCardless credentials in the integration settings'
+      });
+      return;
+    }
+    
+    // Attempt authentication
+    try {
+      await goCardlessService.authenticate();
+      res.json({
+        success: true,
+        message: 'GoCardless authentication successful',
+        status: 'connected',
+        timestamp: new Date().toISOString()
+      });
+    } catch (authError) {
+      res.status(401).json({
+        success: false,
+        error: 'GoCardless authentication failed',
+        message: authError instanceof Error ? authError.message : 'Authentication failed',
+        status: 'authentication_error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('GoCardless test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to test GoCardless connection',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

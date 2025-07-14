@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Card, Alert, Form, Input, Button, message } from 'antd';
-import cryptoService, { CryptoConfig } from '../services/cryptoService';
+import React, { useEffect } from 'react';
+import { Card, Form, Input, Button, message } from 'antd';
+import type { CryptoConfig } from '../services/cryptoService';
+import cryptoService from '../services/cryptoService';
 
 interface FormValues {
   cryptoComApiKey?: string;

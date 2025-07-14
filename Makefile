@@ -116,6 +116,50 @@ fix-db: ## 🔧 Arreglar vistas y objetos faltantes en la base de datos
 check-db: ## 🏥 Verificar salud de la base de datos
 	@$(MAKE) -f Makefile.development dev-check-db-health
 
+.PHONY: dev-redeploy-frontend
+dev-redeploy-frontend: ## 🔄 Redesplegar frontend con última versión
+	@$(MAKE) -f Makefile.development dev-redeploy-frontend
+
+.PHONY: frontend-build
+frontend-build: ## 🔨 Compilar frontend
+	@$(MAKE) -f Makefile.development dev-build-frontend
+
+.PHONY: build-frontend
+build-frontend: ## 🔨 Compilar frontend (alias)
+	@$(MAKE) -f Makefile.development dev-build-frontend
+
+.PHONY: 811
+811: ## 🆘 Guía rápida de comandos de desarrollo
+	@$(MAKE) -f Makefile.development 811
+
+.PHONY: dev-up
+dev-up: ## 🚀 Levantar ambiente de desarrollo
+	@$(MAKE) -f Makefile.development dev-up
+
+.PHONY: dev-down
+dev-down: ## 🛑 Detener ambiente de desarrollo
+	@$(MAKE) -f Makefile.development dev-down
+
+.PHONY: dev-status
+dev-status: ## 📊 Estado del desarrollo local
+	@$(MAKE) -f Makefile.development dev-status
+
+.PHONY: dev-logs
+dev-logs: ## 📋 Ver logs del servicio local
+	@$(MAKE) -f Makefile.development dev-logs
+
+.PHONY: dev-restart
+dev-restart: ## 🔄 Reiniciar servicios de desarrollo
+	@$(MAKE) -f Makefile.development dev-restart
+
+.PHONY: dev-shell
+dev-shell: ## 💻 Abrir shell en contenedor
+	@$(MAKE) -f Makefile.development dev-shell
+
+.PHONY: dev-db-shell
+dev-db-shell: ## 🗄️ Abrir psql en desarrollo
+	@$(MAKE) -f Makefile.development dev-db-shell
+
 # =============================================================================
 # 🔐 COMANDOS DE AUTENTICACIÓN (atajos rápidos)
 # =============================================================================
@@ -235,7 +279,6 @@ dev: ## Ver estado de desarrollo
 st: ## Status ultra-rápido
 	@$(MAKE) -f Makefile.quick st
 
-.PHONY: 911
 911: ## Guía de emergencia
 	@$(MAKE) -f Makefile.quick 911
 
@@ -283,6 +326,210 @@ secrets-validate: ## Validar configuración de secrets
 metrics: ## Ver métricas del sistema
 	@$(MAKE) -f Makefile.monitoring metrics
 
+# =============================================================================
+# 🚀 COMANDOS DE PRODUCCIÓN (operaciones críticas)
+# =============================================================================
+
+.PHONY: prod-sql
+prod-sql: ## Ejecutar SQL directo en producción (uso: make prod-sql SQL="SELECT 1")
+	@$(MAKE) -f Makefile.production prod-sql
+
+.PHONY: prod-sql-file
+prod-sql-file: ## Ejecutar archivo SQL en producción (uso: make prod-sql-file FILE=script.sql)
+	@$(MAKE) -f Makefile.production prod-sql-file
+
+.PHONY: prod-health
+prod-health: ## Verificación completa de salud en producción
+	@$(MAKE) -f Makefile.production prod-health
+
+.PHONY: prod-backup-list
+prod-backup-list: ## Listar backups disponibles en producción
+	@$(MAKE) -f Makefile.production prod-backup-list
+
+.PHONY: prod-restore
+prod-restore: ## Restaurar desde backup específico
+	@$(MAKE) -f Makefile.production prod-restore
+
+.PHONY: prod-logs
+prod-logs: ## 📋 Ver logs de producción
+	@$(MAKE) -f Makefile.production prod-logs
+
+.PHONY: prod-status
+prod-status: ## 📊 Estado de producción
+	@$(MAKE) -f Makefile.production prod-status
+
+.PHONY: prod-ps
+prod-ps: ## 🐳 Ver contenedores en producción
+	@$(MAKE) -f Makefile.production prod-ps
+
+.PHONY: prod-update-config
+prod-update-config: ## 🔧 Actualizar configuración de producción
+	@$(MAKE) -f Makefile.production prod-update-config
+
+# =============================================================================
+# 📊 COMANDOS DE MONITOREO Y LOGS
+# =============================================================================
+
+.PHONY: logs-errors
+logs-errors: ## Mostrar solo errores y warnings
+	@$(MAKE) -f Makefile.monitoring logs-errors
+
+.PHONY: logs-tail
+logs-tail: ## 📜 Ver logs en tiempo real
+	@$(MAKE) -f Makefile.monitoring logs-tail
+
+.PHONY: logs-analyze
+logs-analyze: ## Analizar patrones en logs
+	@$(MAKE) -f Makefile.monitoring logs-analyze
+
+.PHONY: metrics
+metrics: ## 📈 Ver métricas del sistema
+	@$(MAKE) -f Makefile.monitoring metrics
+
+.PHONY: performance-check
+performance-check: ## Análisis detallado de performance
+	@$(MAKE) -f Makefile.monitoring performance-check
+
+.PHONY: resource-usage
+resource-usage: ## Ver uso detallado de recursos
+	@$(MAKE) -f Makefile.monitoring resource-usage
+
+.PHONY: alerts-check
+alerts-check: ## Verificar condiciones de alerta
+	@$(MAKE) -f Makefile.monitoring alerts-check
+
+.PHONY: monitor-start
+monitor-start: ## Iniciar monitor ligero local
+	@$(MAKE) -f Makefile.monitoring monitor-start
+
+# =============================================================================
+# 🔒 COMANDOS DE SEGURIDAD
+# =============================================================================
+
+.PHONY: env-check
+env-check: ## 🔍 Verificar variables de entorno
+	@$(MAKE) -f Makefile.security env-check
+
+.PHONY: secrets-audit
+secrets-audit: ## 🔐 Auditar todos los secretos
+	@$(MAKE) -f Makefile.security secrets-audit
+
+.PHONY: security-scan
+security-scan: ## 🛡️ Escaneo de seguridad
+	@$(MAKE) -f Makefile.security security-scan
+
+.PHONY: permissions-check
+permissions-check: ## 📁 Verificar permisos de archivos
+	@$(MAKE) -f Makefile.security permissions-check
+
+# =============================================================================
+# 💰 COMANDOS DE DATOS FINANCIEROS (adicionales)
+# =============================================================================
+
+.PHONY: sync-accounts
+sync-accounts: ## 🏦 Sincronizar solo cuentas desde producción
+	@$(MAKE) -f Makefile.financial-sync sync-accounts
+
+.PHONY: sync-transactions
+sync-transactions: ## 💸 Sincronizar solo transacciones desde producción
+	@$(MAKE) -f Makefile.financial-sync sync-transactions
+
+.PHONY: financial-backup-dev
+financial-backup-dev: ## 💾 Backup de datos financieros en desarrollo
+	@$(MAKE) -f Makefile.financial-sync financial-backup-dev
+
+.PHONY: financial-clean
+financial-clean: ## 🧹 Limpiar archivos temporales de sincronización
+	@$(MAKE) -f Makefile.financial-sync financial-clean
+
+# =============================================================================
+# 🔄 COMANDOS DE SCHEMA (gestión avanzada)
+# =============================================================================
+
+.PHONY: schema-compare
+schema-compare: ## 🔍 Comparar schemas entre ambientes
+	@$(MAKE) -f Makefile.schema schema-compare
+
+.PHONY: schema-validate
+schema-validate: ## ✅ Validar integridad del schema
+	@$(MAKE) -f Makefile.schema schema-validate
+
+.PHONY: schema-drift-check
+schema-drift-check: ## 🚨 Verificar drift del schema
+	@$(MAKE) -f Makefile.schema schema-drift-check
+
+.PHONY: schema-export
+schema-export: ## 📤 Exportar schema actual
+	@$(MAKE) -f Makefile.schema schema-export
+
+# =============================================================================
+# 🛠️ COMANDOS DE DESARROLLO (utilidades adicionales)
+# =============================================================================
+
+.PHONY: dev-reset-db
+dev-reset-db: ## 🔄 Reset BD desarrollo sin confirmación
+	@$(MAKE) -f Makefile.development dev-reset-db
+
+.PHONY: dev-seed
+dev-seed: ## 🌱 Cargar datos de prueba
+	@$(MAKE) -f Makefile.development dev-seed
+
+.PHONY: dev-test
+dev-test: ## 🧪 Ejecutar tests
+	@$(MAKE) -f Makefile.development dev-test
+
+.PHONY: dev-lint
+dev-lint: ## 🔍 Ejecutar linter
+	@$(MAKE) -f Makefile.development dev-lint
+
+.PHONY: dev-clean
+dev-clean: ## 🧹 Limpiar archivos temporales y cache
+	@$(MAKE) -f Makefile.development dev-clean
+
+.PHONY: dev-shell
+dev-shell: ## 💻 Abrir shell en contenedor de desarrollo
+	@$(MAKE) -f Makefile.development dev-shell
+
+# =============================================================================
+# 🔐 COMANDOS DE SEGURIDAD (adicionales)
+# =============================================================================
+
+.PHONY: env-check
+env-check: ## 🔍 Verificar variables de entorno
+	@$(MAKE) -f Makefile.security env-check
+
+.PHONY: secrets-audit
+secrets-audit: ## 🔒 Auditar todos los secrets
+	@$(MAKE) -f Makefile.security secrets-audit
+
+.PHONY: security-scan
+security-scan: ## 🛡️ Ejecutar scanner de seguridad
+	@$(MAKE) -f Makefile.security security-scan
+
+.PHONY: permissions-check
+permissions-check: ## 📁 Verificar permisos de archivos
+	@$(MAKE) -f Makefile.security permissions-check
+
+# =============================================================================
+# 🚢 COMANDOS DE DEPLOYMENT (CI/CD)
+# =============================================================================
+
+.PHONY: prod-build-image
+prod-build-image: ## 🏗️ Construir imagen Docker para producción
+	@$(MAKE) -f Makefile.production prod-build-image
+
+.PHONY: prod-deploy-image
+prod-deploy-image: ## 🚀 Desplegar imagen a producción
+	@$(MAKE) -f Makefile.production prod-deploy-image
+
+.PHONY: watchtower-setup
+watchtower-setup: ## 🤖 Configurar Watchtower completo
+	@$(MAKE) -f Makefile.watchtower watchtower-setup
+
+.PHONY: watchtower-logs
+watchtower-logs: ## 📋 Ver logs de Watchtower
+	@$(MAKE) -f Makefile.watchtower watchtower-logs
+
 .PHONY: help
 help: ## Mostrar ayuda principal
 	@echo "$(BLUE)╔══════════════════════════════════════════════════════════════╗$(NC)"
@@ -325,8 +572,8 @@ status: ## Verifica el estado del servicio en producción
 status-simple: ## Estado simple (solo status field)
 	@curl -s http://$(NAS_HOST):3003/status | jq -r '.status'
 
-.PHONY: check-db
-check-db: ## Verifica conexión a la base de datos
+.PHONY: check-db-prod
+check-db-prod: ## Verifica conexión a la base de datos en producción
 	@echo "$(BLUE)Verificando conexión a PostgreSQL...$(NC)"
 	@$(REMOTE_EXEC) docker exec $(CONTAINER_NAME) pg_isready -U $(DB_USER) -d $(DB_NAME)
 
@@ -591,32 +838,7 @@ deploy-frontend-clean: ## Deploy frontend con limpieza completa de caché
 	@echo "  3. Selecciona 'Vaciar caché y volver a cargar'"
 	@$(MAKE) verify-frontend-deploy
 
-.PHONY: verify-html-update
-verify-html-update: ## Verifica que el HTML principal se actualizó
-	@echo "$(BLUE)Verificando actualización del HTML...$(NC)"
-	@echo "$(YELLOW)index.html en producción:$(NC)"
-	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cat $(NAS_PATH)/frontend/dist/index.html | grep -E 'script.*src=.*\.js' | head -5"
-	@echo ""
-	@echo "$(YELLOW)Archivos JS actuales:$(NC)"
-	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ls -la $(NAS_PATH)/frontend/dist/assets/*.js 2>/dev/null | tail -5 || echo 'No JS files found'"
-	@echo ""
-	@echo "$(YELLOW)Timestamp del index.html:$(NC)"
-	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "ls -la $(NAS_PATH)/frontend/dist/index.html"
-
-.PHONY: force-frontend-update
-force-frontend-update: ## Fuerza actualización completa del frontend
-	@echo "$(RED)⚠️  FORZANDO ACTUALIZACIÓN COMPLETA$(NC)"
-	@$(MAKE) deploy-frontend-clean
-	@echo ""
-	@echo "$(YELLOW)Verificando resultado...$(NC)"
-	@$(MAKE) verify-html-update
-	@echo ""
-	@echo "$(GREEN)✅ Actualización forzada completada$(NC)"
-	@echo "$(YELLOW)Importante: Limpia el caché de tu navegador$(NC)"
-
-.PHONY: diagnose-frontend
-diagnose-frontend: ## Diagnostica problemas con el frontend
-	@./scripts/diagnose-frontend.sh
+# Duplicates removed - these targets are already defined earlier in the file
 
 .PHONY: deploy
 deploy: ## Deploy completo con backup automático (migración + restart)

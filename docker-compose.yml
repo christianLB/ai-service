@@ -14,6 +14,10 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-development}
+      - VERSION=${VERSION:-dev}
+      - BUILD_DATE=${BUILD_DATE:-2025-07-14}
+      - COMMIT=${COMMIT:-4efbbd869a230b5e51dea7d4e8ed3cc9425c26ec}
+      - COMMIT_SHORT=${COMMIT_SHORT:-4efbbd8}
     networks:
       - ai-service-network
     depends_on:

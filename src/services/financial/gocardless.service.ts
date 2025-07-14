@@ -10,9 +10,13 @@ import {
   Transaction
 } from './types';
 import { FinancialDatabaseService } from './database.service';
+import { integrationConfigService } from '../integrations';
+import { Logger } from '../../utils/logger';
+
+const logger = new Logger('GoCardlessService');
 
 export class GoCardlessService {
-  private api: AxiosInstance;
+  private api: AxiosInstance = null as any;
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
   private db: FinancialDatabaseService;
@@ -25,24 +29,58 @@ export class GoCardlessService {
   ) {
     this.db = database;
     
-    // Check if we're in sandbox mode
-    this.isSandboxMode = process.env.NODE_ENV === 'development' && process.env.GO_SANDBOX_MODE === 'true';
-    this.sandboxInstitutionId = process.env.GO_SANDBOX_TOKEN || 'SANDBOXFINANCE_SFIN0000';
-    
-    if (this.isSandboxMode) {
-      console.log('🧪 GoCardless Service running in SANDBOX MODE');
-      console.log(`🏦 Using sandbox institution: ${this.sandboxInstitutionId}`);
+    // Initialize service with config
+    this.initializeService();
+  }
+
+  private async initializeService(): Promise<void> {
+    try {
+      // Get configuration from integration service
+      const sandboxMode = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'sandbox_mode'
+      });
+      
+      this.isSandboxMode = sandboxMode === 'true';
+      
+      const sandboxToken = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'sandbox_token'
+      });
+      
+      this.sandboxInstitutionId = sandboxToken || 'SANDBOXFINANCE_SFIN0000';
+      
+      if (this.isSandboxMode) {
+        logger.info('🧪 GoCardless Service running in SANDBOX MODE');
+        logger.info(`🏦 Using sandbox institution: ${this.sandboxInstitutionId}`);
+      }
+      
+      const baseUrl = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'base_url'
+      }) || 'https://bankaccountdata.gocardless.com/api/v2';
+      
+      this.api = axios.create({
+        baseURL: baseUrl,
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+    } catch (error) {
+      logger.error('Failed to initialize GoCardless service', error);
+      // Fallback to config passed in constructor
+      this.api = axios.create({
+        baseURL: this.config.baseUrl,
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
     }
     
-    this.api = axios.create({
-      baseURL: config.baseUrl,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
-
     // Request interceptor to add auth token
     this.api.interceptors.request.use(async (config) => {
       await this.ensureValidToken();
@@ -56,7 +94,7 @@ export class GoCardlessService {
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
-        console.error('GoCardless API Error:', {
+        logger.error('GoCardless API Error:', {
           url: error.config?.url,
           method: error.config?.method,
           status: error.response?.status,
@@ -73,9 +111,29 @@ export class GoCardlessService {
 
   async authenticate(): Promise<string> {
     try {
-      const response = await axios.post(`${this.config.baseUrl}/token/new/`, {
-        secret_id: this.config.secretId,
-        secret_key: this.config.secretKey
+      // Get credentials from integration config only
+      const secretId = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_id'
+      });
+      
+      const secretKey = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_key'
+      });
+      
+      if (!secretId || !secretKey) {
+        throw new Error('GoCardless credentials not configured in database');
+      }
+      
+      const baseUrl = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'base_url'
+      }) || 'https://bankaccountdata.gocardless.com/api/v2';
+      
+      const response = await axios.post(`${baseUrl}/token/new/`, {
+        secret_id: secretId,
+        secret_key: secretKey
       });
 
       this.accessToken = response.data.access;
@@ -92,6 +150,11 @@ export class GoCardlessService {
 
   private async ensureValidToken(): Promise<void> {
     if (!this.accessToken || !this.tokenExpiresAt || new Date() >= this.tokenExpiresAt) {
+      // Check if credentials are configured before attempting authentication
+      const hasCredentials = await this.hasCredentials();
+      if (!hasCredentials) {
+        throw new Error('GoCardless credentials not configured');
+      }
       await this.authenticate();
     }
   }
@@ -684,6 +747,25 @@ export class GoCardlessService {
   // ============================================================================
   // UTILITY METHODS
   // ============================================================================
+
+  async hasCredentials(): Promise<boolean> {
+    try {
+      const secretId = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_id'
+      });
+      
+      const secretKey = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_key'
+      });
+      
+      return !!(secretId && secretKey);
+    } catch (error) {
+      logger.error('Failed to check credentials', error);
+      return false;
+    }
+  }
 
   async getAccountStatus(): Promise<FinancialApiResponse<any[]>> {
     try {

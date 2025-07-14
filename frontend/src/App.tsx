@@ -22,6 +22,8 @@ import DocumentDetail from './pages/documents/DocumentDetail';
 import DocumentForm from './pages/documents/DocumentForm';
 import SystemHealth from './pages/SystemHealth';
 import Settings from './pages/Settings';
+import IntegrationSettings from './pages/IntegrationSettings';
+import NotificationSettings from './pages/NotificationSettings';
 
 import './App.css';
 
@@ -82,6 +84,8 @@ const App: React.FC = () => {
               {/* System Routes */}
               <Route path="health" element={<SystemHealth />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="integrations" element={<IntegrationSettings />} />
+              <Route path="notifications" element={<NotificationSettings />} />
               
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

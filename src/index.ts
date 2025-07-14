@@ -31,6 +31,7 @@ import telegramRoutes from './routes/telegram';
 import documentRoutes from './routes/documents';
 // import { createCryptoRoutes } from './routes/crypto.routes';
 import realEstateRoutes from './routes/real-estate';
+import integrationRoutes from './routes/integrations';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
@@ -41,6 +42,9 @@ import { neuralOrchestrator } from './services/neural-orchestrator';
 import { forensicLogger, showForensicLogs } from './utils/forensic-logger';
 
 const app = express();
+
+// Trust proxy for rate limiting and forwarded headers
+app.set('trust proxy', true);
 
 // Security middleware - Elena's implementation
 app.use(helmet({
@@ -257,6 +261,7 @@ app.use('/api/real-estate', authMiddleware, realEstateRoutes);
 app.use('/api', authMiddleware, versionRoutes);
 app.use('/api/telegram', authMiddleware, telegramRoutes);
 app.use('/api/documents', authMiddleware, documentRoutes);
+app.use('/api/integrations', authMiddleware, integrationRoutes);
 
 // Catch-all route for SPA - serve index.html for any non-API route
 app.get('*', (_req: express.Request, res: express.Response) => {
@@ -328,7 +333,14 @@ app.use('*', (req: express.Request, res: express.Response) => {
       'GET /api/documents/stats/overview',
       'GET /api/documents/files/:filename',
       'GET /api/documents/health',
-      'GET /neural - Neural system detailed status'
+      'GET /neural - Neural system detailed status',
+      'GET /api/integrations/types - List available integration types',
+      'GET /api/integrations/configs - Get all configurations',
+      'GET /api/integrations/configs/:type/:key - Get specific config',
+      'POST /api/integrations/configs - Create/update configuration',
+      'PUT /api/integrations/configs/:type/:key - Update configuration',
+      'DELETE /api/integrations/configs/:type/:key - Delete configuration',
+      'POST /api/integrations/test/:type - Test integration configuration'
     ]
   });
 });

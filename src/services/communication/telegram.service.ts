@@ -7,15 +7,17 @@ import { ClientManagementService } from '../financial/client-management.service'
 import { FinancialReportingService } from '../financial/reporting.service';
 import { logger } from '../../utils/log';
 import { auditCatch } from '../../utils/forensic-logger';
+import { integrationConfigService } from '../integrations';
 
 export class TelegramService {
-  private bot: TelegramBot;
+  private bot: TelegramBot | null = null;
   private config: TelegramConfig;
   private financialService: FinancialDatabaseService;
-  private documentService: TelegramDocumentService;
+  private documentService: TelegramDocumentService | null = null;
   private invoiceService: InvoiceManagementService;
   private clientService: ClientManagementService;
   private reportingService: FinancialReportingService;
+  private isInitialized: boolean = false;
 
   constructor(config: TelegramConfig, financialService: FinancialDatabaseService) {
     this.config = config;
@@ -26,19 +28,42 @@ export class TelegramService {
     this.clientService = new ClientManagementService();
     this.reportingService = new FinancialReportingService(financialService.pool);
     
-    this.bot = new TelegramBot(config.botToken, {
-      polling: false,  // Usaremos webhook
-      webHook: false
-    });
+    // Initialize bot asynchronously
+    this.initializeBot();
+  }
 
-    // Initialize document service
-    this.documentService = new TelegramDocumentService(this.bot);
+  private async initializeBot(): Promise<void> {
+    try {
+      // Get bot token from integration config only
+      const botToken = await integrationConfigService.getConfig({
+        integrationType: 'telegram',
+        configKey: 'bot_token'
+      });
 
-    this.setupCommands();
-    logger.info('Telegram service initialized with document intelligence');
+      if (!botToken) {
+        logger.warn('Telegram bot token not configured in database');
+        return;
+      }
+
+      this.bot = new TelegramBot(botToken, {
+        polling: false,  // Usaremos webhook
+        webHook: false
+      });
+
+      // Initialize document service
+      this.documentService = new TelegramDocumentService(this.bot);
+
+      this.setupCommands();
+      this.isInitialized = true;
+      logger.info('Telegram service initialized with document intelligence');
+    } catch (error) {
+      logger.error('Failed to initialize Telegram bot', error);
+    }
   }
 
   private setupCommands(): void {
+    if (!this.bot) return;
+    
     // Configurar comandos del bot
     this.bot.setMyCommands([
       { command: 'start', description: 'Iniciar el bot' },
@@ -67,9 +92,24 @@ export class TelegramService {
   }
 
   async setWebhook(url: string): Promise<void> {
+    if (!this.bot) {
+      logger.warn('Telegram bot not initialized, cannot set webhook');
+      return;
+    }
+    
     try {
       await this.bot.setWebHook(url);
       logger.info(`Webhook configurado: ${url}`);
+      
+      // Save webhook URL to config
+      await integrationConfigService.setConfig({
+        integrationType: 'telegram',
+        configKey: 'webhook_url',
+        configValue: url,
+        encrypt: false,
+        isGlobal: true,
+        description: 'Telegram webhook URL'
+      });
     } catch (error) {
       logger.error('Error configurando webhook:', error);
       throw error;
@@ -77,12 +117,27 @@ export class TelegramService {
   }
 
   async sendMessage(chatId: string, message: string, options?: any): Promise<void> {
+    if (!this.bot) {
+      logger.warn('Telegram bot not initialized, cannot send message');
+      return;
+    }
+    
     try {
-      await this.bot.sendMessage(chatId, message, {
+      // Get chat ID from config if not provided
+      const targetChatId = chatId || await integrationConfigService.getConfig({
+        integrationType: 'telegram',
+        configKey: 'chat_id'
+      });
+
+      if (!targetChatId) {
+        throw new Error('No chat ID configured');
+      }
+
+      await this.bot.sendMessage(targetChatId, message, {
         parse_mode: 'HTML',
         ...options
       });
-      logger.info(`Mensaje enviado a ${chatId}`);
+      logger.info(`Mensaje enviado a ${targetChatId}`);
     } catch (error) {
       logger.error('Error enviando mensaje:', error);
       throw error;
@@ -90,7 +145,13 @@ export class TelegramService {
   }
 
   async sendAlert(alert: FinancialAlert): Promise<void> {
-    if (!this.config.alertsEnabled) {
+    // Check if alerts are enabled in integration config
+    const alertsEnabled = await integrationConfigService.getConfig({
+      integrationType: 'telegram',
+      configKey: 'alerts_enabled'
+    });
+    
+    if (alertsEnabled === 'false') {
       logger.info('Alertas deshabilitadas, ignorando');
       return;
     }
@@ -99,7 +160,16 @@ export class TelegramService {
     const message = `${emoji} <b>${alert.type.toUpperCase()}</b>\\n\\n${alert.message}\\n\\n<i>Timestamp: ${alert.timestamp.toISOString()}</i>`;
     
     try {
-      await this.sendMessage(this.config.chatId, message);
+      const chatId = await integrationConfigService.getConfig({
+        integrationType: 'telegram',
+        configKey: 'chat_id'
+      });
+      
+      if (!chatId) {
+        throw new Error('No chat ID configured for alerts');
+      }
+      
+      await this.sendMessage(chatId, message);
       logger.info(`Alerta enviada: ${alert.type} - ${alert.priority}`);
     } catch (error) {
       logger.error('Error enviando alerta:', error);
@@ -1483,6 +1553,11 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
 
   // Método para procesar webhook
   async processWebhook(update: any): Promise<void> {
+    if (!this.isInitialized) {
+      logger.warn('Telegram service not initialized, cannot process webhook');
+      return;
+    }
+    
     try {
       if (update.message) {
         const message = update.message;
@@ -1494,7 +1569,11 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
             fileSize: message.document.file_size,
             chatId: message.chat.id
           });
-          await this.documentService.handleDocumentUpload(message);
+          if (this.documentService) {
+            await this.documentService.handleDocumentUpload(message);
+          } else {
+            logger.warn('Document service not initialized');
+          }
           return;
         }
         
@@ -1529,7 +1608,9 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
       const chatId = message.chat.id.toString();
 
       // Answer callback query to remove loading state
-      await this.bot.answerCallbackQuery(callbackQuery.id);
+      if (this.bot) {
+        await this.bot.answerCallbackQuery(callbackQuery.id);
+      }
 
       // Parse callback data
       const [action, ...params] = data.split('_');

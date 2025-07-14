@@ -110,15 +110,40 @@ dev-restart: ## Reiniciar servicios de desarrollo
 
 .PHONY: dev-rebuild
 dev-rebuild: ## Reconstruir imagen de desarrollo
-        @echo "$(BLUE)🏗️  Reconstruyendo imagen...$(NC)"
-        @docker-compose build --no-cache ai-service
-        @echo "$(GREEN)✓ Imagen reconstruida$(NC)"
+	@echo "$(BLUE)🏗️  Reconstruyendo imagen...$(NC)"
+	@docker-compose build --no-cache ai-service
+	@echo "$(GREEN)✓ Imagen reconstruida$(NC)"
 
 .PHONY: dev-build-frontend
 dev-build-frontend: ## Recompilar frontend en desarrollo
-        @echo "$(BLUE)🔧 Compilando frontend...$(NC)"
-        @cd frontend && npm run build
-        @echo "$(GREEN)✓ Frontend compilado$(NC)"
+	@echo "$(BLUE)🔧 Compilando frontend...$(NC)"
+	@cd frontend && npm run build
+	@echo "$(GREEN)✓ Frontend compilado$(NC)"
+
+.PHONY: dev-redeploy-frontend
+dev-redeploy-frontend: ## Redesplegar frontend con última versión
+	@echo "$(BLUE)🔄 Redesplegando frontend con última versión...$(NC)"
+	@echo "$(YELLOW)📊 Obteniendo información de versión...$(NC)"
+	@$(eval COMMIT_HASH := $(shell git log -1 --format='%H'))
+	@$(eval COMMIT_SHORT := $(shell git log -1 --format='%h'))
+	@$(eval BUILD_DATE := $(shell date +%Y-%m-%d))
+	@echo "  Commit: $(COMMIT_SHORT)"
+	@echo "  Fecha: $(BUILD_DATE)"
+	@echo "$(YELLOW)🛑 Deteniendo servicios...$(NC)"
+	@docker compose down
+	@echo "$(YELLOW)📝 Actualizando versiones en docker-compose.yml...$(NC)"
+	@sed -i.bak 's/COMMIT:-[^}]*/COMMIT:-$(COMMIT_HASH)/g' docker-compose.yml
+	@sed -i.bak 's/COMMIT_SHORT:-[^}]*/COMMIT_SHORT:-$(COMMIT_SHORT)/g' docker-compose.yml
+	@sed -i.bak 's/BUILD_DATE:-[^}]*/BUILD_DATE:-$(BUILD_DATE)/g' docker-compose.yml
+	@rm docker-compose.yml.bak
+	@echo "$(YELLOW)🔨 Reconstruyendo frontend sin cache...$(NC)"
+	@docker compose build --no-cache ai-service-frontend
+	@echo "$(YELLOW)🚀 Levantando servicios...$(NC)"
+	@docker compose up -d
+	@echo "$(YELLOW)⏳ Esperando que los servicios inicien...$(NC)"
+	@sleep 10
+	@echo "$(GREEN)✅ Frontend redesplegado con versión $(COMMIT_SHORT)$(NC)"
+	@echo "$(BLUE)📌 Accede a http://localhost:3000$(NC)"
 
 # =============================================================================
 # 🟢 COMANDOS DE DESARROLLO - Authentication Management
@@ -332,26 +357,27 @@ dev-clean: ## Limpiar archivos temporales y cache
 
 .PHONY: dev-install
 dev-install: ## Instalar dependencias
-        @echo "$(BLUE)📦 Instalando dependencias...$(NC)"
-        @npm install
-        @echo "$(GREEN)✓ Dependencias instaladas$(NC)"
+	@echo "$(BLUE)📦 Instalando dependencias...$(NC)"
+	@npm install
+	@echo "$(GREEN)✓ Dependencias instaladas$(NC)"
 
 .PHONY: dev-911 811
 dev-911 811: ## 🆘 Guía rápida de comandos de desarrollo
-        @echo "$(BLUE)╔════════════════════════════════════════════════════╗$(NC)"
-        @echo "$(BLUE)║       COMANDOS CLAVE PARA DESARROLLO LOCAL       ║$(NC)"
-        @echo "$(BLUE)╚════════════════════════════════════════════════════╝$(NC)"
-        @echo ""
-        @echo "$(YELLOW)Acciones frecuentes:$(NC)"
-        @echo "  $(GREEN)make dev-up$(NC)             - Levantar servicios"
-        @echo "  $(GREEN)make dev-rebuild$(NC)        - Reconstruir imagen backend"
-        @echo "  $(GREEN)make dev-build-frontend$(NC) - Recompilar frontend"
-        @echo "  $(GREEN)make dev-status$(NC)         - Ver estado actual"
-        @echo "  $(GREEN)make dev-logs$(NC)           - Ver logs del servicio"
-        @echo "  $(GREEN)make dev-down$(NC)           - Detener todo"
-        @echo ""
-        @echo "$(YELLOW)Para ver todos los comandos:$(NC)"
-        @echo "  $(GREEN)make -f Makefile.development help$(NC)"
+	@echo "$(BLUE)╔════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║       COMANDOS CLAVE PARA DESARROLLO LOCAL       ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Acciones frecuentes:$(NC)"
+	@echo "  $(GREEN)make dev-up$(NC)             - Levantar servicios"
+	@echo "  $(GREEN)make dev-rebuild$(NC)        - Reconstruir imagen backend"
+	@echo "  $(GREEN)make dev-build-frontend$(NC) - Recompilar frontend"
+	@echo "  $(GREEN)make dev-redeploy-frontend$(NC) - Redesplegar frontend con última versión"
+	@echo "  $(GREEN)make dev-status$(NC)         - Ver estado actual"
+	@echo "  $(GREEN)make dev-logs$(NC)           - Ver logs del servicio"
+	@echo "  $(GREEN)make dev-down$(NC)           - Detener todo"
+	@echo ""
+	@echo "$(YELLOW)Para ver todos los comandos:$(NC)"
+	@echo "  $(GREEN)make -f Makefile.development help$(NC)"
 
 # =============================================================================
 # Ayuda
