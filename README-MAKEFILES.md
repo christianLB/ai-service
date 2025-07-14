@@ -14,6 +14,8 @@ make help-all
 
 # 4. En caso de emergencia
 make 911
+# 5. Ayuda de desarrollo
+make 811
 ```
 
 ## 📁 Estructura
@@ -47,6 +49,7 @@ make dev                 # Estado local
 make dev-up              # Levantar servicios
 make dev-reset-db        # Reset BD local
 make dev-test            # Ejecutar tests
+make dev-build-frontend  # Recompilar frontend
 ```
 
 ### Multi-ambiente
@@ -66,6 +69,7 @@ make compare-all         # Todas las comparaciones
 ### Emergencia
 ```bash
 make 911                 # Guía de emergencia
+make 811                 # Ayuda de desarrollo
 make prod-emergency-stop # Detener todo
 make prod-rollback       # Rollback completo
 ```
