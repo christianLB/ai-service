@@ -72,6 +72,20 @@ const migrationConfigs = [
     description: 'GoCardless Sandbox Institution Token',
     encrypt: false
   },
+  {
+    envKey: 'GO_BASE_URL',
+    integrationType: 'gocardless',
+    configKey: 'base_url',
+    description: 'GoCardless API Base URL',
+    encrypt: false
+  },
+  {
+    envKey: 'GO_SANDBOX_BASE_URL',
+    integrationType: 'gocardless',
+    configKey: 'sandbox_base_url',
+    description: 'GoCardless Sandbox API Base URL',
+    encrypt: false
+  },
   
   // OpenAI
   {

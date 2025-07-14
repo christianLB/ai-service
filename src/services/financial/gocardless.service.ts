@@ -22,6 +22,7 @@ export class GoCardlessService {
   private db: FinancialDatabaseService;
   private isSandboxMode: boolean = false;
   private sandboxInstitutionId: string = '';
+  private baseUrl: string = '';
 
   constructor(
     private config: GoCardlessConfig,
@@ -40,43 +41,68 @@ export class GoCardlessService {
         integrationType: 'gocardless',
         configKey: 'sandbox_mode'
       });
-      
+
       this.isSandboxMode = sandboxMode === 'true';
-      
+
       const sandboxToken = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'sandbox_token'
       });
-      
+
       this.sandboxInstitutionId = sandboxToken || 'SANDBOXFINANCE_SFIN0000';
-      
+
       if (this.isSandboxMode) {
         logger.info('🧪 GoCardless Service running in SANDBOX MODE');
         logger.info(`🏦 Using sandbox institution: ${this.sandboxInstitutionId}`);
       }
-      
-      const baseUrl = await integrationConfigService.getConfig({
-        integrationType: 'gocardless',
-        configKey: 'base_url'
-      }) || 'https://bankaccountdata.gocardless.com/api/v2';
-      
+
+      // Determine base URL priority: env var > integration config > constructor config
+      const envBase = this.isSandboxMode
+        ? process.env.GO_SANDBOX_BASE_URL || process.env.GO_BASE_URL
+        : process.env.GO_BASE_URL;
+
+      let baseUrl = envBase || (this.isSandboxMode ? this.config.sandboxBaseUrl : this.config.baseUrl);
+
+      try {
+        const dbBase = await integrationConfigService.getConfig({
+          integrationType: 'gocardless',
+          configKey: 'base_url'
+        });
+        if (dbBase) baseUrl = dbBase;
+      } catch (err) {
+        logger.error('Failed to load GoCardless base URL from config', err);
+      }
+
+      if (!baseUrl) {
+        baseUrl = 'https://bankaccountdata.gocardless.com/api/v2';
+      }
+
+      this.baseUrl = baseUrl;
       this.api = axios.create({
         baseURL: baseUrl,
         timeout: 30000,
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          Accept: 'application/json'
         }
       });
     } catch (error) {
       logger.error('Failed to initialize GoCardless service', error);
       // Fallback to config passed in constructor
+      const envBase = this.isSandboxMode
+        ? process.env.GO_SANDBOX_BASE_URL || process.env.GO_BASE_URL
+        : process.env.GO_BASE_URL;
+      const baseUrl =
+        envBase ||
+        (this.isSandboxMode ? this.config.sandboxBaseUrl : this.config.baseUrl) ||
+        'https://bankaccountdata.gocardless.com/api/v2';
+      this.baseUrl = baseUrl;
       this.api = axios.create({
-        baseURL: this.config.baseUrl,
+        baseURL: baseUrl,
         timeout: 30000,
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          Accept: 'application/json'
         }
       });
     }
@@ -126,11 +152,10 @@ export class GoCardlessService {
         throw new Error('GoCardless credentials not configured in database');
       }
       
-      const baseUrl = await integrationConfigService.getConfig({
-        integrationType: 'gocardless',
-        configKey: 'base_url'
-      }) || 'https://bankaccountdata.gocardless.com/api/v2';
-      
+      const baseUrl = this.baseUrl ||
+        process.env.GO_BASE_URL ||
+        'https://bankaccountdata.gocardless.com/api/v2';
+
       const response = await axios.post(`${baseUrl}/token/new/`, {
         secret_id: secretId,
         secret_key: secretKey
@@ -822,7 +847,7 @@ export class GoCardlessService {
           institutionId: this.sandboxInstitutionId,
           institutionName: 'Sandbox Finance (Mock Bank)',
           environment: process.env.NODE_ENV || 'unknown',
-          baseUrl: this.config.baseUrl,
+          baseUrl: this.baseUrl,
           testAccountsAvailable: this.isSandboxMode
         },
         metadata: {
