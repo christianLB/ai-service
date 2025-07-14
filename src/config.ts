@@ -45,7 +45,8 @@ export const config = {
     redirectUri: process.env.GO_REDIRECT_URI || 'https://localhost:3000/financial/callback',
     sandboxMode: process.env.NODE_ENV === 'development' && process.env.GO_SANDBOX_MODE === 'true',
     sandboxToken: process.env.GO_SANDBOX_TOKEN || 'SANDBOXFINANCE_SFIN0000',
-    baseUrl: process.env.NODE_ENV === 'development' && process.env.GO_SANDBOX_MODE === 'true' 
+    sandboxAccessToken: process.env.GO_SANDBOX_ACCESS_TOKEN,
+    baseUrl: process.env.NODE_ENV === 'development' && process.env.GO_SANDBOX_MODE === 'true'
       ? 'https://bankaccountdata.gocardless.com/api/v2'
       : 'https://bankaccountdata.gocardless.com/api/v2'
   }

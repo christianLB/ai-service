@@ -24,6 +24,7 @@ Set the following environment variables in your `.env.local`:
 # Enable sandbox mode
 GO_SANDBOX_MODE=true
 GO_SANDBOX_TOKEN=SANDBOXFINANCE_SFIN0000
+GO_SANDBOX_ACCESS_TOKEN=
 
 # Your regular GoCardless credentials still required
 GO_SECRET_ID=your_secret_id
