@@ -23,7 +23,8 @@ Set the following environment variables in your `.env.local`:
 ```bash
 # Enable sandbox mode
 GO_SANDBOX_MODE=true
-GO_SANDBOX_TOKEN=SANDBOXFINANCE_SFIN0000
+GO_SANDBOX_INSTITUTION_ID=SANDBOXFINANCE_SFIN0000
+GO_SANDBOX_ACCESS_TOKEN=your_sandbox_access_token
 
 # Your regular GoCardless credentials still required
 GO_SECRET_ID=your_secret_id
@@ -58,6 +59,37 @@ Expected response:
   }
 }
 ```
+
+## 🔑 Using Real Sandbox Credentials
+
+Follow these steps to configure sandbox mode with your actual GoCardless sandbox credentials:
+
+1. Sign up or log in at [GoCardless Sandbox](https://manage-sandbox.gocardless.com).
+2. Create an access token under **Developers → Access tokens**.
+3. Note the `secret_id` and `secret_key` from **Developers → API credentials**.
+4. Update your `.env.local` with the credentials:
+
+```bash
+GO_SANDBOX_MODE=true
+GO_SANDBOX_INSTITUTION_ID=SANDBOXFINANCE_SFIN0000
+GO_SANDBOX_ACCESS_TOKEN=<your_sandbox_access_token>
+GO_SECRET_ID=<your_sandbox_secret_id>
+GO_SECRET_KEY=<your_sandbox_secret_key>
+```
+
+5. Start the development server:
+
+```bash
+make dev-up
+```
+
+6. Validate the configuration:
+
+```bash
+curl http://localhost:3000/api/financial/sandbox-status
+```
+
+The response should show `"enabled": true` and the sandbox institution details.
 
 ## 📋 Complete Testing Flow
 
@@ -177,8 +209,10 @@ npm run test:sandbox
 
 1. Check environment variables:
    ```bash
-   echo $GO_SANDBOX_MODE  # Should be "true"
-   echo $NODE_ENV         # Should be "development"
+   echo $GO_SANDBOX_MODE          # Should be "true"
+   echo $GO_SANDBOX_INSTITUTION_ID  # Should be "SANDBOXFINANCE_SFIN0000"
+   echo $GO_SANDBOX_ACCESS_TOKEN   # Should show your access token
+   echo $NODE_ENV                 # Should be "development"
    ```
 
 2. Verify configuration:
