@@ -252,6 +252,7 @@ export interface GoCardlessConfig {
   secretId: string;
   secretKey: string;
   baseUrl: string;
+  sandboxBaseUrl: string;
   redirectUri: string;
 }
 

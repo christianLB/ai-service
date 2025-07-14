@@ -1,6 +1,7 @@
 // Financial API Routes - GoCardless Integration + Client Management
 import { Router, Request, Response, NextFunction } from 'express';
 import { GoCardlessService } from '../services/financial/gocardless.service';
+import { GoCardlessConfig } from '../services/financial/types';
 import { FinancialDatabaseService } from '../services/financial/database.service';
 import { FinancialSchedulerService } from '../services/financial/scheduler.service';
 import { FinancialReportingService } from '../services/financial/reporting.service';
@@ -27,8 +28,9 @@ const initializeServices = () => {
       secretId: '',
       secretKey: '',
       baseUrl: 'https://bankaccountdata.gocardless.com/api/v2',
+      sandboxBaseUrl: 'https://bankaccountdata.gocardless.com/api/v2',
       redirectUri: ''
-    };
+    } as GoCardlessConfig;
 
     // Validate required environment variables
     const requiredEnvVars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD'];
