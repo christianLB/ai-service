@@ -23,6 +23,7 @@ npm run dev
 ```bash
 # Activar modo sandbox en .env.local
 GO_SANDBOX_MODE=true
+GO_SANDBOX_ACCESS_TOKEN=your_sandbox_access_token
 
 # Iniciar setup con banco mock
 curl -X POST http://localhost:3000/api/financial/setup-sandbox

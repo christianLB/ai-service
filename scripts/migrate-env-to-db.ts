@@ -82,6 +82,13 @@ const migrationConfigs: MigrationConfig[] = [
     encrypt: false
   },
   {
+    envKey: 'GO_SANDBOX_ACCESS_TOKEN',
+    integrationType: 'gocardless',
+    configKey: 'sandbox_access_token',
+    description: 'GoCardless Sandbox Access Token',
+    encrypt: false
+  },
+  {
     envKey: 'GO_BASE_URL',
     integrationType: 'gocardless',
     configKey: 'base_url',

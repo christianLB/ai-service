@@ -137,17 +137,31 @@ export class GoCardlessService {
 
   async authenticate(): Promise<string> {
     try {
+      if (this.isSandboxMode) {
+        const sandboxToken = await integrationConfigService.getConfig({
+          integrationType: 'gocardless',
+          configKey: 'sandbox_access_token'
+        });
+
+        if (sandboxToken) {
+          this.accessToken = sandboxToken;
+          this.tokenExpiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000);
+          logger.info('Using provided sandbox access token');
+          return this.accessToken;
+        }
+      }
+
       // Get credentials from integration config only
       const secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_id'
       });
-      
+
       const secretKey = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_key'
       });
-      
+
       if (!secretId || !secretKey) {
         throw new Error('GoCardless credentials not configured in database');
       }
@@ -775,6 +789,16 @@ export class GoCardlessService {
 
   async hasCredentials(): Promise<boolean> {
     try {
+      if (this.isSandboxMode) {
+        const sandboxToken = await integrationConfigService.getConfig({
+          integrationType: 'gocardless',
+          configKey: 'sandbox_access_token'
+        });
+        if (sandboxToken) {
+          return true;
+        }
+      }
+
       const secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_id'
@@ -784,7 +808,7 @@ export class GoCardlessService {
         integrationType: 'gocardless',
         configKey: 'secret_key'
       });
-      
+
       return !!(secretId && secretKey);
     } catch (error) {
       logger.error('Failed to check credentials', error);

@@ -46,9 +46,14 @@ export const config = {
     sandboxMode:
       process.env.NODE_ENV === 'development' && process.env.GO_SANDBOX_MODE === 'true',
     sandboxToken: process.env.GO_SANDBOX_TOKEN || 'SANDBOXFINANCE_SFIN0000',
+
     baseUrl:
       process.env.GO_BASE_URL || 'https://bankaccountdata.gocardless.com/api/v2',
     sandboxBaseUrl:
       process.env.GO_SANDBOX_BASE_URL || process.env.GO_BASE_URL || 'https://bankaccountdata.gocardless.com/api/v2'
+    sandboxAccessToken: process.env.GO_SANDBOX_ACCESS_TOKEN,
+    baseUrl: process.env.NODE_ENV === 'development' && process.env.GO_SANDBOX_MODE === 'true'
+      ? 'https://bankaccountdata.gocardless.com/api/v2'
+      : 'https://bankaccountdata.gocardless.com/api/v2'
   }
 };
