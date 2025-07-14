@@ -23,6 +23,7 @@ Set the following environment variables in your `.env.local`:
 ```bash
 # Enable sandbox mode
 GO_SANDBOX_MODE=true
+
 GO_SANDBOX_INSTITUTION_ID=SANDBOXFINANCE_SFIN0000
 GO_SANDBOX_ACCESS_TOKEN=your_sandbox_access_token
 
