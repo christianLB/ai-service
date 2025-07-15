@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+/**
+ * HISTORICAL REFERENCE ONLY - Migration completed
+ * This script was used to migrate environment variables to database configuration.
+ * GoCardless configuration is now managed through the integration settings API.
+ * Keeping this file for reference and documentation purposes.
+ */
+
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');

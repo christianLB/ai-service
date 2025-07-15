@@ -63,10 +63,8 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
 TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklmNOPqrstUVwxyz
 TELEGRAM_WEBHOOK_URL=https://yourdomain.com/webhook/telegram
 
-# GoCardless
-GOCARDLESS_ACCESS_TOKEN=live_xxxxxxxxxxxxxxxxxxxx
-GOCARDLESS_VERSION=2023-01-01
-GOCARDLESS_ENVIRONMENT=live
+# GoCardless configuration is now managed through the database
+# Use the integration settings API to configure GoCardless
 
 # Seguridad
 JWT_SECRET=your_jwt_secret_min_32_chars

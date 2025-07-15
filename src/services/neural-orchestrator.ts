@@ -545,9 +545,21 @@ export class NeuralOrchestrator {
   }
 
   private async checkGoCardlessAPI(): Promise<boolean> {
-    const secretId = process.env.GO_SECRET_ID;
-    const secretKey = process.env.GO_SECRET_KEY;
-    return !!(secretId && secretKey);
+    // Check if GoCardless credentials are configured in the database
+    try {
+      const { integrationConfigService } = await import('./integrations');
+      const secretId = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_id'
+      });
+      const secretKey = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_key'
+      });
+      return !!(secretId && secretKey);
+    } catch (error) {
+      return false;
+    }
   }
 
   // Public API for system status

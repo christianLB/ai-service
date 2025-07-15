@@ -89,7 +89,6 @@ validate_env_file() {
         "DATABASE_URL"
         "TELEGRAM_BOT_TOKEN"
         "OPENAI_API_KEY"
-        "GOCARDLESS_ACCESS_TOKEN"
         "JWT_SECRET"
     )
     

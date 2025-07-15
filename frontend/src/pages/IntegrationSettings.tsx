@@ -303,70 +303,176 @@ const IntegrationForm: React.FC<IntegrationFormProps> = ({
         initialValues={cleanedInitialValues}
         onFinish={(values) => onSave(integration.type, values)}
       >
-        {integration.configKeys.map(configKey => (
-          <Form.Item
-            key={configKey.key}
-            label={
-              <Space>
-                <span>{configKey.description}</span>
-                {configKey.required && <Text type="danger">*</Text>}
-                {configKey.encrypted && (
-                  <Tooltip title="Este valor se encripta antes de guardarse">
-                    <InfoCircleOutlined style={{ color: '#1890ff' }} />
-                  </Tooltip>
-                )}
-              </Space>
-            }
-            name={configKey.key}
-            rules={[
-              {
-                required: configKey.required,
-                message: `${configKey.description} es requerido`
-              }
-            ]}
-          >
-            {configKey.encrypted ? (
-              <Input.Password 
-                placeholder={
-                  initialValues[configKey.key] === '***CONFIGURED***' 
-                    ? 'Valor configurado (ingrese nuevo valor para cambiar)'
-                    : configKey.description
-                }
-                autoComplete="new-password"
-              />
-            ) : configKey.key.includes('enabled') || configKey.key.includes('mode') ? (
+        {integration.type === 'gocardless' ? (
+          <>
+            {/* Sandbox Mode Toggle */}
+            <Form.Item
+              label="Modo Sandbox"
+              name="sandbox_mode"
+            >
               <Switch 
-                checkedChildren="Sí" 
-                unCheckedChildren="No"
-                defaultChecked={cleanedInitialValues[configKey.key] === 'true'}
+                checkedChildren="Sandbox" 
+                unCheckedChildren="Producción"
+                defaultChecked={cleanedInitialValues['sandbox_mode'] === 'true'}
+                onChange={(checked) => form.setFieldsValue({ sandbox_mode: checked ? 'true' : 'false' })}
               />
-            ) : (
-              <Input 
-                placeholder={configKey.description}
-                autoComplete="off"
-              />
-            )}
-          </Form.Item>
-        ))}
+            </Form.Item>
+            
+            <Divider orientation="left">🧪 Configuración Sandbox</Divider>
+            {integration.configKeys
+              .filter(key => key.key.startsWith('sandbox_') && key.key !== 'sandbox_mode')
+              .map(configKey => (
+                <Form.Item
+                  key={configKey.key}
+                  label={
+                    <Space>
+                      <span>{configKey.description}</span>
+                      {configKey.encrypted && (
+                        <Tooltip title="Este valor se encripta antes de guardarse">
+                          <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                        </Tooltip>
+                      )}
+                    </Space>
+                  }
+                  name={configKey.key}
+                >
+                  {configKey.encrypted ? (
+                    <Input.Password 
+                      placeholder={
+                        initialValues[configKey.key] === '***CONFIGURED***' 
+                          ? 'Valor configurado (ingrese nuevo valor para cambiar)'
+                          : configKey.description
+                      }
+                      autoComplete="new-password"
+                    />
+                  ) : (
+                    <Input 
+                      placeholder={configKey.description}
+                      autoComplete="off"
+                    />
+                  )}
+                </Form.Item>
+              ))}
+            
+            <Divider orientation="left">🏦 Configuración Producción</Divider>
+            {integration.configKeys
+              .filter(key => !key.key.startsWith('sandbox_') && key.key !== 'base_url')
+              .map(configKey => (
+                <Form.Item
+                  key={configKey.key}
+                  label={
+                    <Space>
+                      <span>{configKey.description}</span>
+                      {configKey.required && <Text type="danger">*</Text>}
+                      {configKey.encrypted && (
+                        <Tooltip title="Este valor se encripta antes de guardarse">
+                          <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                        </Tooltip>
+                      )}
+                    </Space>
+                  }
+                  name={configKey.key}
+                  rules={[
+                    {
+                      required: configKey.required,
+                      message: `${configKey.description} es requerido`
+                    }
+                  ]}
+                >
+                  {configKey.encrypted ? (
+                    <Input.Password 
+                      placeholder={
+                        initialValues[configKey.key] === '***CONFIGURED***' 
+                          ? 'Valor configurado (ingrese nuevo valor para cambiar)'
+                          : configKey.description
+                      }
+                      autoComplete="new-password"
+                    />
+                  ) : (
+                    <Input 
+                      placeholder={configKey.description}
+                      autoComplete="off"
+                    />
+                  )}
+                </Form.Item>
+              ))}
+          </>
+        ) : (
+          // Other integrations - keep original layout
+          integration.configKeys.map(configKey => (
+            <Form.Item
+              key={configKey.key}
+              label={
+                <Space>
+                  <span>{configKey.description}</span>
+                  {configKey.required && <Text type="danger">*</Text>}
+                  {configKey.encrypted && (
+                    <Tooltip title="Este valor se encripta antes de guardarse">
+                      <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                    </Tooltip>
+                  )}
+                </Space>
+              }
+              name={configKey.key}
+              rules={[
+                {
+                  required: configKey.required,
+                  message: `${configKey.description} es requerido`
+                }
+              ]}
+            >
+              {configKey.encrypted ? (
+                <Input.Password 
+                  placeholder={
+                    initialValues[configKey.key] === '***CONFIGURED***' 
+                      ? 'Valor configurado (ingrese nuevo valor para cambiar)'
+                      : configKey.description
+                  }
+                  autoComplete="new-password"
+                />
+              ) : configKey.key.includes('enabled') || configKey.key.includes('mode') ? (
+                <Switch 
+                  checkedChildren="Sí" 
+                  unCheckedChildren="No"
+                  defaultChecked={cleanedInitialValues[configKey.key] === 'true'}
+                />
+              ) : (
+                <Input 
+                  placeholder={configKey.description}
+                  autoComplete="off"
+                />
+              )}
+            </Form.Item>
+          ))
+        )}
         
         {integration.type === 'gocardless' && (
-          <Alert
-            message="GoCardless - Open Banking"
-            description={
-              <div>
-                <p>GoCardless permite conectar cuentas bancarias de forma segura.</p>
-                <p>Para obtener las credenciales:</p>
-                <ol>
-                  <li>Regístrate en https://gocardless.com</li>
-                  <li>Accede al panel de desarrollador</li>
-                  <li>Crea una nueva aplicación</li>
-                  <li>Copia el Secret ID y Secret Key</li>
-                </ol>
-              </div>
-            }
-            type="info"
-            showIcon
-          />
+          <>
+            <Alert
+              message="GoCardless - Account Data API (Open Banking)"
+              description={
+                <div>
+                  <p>GoCardless permite conectar cuentas bancarias de forma segura usando Open Banking.</p>
+                  <Divider />
+                  <Title level={5}>🧪 Configuración Sandbox (Pruebas)</Title>
+                  <ol>
+                    <li>Accede a <a href="https://manage-sandbox.gocardless.com" target="_blank" rel="noopener noreferrer">https://manage-sandbox.gocardless.com</a></li>
+                    <li>Genera una API Key de sandbox</li>
+                    <li>Usa el institution ID de prueba: <Text code>SANDBOXFINANCE_SFIN0000</Text></li>
+                  </ol>
+                  <Divider />
+                  <Title level={5}>🏦 Configuración Producción</Title>
+                  <ol>
+                    <li>Accede a <a href="https://manage.gocardless.com" target="_blank" rel="noopener noreferrer">https://manage.gocardless.com</a></li>
+                    <li>Crea una nueva aplicación en el panel de desarrollador</li>
+                    <li>Copia el Secret ID y Secret Key</li>
+                  </ol>
+                </div>
+              }
+              type="info"
+              showIcon
+            />
+          </>
         )}
       </Form>
     </Card>

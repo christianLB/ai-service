@@ -1,5 +1,12 @@
 #!/usr/bin/env ts-node
 
+/**
+ * HISTORICAL REFERENCE ONLY - Migration completed
+ * This script was used to migrate environment variables to database configuration.
+ * GoCardless configuration is now managed through the integration settings API.
+ * Keeping this file for reference and documentation purposes.
+ */
+
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -75,24 +82,31 @@ const migrationConfigs: MigrationConfig[] = [
     encrypt: false
   },
   {
-    envKey: 'GO_SANDBOX_TOKEN',
-    integrationType: 'gocardless',
-    configKey: 'sandbox_token',
-    description: 'GoCardless Sandbox Institution Token',
-    encrypt: false
-  },
-  {
     envKey: 'GO_SANDBOX_ACCESS_TOKEN',
     integrationType: 'gocardless',
     configKey: 'sandbox_access_token',
-    description: 'GoCardless Sandbox Access Token',
-    encrypt: false
+    description: 'GoCardless Sandbox API Key (Bearer token)',
+    encrypt: true
   },
   {
     envKey: 'GO_BASE_URL',
     integrationType: 'gocardless',
-    configKey: 'base_url',
-    description: 'GoCardless API Base URL',
+    configKey: 'production_base_url',
+    description: 'GoCardless Production API URL',
+    encrypt: false
+  },
+  {
+    envKey: 'GO_SANDBOX_BASE_URL',
+    integrationType: 'gocardless',
+    configKey: 'sandbox_base_url',
+    description: 'GoCardless Sandbox API URL',
+    encrypt: false
+  },
+  {
+    envKey: 'GO_SANDBOX_INSTITUTION_ID',
+    integrationType: 'gocardless',
+    configKey: 'sandbox_institution_id',
+    description: 'GoCardless Sandbox Institution ID',
     encrypt: false
   },
   

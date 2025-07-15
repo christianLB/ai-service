@@ -87,10 +87,6 @@ services:
       TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
       TELEGRAM_ALERTS_ENABLED: ${TELEGRAM_ALERTS_ENABLED:-true}
       
-      # GoCardless
-      GOCARDLESS_ACCESS_TOKEN: ${GOCARDLESS_ACCESS_TOKEN}
-      GOCARDLESS_ENVIRONMENT: ${GOCARDLESS_ENVIRONMENT:-sandbox}
-      
       # Authentication
       JWT_SECRET: ${JWT_SECRET:-ultra_secure_production_jwt_secret_2025_min_32_chars}
       # AUTH_BYPASS removed - real authentication required

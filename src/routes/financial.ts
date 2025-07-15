@@ -22,14 +22,6 @@ let transactionMatchingService: TransactionMatchingService;
 // Initialize services with config
 const initializeServices = () => {
   if (!goCardlessService) {
-    // Initialize with empty config - credentials will be loaded from database
-    const config = {
-      secretId: '',
-      secretKey: '',
-      baseUrl: 'https://bankaccountdata.gocardless.com/api/v2',
-      redirectUri: ''
-    };
-
     // Validate required environment variables
     const requiredEnvVars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -47,7 +39,7 @@ const initializeServices = () => {
     };
 
     databaseService = new FinancialDatabaseService(dbConfig);
-    goCardlessService = new GoCardlessService(config, databaseService);
+    goCardlessService = new GoCardlessService(databaseService);
     schedulerService = new FinancialSchedulerService(goCardlessService, databaseService);
     reportingService = new FinancialReportingService(databaseService.pool);
     transactionMatchingService = new TransactionMatchingService(databaseService.pool);

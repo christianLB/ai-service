@@ -74,6 +74,9 @@ export class TelegramService {
       { command: 'reporte', description: 'Generar reporte' },
       { command: 'sync', description: 'Sincronizar datos bancarios' },
       { command: 'setup', description: 'Configurar conexión bancaria' },
+      { command: 'setup_bbva', description: 'Configurar conexión bancaria BBVA' },
+      { command: 'setup_sandbox', description: 'Configurar conexión bancaria Sandbox' },
+      { command: 'complete_setup', description: 'Completar configuración bancaria' },
       { command: 'dashboard', description: 'Enlace al dashboard' },
       // Document commands
       { command: 'upload', description: 'Subir documento para análisis' },
@@ -218,6 +221,9 @@ export class TelegramService {
           break;
         case '/setup_bbva':
           await this.handleSetupBBVACommand(chatId);
+          break;
+        case '/setup_sandbox':
+          await this.handleSetupSandboxCommand(chatId);
           break;
         case '/complete_setup':
           await this.handleCompleteSetupCommand(chatId, params[0]);
@@ -546,9 +552,9 @@ Vamos a conectar tu banco usando GoCardless (Open Banking seguro).
 • ING
 • Y más de 2000 bancos europeos
 
-Para comenzar, necesito que elijas tu banco. Por ejemplo:
-• Para BBVA: /setup_bbva
-• Para otro banco: Contacta soporte
+<b>Elige una opción:</b>
+• Para conectar una cuenta real de BBVA: /setup_bbva
+• Para probar con una cuenta de prueba (Sandbox): /setup_sandbox
 
 ⚠️ <b>Importante:</b> Este proceso te redirigirá al sitio web de tu banco para autorizar el acceso de forma segura.
       `);
@@ -557,7 +563,7 @@ Para comenzar, necesito que elijas tu banco. Por ejemplo:
       await this.sendMessage(chatId, '❌ Error mostrando opciones de configuración');
     }
   }
-  
+
   private async handleSetupBBVACommand(chatId: string): Promise<void> {
     try {
       await this.sendMessage(chatId, '🏦 Iniciando configuración con BBVA...');
@@ -572,9 +578,6 @@ Para comenzar, necesito que elijas tu banco. Por ejemplo:
       
       if (result.success && result.data.requisition) {
         const { requisition } = result.data;
-        
-        // Guardar requisition ID para este usuario (por ahora en memoria)
-        // TODO: Persistir esto en base de datos con el chat_id del usuario
         
         await this.sendMessage(chatId, `
 ✅ <b>Proceso de autorización iniciado</b>
@@ -593,7 +596,7 @@ ${requisition.link}
 
 Cuando hayas completado la autorización, usa el comando:
 /complete_setup ${requisition.id}
-        `);
+        `, { parse_mode: 'HTML' });
       } else {
         throw new Error(result.error || 'Error iniciando configuración');
       }
@@ -612,7 +615,58 @@ Contacta al administrador del sistema.
       `);
     }
   }
-  
+
+  private async handleSetupSandboxCommand(chatId: string): Promise<void> {
+    try {
+      await this.sendMessage(chatId, '🧪 Iniciando configuración con Sandbox...');
+      
+      // Llamar al endpoint de setup sandbox
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/setup-sandbox`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data.requisition) {
+        const { requisition } = result.data;
+        
+        await this.sendMessage(chatId, `
+✅ <b>Proceso de autorización de Sandbox iniciado</b>
+
+🔗 <b>Enlace de autorización:</b>
+${requisition.link}
+
+📋 <b>Instrucciones:</b>
+1. Haz clic en el enlace anterior
+2. Serás redirigido al sitio de GoCardless Sandbox
+3. Sigue las instrucciones para autorizar el acceso
+4. Una vez completado, vuelve aquí
+
+⏱️ <b>Este enlace expira en 30 minutos</b>
+
+Cuando hayas completado la autorización, usa el comando:
+/complete_setup ${requisition.id}
+        `, { parse_mode: 'HTML' });
+      } else {
+        throw new Error(result.error || 'Error iniciando configuración de Sandbox');
+      }
+    } catch (error: any) {
+      logger.error('Error en setup Sandbox:', error);
+      await this.sendMessage(chatId, `
+❌ <b>Error configurando Sandbox</b>
+
+${error.message}
+
+Posibles causas:
+• El modo Sandbox no está habilitado en la configuración
+• Error de conexión con el servicio
+
+Contacta al administrador del sistema.
+      `, { parse_mode: 'HTML' });
+    }
+  }
+
   private async handleCompleteSetupCommand(chatId: string, requisitionId?: string): Promise<void> {
     try {
       if (!requisitionId) {

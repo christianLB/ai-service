@@ -114,6 +114,17 @@ dev-rebuild: ## Reconstruir imagen de desarrollo
 	@docker-compose build --no-cache ai-service
 	@echo "$(GREEN)✓ Imagen reconstruida$(NC)"
 
+.PHONY: dev-refresh
+dev-refresh: ## Detiene, reconstruye y levanta el ambiente (down, build, up)
+	@echo "$(BLUE)🔄 Refrescando completamente el ambiente de desarrollo...$(NC)"
+	@echo "$(YELLOW)1. Deteniendo servicios...$(NC)"
+	@docker compose down
+	@echo "$(YELLOW)2. Reconstruyendo imágenes...$(NC)"
+	@docker compose build
+	@echo "$(YELLOW)3. Levantando servicios...$(NC)"
+	@docker compose up -d
+	@echo "$(GREEN)✓ Ambiente refrescado y corriendo en segundo plano$(NC)"
+
 .PHONY: dev-build-frontend
 dev-build-frontend: ## Recompilar frontend en desarrollo
 	@echo "$(BLUE)🔧 Compilando frontend...$(NC)"
@@ -274,6 +285,16 @@ dev-auth-create-admin: ## Crear/resetear usuario admin (admin@ai-service.local /
 			} \
 			await pool.end(); \
 		})();"
+
+.PHONY: dev-auth-get-token
+dev-auth-get-token: ## Obtener token JWT para usuario admin
+	@echo "$(BLUE)🔑 Obteniendo token para admin@ai-service.local...$(NC)"
+	@docker cp scripts/get-admin-token.js ai-service-api-dev:/app/get-admin-token.js
+	@docker cp scripts/get-admin-token.js ai-service-api-dev:/app/get-admin-token.js
+	@docker cp .env.local ai-service-api-dev:/app/.env.local
+	@docker exec ai-service-api-dev npm install --no-save dotenv
+	@docker exec ai-service-api-dev node /app/get-admin-token.js
+	@docker exec ai-service-api-dev rm /app/get-admin-token.js /app/.env.local
 
 .PHONY: dev-auth-unblock-ip
 dev-auth-unblock-ip: ## Desbloquear una IP específica

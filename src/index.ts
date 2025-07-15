@@ -80,30 +80,6 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir archivos estáticos del frontend
-// En producción, el volumen se monta en /app/public según docker-compose.production.yml
-const frontendPath = process.env.NODE_ENV === 'production' 
-  ? path.join(__dirname, '../public')
-  : path.join(__dirname, '../frontend/dist');
-logger.info(`Serving static files from: ${frontendPath}`);
-
-// Middleware para prevenir caché en archivos HTML
-app.use((req, res, next) => {
-  // Aplicar no-cache solo a archivos HTML y la ruta raíz
-  if (req.path.endsWith('.html') || req.path === '/' || req.path === '') {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    logger.debug(`No-cache headers set for: ${req.path}`);
-  } else if (req.path.startsWith('/assets/') && req.path.match(/\.(js|css)$/)) {
-    // Assets pueden ser cacheados ya que Vite les pone hash en el nombre
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-  }
-  next();
-});
-
-app.use(express.static(frontendPath));
-
 // Middleware de métricas (debe ir antes de las rutas)
 app.use(metricsService.createApiMetricsMiddleware());
 
@@ -248,6 +224,9 @@ app.get('/metrics', async (_req: express.Request, res: express.Response) => {
   }
 });
 
+// Version routes - should be public
+app.use('/api', versionRoutes);
+
 // Protected API Routes - Apply auth middleware to all
 app.use('/api', authMiddleware, flowGen);
 app.use('/api', authMiddleware, flowUpdate);
@@ -258,10 +237,33 @@ app.use('/api/financial', authMiddleware, financialRoutes);
 
 // app.use('/api', authMiddleware, cryptoRoutes);
 app.use('/api/real-estate', authMiddleware, realEstateRoutes);
-app.use('/api', authMiddleware, versionRoutes);
 app.use('/api/telegram', authMiddleware, telegramRoutes);
 app.use('/api/documents', authMiddleware, documentRoutes);
 app.use('/api/integrations', authMiddleware, integrationRoutes);
+
+// Servir archivos estáticos del frontend
+// En producción, el volumen se monta en /app/public según docker-compose.production.yml
+const frontendPath = process.env.NODE_ENV === 'production' 
+  ? path.join(__dirname, '../public')
+  : path.join(__dirname, '../frontend/dist');
+logger.info(`Serving static files from: ${frontendPath}`);
+
+// Middleware para prevenir caché en archivos HTML
+app.use((req, res, next) => {
+  // Aplicar no-cache solo a archivos HTML y la ruta raíz
+  if (req.path.endsWith('.html') || req.path === '/' || req.path === '') {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    logger.debug(`No-cache headers set for: ${req.path}`);
+  } else if (req.path.startsWith('/assets/') && req.path.match(/\.(js|css)$/)) {
+    // Assets pueden ser cacheados ya que Vite les pone hash en el nombre
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+  next();
+});
+
+app.use(express.static(frontendPath));
 
 // Catch-all route for SPA - serve index.html for any non-API route
 app.get('*', (_req: express.Request, res: express.Response) => {

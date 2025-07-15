@@ -21,9 +21,8 @@ npm run dev
 
 ### **🧪 Testing con Sandbox (GoCardless)**
 ```bash
-# Activar modo sandbox en .env.local
-GO_SANDBOX_MODE=true
-GO_SANDBOX_ACCESS_TOKEN=your_sandbox_access_token
+# GoCardless configuration is now managed through the database
+# Use the integration settings API to configure sandbox mode
 
 # Iniciar setup con banco mock
 curl -X POST http://localhost:3000/api/financial/setup-sandbox

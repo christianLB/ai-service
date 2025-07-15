@@ -248,15 +248,7 @@ export interface PaginatedResponse<T> {
 }
 
 // Service configuration types
-export interface GoCardlessConfig {
-  secretId: string;
-  secretKey: string;
-  baseUrl: string;
-  redirectUri: string;
-}
-
 export interface FinancialServiceConfig {
-  gocardless: GoCardlessConfig;
   database: {
     host: string;
     port: number;

@@ -33,9 +33,8 @@ REDIS_PASSWORD=your_secure_redis_password
 
 ### Financial Integration (GoCardless)
 ```bash
-GO_SECRET_ID=your_gocardless_secret_id
-GO_SECRET_KEY=your_gocardless_secret_key
-GO_REDIRECT_URI=https://localhost:3000/financial/callback
+# GoCardless configuration is now managed through the database
+# Use the integration settings API to configure GoCardless
 ```
 
 ### AI Services

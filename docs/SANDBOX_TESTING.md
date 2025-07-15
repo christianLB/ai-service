@@ -18,18 +18,29 @@ All without touching real financial data!
 
 ### 1. Enable Sandbox Mode
 
-Set the following environment variables in your `.env.local`:
+GoCardless configuration is now managed through the database integration settings API. Configure sandbox mode using the API:
 
 ```bash
 # Enable sandbox mode
-GO_SANDBOX_MODE=true
+curl -X POST http://localhost:3000/api/integrations/configs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "integrationType": "gocardless",
+    "configKey": "sandbox_mode",
+    "configValue": "true",
+    "isGlobal": true
+  }'
 
-GO_SANDBOX_INSTITUTION_ID=SANDBOXFINANCE_SFIN0000
-GO_SANDBOX_ACCESS_TOKEN=your_sandbox_access_token
-
-# Your regular GoCardless credentials still required
-GO_SECRET_ID=your_secret_id
-GO_SECRET_KEY=your_secret_key
+# Set other required configurations
+curl -X POST http://localhost:3000/api/integrations/configs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "integrationType": "gocardless",
+    "configKey": "secret_id",
+    "configValue": "your_secret_id",
+    "isGlobal": true,
+    "encrypt": true
+  }'
 ```
 
 ### 2. Start the Development Server
@@ -68,14 +79,19 @@ Follow these steps to configure sandbox mode with your actual GoCardless sandbox
 1. Sign up or log in at [GoCardless Sandbox](https://manage-sandbox.gocardless.com).
 2. Create an access token under **Developers → Access tokens**.
 3. Note the `secret_id` and `secret_key` from **Developers → API credentials**.
-4. Update your `.env.local` with the credentials:
+4. Configure the credentials via API:
 
 ```bash
-GO_SANDBOX_MODE=true
-GO_SANDBOX_INSTITUTION_ID=SANDBOXFINANCE_SFIN0000
-GO_SANDBOX_ACCESS_TOKEN=<your_sandbox_access_token>
-GO_SECRET_ID=<your_sandbox_secret_id>
-GO_SECRET_KEY=<your_sandbox_secret_key>
+# Configure all required settings
+curl -X POST http://localhost:3000/api/integrations/configs \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"integrationType": "gocardless", "configKey": "sandbox_mode", "configValue": "true", "isGlobal": true},
+    {"integrationType": "gocardless", "configKey": "sandbox_institution_id", "configValue": "SANDBOXFINANCE_SFIN0000", "isGlobal": true},
+    {"integrationType": "gocardless", "configKey": "sandbox_access_token", "configValue": "<your_sandbox_access_token>", "isGlobal": true, "encrypt": true},
+    {"integrationType": "gocardless", "configKey": "secret_id", "configValue": "<your_sandbox_secret_id>", "isGlobal": true, "encrypt": true},
+    {"integrationType": "gocardless", "configKey": "secret_key", "configValue": "<your_sandbox_secret_key>", "isGlobal": true, "encrypt": true}
+  ]'
 ```
 
 5. Start the development server:
@@ -208,12 +224,16 @@ npm run test:sandbox
 
 ### Sandbox Mode Not Working
 
-1. Check environment variables:
+1. Check configuration via API:
    ```bash
-   echo $GO_SANDBOX_MODE          # Should be "true"
-   echo $GO_SANDBOX_INSTITUTION_ID  # Should be "SANDBOXFINANCE_SFIN0000"
-   echo $GO_SANDBOX_ACCESS_TOKEN   # Should show your access token
-   echo $NODE_ENV                 # Should be "development"
+   # Check sandbox mode
+   curl http://localhost:3000/api/integrations/configs/gocardless/sandbox_mode
+   
+   # Check institution ID
+   curl http://localhost:3000/api/integrations/configs/gocardless/sandbox_institution_id
+   
+   # Verify NODE_ENV
+   echo $NODE_ENV  # Should be "development"
    ```
 
 2. Verify configuration:

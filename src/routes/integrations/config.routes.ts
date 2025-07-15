@@ -286,11 +286,18 @@ router.get('/types', async (req: Request, res: Response) => {
         category: 'integrations',
         description: 'Open Banking integration for bank account access',
         configKeys: [
-          { key: 'secret_id', required: true, encrypted: true, description: 'GoCardless Secret ID' },
-          { key: 'secret_key', required: true, encrypted: true, description: 'GoCardless Secret Key' },
-          { key: 'base_url', required: false, encrypted: false, description: 'API base URL' },
+          // Common Configuration
+          { key: 'base_url', required: false, encrypted: false, description: 'API URL (default: https://bankaccountdata.gocardless.com/api/v2)' },
+          { key: 'redirect_uri', required: true, encrypted: false, description: 'Redirect URI after bank authorization' },
+          
+          // Production Configuration
+          { key: 'secret_id', required: false, encrypted: true, description: 'Production Secret ID (for live mode)' },
+          { key: 'secret_key', required: false, encrypted: true, description: 'Production Secret Key (for live mode)' },
+          
+          // Sandbox Configuration
           { key: 'sandbox_mode', required: false, encrypted: false, description: 'Enable sandbox mode' },
-          { key: 'sandbox_token', required: false, encrypted: false, description: 'Sandbox institution token' }
+          { key: 'sandbox_access_token', required: false, encrypted: true, description: 'Sandbox Access Token (from GoCardless sandbox portal)' },
+          { key: 'sandbox_institution_id', required: false, encrypted: false, description: 'Sandbox test bank ID (default: SANDBOXFINANCE_SFIN0000)' }
         ]
       },
       {

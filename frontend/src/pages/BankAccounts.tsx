@@ -1,32 +1,37 @@
-import React, { useState, useEffect, Component } from "react";
-import type { ErrorInfo, ReactNode } from "react";
+import { useState, useEffect, useCallback, Component } from "react";
+
+import type { ErrorInfo, ReactNode, FC } from "react";
 import {
-  Card,
-  Table,
-  Button,
-  Space,
-  Tag,
   Alert,
-  Modal,
-  Steps,
-  message,
-  Row,
+  Button,
+  Card,
   Col,
+  Divider,
+  message,
+  Modal,
+  Row,
+  Space,
   Statistic,
-  Typography,
+  Steps,
   Switch,
+  Table,
+  Tag,
   Tooltip,
+  Typography,
+  List,
 } from "antd";
+import type { TableProps } from "antd";
 import {
+  CalendarOutlined,
   BankOutlined,
-  SyncOutlined,
-  PlusOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  CalendarOutlined,
-  LinkOutlined,
+  ExclamationCircleOutlined,
+  ExperimentOutlined,
+  PlusOutlined,
+  SyncOutlined,
 } from "@ant-design/icons";
-import axios from "axios";
+import api from "../services/api";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/es";
@@ -37,17 +42,44 @@ dayjs.locale("es");
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
 
-interface BankAccount {
+interface Account {
   id: string;
-  name: string;
-  institution: string;
-  iban?: string;
+  institution_id: string;
+  institution_name: string;
+  logo_url: string;
+  iban: string;
   balance: number;
-  available_balance?: number;
   currency: string;
-  type: string;
-  last_sync?: string;
+  owner_name: string;
   is_active: boolean;
+  last_synced_at: string;
+}
+
+interface SyncedAccount {
+  id: string;
+  institution_name: string;
+}
+
+interface RecentSync {
+  startTime: string;
+  endTime: string;
+  status: string;
+  accounts?: SyncedAccount[];
+}
+
+interface SyncStatus {
+  stats: {
+    lastSync: string | null;
+    summary: {
+      synced: number;
+      total: number;
+    } | null;
+    recentSyncs: RecentSync[] | null;
+  } | null;
+  scheduler: {
+    nextSyncEstimate: string | null;
+    autoSyncEnabled: boolean;
+  } | null;
 }
 
 interface StoredRequisition {
@@ -55,13 +87,6 @@ interface StoredRequisition {
   timestamp: number;
   bankName: string;
 }
-
-// interface Institution {
-//   id: string;
-//   name: string;
-//   logo: string;
-//   countries: string[];
-// }
 
 // Error Boundary Component
 interface ErrorBoundaryState {
@@ -110,7 +135,10 @@ class ErrorBoundary extends Component<
 }
 
 // Safe number formatter to prevent toFixed errors
-const safeFormatNumber = (value: any, decimals: number = 2): string => {
+const safeFormatNumber = (
+  value: number | string | null | undefined,
+  decimals: number = 2
+): string => {
   try {
     const num = Number(value);
     if (isNaN(num) || num === null || num === undefined) {
@@ -123,618 +151,433 @@ const safeFormatNumber = (value: any, decimals: number = 2): string => {
   }
 };
 
-const BankAccountsContent: React.FC = () => {
-  const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [loading, setLoading] = useState(false);
+const BankAccountsContent: FC = () => {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [setupModalVisible, setSetupModalVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  // const [institutions, setInstitutions] = useState<Institution[]>([]);
-  // const [selectedInstitution, setSelectedInstitution] = useState<string>('');
-  const [requisitionUrl, setRequisitionUrl] = useState<string>("");
-  const [requisitionId, setRequisitionId] = useState<string>("");
-  const [authLoading, setAuthLoading] = useState(false);
-  const [completeLoading, setCompleteLoading] = useState(false);
+  const [requisitionId, setRequisitionId] = useState<string | null>(null);
+  const [requisitionUrl, setRequisitionUrl] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [isSandbox, setIsSandbox] = useState(false);
+  const [completeLoading, setCompleteLoading] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
 
-  // LocalStorage key for requisition data
   const REQUISITION_STORAGE_KEY = "bank_requisition_pending";
 
-  // Helper functions for localStorage with expiration
-  const saveRequisitionToStorage = (
-    requisitionId: string,
-    bankName: string = "BBVA"
-  ) => {
-    const data: StoredRequisition = {
-      requisitionId,
-      timestamp: Date.now(),
-      bankName,
-    };
-    localStorage.setItem(REQUISITION_STORAGE_KEY, JSON.stringify(data));
-  };
-
-  const getRequisitionFromStorage = (): StoredRequisition | null => {
-    const stored = localStorage.getItem(REQUISITION_STORAGE_KEY);
-    if (!stored) return null;
-
-    try {
-      const data: StoredRequisition = JSON.parse(stored);
-      // Check if data is older than 1 hour (3600000 ms)
-      if (Date.now() - data.timestamp > 3600000) {
-        localStorage.removeItem(REQUISITION_STORAGE_KEY);
-        return null;
-      }
-      return data;
-    } catch {
-      localStorage.removeItem(REQUISITION_STORAGE_KEY);
-      return null;
-    }
-  };
-
-  const clearRequisitionFromStorage = () => {
+  const clearRequisitionFromStorage = useCallback(() => {
     localStorage.removeItem(REQUISITION_STORAGE_KEY);
-  };
-
-  // Fetch accounts on component mount
-  useEffect(() => {
-    fetchAccounts();
-    checkSyncStatus();
-    fetchSyncStatus();
-
-    // Check for pending requisition
-    const storedRequisition = getRequisitionFromStorage();
-    if (storedRequisition) {
-      message.info("Tienes una autorización pendiente de completar");
-      setRequisitionId(storedRequisition.requisitionId);
-      setSetupModalVisible(true);
-      setCurrentStep(1);
-    }
   }, []);
 
-  const fetchAccounts = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get("/api/financial/accounts");
-      if (response.data.success && Array.isArray(response.data.data)) {
-        // Map backend data to frontend interface
-        const mappedAccounts = response.data.data.map((account: any) => ({
-          id: account.id,
-          name: account.name,
-          institution:
-            account.metadata?.institution_name ||
-            account.institutionId ||
-            "BBVA",
-          iban: account.iban,
-          balance: account.balance ? parseFloat(account.balance) : 0,
-          available_balance: account.balance ? parseFloat(account.balance) : 0, // Same as balance for now
-          currency: account.currencyId || "EUR",
-          type: account.type,
-          last_sync: account.metadata?.last_sync || account.updatedAt,
-          is_active: account.isActive,
-        }));
-        setAccounts(mappedAccounts);
+  const saveRequisitionToStorage = useCallback(
+    (reqId: string, bankName: string) => {
+      const data = {
+        requisitionId: reqId,
+        timestamp: Date.now(),
+        bankName: bankName,
+      };
+      localStorage.setItem(REQUISITION_STORAGE_KEY, JSON.stringify(data));
+    },
+    []
+  );
+
+  const getRequisitionFromStorage = useCallback(() => {
+    const storedData = localStorage.getItem(REQUISITION_STORAGE_KEY);
+    if (storedData) {
+      const data: StoredRequisition = JSON.parse(storedData);
+      // Expire after 30 minutes
+      if (Date.now() - data.timestamp < 30 * 60 * 1000) {
+        return data;
       }
+    }
+    return null;
+  }, []);
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/financial/accounts");
+      setAccounts(response.data.accounts || []);
     } catch (error) {
+      console.error("Error fetching accounts:", error);
       message.error("Error al cargar las cuentas bancarias");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const checkSyncStatus = async () => {
+  const fetchSyncStatus = useCallback(async () => {
     try {
-      const response = await axios.get("/api/financial/sync-status");
-      if (response.data.success) {
-        // Update UI based on sync status
-      }
-    } catch (error) {
-      console.error("Error checking sync status:", error);
-    }
-  };
-
-  const fetchSyncStatus = async () => {
-    try {
-      const response = await axios.get("/api/financial/sync-status");
-      if (response.data.success) {
-        setSyncStatus(response.data.data);
-        setAutoSyncEnabled(response.data.data.scheduler.isRunning);
-      }
+      const response = await api.get("/financial/sync-status");
+      setSyncStatus(response.data.data);
+      setAutoSyncEnabled(response.data.data?.scheduler?.autoSyncEnabled || false);
     } catch (error) {
       console.error("Error fetching sync status:", error);
+      message.error("Error al cargar el estado de la sincronización");
     }
-  };
+  }, []);
+
+  const fetchSandboxStatus = useCallback(async () => {
+    try {
+      const response = await api.get("/financial/sandbox-status");
+      setIsSandbox(response.data.is_sandbox);
+    } catch (error) {
+      console.error("Error fetching sandbox status:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAccounts();
+    fetchSyncStatus();
+    fetchSandboxStatus();
+
+    const pendingRequisition = getRequisitionFromStorage();
+    if (pendingRequisition) {
+      setRequisitionId(pendingRequisition.requisitionId);
+      setCurrentStep(1);
+      setSetupModalVisible(true);
+    }
+  }, [fetchAccounts, fetchSyncStatus, fetchSandboxStatus, getRequisitionFromStorage]);
 
   const toggleAutoSync = async () => {
     setToggleLoading(true);
     try {
-      const endpoint = autoSyncEnabled
-        ? "/api/financial/scheduler/stop"
-        : "/api/financial/scheduler/start";
-      const response = await axios.post(endpoint);
-
-      if (response.data.success) {
-        setAutoSyncEnabled(!autoSyncEnabled);
-        message.success(
-          autoSyncEnabled
-            ? "Sincronización automática desactivada"
-            : "Sincronización automática activada"
-        );
-        fetchSyncStatus();
-      }
+      const response = await api.post("/financial/toggle-auto-sync", {
+        enable: !autoSyncEnabled,
+      });
+      setAutoSyncEnabled(response.data.autoSyncEnabled);
+      message.success(
+        `Sincronización automática ${response.data.autoSyncEnabled ? "activada" : "desactivada"}`
+      );
     } catch (error) {
-      message.error("Error al cambiar el estado de sincronización automática");
-    } finally {
-      setToggleLoading(false);
+      console.error("Error toggling auto-sync:", error);
+      message.error("Error al cambiar el estado de la sincronización automática");
     }
+    setToggleLoading(false);
   };
 
   const handleSync = async () => {
     setSyncing(true);
+    message.info("Iniciando sincronización manual...");
     try {
-      const response = await axios.post("/api/financial/sync");
-      if (response.data.success) {
-        message.success("Sincronización completada");
-        fetchAccounts();
-        fetchSyncStatus(); // Update sync stats
-      }
+      await api.post("/financial/sync-accounts");
+      message.success("Sincronización iniciada. Los datos se actualizarán pronto.");
+      fetchSyncStatus(); // Refresh status
     } catch (error) {
-      message.error("Error al sincronizar cuentas");
-    } finally {
-      setSyncing(false);
+      console.error("Error starting manual sync:", error);
+      message.error("Error al iniciar la sincronización manual");
     }
+    setSyncing(false);
   };
 
-  const startSetup = () => {
+  const handleSetupNewAccount = useCallback(() => {
+    setRequisitionId(null);
     setSetupModalVisible(true);
     setCurrentStep(0);
-    setRequisitionId("");
-    setRequisitionUrl("");
-    // For now, we'll use BBVA as default
-    // setSelectedInstitution('BBVA_BBVAESMM');
-  };
+  }, []);
 
-  const handleSetupBBVA = async () => {
-    setAuthLoading(true);
+  const handleSetupBBVA = useCallback(async () => {
     try {
-      console.log("Iniciando setup BBVA...");
-      const response = await axios.post("/api/financial/setup-bbva");
-      console.log("Respuesta del servidor:", response.data);
-
-      if (response.data.success && response.data.data.consentUrl) {
-        const { consentUrl, requisitionId } = response.data.data;
-        console.log("ConsentUrl:", consentUrl);
-        console.log("RequisitionId:", requisitionId);
-
-        // Save requisition data
-        setRequisitionUrl(consentUrl);
+      const response = await api.post("/financial/setup-bbva");
+      
+      // Extract the requisition data from the response
+      if (response.data.success && response.data.data) {
+        const { requisitionId, consentUrl } = response.data.data;
         setRequisitionId(requisitionId);
-
-        // Save to localStorage for recovery
-        saveRequisitionToStorage(requisitionId, "BBVA");
-
+        setRequisitionUrl(consentUrl);
+        window.open(consentUrl, "_blank");
         setCurrentStep(1);
-
-        // Open authorization URL in new window
-        const authWindow = window.open(consentUrl, "_blank");
-        if (!authWindow) {
-          message.warning(
-            "El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio."
-          );
-        }
-
-        message.info(
-          "Por favor, autoriza el acceso en la ventana que se abrió"
-        );
+        saveRequisitionToStorage(requisitionId, "BBVA");
       } else {
-        console.error("Respuesta inesperada:", response.data);
-        message.error("No se recibió la URL de autorización");
+        throw new Error(response.data.error || "Failed to setup BBVA");
       }
-    } catch (error) {
-      console.error("Setup error:", error);
-      if (axios.isAxiosError(error)) {
-        console.error("Error details:", error.response?.data);
-      }
-      message.error("Error al iniciar el proceso de autorización");
-    } finally {
-      setAuthLoading(false);
+    } catch (error: any) {
+      message.error(error.message || "No se pudo iniciar la configuración de BBVA");
     }
-  };
+  }, [saveRequisitionToStorage]);
 
-  const handleCompleteSetup = async () => {
-    if (!requisitionId) {
+  const handleSetupSandbox = useCallback(async () => {
+    try {
+      const response = await api.post("/financial/setup-sandbox");
+      
+      // Extract the requisition data from the response
+      if (response.data.success && response.data.data) {
+        const { requisitionId, consentUrl } = response.data.data;
+        setRequisitionId(requisitionId);
+        setRequisitionUrl(consentUrl);
+        window.open(consentUrl, "_blank");
+        setCurrentStep(1);
+        saveRequisitionToStorage(requisitionId, "Sandbox Bank");
+      } else {
+        throw new Error(response.data.error || "Failed to setup sandbox");
+      }
+    } catch (error: any) {
       message.error(
-        "No se encontró el ID de requisición. Por favor, intenta nuevamente."
+        error.message || "No se pudo iniciar la configuración de sandbox"
       );
+    }
+  }, [saveRequisitionToStorage]);
+
+  const handleCompleteSetup = useCallback(async () => {
+    if (!requisitionId) {
+      message.error("No hay un ID de requisición para completar.");
       return;
     }
 
     setCompleteLoading(true);
-    try {
-      const response = await axios.post("/api/financial/complete-setup", {
-        requisitionId,
-      });
-
-      if (response.data.success) {
-        message.success("¡Configuración completada exitosamente!");
-        clearRequisitionFromStorage();
-        setCurrentStep(2);
-
-        // Wait 2 seconds to show success screen, then close and refresh
-        setTimeout(() => {
-          setSetupModalVisible(false);
-          fetchAccounts();
-        }, 2000);
-      } else {
-        message.error(
-          response.data.error || "Error al completar la configuración"
-        );
-      }
-    } catch (error: any) {
-      console.error("Complete setup error:", error);
-      if (error.response?.data?.error) {
-        message.error(error.response.data.error);
-      } else {
-        message.error(
-          "Error al completar la configuración. Por favor, intenta nuevamente."
-        );
-      }
-    } finally {
-      setCompleteLoading(false);
-    }
-  };
-
-  // Optional: Check authorization status periodically
-  const checkAuthorizationStatus = async () => {
-    if (!requisitionId || currentStep !== 1) return;
-
     setCheckingAuth(true);
     try {
-      const response = await axios.get(
-        `/api/financial/requisition-status/${requisitionId}`
-      );
-      if (response.data.success && response.data.data.status === "LN") {
-        // Linked successfully
-        message.success(
-          "¡Autorización detectada! Completando configuración..."
-        );
-        await handleCompleteSetup();
-      }
+      await api.post("/financial/complete-setup", { requisition_id: requisitionId });
+      message.success("¡Cuenta conectada exitosamente!");
+      setCurrentStep(2);
+      fetchAccounts();
+      fetchSyncStatus();
+      clearRequisitionFromStorage();
+      setTimeout(() => {
+        setSetupModalVisible(false);
+      }, 3000);
     } catch (error) {
-      // Silent fail - user can still click the button manually
-      console.log("Status check failed:", error);
+      console.error("Error completing setup:", error);
+      message.error("La autorización no pudo ser completada. Por favor, inténtalo de nuevo.");
     } finally {
+      setCompleteLoading(false);
       setCheckingAuth(false);
     }
-  };
+  }, [requisitionId, fetchAccounts, fetchSyncStatus, clearRequisitionFromStorage]);
 
-  // Optional: Auto-check authorization status
-  useEffect(() => {
-    if (currentStep === 1 && requisitionId) {
-      const interval = setInterval(() => {
-        checkAuthorizationStatus();
-      }, 10000); // Check every 10 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [currentStep, requisitionId]);
-
-  const columns = [
+  const columns: TableProps<Account>["columns"] = [
     {
-      title: "Banco",
-      dataIndex: "institution",
-      key: "institution",
-      render: (text: string) => (
+      title: "Institución",
+      dataIndex: "institution_name",
+      key: "institution_name",
+      render: (text, record) => (
         <Space>
-          <BankOutlined />
-          <Text strong>{text}</Text>
+          {record.logo_url ? (
+            <img
+              src={record.logo_url}
+              alt={`${text} logo`}
+              style={{ width: 24, height: 24 }}
+            />
+          ) : (
+            <BankOutlined />
+          )}
+          <span>{text}</span>
         </Space>
       ),
     },
     {
-      title: "Cuenta",
-      dataIndex: "name",
-      key: "name",
-      render: (text: string, record: BankAccount) => (
-        <div>
-          <Text>{text}</Text>
-          {record.iban && (
-            <Text
-              type="secondary"
-              style={{ display: "block", fontSize: "12px" }}
-            >
-              {record.iban}
-            </Text>
-          )}
-        </div>
-      ),
+      title: "Titular",
+      dataIndex: "owner_name",
+      key: "owner_name",
+    },
+    {
+      title: "IBAN",
+      dataIndex: "iban",
+      key: "iban",
     },
     {
       title: "Saldo",
       dataIndex: "balance",
       key: "balance",
-      align: "right" as const,
-      render: (balance: number, record: BankAccount) => {
-        const balanceValue =
-          typeof balance === "number" && !isNaN(balance) ? balance : 0;
-        const formattedBalance = safeFormatNumber(balanceValue);
-        return (
-          <div
-            style={{
-              textAlign: "right",
-              fontSize: "16px",
-              color: balanceValue >= 0 ? "#52c41a" : "#f5222d",
-              fontWeight: 500,
-            }}
-          >
-            {record.currency === "EUR" ? "€" : "$"} {formattedBalance}
-          </div>
-        );
-      },
-    },
-    {
-      title: "Disponible",
-      dataIndex: "available_balance",
-      key: "available_balance",
-      align: "right" as const,
-      render: (balance: number | undefined, record: BankAccount) => {
-        return (
-          <Text type="secondary">
-            {record.currency === "EUR" ? "€" : "$"} {safeFormatNumber(balance)}
-          </Text>
-        );
-      },
+      align: "right",
+      render: (balance, record) => (
+        <span style={{ fontWeight: "bold" }}>
+          {safeFormatNumber(balance)} {record.currency}
+        </span>
+      ),
     },
     {
       title: "Última Sincronización",
-      dataIndex: "last_sync",
-      key: "last_sync",
-      render: (date: string) => (
-        <Space>
-          <ClockCircleOutlined />
-          <Text type="secondary">
-            {date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "Nunca"}
-          </Text>
-        </Space>
-      ),
+      dataIndex: "last_synced_at",
+      key: "last_synced_at",
+      render: (text) => (text ? dayjs(text).fromNow() : "Nunca"),
     },
     {
       title: "Estado",
       dataIndex: "is_active",
       key: "is_active",
-      render: (active: boolean) => (
-        <Tag color={active ? "green" : "red"}>
-          {active ? "Activa" : "Inactiva"}
+      render: (isActive) => (
+        <Tag color={isActive ? "green" : "red"}>
+          {isActive ? "Activa" : "Inactiva"}
         </Tag>
       ),
     },
   ];
 
-  const totalBalance = accounts.reduce((sum, acc) => {
-    const balance =
-      typeof acc.balance === "number" && !isNaN(acc.balance) ? acc.balance : 0;
-    return sum + balance;
-  }, 0);
-
   return (
-    <div>
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} md={6}>
+    <div style={{ padding: 24 }}>
+      <Row gutter={[24, 24]}>
+        <Col span={24}>
           <Card>
-            <Statistic
-              title="Balance Total"
-              value={
-                typeof totalBalance === "number" && !isNaN(totalBalance)
-                  ? totalBalance
-                  : 0
-              }
-              precision={2}
-              prefix="€"
-              valueStyle={{ color: totalBalance >= 0 ? "#52c41a" : "#f5222d" }}
-            />
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Title level={2}>Cuentas Bancarias</Title>
+                <Text type="secondary">
+                  Gestiona tus cuentas bancarias conectadas y su estado de
+                  sincronización.
+                </Text>
+              </Col>
+              <Col>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleSetupNewAccount}
+                  size="large"
+                >
+                  Conectar Nueva Cuenta
+                </Button>
+              </Col>
+            </Row>
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="Cuentas Activas"
-              value={accounts.filter((a) => a.is_active).length}
-              suffix={`/ ${accounts.length}`}
-              prefix={<BankOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
+
+        <Col xs={24} md={8}>
+          <Card title="Estado de Sincronización">
             <Statistic
               title="Última Sincronización"
-              value={
-                syncStatus?.stats?.summary?.last_sync
-                  ? dayjs(syncStatus.stats.summary.last_sync).fromNow()
-                  : "Nunca"
-              }
-              prefix={<SyncOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="Sincronizaciones Hoy"
-              value={syncStatus?.stats?.summary?.total_syncs || 0}
-              suffix="/ 2"
+              value={syncStatus?.stats?.lastSync ? dayjs(syncStatus.stats.lastSync).format("DD/MM/YYYY HH:mm") : "Nunca"}
               prefix={<CalendarOutlined />}
             />
-            {syncStatus?.scheduler?.nextSyncEstimate && (
-              <Text
-                type="secondary"
-                style={{ fontSize: "12px", display: "block", marginTop: "8px" }}
-              >
-                Próxima:{" "}
-                {dayjs(syncStatus.scheduler.nextSyncEstimate).format("HH:mm")}
-              </Text>
-            )}
-          </Card>
-        </Col>
-      </Row>
-      <Card
-        title={
-          <Space>
-            <BankOutlined />
-            <span>Cuentas Bancarias Conectadas</span>
-          </Space>
-        }
-        extra={
-          <Space>
-            <Tooltip title="Activar/desactivar sincronización automática (2 veces al día)">
-              <Space>
-                <span>Auto-sync:</span>
+            <Statistic
+              title="Cuentas Sincronizadas"
+              value={`${syncStatus?.stats?.summary?.synced || 0} / ${syncStatus?.stats?.summary?.total || 0}`}
+              prefix={<CheckCircleOutlined />}
+              style={{ marginTop: 16 }}
+            />
+            <Statistic
+              title="Próxima Sincronización Automática"
+              value={syncStatus?.scheduler?.nextSyncEstimate ? dayjs(syncStatus.scheduler.nextSyncEstimate).format("DD/MM/YYYY HH:mm") : "Desactivada"}
+              prefix={<ClockCircleOutlined />}
+              style={{ marginTop: 16 }}
+            />
+            <Divider />
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Row justify="space-between" align="middle">
+                <Text>Sincronización automática</Text>
                 <Switch
                   checked={autoSyncEnabled}
                   onChange={toggleAutoSync}
                   loading={toggleLoading}
-                  checkedChildren="ON"
-                  unCheckedChildren="OFF"
                 />
-              </Space>
-            </Tooltip>
-            <Button type="primary" icon={<PlusOutlined />} onClick={startSetup}>
-              Conectar Cuenta
-            </Button>
-            <Button
-              icon={<SyncOutlined />}
-              onClick={handleSync}
-              loading={syncing}
-            >
-              Sincronizar
-            </Button>
-          </Space>
-        }
-      >
-        {accounts.length === 0 && !loading ? (
-          <Alert
-            message="No hay cuentas conectadas"
-            description="Conecta tu primera cuenta bancaria para empezar a sincronizar transacciones automáticamente."
-            type="info"
-            showIcon
-            action={
-              <Button size="small" type="primary" onClick={startSetup}>
-                Conectar Cuenta
+              </Row>
+              <Button
+                type="primary"
+                icon={<SyncOutlined spin={syncing} />}
+                onClick={handleSync}
+                loading={syncing}
+                style={{ width: "100%" }}
+              >
+                Sincronizar Ahora
               </Button>
-            }
-          />
-        ) : (
-          <>
+            </Space>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={16}>
+          <Card title="Sincronizaciones Recientes">
+            <List
+              dataSource={syncStatus?.stats?.recentSyncs || []}
+              renderItem={(item) => (
+                <List.Item>
+                  <List.Item.Meta
+                    avatar={
+                      <Tooltip title={item.status}>
+                        {item.status === "completed" ? (
+                          <CheckCircleOutlined style={{ color: "green" }} />
+                        ) : (
+                          <ExclamationCircleOutlined style={{ color: "red" }} />
+                        )}
+                      </Tooltip>
+                    }
+                    title={`Sincronización ${dayjs(item.startTime).fromNow()}`}
+                    description={`Duración: ${dayjs(item.endTime).diff(dayjs(item.startTime), "seconds")}s - Cuentas: ${item.accounts?.length || 0}`}
+                  />
+                </List.Item>
+              )}
+              locale={{ emptyText: "No hay sincronizaciones recientes." }}
+            />
+          </Card>
+        </Col>
+
+        <Col span={24}>
+          <Card title="Cuentas Conectadas">
             <Table
               columns={columns}
               dataSource={accounts}
-              rowKey="id"
               loading={loading}
-              pagination={false}
+              rowKey="id"
             />
-            {syncStatus?.stats?.recentSyncs &&
-              syncStatus.stats.recentSyncs.length > 0 && (
-                <div style={{ marginTop: 16 }}>
-                  <Text type="secondary" style={{ fontSize: "12px" }}>
-                    Últimas sincronizaciones:
-                    {syncStatus.stats.recentSyncs
-                      .slice(0, 3)
-                      .map((sync: any, index: number) => (
-                        <span key={index}>
-                          {" "}
-                          {dayjs(sync.created_at).format("DD/MM HH:mm")}
-                          {sync.success ? " ✓" : " ✗"}
-                          {index < 2 && ","}
-                        </span>
-                      ))}
-                  </Text>
-                </div>
-              )}
-          </>
-        )}
-      </Card>
-      {/* Setup Modal */}
+          </Card>
+        </Col>
+      </Row>
+
       <Modal
-        title="Conectar Cuenta Bancaria"
+        title="Conectar una nueva cuenta bancaria"
         visible={setupModalVisible}
         onCancel={() => {
-          if (currentStep === 1 && requisitionId) {
-            Modal.confirm({
-              title: "¿Cancelar proceso?",
-              content:
-                "Tienes una autorización pendiente. ¿Estás seguro de que quieres cancelar?",
-              onOk: () => {
-                clearRequisitionFromStorage();
-                setSetupModalVisible(false);
-                setCurrentStep(0);
-                setRequisitionId("");
-                setRequisitionUrl("");
-              },
-              okText: "Sí, cancelar",
-              cancelText: "No, continuar",
-            });
-          } else {
-            setSetupModalVisible(false);
-            setCurrentStep(0);
-            setRequisitionId("");
-            setRequisitionUrl("");
-          }
+          setSetupModalVisible(false);
+          setCurrentStep(0);
+          clearRequisitionFromStorage();
         }}
         footer={null}
-        width={700}
-        maskClosable={false}
+        width={720}
       >
         <Steps current={currentStep} style={{ marginBottom: 24 }}>
-          <Step title="Seleccionar Banco" icon={<BankOutlined />} />
-          <Step title="Autorizar Acceso" icon={<LinkOutlined />} />
-          <Step title="Confirmar" icon={<CheckCircleOutlined />} />
+          <Step title="Seleccionar Banco" />
+          <Step title="Autorizar Conexión" />
+          <Step title="Completado" />
         </Steps>
 
         {currentStep === 0 && (
           <div>
             <Title level={4}>Selecciona tu banco</Title>
             <Paragraph>
-              Utilizamos conexiones seguras PSD2 para acceder a tu información
-              bancaria. Tus credenciales nunca se almacenan en nuestros
-              servidores.
+              Elige el banco que deseas conectar. Serás redirigido a su
+              plataforma segura para autorizar el acceso.
             </Paragraph>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card
+                  hoverable
+                  onClick={handleSetupBBVA}
+                  style={{ textAlign: "center", opacity: isSandbox ? 0.5 : 1 }}
+                >
+                  <BankOutlined style={{ fontSize: 40, marginBottom: 8 }} />
+                  <Paragraph strong>BBVA</Paragraph>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card
+                  hoverable
+                  onClick={handleSetupSandbox}
+                  style={{ textAlign: "center" }}
+                >
+                  <ExperimentOutlined style={{ fontSize: 40, marginBottom: 8 }} />
+                  <Paragraph strong>Sandbox Bank</Paragraph>
+                </Card>
+              </Col>
+            </Row>
 
-            <Card
-              hoverable
-              style={{
-                marginTop: 16,
-                cursor: authLoading ? "not-allowed" : "pointer",
-              }}
-              onClick={!authLoading ? handleSetupBBVA : undefined}
-            >
-              <Space>
-                {authLoading ? (
-                  <SyncOutlined
-                    spin
-                    style={{ fontSize: 24, color: "#1890ff" }}
-                  />
-                ) : (
-                  <BankOutlined style={{ fontSize: 24, color: "#004481" }} />
-                )}
-                <div>
-                  <Title level={5} style={{ margin: 0 }}>
-                    BBVA
-                  </Title>
-                  <Text type="secondary">
-                    {authLoading
-                      ? "Iniciando proceso..."
-                      : "Banco Bilbao Vizcaya Argentaria"}
-                  </Text>
-                </div>
-              </Space>
-            </Card>
+            {isSandbox && (
+              <Card style={{ marginTop: 16 }} type="inner">
+                <Paragraph>
+                  <Text strong>Nota:</Text> Estás en modo sandbox. Solo puedes
+                  conectar con el banco de pruebas.
+                </Paragraph>
+              </Card>
+            )}
 
             <Alert
-              message="Seguridad garantizada"
-              description="Utilizamos GoCardless/Nordigen, un proveedor certificado PSD2 para acceder de forma segura a tu información bancaria."
-              type="success"
+              message={isSandbox ? "Modo Sandbox Activo" : "Seguridad garantizada"}
+              description={
+                isSandbox
+                  ? "Solo puedes conectar cuentas de prueba. El botón de BBVA está deshabilitado."
+                  : "Utilizamos GoCardless/Nordigen, un proveedor certificado PSD2 para acceder de forma segura a tu información bancaria."
+              }
+              type={isSandbox ? "warning" : "success"}
               showIcon
               style={{ marginTop: 16 }}
             />
@@ -743,10 +586,10 @@ const BankAccountsContent: React.FC = () => {
 
         {currentStep === 1 && (
           <div>
-            <Title level={4}>Autoriza el acceso</Title>
+            <Title level={4}>Autorizar</Title>
             <Paragraph>
-              Se ha abierto una nueva ventana donde debes autorizar el acceso a
-              tu cuenta bancaria. Una vez completado, haz clic en continuar.
+              Serás redirigido a la página segura de tu banco para autorizar el
+              acceso.
             </Paragraph>
 
             <Alert
@@ -792,13 +635,12 @@ const BankAccountsContent: React.FC = () => {
             {requisitionUrl && (
               <Paragraph style={{ marginTop: 16, textAlign: "center" }}>
                 <Text type="secondary">
-                  Si la ventana no se abrió,
+                  Si la ventana no se abrió,{" "}
                   <a
                     href={requisitionUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {" "}
                     haz clic aquí
                   </a>
                 </Text>
@@ -831,7 +673,7 @@ const BankAccountsContent: React.FC = () => {
           <div style={{ textAlign: "center" }}>
             <CheckCircleOutlined style={{ fontSize: 64, color: "#52c41a" }} />
             <Title level={4} style={{ marginTop: 16 }}>
-              ¡Cuenta conectada exitosamente!
+              ¡Configuración completada exitosamente!
             </Title>
             <Paragraph>
               Tu cuenta bancaria ha sido conectada y las transacciones se
@@ -844,7 +686,7 @@ const BankAccountsContent: React.FC = () => {
   );
 };
 
-const BankAccounts: React.FC = () => {
+const BankAccounts: FC = () => {
   return (
     <ErrorBoundary>
       <BankAccountsContent />

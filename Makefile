@@ -99,6 +99,10 @@ auth-bypass-off: ## 🔒 Desactivar bypass de auth
 auth-test: ## 🧪 Probar sistema de autenticación
 	@$(MAKE) -f Makefile.auth auth-test
 
+.PHONY: auth-token
+auth-token: ## 🔑 Obtener token JWT de admin para desarrollo
+	@$(MAKE) -f Makefile.development dev-auth-get-token
+
 .PHONY: auth-check
 auth-check: ## 🔍 Verificar salud completa del sistema de autenticación
 	@./scripts/check-auth.sh
@@ -139,6 +143,10 @@ dev-up: ## 🚀 Levantar ambiente de desarrollo
 .PHONY: dev-down
 dev-down: ## 🛑 Detener ambiente de desarrollo
 	@$(MAKE) -f Makefile.development dev-down
+
+.PHONY: dev-refresh
+dev-refresh: ## 🔄 Refrescar ambiente de desarrollo (down, build, up)
+	@$(MAKE) -f Makefile.development dev-refresh
 
 .PHONY: dev-status
 dev-status: ## 📊 Estado del desarrollo local

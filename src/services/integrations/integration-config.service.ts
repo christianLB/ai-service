@@ -161,19 +161,42 @@ export class IntegrationConfigService {
     try {
       const finalValue = encrypt ? this.encrypt(configValue) : configValue;
       
-      const query = `
-        INSERT INTO financial.integration_configs (
-          user_id, integration_type, config_key, config_value, 
-          is_encrypted, is_global, description, metadata
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT (user_id, integration_type, config_key) 
-        DO UPDATE SET 
-          config_value = EXCLUDED.config_value,
-          is_encrypted = EXCLUDED.is_encrypted,
-          description = EXCLUDED.description,
-          metadata = EXCLUDED.metadata,
-          updated_at = NOW()
-      `;
+      let query: string;
+      
+      // Handle different ON CONFLICT cases based on whether it's a global config
+      if (isGlobal && !userId) {
+        // For global configs (user_id is NULL)
+        query = `
+          INSERT INTO financial.integration_configs (
+            user_id, integration_type, config_key, config_value, 
+            is_encrypted, is_global, description, metadata
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ON CONFLICT (integration_type, config_key) 
+          WHERE user_id IS NULL AND is_global = true
+          DO UPDATE SET 
+            config_value = EXCLUDED.config_value,
+            is_encrypted = EXCLUDED.is_encrypted,
+            description = EXCLUDED.description,
+            metadata = EXCLUDED.metadata,
+            updated_at = NOW()
+        `;
+      } else {
+        // For user-specific configs
+        query = `
+          INSERT INTO financial.integration_configs (
+            user_id, integration_type, config_key, config_value, 
+            is_encrypted, is_global, description, metadata
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ON CONFLICT (user_id, integration_type, config_key) 
+          WHERE user_id IS NOT NULL
+          DO UPDATE SET 
+            config_value = EXCLUDED.config_value,
+            is_encrypted = EXCLUDED.is_encrypted,
+            description = EXCLUDED.description,
+            metadata = EXCLUDED.metadata,
+            updated_at = NOW()
+        `;
+      }
       
       await db.pool.query(query, [
         userId || null,
