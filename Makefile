@@ -977,6 +977,109 @@ dev-migrate: ## Aplica migraciones en desarrollo local
 	@docker exec -i ai-service-postgres-1 psql -U postgres -d ai_service < config/init-financial-tables.sql
 
 # ==============================================================================
+# COMANDOS DE SALUD Y VERSIÓN EN PRODUCCIÓN
+# ==============================================================================
+
+.PHONY: prod-health-check
+prod-health-check: ## 🏥 Verificación completa de salud
+	@echo "$(BLUE)🏥 Verificación de salud del sistema...$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(GREEN)📊 Estado general:$(NC)"
+	@curl -s http://$(NAS_HOST):3001/status | python3 -m json.tool 2>/dev/null || curl -s http://$(NAS_HOST):3001/status
+	@echo ""
+	@echo "$(GREEN)🔌 Health endpoint:$(NC)"
+	@curl -s http://$(NAS_HOST):3001/health | python3 -m json.tool 2>/dev/null || curl -s http://$(NAS_HOST):3001/health
+	@echo ""
+	@echo "$(GREEN)🧠 Neural status:$(NC)"
+	@curl -s http://$(NAS_HOST):3001/neural | python3 -m json.tool 2>/dev/null || curl -s http://$(NAS_HOST):3001/neural
+
+.PHONY: prod-version-check
+prod-version-check: ## 🏷️ Verificar versión e imagen
+	@echo "$(BLUE)🏷️ Información de versión...$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(GREEN)API Info:$(NC)"
+	@curl -s http://$(NAS_HOST):3001/api/info | python3 -m json.tool 2>/dev/null || curl -s http://$(NAS_HOST):3001/api/info
+	@echo ""
+	@echo "$(GREEN)Docker Image:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker inspect ai-service --format='Image: {{.Config.Image}}\nCreated: {{.Created}}\nID: {{.Image}}' 2>/dev/null" || echo "Error obteniendo info de imagen"
+
+.PHONY: prod-endpoints-check
+prod-endpoints-check: ## 🌐 Listar endpoints disponibles
+	@echo "$(BLUE)🌐 Endpoints disponibles...$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@curl -s -X GET http://$(NAS_HOST):3001/api/notfound 2>&1 | \
+		grep -o '"available_endpoints":\[[^]]*\]' | \
+		sed 's/"available_endpoints":\[//' | \
+		sed 's/\]//' | \
+		sed 's/,/\n/g' | \
+		sed 's/"//g' | \
+		sort
+
+.PHONY: prod-image-update
+prod-image-update: ## 🔄 Actualizar imagen a la más reciente
+	@echo "$(YELLOW)🔄 Actualizando imagen de Docker...$(NC)"
+	@echo "$(BLUE)Verificando última imagen en GitHub...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker pull ghcr.io/christianlb/ai-service-api:latest"
+	@echo "$(GREEN)✅ Imagen actualizada$(NC)"
+	@echo "$(BLUE)Recreando contenedor con nueva imagen...$(NC)"
+	@$(MAKE) prod-force-recreate
+
+# ==============================================================================
+# COMANDOS DE WATCHTOWER EN PRODUCCIÓN
+# ==============================================================================
+
+.PHONY: prod-watchtower-fix
+prod-watchtower-fix: ## 🔧 Arreglar autenticación de Watchtower
+	@echo "$(YELLOW)🔧 Arreglando Watchtower con autenticación correcta...$(NC)"
+	@echo "$(BLUE)1. Deteniendo Watchtower actual...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stop ai-watchtower 2>/dev/null || true"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker rm ai-watchtower 2>/dev/null || true"
+	@echo "$(BLUE)2. Creando directorio de config si no existe...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "mkdir -p /volume1/docker/ai-service/config/watchtower"
+	@echo "$(BLUE)3. Creando config.json con token actualizado...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		if [ -f .env ] && grep -q GHCR_TOKEN .env; then \
+			TOKEN=\$$(grep GHCR_TOKEN .env | cut -d'=' -f2 | tr -d '\"' | tr -d \"'\"); \
+			AUTH=\$$(echo -n \"christianlb:\$$TOKEN\" | base64); \
+			echo '{\"auths\":{\"ghcr.io\":{\"auth\":\"'\$$AUTH'\"}}}' > config/watchtower/config.json; \
+			chmod 600 config/watchtower/config.json; \
+			echo '$(GREEN)✅ Config creado con token de .env$(NC)'; \
+		else \
+			echo '$(RED)❌ No se encontró GHCR_TOKEN en .env$(NC)'; \
+			exit 1; \
+		fi"
+	@echo "$(BLUE)4. Iniciando Watchtower con config correcta...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker run -d \
+			--name ai-watchtower \
+			--restart unless-stopped \
+			-e WATCHTOWER_CLEANUP=true \
+			-e WATCHTOWER_POLL_INTERVAL=300 \
+			-e WATCHTOWER_INCLUDE_RESTARTING=false \
+			-e DOCKER_CONFIG=/config \
+			-v /var/run/docker.sock:/var/run/docker.sock \
+			-v /volume1/docker/ai-service/config/watchtower:/config:ro \
+			containrrr/watchtower:latest \
+			ai-service ai-service-frontend"
+	@echo "$(GREEN)✅ Watchtower reiniciado con autenticación$(NC)"
+
+.PHONY: prod-watchtower-test
+prod-watchtower-test: ## 🧪 Probar que Watchtower puede autenticarse
+	@echo "$(BLUE)🧪 Probando autenticación de Watchtower...$(NC)"
+	@echo "$(YELLOW)Forzando chequeo inmediato...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-watchtower /watchtower --run-once ai-service 2>&1 | tail -20"
+
+.PHONY: prod-watchtower-status
+prod-watchtower-status: ## 📊 Ver estado y logs de Watchtower
+	@echo "$(BLUE)📊 Estado de Watchtower:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker ps | grep watchtower || echo '$(RED)❌ Watchtower no está corriendo$(NC)'"
+	@echo ""
+	@echo "$(BLUE)📋 Últimos logs:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-watchtower --tail 10 2>&1"
+
+# ==============================================================================
 # COMANDOS LOCALES (usando ~/ai-service-prod montado)
 # ==============================================================================
 
@@ -1007,6 +1110,207 @@ local-backup-create: ## Crea directorio de backups si no existe
 	@echo "$(BLUE)Creando directorio de backups...$(NC)"
 	@mkdir -p $(LOCAL_NAS_PATH)/backups
 	@echo "$(GREEN)✓ Directorio creado$(NC)"
+
+# ==============================================================================
+# COMANDOS ADICIONALES DE PRODUCCIÓN
+# ==============================================================================
+
+.PHONY: prod-inspect-backend
+prod-inspect-backend: ## 🔍 Inspeccionar configuración del backend
+	@echo "$(BLUE)🔍 Inspeccionando configuración del backend...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker inspect ai-service | jq '.[0].Config.Env, .[0].HostConfig.Memory' 2>/dev/null || \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker inspect ai-service | grep -E '(Memory|Env)' | head -50"
+
+.PHONY: prod-test-login
+prod-test-login: ## 🔐 Probar endpoint de login
+	@echo "$(BLUE)🔐 Probando login en producción...$(NC)"
+	@curl -X POST http://$(NAS_HOST):3001/api/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"email":"admin@ai-service.local","password":"admin123"}' \
+		-w "\n$(GREEN)Status: %{http_code}$(NC)\n" -s | jq . 2>/dev/null || \
+	(curl -X POST http://$(NAS_HOST):3001/api/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"email":"admin@ai-service.local","password":"admin123"}' \
+		-w "\n$(GREEN)Status: %{http_code}$(NC)\n" -s || echo "$(RED)❌ Error al conectar$(NC)")
+
+.PHONY: prod-force-recreate
+prod-force-recreate: ## 🔄 Forzar recreación de contenedores con nueva config
+	@echo "$(YELLOW)⚠️  Recreando contenedores en producción...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose stop ai-service && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose rm -f ai-service && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d ai-service"
+	@echo "$(GREEN)✅ Esperando inicio del servicio...$(NC)"
+	@sleep 10
+	@$(MAKE) prod-status
+
+.PHONY: prod-update-compose
+prod-update-compose: ## 📤 Actualizar docker-compose en producción
+	@echo "$(BLUE)📤 Actualizando docker-compose.yml en producción...$(NC)"
+	@scp docker-compose.nas.yml $(NAS_USER)@$(NAS_HOST):$(NAS_PATH)/docker-compose.yml
+	@echo "$(GREEN)✅ Archivo actualizado$(NC)"
+
+.PHONY: prod-check-images
+prod-check-images: ## 🖼️ Verificar imágenes de Docker
+	@echo "$(BLUE)🖼️ Imágenes disponibles:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker images | grep -E '(ai-service|christianlb)' | head -10"
+
+.PHONY: prod-container-stats
+prod-container-stats: ## 📊 Ver estadísticas de contenedores
+	@echo "$(BLUE)📊 Estadísticas de contenedores:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stats --no-stream ai-service ai-service-frontend ai-postgres ai-redis"
+
+.PHONY: prod-exec-backend
+prod-exec-backend: ## 🐚 Shell interactivo en el backend
+	@echo "$(BLUE)🐚 Conectando al contenedor backend...$(NC)"
+	@$(SSH_CMD) -t $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec -it ai-service sh"
+
+.PHONY: prod-db-check-auth
+prod-db-check-auth: ## 🗄️ Verificar tablas de autenticación
+	@echo "$(BLUE)🗄️ Verificando tablas de autenticación...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c \
+		\"SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND (tablename LIKE '%user%' OR tablename LIKE '%auth%');\""
+
+.PHONY: prod-logs-error
+prod-logs-error: ## 🚨 Ver solo logs de error
+	@echo "$(RED)🚨 Logs de error del backend:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service 2>&1 | grep -E '(error|Error|ERROR|failed|Failed)' | tail -30"
+
+# ==============================================================================
+# COMANDOS DE BASE DE DATOS EN PRODUCCIÓN
+# ==============================================================================
+
+.PHONY: prod-db-compare-tables
+prod-db-compare-tables: ## 🔍 Comparar tablas entre desarrollo y producción
+	@echo "$(BLUE)🔍 Comparando tablas dev vs prod...$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(GREEN)📋 Tablas en desarrollo:$(NC)"
+	@docker exec ai-service-postgres psql -U ai_user -d ai_service -t -c \
+		"SELECT schemaname || '.' || tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY 1;" > /tmp/tables-dev.txt
+	@cat /tmp/tables-dev.txt
+	@echo ""
+	@echo "$(BLUE)📋 Tablas en producción:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -t -c \
+		\"SELECT schemaname || '.' || tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY 1;\"" > /tmp/tables-prod.txt
+	@cat /tmp/tables-prod.txt
+	@echo ""
+	@echo "$(YELLOW)📊 Diferencias:$(NC)"
+	@echo "$(GREEN)Solo en desarrollo:$(NC)"
+	@sort /tmp/tables-dev.txt > /tmp/tables-dev-sorted.txt
+	@sort /tmp/tables-prod.txt > /tmp/tables-prod-sorted.txt
+	@comm -23 /tmp/tables-dev-sorted.txt /tmp/tables-prod-sorted.txt | sed 's/^/  + /'
+	@echo "$(RED)Solo en producción:$(NC)"
+	@comm -13 /tmp/tables-dev-sorted.txt /tmp/tables-prod-sorted.txt | sed 's/^/  - /'
+	@rm -f /tmp/tables-dev.txt /tmp/tables-prod.txt /tmp/tables-dev-sorted.txt /tmp/tables-prod-sorted.txt
+
+.PHONY: prod-db-sync-schema
+prod-db-sync-schema: ## 🔄 Sincronizar schema faltante de dev a prod
+	@echo "$(YELLOW)🔄 Sincronizando schema a producción...$(NC)"
+	@echo "$(RED)⚠️  Esto agregará tablas/columnas faltantes en producción$(NC)"
+	@read -p "¿Continuar? (s/N): " confirm; \
+	if [ "$$confirm" = "s" ]; then \
+		echo "$(BLUE)Creando tabla integration_configs si no existe...$(NC)"; \
+		$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+			echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c \
+			\"CREATE TABLE IF NOT EXISTS financial.integration_configs ( \
+				id UUID PRIMARY KEY DEFAULT gen_random_uuid(), \
+				type VARCHAR(50) NOT NULL, \
+				key VARCHAR(100) NOT NULL, \
+				config JSONB NOT NULL, \
+				is_active BOOLEAN DEFAULT true, \
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
+				UNIQUE(type, key) \
+			);\"" && \
+		echo "$(GREEN)✅ Tabla integration_configs creada/verificada$(NC)"; \
+	else \
+		echo "$(YELLOW)Cancelado$(NC)"; \
+	fi
+
+.PHONY: prod-db-cleanup
+prod-db-cleanup: ## 🧹 Limpiar tablas de test en producción
+	@echo "$(YELLOW)🧹 Limpiando tablas de test en producción...$(NC)"
+	@echo "$(RED)⚠️  Esto eliminará: financial.test_table, financial.invoices_new$(NC)"
+	@read -p "¿Continuar? (s/N): " confirm; \
+	if [ "$$confirm" = "s" ]; then \
+		echo "$(BLUE)Eliminando tablas de test...$(NC)"; \
+		$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+			echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c \
+			\"DROP TABLE IF EXISTS financial.test_table CASCADE; \
+			DROP TABLE IF EXISTS financial.invoices_new CASCADE;\"" && \
+		echo "$(GREEN)✅ Tablas de test eliminadas$(NC)"; \
+	else \
+		echo "$(YELLOW)Cancelado$(NC)"; \
+	fi
+
+.PHONY: prod-db-verify
+prod-db-verify: ## ✅ Verificar integridad del schema
+	@echo "$(BLUE)✅ Verificando integridad del schema...$(NC)"
+	@echo "$(YELLOW)Tablas críticas:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c \
+		\"SELECT \
+			CASE WHEN EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='financial' AND tablename='accounts') THEN '✅' ELSE '❌' END || ' financial.accounts', \
+			CASE WHEN EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='financial' AND tablename='transactions') THEN '✅' ELSE '❌' END || ' financial.transactions', \
+			CASE WHEN EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='financial' AND tablename='integration_configs') THEN '✅' ELSE '❌' END || ' financial.integration_configs', \
+			CASE WHEN EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='users') THEN '✅' ELSE '❌' END || ' public.users' \
+		;\""
+
+# ==============================================================================
+# COMANDOS DE AUTENTICACIÓN EN PRODUCCIÓN
+# ==============================================================================
+
+.PHONY: prod-auth-create-admin
+prod-auth-create-admin: ## 👤 Crear/resetear admin (admin@ai-service.local / admin123)
+	@$(MAKE) -f Makefile.production prod-auth-create-admin
+
+.PHONY: prod-auth-list-users  
+prod-auth-list-users: ## 📋 Listar todos los usuarios en producción
+	@$(MAKE) -f Makefile.production prod-auth-list-users
+
+.PHONY: prod-auth-reset-attempts
+prod-auth-reset-attempts: ## 🔓 Limpiar todos los intentos de login
+	@$(MAKE) -f Makefile.production prod-auth-reset-attempts
+
+.PHONY: prod-auth-check-attempts
+prod-auth-check-attempts: ## 🔍 Ver intentos recientes de login
+	@$(MAKE) -f Makefile.production prod-auth-check-attempts
+
+.PHONY: prod-auth-reset-password
+prod-auth-reset-password: ## 🔑 Resetear contraseña de usuario (interactivo)
+	@$(MAKE) -f Makefile.production prod-auth-reset-password
+
+.PHONY: prod-auth-check-tables
+prod-auth-check-tables: ## 🗄️ Verificar si existen las tablas de autenticación
+	@$(MAKE) -f Makefile.production prod-auth-check-tables
+
+.PHONY: prod-auth-create-user
+prod-auth-create-user: ## 👤 Crear nuevo usuario en producción
+	@echo "$(BLUE)👤 Crear nuevo usuario en producción$(NC)"
+	@read -p "Email: " email; \
+	read -p "Nombre completo: " name; \
+	read -s -p "Contraseña: " password; \
+	echo; \
+	read -p "Rol (admin/user) [user]: " role; \
+	role=$${role:-user}; \
+	if [ -z "$$email" ] || [ -z "$$password" ]; then \
+		echo "$(RED)❌ Email y contraseña son requeridos$(NC)"; \
+		exit 1; \
+	fi; \
+	HASH=$$(docker run --rm node:20-alpine sh -c "npm install bcrypt >/dev/null 2>&1 && node -e \"const bcrypt = require('bcrypt'); bcrypt.hash('$$password', 10).then(h => console.log(h))\"" 2>/dev/null | tail -1); \
+	if [ -z "$$HASH" ]; then \
+		echo "$(RED)❌ Error generando hash de contraseña$(NC)"; \
+		exit 1; \
+	fi; \
+	$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-postgres psql -U ai_user -d ai_service -c \
+		\"INSERT INTO users (email, password_hash, full_name, role) VALUES ('$$email', '$$HASH', '$$name', '$$role') RETURNING email;\"" && \
+	echo "$(GREEN)✅ Usuario creado: $$email$(NC)" || \
+	echo "$(RED)❌ Error al crear usuario (puede que ya exista)$(NC)"
 
 .PHONY: local-reset-db
 local-reset-db: local-copy-schema ## Prepara archivos para reset de BD (ejecutar comandos en el NAS)

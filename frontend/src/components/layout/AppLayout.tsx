@@ -61,11 +61,6 @@ const AppLayout: React.FC = () => {
       label: 'Configuración',
       children: [
         {
-          key: '/settings',
-          icon: <SettingOutlined />,
-          label: 'Crypto',
-        },
-        {
           key: '/integrations',
           icon: <ApiOutlined />,
           label: 'Integraciones',

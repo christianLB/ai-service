@@ -57,7 +57,7 @@ services:
 
   # Main Application
   ai-service:
-    image: ghcr.io/christianlb/ai-service:latest
+    image: ghcr.io/christianlb/ai-service-api:latest
     container_name: ai-service
     restart: unless-stopped
     deploy:

@@ -407,11 +407,11 @@ test-auth: ## Test authentication (SSH and sudo)
 # =============================================================================
 
 .PHONY: prod-auth-create-admin
-prod-auth-create-admin: ## Crear usuario admin (admin@ai-service.prod / admin123)
+prod-auth-create-admin: ## Crear usuario admin (admin@ai-service.local / admin123)
 	@echo "$(BLUE)👤 Creating admin user in production...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"INSERT INTO users (email, password_hash, full_name, role) VALUES ('admin@ai-service.prod', '\\\$$2b\\\$$10\\\$$8YzH7X1vKpFdKjb8rqOAOe8uEpZ4UjQn9mGxK7bgQqFvI9o1aWVKq', 'Admin User', 'admin') ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;\" 2>/dev/null" && \
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB) -c \"INSERT INTO users (email, password_hash, full_name, role) VALUES ('admin@ai-service.local', '\\\$$2b\\\$$10\\\$$8YzH7X1vKpFdKjb8rqOAOe8uEpZ4UjQn9mGxK7bgQqFvI9o1aWVKq', 'System Administrator', 'admin') ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;\" 2>/dev/null" && \
 	echo "$(GREEN)✅ Admin user created/updated$(NC)" && \
-	echo "📧 Email: admin@ai-service.prod" && \
+	echo "📧 Email: admin@ai-service.local" && \
 	echo "🔑 Password: admin123" || \
 	echo "$(RED)❌ Failed to create admin user$(NC)"
 
