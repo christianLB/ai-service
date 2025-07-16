@@ -58,6 +58,12 @@ services:
     image: ghcr.io/christianlb/ai-service:latest
     container_name: ai-service
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
       # Core
       NODE_ENV: production

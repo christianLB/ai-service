@@ -1070,4 +1070,70 @@ init: setup ## Inicializar proyecto completo
 prod-update: ## 🚀 Actualizar producción manualmente (pull latest image)
 	@echo "$$(tput setaf 3)🚀 Actualizando producción con última imagen...$$(tput sgr0)"
 	@sshpass -e ssh -o StrictHostKeyChecking=no k2600x@192.168.1.11 "cd /volume1/docker/ai-service && echo '${SSHPASS}' | sudo -S /usr/local/bin/docker pull ghcr.io/christianlb/ai-service:latest && echo '${SSHPASS}' | sudo -S /usr/local/bin/docker-compose up -d ai-service && echo '✅ Update completado!'"
+
+.PHONY: prod-restart
+prod-restart: ## 🔄 Reiniciar servicio de producción
+	@echo "$(BLUE)🔄 Reiniciando servicio en producción...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose restart ai-service"
+	@echo "$(GREEN)✓ Servicio reiniciado$(NC)"
+	@sleep 5
+	@$(MAKE) prod-status
+
+.PHONY: prod-pull
+prod-pull: ## 📥 Pull de última imagen desde ghcr.io
+	@echo "$(BLUE)📥 Descargando última imagen desde ghcr.io...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker pull ghcr.io/christianlb/ai-service:latest"
+	@echo "$(GREEN)✓ Imagen actualizada$(NC)"
+
+.PHONY: prod-pull-frontend
+prod-pull-frontend: ## 📥 Pull de imagen frontend desde ghcr.io
+	@echo "$(BLUE)📥 Descargando imagen frontend desde ghcr.io...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker pull ghcr.io/christianlb/ai-service-frontend:latest"
+	@echo "$(GREEN)✓ Imagen frontend actualizada$(NC)"
+
+.PHONY: prod-memory-check
+prod-memory-check: ## 📊 Verificar uso de memoria del servicio
+	@echo "$(BLUE)📊 Verificando uso de memoria...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "\
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker stats --no-stream ai-service && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker exec ai-service ps aux --sort=-%mem | head -10"
+
+.PHONY: prod-docker-compose
+prod-docker-compose: ## 📝 Ver/editar docker-compose de producción
+	@echo "$(BLUE)📝 Contenido de docker-compose.yml en producción:$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		cat docker-compose.yml"
+
+.PHONY: prod-sync-compose
+prod-sync-compose: ## 📤 Sincronizar docker-compose.nas.yml con producción
+	@./scripts/sync-compose-to-prod.sh
+
+.PHONY: prod-recreate
+prod-recreate: ## 🔄 Recrear contenedor con nueva configuración
+	@echo "$(BLUE)🔄 Recreando contenedor con nueva configuración...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose stop ai-service && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose rm -f ai-service && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d ai-service"
+	@echo "$(GREEN)✓ Contenedor recreado$(NC)"
+	@sleep 10
+	@$(MAKE) prod-status
+
+.PHONY: prod-up
+prod-up: ## 🚀 Levantar todos los servicios en producción
+	@echo "$(BLUE)🚀 Levantando todos los servicios...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker-compose up -d"
+	@echo "$(GREEN)✓ Todos los servicios levantados$(NC)"
+	@sleep 10
+	@$(MAKE) prod-status
+
+.PHONY: prod-logs-frontend
+prod-logs-frontend: ## 📋 Ver logs del servicio Frontend
+	@echo "$(BLUE)📋 Logs del servicio Frontend...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
+		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service-frontend --tail 30"
 -include Makefile.watchtower

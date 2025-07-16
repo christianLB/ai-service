@@ -14,7 +14,6 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   CloseCircleOutlined,
-  BankOutlined,
   ApiOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
@@ -50,11 +49,6 @@ const AppLayout: React.FC = () => {
       key: '/invoices',
       icon: <FileTextOutlined />,
       label: 'Facturas',
-    },
-    {
-      key: '/bank-accounts',
-      icon: <BankOutlined />,
-      label: 'Cuentas Bancarias',
     },
     {
       key: '/documents',

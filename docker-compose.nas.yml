@@ -7,29 +7,37 @@ services:
     container_name: ai-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ai_service
-      POSTGRES_USER: ${DB_USER:-ai_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_service}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - ./postgres:/var/lib/postgresql/data
+      - ./config/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./config/fix-financial-schema.sql:/docker-entrypoint-initdb.d/02-fix-financial.sql:ro
+      - ./config/init-auth.sql:/docker-entrypoint-initdb.d/03-init-auth.sql:ro
+      - ./migrations:/docker-entrypoint-initdb.d/migrations:ro
+    # Puerto no expuesto - solo accesible dentro de la red Docker
+    # ports:
+    #   - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ai_user} -d ai_service"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_user} -d ${POSTGRES_DB:-ai_service}"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+    networks:
+      - ai-service-network
 
   # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: ai-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # Puerto no expuesto - solo accesible dentro de la red Docker
+    # ports:
+    #   - "6379:6379"
     volumes:
-      - redis_data:/data
+      - ./redis:/data
     command: >
       redis-server
       --maxmemory 200mb
@@ -44,46 +52,62 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - ai-service-network
 
   # Main Application
   ai-service:
     image: ghcr.io/christianlb/ai-service:latest
     container_name: ai-service
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
-      # Database
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: ai_service
-      DB_USER: ${DB_USER:-ai_user}
-      DB_PASSWORD: ${DB_PASSWORD}
+      # Core
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       
-      # Redis
-      REDIS_HOST: redis
+      # Database - Override .env values for container names
+      POSTGRES_HOST: ai-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-ai_service}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD}@ai-postgres:5432/${POSTGRES_DB:-ai_service}
+      
+      # Redis - Override .env values for container names
+      REDIS_HOST: ai-redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       
-      # OpenAI
+      # AI APIs
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
       
       # Telegram
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
+      TELEGRAM_ALERTS_ENABLED: ${TELEGRAM_ALERTS_ENABLED:-true}
       
       # Authentication
       JWT_SECRET: ${JWT_SECRET:-ultra_secure_production_jwt_secret_2025_min_32_chars}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
       # AUTH_BYPASS removed - real authentication required
       
-      # Node.js
-      NODE_ENV: production
-      NODE_OPTIONS: "--max-old-space-size=1024"
-      
-      # Application
-      PORT: 3001
-      LOG_LEVEL: info
+      # Metrics
       ENABLE_METRICS: "true"
       METRICS_PORT: 9090
+      
+      # Node.js
+      NODE_OPTIONS: "--max-old-space-size=1024"
     ports:
-      - "3001:3001"
+      - "3001:3000"
       - "9090:9090"
     depends_on:
       postgres:
@@ -91,27 +115,44 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - document_storage:/app/data/documents
-      - logs:/app/logs
-      - ./frontend/dist:/app/public:ro
+      - ./documents:/app/data/documents
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+    networks:
+      - ai-service-network
 
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  document_storage:
-    driver: local
-  logs:
-    driver: local
+  # Frontend Service
+  ai-service-frontend:
+    image: ghcr.io/christianlb/ai-service-frontend:latest
+    container_name: ai-service-frontend
+    restart: unless-stopped
+    environment:
+      # Override backend URL for production
+      BACKEND_URL: http://ai-service:3000
+    ports:
+      - "3003:8080"
+    volumes:
+      # Mount corrected nginx config, removing the problematic frontend.conf
+      - ./nginx/frontend-prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - /dev/null:/etc/nginx/conf.d/frontend.conf:ro
+    networks:
+      - ai-service-network
+    depends_on:
+      - ai-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 networks:
-  default:
+  ai-service-network:
     name: ai-service-network
     driver: bridge
