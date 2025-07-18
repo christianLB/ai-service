@@ -80,6 +80,54 @@ financial-diff: ## 🔍 Comparar datos financieros entre ambientes
 	@$(MAKE) -f Makefile.financial-sync financial-diff
 
 # =============================================================================
+# 🌉 COMANDOS MCP BRIDGE
+# =============================================================================
+
+.PHONY: mcp-deploy
+mcp-deploy: ## 🚀 Desplegar MCP Bridge en NAS
+	@$(MAKE) -f Makefile.mcp mcp-deploy
+
+.PHONY: mcp-status
+mcp-status: ## 📊 Ver estado de MCP Bridge
+	@$(MAKE) -f Makefile.mcp mcp-status
+
+.PHONY: mcp-logs
+mcp-logs: ## 📋 Ver logs de MCP Bridge
+	@$(MAKE) -f Makefile.mcp mcp-logs
+
+.PHONY: mcp-tools
+mcp-tools: ## 🔧 Listar herramientas MCP disponibles
+	@$(MAKE) -f Makefile.mcp mcp-tools
+
+.PHONY: mcp-restart
+mcp-restart: ## 🔄 Reiniciar MCP Bridge
+	@$(MAKE) -f Makefile.mcp mcp-restart
+
+.PHONY: mcp-stop
+mcp-stop: ## 🛑 Detener MCP Bridge
+	@$(MAKE) -f Makefile.mcp mcp-stop
+
+.PHONY: mcp-test-secure
+mcp-test-secure: ## 🧪 Testing seguro de MCP Bridge
+	@$(MAKE) -f Makefile.mcp mcp-test-secure
+
+.PHONY: mcp-validate-deployment
+mcp-validate-deployment: ## 🔍 Validación completa del despliegue
+	@$(MAKE) -f Makefile.mcp mcp-validate-deployment
+
+.PHONY: mcp-help
+mcp-help: ## ❓ Mostrar ayuda de MCP
+	@$(MAKE) -f Makefile.mcp mcp-help
+
+.PHONY: mcp-backup
+mcp-backup: ## 💾 Backup de configuración MCP
+	@$(MAKE) -f Makefile.mcp mcp-backup
+
+.PHONY: mcp-test-tool
+mcp-test-tool: ## 🎯 Probar una herramienta MCP (uso: make mcp-test-tool TOOL=health_check)
+	@$(MAKE) -f Makefile.mcp mcp-test-tool TOOL=$(TOOL)
+
+# =============================================================================
 # 🔐 COMANDOS DE AUTENTICACIÓN
 # =============================================================================
 

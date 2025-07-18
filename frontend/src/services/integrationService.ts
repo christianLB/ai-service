@@ -24,6 +24,8 @@ interface IntegrationConfig {
   isGlobal?: boolean;
   description?: string;
   metadata?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface SaveConfigParams {
@@ -112,15 +114,16 @@ class IntegrationService {
     }
   }
 
-  async deleteConfig(
-    integrationType: string, 
-    configKey: string, 
-    userId?: string
-  ): Promise<boolean> {
+  async deleteConfig(params: {
+    integrationType: string;
+    configKey: string;
+    userId?: string;
+  }): Promise<boolean> {
     try {
-      const params = userId ? `?userId=${userId}` : '';
+      const { integrationType, configKey, userId } = params;
+      const queryParams = userId ? `?userId=${userId}` : '';
       const response = await api.delete(
-        `${this.baseURL}/configs/${integrationType}/${configKey}${params}`
+        `${this.baseURL}/configs/${integrationType}/${configKey}${queryParams}`
       );
       return response.data.success;
     } catch (error) {

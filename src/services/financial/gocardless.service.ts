@@ -19,8 +19,6 @@ export class GoCardlessService {
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
   private db: FinancialDatabaseService;
-  private isSandboxMode: boolean = false;
-  private sandboxInstitutionId: string = '';
 
   constructor(database: FinancialDatabaseService) {
     this.db = database;
@@ -31,34 +29,19 @@ export class GoCardlessService {
 
   private async initializeService(): Promise<void> {
     try {
-      // Get configuration from integration service
-      const sandboxMode = await integrationConfigService.getConfig({
-        integrationType: 'gocardless',
-        configKey: 'sandbox_mode'
-      });
-      
-      this.isSandboxMode = sandboxMode === 'true';
-      
-      // Get sandbox institution ID
-      const sandboxInstitutionId = await integrationConfigService.getConfig({
-        integrationType: 'gocardless',
-        configKey: 'sandbox_institution_id'
-      });
-      
-      this.sandboxInstitutionId = sandboxInstitutionId || 'SANDBOXFINANCE_SFIN0000';
-      
-      if (this.isSandboxMode) {
-        logger.info('🧪 GoCardless Service running in SANDBOX MODE');
-        logger.info(`🏦 Using sandbox institution: ${this.sandboxInstitutionId}`);
-      }
-      
-      // Get base URL - GoCardless uses the same URL for both sandbox and production
-      const baseUrl = await integrationConfigService.getConfig({
+      // Get base URL from configuration
+      let baseUrl = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'base_url'
       }) || 'https://bankaccountdata.gocardless.com/api/v2';
       
-      logger.info(`Using GoCardless API URL: ${baseUrl}`);
+      // Ensure base URL is properly formatted
+      baseUrl = baseUrl.trim();
+      if (!baseUrl.endsWith('/api/v2')) {
+        baseUrl = baseUrl.replace(/\/$/, '') + '/api/v2';
+      }
+      
+      logger.info(`Initializing GoCardless Service with URL: ${baseUrl}`);
       
       this.api = axios.create({
         baseURL: baseUrl,
@@ -70,9 +53,12 @@ export class GoCardlessService {
       });
     } catch (error) {
       logger.error('Failed to initialize GoCardless service', error);
-      // Fallback to default production URL
+      // Use default production URL
+      const defaultUrl = 'https://bankaccountdata.gocardless.com/api/v2';
+      logger.info(`Using default production URL: ${defaultUrl}`);
+      
       this.api = axios.create({
-        baseURL: 'https://bankaccountdata.gocardless.com/api/v2',
+        baseURL: defaultUrl,
         timeout: 30000,
         headers: {
           'Content-Type': 'application/json',
@@ -111,52 +97,110 @@ export class GoCardlessService {
 
   async authenticate(): Promise<string> {
     try {
-      if (this.isSandboxMode) {
-        const sandboxToken = await integrationConfigService.getConfig({
-          integrationType: 'gocardless',
-          configKey: 'sandbox_access_token'
-        });
-
-        if (sandboxToken) {
-          this.accessToken = sandboxToken;
-          this.tokenExpiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000);
-          logger.info('Using provided sandbox access token');
-          return this.accessToken;
-        }
-      }
-
-      // Get credentials from integration config only
-      const secretId = await integrationConfigService.getConfig({
+      // Clear any cached token
+      this.accessToken = null;
+      this.tokenExpiresAt = null;
+      
+      // Get fresh credentials from database (no cache)
+      let secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_id'
       });
 
-      const secretKey = await integrationConfigService.getConfig({
+      let secretKey = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_key'
+      });
+      
+      // Clean credentials - remove any whitespace
+      if (secretId) secretId = secretId.trim();
+      if (secretKey) secretKey = secretKey.trim();
+
+      logger.info('Authenticating with GoCardless', { 
+        hasSecretId: !!secretId,
+        hasSecretKey: !!secretKey,
+        secretIdLength: secretId?.length,
+        secretKeyLength: secretKey?.length,
+        baseURL: this.api.defaults.baseURL,
+        // Log first/last chars to verify no whitespace
+        secretIdFirstChar: secretId?.charAt(0),
+        secretIdLastChar: secretId?.charAt(secretId.length - 1),
+        environment: this.api.defaults.baseURL?.includes('sandbox') ? 'sandbox' : 'production'
       });
 
       if (!secretId || !secretKey) {
         throw new Error('GoCardless credentials not configured in database');
       }
       
-      // Use the configured base URL for token generation
-      const tokenUrl = this.api.defaults.baseURL;
+      // Validate credential format
+      const validation = this.validateCredentialFormat(secretId, secretKey);
+      if (!validation.valid) {
+        logger.error('Invalid credential format', { errors: validation.errors });
+        throw new Error(`Invalid GoCardless credential format: ${validation.errors.join(', ')}`);
+      }
       
-      const response = await axios.post(`${tokenUrl}/token/new/`, {
+      // Use the configured base URL for token generation
+      const tokenUrl = `${this.api.defaults.baseURL}/token/new/`;
+      
+      logger.info(`Requesting token from: ${tokenUrl}`);
+      
+      // Log the request payload structure (without sensitive data)
+      logger.debug('Token request payload structure', {
+        hasSecretId: !!secretId,
+        hasSecretKey: !!secretKey,
+        payloadKeys: Object.keys({ secret_id: secretId, secret_key: secretKey })
+      });
+      
+      const response = await axios.post(tokenUrl, {
         secret_id: secretId,
         secret_key: secretKey
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
       });
 
-      this.accessToken = response.data.access;
+      if (!response.data || !response.data.access) {
+        logger.error('Invalid response from GoCardless token endpoint', response.data);
+        throw new Error('Invalid response from GoCardless authentication');
+      }
+
+      const accessToken = response.data.access;
+      this.accessToken = accessToken;
       // GoCardless tokens expire after 24 hours
       this.tokenExpiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000); // 23 hours to be safe
       
-      console.log('GoCardless authentication successful');
-      return this.accessToken!;
-    } catch (error) {
-      console.error('GoCardless authentication failed:', error);
-      throw new Error('Failed to authenticate with GoCardless');
+      logger.info('GoCardless authentication successful', {
+        tokenLength: accessToken.length,
+        expiresAt: this.tokenExpiresAt
+      });
+      
+      return accessToken;
+    } catch (error: any) {
+      // Clear token on error
+      this.accessToken = null;
+      this.tokenExpiresAt = null;
+      
+      logger.error('GoCardless authentication failed', {
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      });
+      
+      if (error.response?.status === 401) {
+        const errorDetail = error.response?.data?.detail || error.response?.data?.error || '';
+        throw new Error(`Invalid GoCardless credentials (401). ${errorDetail}. Please verify:
+1. Credentials are from the correct environment (production vs sandbox)
+2. No extra whitespace in credentials
+3. Credentials are active and not expired`);
+      }
+      
+      throw new Error(`Failed to authenticate with GoCardless: ${error.message}`);
     }
   }
 
@@ -169,6 +213,21 @@ export class GoCardlessService {
       }
       await this.authenticate();
     }
+  }
+
+  // Force refresh authentication - useful when credentials are updated
+  async refreshAuthentication(): Promise<void> {
+    logger.info('Force refreshing GoCardless authentication');
+    this.accessToken = null;
+    this.tokenExpiresAt = null;
+    
+    // Clear the config cache to ensure fresh credentials
+    await integrationConfigService.clearCache('gocardless');
+    
+    // Re-initialize the service to pick up any URL changes
+    await this.initializeService();
+    
+    await this.authenticate();
   }
 
   // ============================================================================
@@ -545,13 +604,11 @@ export class GoCardlessService {
     requisitionId: string;
   }>> {
     try {
-      // Use sandbox institution if in sandbox mode
-      const institutionId = this.isSandboxMode ? this.sandboxInstitutionId : 'BBVA_BBVAESMM';
-      const reference = this.isSandboxMode ? `sandbox-setup-${Date.now()}` : `bbva-setup-${Date.now()}`;
+      // Always use real BBVA institution
+      const institutionId = 'BBVA_BBVAESMM';
+      const reference = `bbva-setup-${Date.now()}`;
       
-      if (this.isSandboxMode) {
-        console.log(`🧪 Setting up SANDBOX account with institution: ${institutionId}`);
-      }
+      console.log(`Setting up BBVA account with institution: ${institutionId}`);
       
       // Create requisition
       const requisition = await this.createRequisition(institutionId, reference);
@@ -564,11 +621,8 @@ export class GoCardlessService {
           requisitionId: requisition.id
         },
         metadata: {
-          message: this.isSandboxMode 
-            ? '🧪 SANDBOX MODE: Visit the consent URL to authorize access to the mock bank account'
-            : 'Visit the consent URL to authorize access to your BBVA account',
-          nextSteps: 'After consent, call completeSetup with the requisition ID',
-          sandboxMode: this.isSandboxMode
+          message: 'Visit the consent URL to authorize access to your BBVA account',
+          nextSteps: 'After consent, call completeSetup with the requisition ID'
         }
       };
     } catch (error) {
@@ -579,49 +633,6 @@ export class GoCardlessService {
     }
   }
 
-  async setupSandboxAccount(): Promise<FinancialApiResponse<{
-    requisition: GoCardlessRequisition;
-    consentUrl: string;
-    requisitionId: string;
-  }>> {
-    if (!this.isSandboxMode) {
-      return {
-        success: false,
-        error: 'Sandbox mode is not enabled. Please configure sandbox_mode in the integration settings.'
-      };
-    }
-
-    try {
-      console.log(`🧪 Setting up Sandbox Finance test account`);
-      
-      // Create requisition for Sandbox Finance
-      const requisition = await this.createRequisition(
-        this.sandboxInstitutionId, 
-        `sandbox-test-${Date.now()}`
-      );
-      
-      return {
-        success: true,
-        data: {
-          requisition,
-          consentUrl: requisition.link,
-          requisitionId: requisition.id
-        },
-        metadata: {
-          message: '🧪 SANDBOX MODE: Visit the consent URL to test with Sandbox Finance mock bank',
-          institution: 'Sandbox Finance (Mock Bank)',
-          institutionId: this.sandboxInstitutionId,
-          nextSteps: 'Complete the mock authorization flow and then call completeSetup',
-          testCredentials: 'Use any mock credentials provided by GoCardless sandbox'
-        }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to setup sandbox account'
-      };
-    }
-  }
 
   async completeSetup(requisitionId: string): Promise<FinancialApiResponse<{
     accounts: Account[];
@@ -689,16 +700,345 @@ export class GoCardlessService {
   }
 
   // ============================================================================
+  // RATE LIMIT MANAGEMENT
+  // ============================================================================
+
+  private async checkRateLimit(accountId: string, endpointType: string): Promise<{
+    canSync: boolean;
+    callsRemaining: number;
+    windowResetAt: Date;
+    retryAfter?: Date;
+  }> {
+    try {
+      const result = await this.db.query(
+        'SELECT * FROM financial.get_rate_limit_status($1, $2)',
+        [accountId, endpointType]
+      );
+      
+      const status = result.rows[0];
+      return {
+        canSync: status.can_sync,
+        callsRemaining: status.calls_remaining,
+        windowResetAt: new Date(status.window_reset_at),
+        retryAfter: status.retry_after ? new Date(status.retry_after) : undefined
+      };
+    } catch (error) {
+      logger.error('Failed to check rate limit', error);
+      // Default to allowing sync if rate limit check fails
+      return {
+        canSync: true,
+        callsRemaining: 4,
+        windowResetAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      };
+    }
+  }
+
+  private async recordApiCall(accountId: string, endpointType: string, retryAfter?: Date): Promise<void> {
+    try {
+      await this.db.query(
+        'SELECT financial.record_api_call($1, $2, $3)',
+        [accountId, endpointType, retryAfter || null]
+      );
+    } catch (error) {
+      logger.error('Failed to record API call', error);
+    }
+  }
+
+  // ============================================================================
+  // SPLIT SYNC OPERATIONS
+  // ============================================================================
+
+  async syncAccountDetails(accountId: string): Promise<FinancialApiResponse<Account>> {
+    try {
+      // Check rate limit
+      const rateLimit = await this.checkRateLimit(accountId, 'accounts');
+      if (!rateLimit.canSync) {
+        const waitTime = rateLimit.retryAfter 
+          ? Math.ceil((rateLimit.retryAfter.getTime() - Date.now()) / 1000 / 60)
+          : Math.ceil((rateLimit.windowResetAt.getTime() - Date.now()) / 1000 / 60);
+        
+        return {
+          success: false,
+          error: `Rate limit exceeded. Please wait ${waitTime} minutes before syncing account details.`,
+          metadata: {
+            rateLimitInfo: rateLimit
+          }
+        };
+      }
+
+      // Get account details
+      const accountDetails = await this.getAccountDetails(accountId);
+      
+      // Record API call
+      await this.recordApiCall(accountId, 'accounts');
+      
+      // Update account details in database
+      const account = await this.db.query(
+        `UPDATE financial.accounts 
+         SET metadata = metadata || $1::jsonb,
+             last_sync = NOW()
+         WHERE account_id = $2
+         RETURNING *`,
+        [
+          JSON.stringify({
+            account_details: accountDetails,
+            last_sync_type: 'accounts',
+            last_sync: new Date().toISOString()
+          }),
+          accountId
+        ]
+      );
+
+      // Log sync operation
+      await this.db.logSync({
+        accountId: account.rows[0].id,
+        status: 'success',
+        syncedTransactions: 0,
+        message: 'Account details synced successfully',
+        operationType: 'accounts'
+      });
+
+      return {
+        success: true,
+        data: account.rows[0],
+        metadata: {
+          rateLimitInfo: {
+            callsRemaining: rateLimit.callsRemaining - 1,
+            windowResetAt: rateLimit.windowResetAt
+          }
+        }
+      };
+    } catch (error: any) {
+      // Handle rate limit error
+      if (error.response?.status === 429) {
+        const retryAfter = this.parseRetryAfter(error.response);
+        await this.recordApiCall(accountId, 'accounts', retryAfter);
+        
+        return {
+          success: false,
+          error: `GoCardless rate limit exceeded. Next sync available in ${Math.round((retryAfter.getTime() - Date.now()) / 1000 / 60 / 60)} hours.`,
+          metadata: {
+            retryAfter
+          }
+        };
+      }
+
+      logger.error('Failed to sync account details', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to sync account details'
+      };
+    }
+  }
+
+  async syncAccountBalances(accountId: string): Promise<FinancialApiResponse<{
+    balance: string;
+    currency: string;
+  }>> {
+    try {
+      // Check rate limit
+      const rateLimit = await this.checkRateLimit(accountId, 'balances');
+      if (!rateLimit.canSync) {
+        const waitTime = rateLimit.retryAfter 
+          ? Math.ceil((rateLimit.retryAfter.getTime() - Date.now()) / 1000 / 60)
+          : Math.ceil((rateLimit.windowResetAt.getTime() - Date.now()) / 1000 / 60);
+        
+        return {
+          success: false,
+          error: `Rate limit exceeded. Please wait ${waitTime} minutes before syncing balances.`,
+          metadata: {
+            rateLimitInfo: rateLimit
+          }
+        };
+      }
+
+      // Get balances
+      const balances = await this.getAccountBalances(accountId);
+      
+      // Record API call
+      await this.recordApiCall(accountId, 'balances');
+      
+      const currentBalance = balances[0]?.balanceAmount?.amount || '0';
+      const currency = balances[0]?.balanceAmount?.currency || 'EUR';
+      
+      // Update balance in database
+      await this.db.query(
+        `UPDATE financial.accounts 
+         SET balance = $1,
+             metadata = metadata || $2::jsonb,
+             last_sync = NOW()
+         WHERE account_id = $3`,
+        [
+          currentBalance,
+          JSON.stringify({
+            last_balance_sync: new Date().toISOString(),
+            last_sync_type: 'balances'
+          }),
+          accountId
+        ]
+      );
+
+      // Get account ID for logging
+      const account = await this.db.query(
+        'SELECT id FROM financial.accounts WHERE account_id = $1',
+        [accountId]
+      );
+
+      // Log sync operation
+      await this.db.logSync({
+        accountId: account.rows[0].id,
+        status: 'success',
+        syncedTransactions: 0,
+        message: 'Account balance synced successfully',
+        operationType: 'balances'
+      });
+
+      return {
+        success: true,
+        data: {
+          balance: currentBalance,
+          currency: currency
+        },
+        metadata: {
+          rateLimitInfo: {
+            callsRemaining: rateLimit.callsRemaining - 1,
+            windowResetAt: rateLimit.windowResetAt
+          }
+        }
+      };
+    } catch (error: any) {
+      // Handle rate limit error
+      if (error.response?.status === 429) {
+        const retryAfter = this.parseRetryAfter(error.response);
+        await this.recordApiCall(accountId, 'balances', retryAfter);
+        
+        return {
+          success: false,
+          error: `GoCardless rate limit exceeded. Next sync available in ${Math.round((retryAfter.getTime() - Date.now()) / 1000 / 60 / 60)} hours.`,
+          metadata: {
+            retryAfter
+          }
+        };
+      }
+
+      logger.error('Failed to sync account balances', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to sync account balances'
+      };
+    }
+  }
+
+  async syncAccountTransactions(accountId: string, days = 7): Promise<FinancialApiResponse<{
+    transactionsSynced: number;
+  }>> {
+    try {
+      // Check rate limit
+      const rateLimit = await this.checkRateLimit(accountId, 'transactions');
+      if (!rateLimit.canSync) {
+        const waitTime = rateLimit.retryAfter 
+          ? Math.ceil((rateLimit.retryAfter.getTime() - Date.now()) / 1000 / 60)
+          : Math.ceil((rateLimit.windowResetAt.getTime() - Date.now()) / 1000 / 60);
+        
+        return {
+          success: false,
+          error: `Rate limit exceeded. Please wait ${waitTime} minutes before syncing transactions.`,
+          metadata: {
+            rateLimitInfo: rateLimit
+          }
+        };
+      }
+
+      // Get account database ID
+      const account = await this.db.query(
+        'SELECT id FROM financial.accounts WHERE account_id = $1',
+        [accountId]
+      );
+
+      if (account.rows.length === 0) {
+        return {
+          success: false,
+          error: 'Account not found in database'
+        };
+      }
+
+      const dbAccountId = account.rows[0].id;
+
+      // Sync transactions
+      const transactionCount = await this.syncTransactionsToDatabase(accountId, dbAccountId, days);
+      
+      // Record API call (syncTransactionsToDatabase already handles rate limit errors)
+      await this.recordApiCall(accountId, 'transactions');
+
+      // Log sync operation
+      await this.db.logSync({
+        accountId: dbAccountId,
+        status: 'success',
+        syncedTransactions: transactionCount,
+        message: `Synced ${transactionCount} transactions from last ${days} days`,
+        operationType: 'transactions'
+      });
+
+      return {
+        success: true,
+        data: {
+          transactionsSynced: transactionCount
+        },
+        metadata: {
+          rateLimitInfo: {
+            callsRemaining: rateLimit.callsRemaining - 1,
+            windowResetAt: rateLimit.windowResetAt
+          }
+        }
+      };
+    } catch (error: any) {
+      // Handle rate limit error if thrown by syncTransactionsToDatabase
+      if (error.message?.includes('rate limit exceeded')) {
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      logger.error('Failed to sync account transactions', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to sync account transactions'
+      };
+    }
+  }
+
+  private parseRetryAfter(response: any): Date {
+    const retryAfterHeader = response.headers?.['retry-after'];
+    const detailMessage = response.data?.detail;
+    
+    let retrySeconds = 3600; // Default 1 hour
+    
+    if (retryAfterHeader) {
+      retrySeconds = parseInt(retryAfterHeader);
+    } else if (detailMessage) {
+      const match = detailMessage.match(/(\d+) seconds/);
+      if (match) {
+        retrySeconds = parseInt(match[1]);
+      }
+    }
+    
+    return new Date(Date.now() + retrySeconds * 1000);
+  }
+
+  // ============================================================================
   // PERIODIC SYNC
   // ============================================================================
 
   async performPeriodicSync(): Promise<FinancialApiResponse<{
     accountsSynced: number;
     transactionsSynced: number;
+    balancesSynced: number;
+    errors: string[];
   }>> {
     try {
       console.log('=== GOCARDLESS PERIODIC SYNC ===');
-      console.log('Starting periodic sync of GoCardless accounts...');
+      console.log('Starting periodic sync of GoCardless accounts (balances and transactions only)...');
       
       // Get all active bank accounts
       const accounts = await this.db.query(`
@@ -711,46 +1051,58 @@ export class GoCardlessService {
 
       let accountsSynced = 0;
       let totalTransactionsSynced = 0;
+      let balancesSynced = 0;
+      const errors: string[] = [];
 
       for (const account of accounts.rows) {
         try {
           console.log(`Syncing account: ${account.name} (${account.account_id})`);
           
-          // Sync transactions from last 7 days (to catch any missed transactions)
-          const transactionCount = await this.syncTransactionsToDatabase(
-            account.account_id, 
-            account.id, 
-            7
-          );
+          // Sync balance
+          const balanceResult = await this.syncAccountBalances(account.account_id);
+          if (balanceResult.success) {
+            balancesSynced++;
+            console.log(`✓ Balance synced for ${account.name}`);
+          } else {
+            console.error(`✗ Balance sync failed for ${account.name}: ${balanceResult.error}`);
+            errors.push(`${account.name} balance: ${balanceResult.error}`);
+          }
           
-          // Update last sync timestamp
-          await this.db.query(`
-            UPDATE financial.accounts 
-            SET metadata = metadata || '{"last_sync": $1}'::jsonb
-            WHERE id = $2
-          `, [new Date().toISOString(), account.id]);
+          // Sync transactions from last 7 days
+          const transactionResult = await this.syncAccountTransactions(account.account_id, 7);
+          if (transactionResult.success) {
+            totalTransactionsSynced += transactionResult.data!.transactionsSynced;
+            console.log(`✓ Transactions synced for ${account.name}: ${transactionResult.data!.transactionsSynced} new`);
+          } else {
+            console.error(`✗ Transaction sync failed for ${account.name}: ${transactionResult.error}`);
+            errors.push(`${account.name} transactions: ${transactionResult.error}`);
+          }
 
           accountsSynced++;
-          totalTransactionsSynced += transactionCount;
           
-          console.log(`Account ${account.name} synced: ${transactionCount} new transactions`);
         } catch (error) {
           console.error(`Failed to sync account ${account.name}:`, error);
-          // Continue with other accounts
+          errors.push(`${account.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
-      console.log(`Periodic sync completed: ${accountsSynced} accounts, ${totalTransactionsSynced} transactions`);
+      console.log(`Periodic sync completed: ${accountsSynced} accounts processed, ${balancesSynced} balances synced, ${totalTransactionsSynced} transactions synced`);
+      if (errors.length > 0) {
+        console.log('Sync errors:', errors);
+      }
 
       return {
         success: true,
         data: {
           accountsSynced,
-          transactionsSynced: totalTransactionsSynced
+          transactionsSynced: totalTransactionsSynced,
+          balancesSynced,
+          errors
         },
         metadata: {
           syncTime: new Date().toISOString(),
-          accountsProcessed: accounts.rows.length
+          accountsProcessed: accounts.rows.length,
+          hasErrors: errors.length > 0
         }
       };
     } catch (error) {
@@ -766,18 +1118,35 @@ export class GoCardlessService {
   // UTILITY METHODS
   // ============================================================================
 
+  private validateCredentialFormat(secretId: string | null, secretKey: string | null): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    
+    if (!secretId || !secretKey) {
+      errors.push('Missing credentials');
+      return { valid: false, errors };
+    }
+    
+    // GoCardless secret_id is typically a UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(secretId)) {
+      errors.push('Secret ID does not match expected UUID format');
+    }
+    
+    // GoCardless secret_key is typically 43 characters long
+    if (secretKey.length !== 43) {
+      errors.push(`Secret Key length is ${secretKey.length}, expected 43 characters`);
+    }
+    
+    // Check for common issues
+    if (secretId !== secretId.trim() || secretKey !== secretKey.trim()) {
+      errors.push('Credentials contain whitespace');
+    }
+    
+    return { valid: errors.length === 0, errors };
+  }
+
   async hasCredentials(): Promise<boolean> {
     try {
-      if (this.isSandboxMode) {
-        const sandboxToken = await integrationConfigService.getConfig({
-          integrationType: 'gocardless',
-          configKey: 'sandbox_access_token'
-        });
-        if (sandboxToken) {
-          return true;
-        }
-      }
-
       const secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_id'
@@ -815,12 +1184,21 @@ export class GoCardlessService {
         ORDER BY a.created_at DESC
       `);
 
+      // Add rate limit info for each account
+      for (const account of accounts.rows) {
+        if (account.account_id) {
+          const rateLimits = {
+            accounts: await this.checkRateLimit(account.account_id, 'accounts'),
+            balances: await this.checkRateLimit(account.account_id, 'balances'),
+            transactions: await this.checkRateLimit(account.account_id, 'transactions')
+          };
+          account.rateLimits = rateLimits;
+        }
+      }
+
       return {
         success: true,
-        data: accounts.rows,
-        metadata: {
-          sandboxMode: this.isSandboxMode
-        }
+        data: accounts.rows
       };
     } catch (error) {
       return {
@@ -830,95 +1208,44 @@ export class GoCardlessService {
     }
   }
 
-  // ============================================================================
-  // SANDBOX UTILITIES
-  // ============================================================================
-
-  async getSandboxStatus(): Promise<FinancialApiResponse<{
-    enabled: boolean;
-    institutionId: string;
-    institutionName: string;
-    environment: string;
-    baseUrl: string;
-    testAccountsAvailable: boolean;
-  }>> {
+  async getRateLimitStatus(): Promise<FinancialApiResponse<any[]>> {
     try {
+      const result = await this.db.query(`
+        SELECT 
+          rls.account_id,
+          a.name as account_name,
+          rls.endpoint_type,
+          rls.calls_made,
+          rls.calls_limit,
+          rls.window_start,
+          rls.window_end,
+          rls.retry_after,
+          rls.last_call_at,
+          CASE 
+            WHEN rls.calls_made >= rls.calls_limit THEN 'exhausted'
+            WHEN rls.retry_after IS NOT NULL AND rls.retry_after > NOW() THEN 'rate_limited'
+            ELSE 'available'
+          END as status,
+          GREATEST(0, rls.calls_limit - rls.calls_made) as calls_remaining
+        FROM financial.rate_limit_status rls
+        JOIN financial.accounts a ON a.account_id = rls.account_id
+        WHERE NOW() BETWEEN rls.window_start AND rls.window_end
+        ORDER BY a.name, rls.endpoint_type
+      `);
+
       return {
         success: true,
-        data: {
-          enabled: this.isSandboxMode,
-          institutionId: this.sandboxInstitutionId,
-          institutionName: 'Sandbox Finance (Mock Bank)',
-          environment: process.env.NODE_ENV || 'unknown',
-          baseUrl: this.api.defaults.baseURL || '',
-          testAccountsAvailable: this.isSandboxMode
-        },
+        data: result.rows,
         metadata: {
-          message: this.isSandboxMode 
-            ? '🧪 Sandbox mode is ACTIVE - using mock bank data'
-            : '🏦 Production mode - using real bank connections',
-          instructions: this.isSandboxMode 
-            ? 'You can test with mock data without real bank accounts'
-            : 'Configure sandbox_mode in integration settings to enable sandbox testing'
+          currentTime: new Date().toISOString()
         }
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get sandbox status'
+        error: error instanceof Error ? error.message : 'Failed to get rate limit status'
       };
     }
   }
 
-  async resetSandboxData(): Promise<FinancialApiResponse<{
-    accountsDeleted: number;
-    transactionsDeleted: number;
-  }>> {
-    if (!this.isSandboxMode) {
-      return {
-        success: false,
-        error: 'Cannot reset data - sandbox mode is not enabled'
-      };
-    }
-
-    try {
-      // Start a transaction
-      await this.db.query('BEGIN');
-
-      // Delete sandbox transactions
-      const transactionsResult = await this.db.query(`
-        DELETE FROM financial.transactions t
-        USING financial.accounts a
-        WHERE t.account_id = a.id 
-        AND a.institution_id = $1
-        RETURNING t.id
-      `, [this.sandboxInstitutionId]);
-
-      // Delete sandbox accounts
-      const accountsResult = await this.db.query(`
-        DELETE FROM financial.accounts
-        WHERE institution_id = $1
-        RETURNING id
-      `, [this.sandboxInstitutionId]);
-
-      await this.db.query('COMMIT');
-
-      return {
-        success: true,
-        data: {
-          accountsDeleted: accountsResult.rowCount || 0,
-          transactionsDeleted: transactionsResult.rowCount || 0
-        },
-        metadata: {
-          message: '🧪 Sandbox data has been reset successfully'
-        }
-      };
-    } catch (error) {
-      await this.db.query('ROLLBACK');
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to reset sandbox data'
-      };
-    }
-  }
 }

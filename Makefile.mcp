@@ -1,0 +1,164 @@
+# Makefile para MCP Bridge
+# Gestión del servidor MCP Bridge
+
+-include .make.env
+
+# Variables
+MCP_PATH ?= /volume1/docker/ai-service-mcp
+MCP_PORT ?= 8080
+REMOTE_EXEC := ./scripts/remote-exec.sh
+
+# Colores
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+NC := \033[0m
+
+# =============================================================================
+# 🌉 MCP BRIDGE - COMANDOS PRINCIPALES
+# =============================================================================
+
+.PHONY: mcp-deploy
+mcp-deploy: ## 🚀 Desplegar MCP Bridge en NAS
+	@echo "$(BLUE)🚀 Desplegando MCP Bridge...$(NC)"
+	@./scripts/deploy-mcp-final.sh
+
+.PHONY: mcp-deploy-secure
+mcp-deploy-secure: ## 🔐 Despliegue seguro sin exponer secretos
+	@echo "$(BLUE)🔐 Despliegue seguro de MCP Bridge...$(NC)"
+	@cd mcp-bridge/scripts && ./deploy-secure.sh
+
+.PHONY: mcp-setup-secure
+mcp-setup-secure: ## 🔑 Generar configuración segura
+	@echo "$(BLUE)🔑 Generando configuración segura...$(NC)"
+	@cd mcp-bridge/scripts && ./secure-setup.sh --production
+
+.PHONY: mcp-validate-config
+mcp-validate-config: ## ✅ Validar configuración
+	@cd mcp-bridge/scripts && ./validate-config.sh --production
+
+.PHONY: mcp-backup-config
+mcp-backup-config: ## 💾 Crear backup encriptado de configuración
+	@cd mcp-bridge/scripts && ./backup-config.sh --production
+
+.PHONY: mcp-test-secure
+mcp-test-secure: ## 🧪 Testing sin mostrar credenciales
+	@echo "$(BLUE)🧪 Testing seguro de MCP Bridge...$(NC)"
+	@cd mcp-bridge/scripts && ./test-production.sh
+
+.PHONY: mcp-validate-deployment
+mcp-validate-deployment: ## 🔍 Validación completa del despliegue
+	@cd mcp-bridge/scripts && ./validate-deployment.sh
+
+.PHONY: mcp-build
+mcp-build: ## 🏗️ Construir MCP Bridge localmente
+	@echo "$(BLUE)🏗️ Construyendo MCP Bridge...$(NC)"
+	@cd mcp-bridge && npm install && npm run build
+
+.PHONY: mcp-test
+mcp-test: ## 🧪 Testear MCP Bridge localmente
+	@echo "$(BLUE)🧪 Testeando MCP Bridge...$(NC)"
+	@cd mcp-bridge && npm test
+
+.PHONY: mcp-logs
+mcp-logs: ## 📋 Ver logs de MCP Bridge en producción
+	@echo "$(BLUE)📋 Logs de MCP Bridge...$(NC)"
+	@$(REMOTE_EXEC) docker logs -f mcp-bridge --tail 100
+
+.PHONY: mcp-status
+mcp-status: ## 📊 Estado de MCP Bridge
+	@echo "$(BLUE)📊 Estado de MCP Bridge...$(NC)"
+	@$(REMOTE_EXEC) docker ps | grep mcp-bridge || echo "$(RED)❌ MCP Bridge no está corriendo$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Testing health endpoint...$(NC)"
+	@curl -s http://$(NAS_HOST):$(MCP_PORT)/health | jq . || echo "$(RED)❌ Health check failed$(NC)"
+
+.PHONY: mcp-restart
+mcp-restart: ## 🔄 Reiniciar MCP Bridge
+	@echo "$(BLUE)🔄 Reiniciando MCP Bridge...$(NC)"
+	@$(REMOTE_EXEC) "cd $(MCP_PATH) && docker-compose -f src/docker-compose.mcp.yml restart"
+
+.PHONY: mcp-stop
+mcp-stop: ## 🛑 Detener MCP Bridge
+	@echo "$(RED)🛑 Deteniendo MCP Bridge...$(NC)"
+	@$(REMOTE_EXEC) "cd $(MCP_PATH) && docker-compose -f src/docker-compose.mcp.yml down"
+
+.PHONY: mcp-tools
+mcp-tools: ## 🔧 Listar herramientas MCP disponibles
+	@echo "$(BLUE)🔧 Herramientas MCP disponibles:$(NC)"
+	@cd mcp-bridge && python3 scripts/mcp-client.py list
+
+.PHONY: mcp-test-tool
+mcp-test-tool: ## 🎯 Probar una herramienta MCP (uso: make mcp-test-tool TOOL=health_check)
+	@echo "$(BLUE)🎯 Probando herramienta: $(TOOL)$(NC)"
+	@cd mcp-bridge && python3 scripts/mcp-client.py execute $(TOOL)
+
+.PHONY: mcp-generate-keys
+mcp-generate-keys: ## 🔐 Generar claves API para MCP
+	@echo "$(BLUE)🔐 Generando claves API...$(NC)"
+	@cd mcp-bridge && ./scripts/generate-api-keys.sh
+
+.PHONY: mcp-backup
+mcp-backup: ## 💾 Backup de configuración MCP
+	@echo "$(BLUE)💾 Creando backup de MCP...$(NC)"
+	@$(REMOTE_EXEC) "cd $(MCP_PATH) && tar czf mcp-backup-$$(date +%Y%m%d-%H%M%S).tar.gz config/ logs/"
+	@echo "$(GREEN)✅ Backup creado$(NC)"
+
+.PHONY: mcp-clean-logs
+mcp-clean-logs: ## 🧹 Limpiar logs antiguos de MCP
+	@echo "$(YELLOW)🧹 Limpiando logs antiguos...$(NC)"
+	@$(REMOTE_EXEC) "find $(MCP_PATH)/logs -type f -name '*.log' -mtime +7 -delete"
+	@echo "$(GREEN)✅ Logs limpiados$(NC)"
+
+# Secure workflow
+.PHONY: mcp-secure-workflow
+mcp-secure-workflow: ## 🚀 Flujo completo seguro (setup → validate → deploy → test)
+	@echo "$(BLUE)🚀 Iniciando flujo seguro completo...$(NC)"
+	@$(MAKE) -f Makefile.mcp mcp-setup-secure
+	@echo ""
+	@$(MAKE) -f Makefile.mcp mcp-validate-config
+	@echo ""
+	@echo "$(YELLOW)⚠️  Revise la configuración antes de continuar$(NC)"
+	@read -p "¿Continuar con el despliegue? (y/N): " -n 1 -r; \
+	echo ""; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		$(MAKE) -f Makefile.mcp mcp-backup-config; \
+		echo ""; \
+		$(MAKE) -f Makefile.mcp mcp-deploy-secure; \
+		echo ""; \
+		$(MAKE) -f Makefile.mcp mcp-test-secure; \
+		echo ""; \
+		$(MAKE) -f Makefile.mcp mcp-validate-deployment; \
+	else \
+		echo "$(YELLOW)Despliegue cancelado$(NC)"; \
+	fi
+
+# Rollback
+.PHONY: mcp-rollback
+mcp-rollback: ## 🔄 Rollback seguro
+	@echo "$(BLUE)🔄 Ejecutando rollback...$(NC)"
+	@cd mcp-bridge/scripts && ./rollback.sh
+
+# Security audit
+.PHONY: mcp-audit
+mcp-audit: ## 🔍 Auditoría de seguridad
+	@echo "$(BLUE)🔍 Ejecutando auditoría de seguridad...$(NC)"
+	@cd mcp-bridge/scripts && ./security-audit.sh
+
+# Help
+.PHONY: mcp-help
+mcp-help: ## ❓ Mostrar ayuda de MCP
+	@echo "$(BLUE)MCP Bridge - Comandos disponibles:$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Comandos Seguros (Recomendados):$(NC)"
+	@grep -E '^mcp-.*secure.*:.*?## .*$$' Makefile.mcp | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-25s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Configuración y Validación:$(NC)"
+	@grep -E '^mcp-(setup|validate|backup|audit).*:.*?## .*$$' Makefile.mcp | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-25s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Operaciones:$(NC)"
+	@grep -E '^mcp-(deploy|test|status|logs|restart|stop).*:.*?## .*$$' Makefile.mcp | grep -v secure | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-25s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Mantenimiento:$(NC)"
+	@grep -E '^mcp-(backup|clean|rollback).*:.*?## .*$$' Makefile.mcp | grep -v config | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-25s$(NC) %s\n", $$1, $$2}'

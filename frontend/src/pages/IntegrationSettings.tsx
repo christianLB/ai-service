@@ -12,7 +12,11 @@ import {
   Typography,
   Space,
   Divider,
-  Tooltip
+  Tooltip,
+  Tag,
+  Popconfirm,
+  Row,
+  Col
 } from 'antd';
 import { 
   BankOutlined, 
@@ -21,7 +25,10 @@ import {
   DollarOutlined,
   SaveOutlined,
   ReloadOutlined,
-  InfoCircleOutlined
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  DeleteOutlined,
+  LockOutlined
 } from '@ant-design/icons';
 import integrationService from '../services/integrationService';
 
@@ -46,11 +53,20 @@ interface ConfigValue {
   [key: string]: string;
 }
 
+interface FieldStatus {
+  [key: string]: {
+    configured: boolean;
+    lastUpdated?: string;
+  };
+}
+
 const IntegrationSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [clearing, setClearing] = useState<string | null>(null);
   const [integrationTypes, setIntegrationTypes] = useState<IntegrationType[]>([]);
   const [configs, setConfigs] = useState<{ [type: string]: ConfigValue }>({});
+  const [fieldStatuses, setFieldStatuses] = useState<{ [type: string]: FieldStatus }>({});
 
   useEffect(() => {
     loadIntegrationTypes();
@@ -65,23 +81,31 @@ const IntegrationSettings: React.FC = () => {
       // Load existing configs
       const existingConfigs = await integrationService.getAllConfigs();
       const configsByType: { [type: string]: ConfigValue } = {};
+      const statusesByType: { [type: string]: FieldStatus } = {};
       
       existingConfigs.forEach(config => {
         if (!configsByType[config.integrationType]) {
           configsByType[config.integrationType] = {};
+          statusesByType[config.integrationType] = {};
         }
+        
         // Para valores encriptados, usamos un placeholder especial
         configsByType[config.integrationType][config.configKey] = 
           config.isEncrypted ? '***CONFIGURED***' : config.configValue;
+        
+        // Track field status
+        statusesByType[config.integrationType][config.configKey] = {
+          configured: true,
+          lastUpdated: config.updatedAt || config.createdAt
+        };
       });
       
       setConfigs(configsByType);
+      setFieldStatuses(statusesByType);
     } catch (error: any) {
       console.error('Error loading integrations:', error);
       if (error.response?.status === 401) {
         message.error('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
-        // Opcional: redirigir al login
-        // window.location.href = '/login';
       } else {
         message.error('Error al cargar las integraciones. Por favor, intenta de nuevo.');
       }
@@ -134,6 +158,28 @@ const IntegrationSettings: React.FC = () => {
       message.error('Error al guardar la configuración');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleClearField = async (integrationType: string, configKey: string) => {
+    try {
+      setClearing(`${integrationType}-${configKey}`);
+      
+      // Delete the config
+      await integrationService.deleteConfig({
+        integrationType,
+        configKey
+      });
+      
+      message.success(`Campo ${configKey} eliminado correctamente`);
+      
+      // Reload configs
+      await loadIntegrationTypes();
+    } catch (error) {
+      console.error('Error clearing field:', error);
+      message.error('Error al eliminar el campo');
+    } finally {
+      setClearing(null);
     }
   };
 
@@ -210,8 +256,11 @@ const IntegrationSettings: React.FC = () => {
               <IntegrationForm
                 integration={integration}
                 initialValues={configs[integration.type] || {}}
+                fieldStatuses={fieldStatuses[integration.type] || {}}
                 onSave={handleSave}
+                onClearField={handleClearField}
                 saving={saving}
+                clearing={clearing}
               />
             </TabPane>
           ))}
@@ -225,15 +274,21 @@ const IntegrationSettings: React.FC = () => {
 interface IntegrationFormProps {
   integration: IntegrationType;
   initialValues: ConfigValue;
+  fieldStatuses: FieldStatus;
   onSave: (integrationType: string, values: ConfigValue) => Promise<void>;
+  onClearField: (integrationType: string, configKey: string) => Promise<void>;
   saving: boolean;
+  clearing: string | null;
 }
 
 const IntegrationForm: React.FC<IntegrationFormProps> = ({ 
   integration, 
   initialValues, 
+  fieldStatuses,
   onSave, 
-  saving 
+  onClearField,
+  saving,
+  clearing
 }) => {
   const [form] = Form.useForm();
   
@@ -262,6 +317,47 @@ const IntegrationForm: React.FC<IntegrationFormProps> = ({
       default:
         return <ApiOutlined />;
     }
+  };
+
+  const renderFieldStatus = (configKey: ConfigKey) => {
+    const status = fieldStatuses[configKey.key];
+    const isConfigured = status?.configured || initialValues[configKey.key] === '***CONFIGURED***';
+    
+    if (!configKey.encrypted) {
+      return null;
+    }
+
+    return (
+      <Space size="small">
+        {isConfigured ? (
+          <>
+            <Tag icon={<CheckCircleOutlined />} color="success">
+              Configurado
+            </Tag>
+            <Popconfirm
+              title="¿Eliminar esta credencial?"
+              description="Esta acción no se puede deshacer"
+              onConfirm={() => onClearField(integration.type, configKey.key)}
+              okText="Sí, eliminar"
+              cancelText="Cancelar"
+            >
+              <Button 
+                size="small" 
+                danger 
+                icon={<DeleteOutlined />}
+                loading={clearing === `${integration.type}-${configKey.key}`}
+              >
+                Limpiar
+              </Button>
+            </Popconfirm>
+          </>
+        ) : (
+          <Tag icon={<CloseCircleOutlined />} color="default">
+            No configurado
+          </Tag>
+        )}
+      </Space>
+    );
   };
   
   return (
@@ -305,47 +401,136 @@ const IntegrationForm: React.FC<IntegrationFormProps> = ({
       >
         {integration.type === 'gocardless' ? (
           <>
-            {integration.configKeys
-              .filter(key => !key.key.startsWith('sandbox_') && key.key !== 'base_url')
-              .map(configKey => (
-                <Form.Item
-                  key={configKey.key}
-                  label={
-                    <Space>
-                      <span>{configKey.description}</span>
-                      {configKey.required && <Text type="danger">*</Text>}
-                      {configKey.encrypted && (
-                        <Tooltip title="Este valor se encripta antes de guardarse">
-                          <InfoCircleOutlined style={{ color: '#1890ff' }} />
-                        </Tooltip>
-                      )}
-                    </Space>
-                  }
-                  name={configKey.key}
-                  rules={[
-                    {
-                      required: configKey.required,
-                      message: `${configKey.description} es requerido`
-                    }
-                  ]}
-                >
-                  {configKey.encrypted ? (
-                    <Input.Password 
-                      placeholder={
-                        initialValues[configKey.key] === '***CONFIGURED***' 
-                          ? 'Valor configurado (ingrese nuevo valor para cambiar)'
-                          : configKey.description
+            {/* GoCardless Credentials */}
+            <Title level={5}>Credenciales de GoCardless</Title>
+            <Row gutter={16}>
+              {integration.configKeys
+                .filter(key => key.key === 'secret_id' || key.key === 'secret_key')
+                .map(configKey => (
+                  <Col span={12} key={configKey.key}>
+                    <Form.Item
+                      label={
+                        <Space>
+                          <span>{configKey.description}</span>
+                          {configKey.required && <Text type="danger">*</Text>}
+                          {configKey.encrypted && (
+                            <Tooltip title="Este valor se encripta antes de guardarse">
+                              <LockOutlined style={{ color: '#1890ff' }} />
+                            </Tooltip>
+                          )}
+                        </Space>
                       }
-                      autoComplete="new-password"
-                    />
-                  ) : (
-                    <Input 
-                      placeholder={configKey.description}
-                      autoComplete="off"
-                    />
-                  )}
-                </Form.Item>
-              ))}
+                      name={configKey.key}
+                      extra={renderFieldStatus(configKey)}
+                      rules={[
+                        {
+                          required: configKey.required && !fieldStatuses[configKey.key]?.configured,
+                          message: `${configKey.description} es requerido`
+                        }
+                      ]}
+                    >
+                      {configKey.encrypted ? (
+                        <Input.Password 
+                          prefix={<LockOutlined />}
+                          placeholder={
+                            initialValues[configKey.key] === '***CONFIGURED***' 
+                              ? 'Valor configurado (ingrese nuevo valor para cambiar)'
+                              : `Ingrese ${configKey.description}`
+                          }
+                          autoComplete="new-password"
+                        />
+                      ) : (
+                        <Input 
+                          placeholder={configKey.description}
+                          autoComplete="off"
+                        />
+                      )}
+                    </Form.Item>
+                  </Col>
+                ))}
+            </Row>
+
+            <Divider />
+
+            {/* URLs Configuration */}
+            <Title level={5}>Configuración de URLs</Title>
+            <Row gutter={16}>
+              {integration.configKeys
+                .filter(key => key.key === 'base_url' || key.key === 'redirect_uri')
+                .map(configKey => (
+                  <Col span={12} key={configKey.key}>
+                    <Form.Item
+                      label={configKey.description}
+                      name={configKey.key}
+                    >
+                      <Input 
+                        prefix={<ApiOutlined />}
+                        placeholder={configKey.description}
+                        autoComplete="off"
+                      />
+                    </Form.Item>
+                  </Col>
+                ))}
+            </Row>
+
+            {/* Test Connection Button */}
+            <Row justify="center" style={{ marginTop: 24, marginBottom: 16 }}>
+              <Col>
+                <Button
+                  size="large"
+                  icon={<ApiOutlined />}
+                  onClick={async () => {
+                    try {
+                      message.loading('Verificando credenciales...', 0);
+                      const response = await fetch('/api/financial/refresh-auth', {
+                        method: 'POST'
+                      });
+                      const result = await response.json();
+                      message.destroy();
+                      
+                      if (result.success) {
+                        const hasCredentials = fieldStatuses['secret_id']?.configured && 
+                                              fieldStatuses['secret_key']?.configured;
+                        
+                        if (!hasCredentials) {
+                          message.warning('No hay credenciales configuradas. Configura las credenciales primero.');
+                        } else {
+                          message.success('✅ Autenticación exitosa con GoCardless');
+                        }
+                      } else {
+                        message.error('Error de autenticación: ' + (result.details || 'Verifica las credenciales'));
+                      }
+                    } catch (error) {
+                      message.destroy();
+                      message.error('Error de conexión con el servidor');
+                    }
+                  }}
+                >
+                  Probar Conexión
+                </Button>
+              </Col>
+            </Row>
+
+            <Alert
+              message="Instrucciones de Configuración"
+              description={
+                <div>
+                  <Title level={5}>Obtener Credenciales de GoCardless:</Title>
+                  <ol>
+                    <li>Accede a <a href="https://manage.gocardless.com" target="_blank" rel="noopener noreferrer">GoCardless Dashboard</a></li>
+                    <li>Ve a Developers → User Secrets</li>
+                    <li>Copia el Secret ID y Secret Key</li>
+                    <li>Pega las credenciales en los campos correspondientes</li>
+                  </ol>
+                  <p style={{ marginTop: 16 }}>
+                    <strong>Nota:</strong> Asegúrate de usar las credenciales de producción. GoCardless tiene un límite de 4 llamadas API por cuenta cada 24 horas.
+                  </p>
+                </div>
+              }
+              type="info"
+              showIcon
+              style={{ marginTop: 24 }}
+            />
           </>
         ) : (
           // Other integrations - keep original layout
@@ -358,21 +543,23 @@ const IntegrationForm: React.FC<IntegrationFormProps> = ({
                   {configKey.required && <Text type="danger">*</Text>}
                   {configKey.encrypted && (
                     <Tooltip title="Este valor se encripta antes de guardarse">
-                      <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                      <LockOutlined style={{ color: '#1890ff' }} />
                     </Tooltip>
                   )}
                 </Space>
               }
               name={configKey.key}
+              extra={configKey.encrypted ? renderFieldStatus(configKey) : null}
               rules={[
                 {
-                  required: configKey.required,
+                  required: configKey.required && !fieldStatuses[configKey.key]?.configured,
                   message: `${configKey.description} es requerido`
                 }
               ]}
             >
               {configKey.encrypted ? (
                 <Input.Password 
+                  prefix={<LockOutlined />}
                   placeholder={
                     initialValues[configKey.key] === '***CONFIGURED***' 
                       ? 'Valor configurado (ingrese nuevo valor para cambiar)'
@@ -394,28 +581,6 @@ const IntegrationForm: React.FC<IntegrationFormProps> = ({
               )}
             </Form.Item>
           ))
-        )}
-        
-        {integration.type === 'gocardless' && (
-          <>
-            <Alert
-              message="GoCardless - Account Data API (Open Banking)"
-              description={
-                <div>
-                  <p>GoCardless permite conectar cuentas bancarias de forma segura usando Open Banking.</p>
-                  <Divider />
-                  <Title level={5}>Configuración</Title>
-                  <ol>
-                    <li>Accede a <a href="https://manage.gocardless.com" target="_blank" rel="noopener noreferrer">https://manage.gocardless.com</a></li>
-                    <li>Crea una nueva aplicación en el panel de desarrollador</li>
-                    <li>Copia el Secret ID y Secret Key</li>
-                  </ol>
-                </div>
-              }
-              type="info"
-              showIcon
-            />
-          </>
         )}
       </Form>
     </Card>

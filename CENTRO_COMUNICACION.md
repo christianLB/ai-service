@@ -2,9 +2,9 @@
 
 ## Manual de Usuario Evolutivo & Guía de Desarrollo
 
-**Versión**: 2.0.0  
-**Fecha**: 2025-07-04  
-**Estado**: Sistema Neural Inteligente con Auto-Reestructuración
+**Versión**: 2.1.0  
+**Fecha**: 2025-07-17  
+**Estado**: Sistema Neural Inteligente con Auto-Reestructuración + MCP Bridge
 
 ---
 
@@ -1524,3 +1524,119 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 - Archivos modificados: 6
 - Deploys ejecutados: 5
 - Estado final: OPERACIONAL 🚀
+
+---
+
+## 🌉 MCP BRIDGE - Model Context Protocol
+
+### **Estado**: DEPLOYED | **Puerto**: 8080 | **URL**: https://mcp.anaxi.net | **Fecha**: 2025-07-18
+
+El MCP Bridge proporciona una interfaz estandarizada para que Claude Code y otros asistentes AI interactúen con las capacidades del AI Service.
+
+### **Arquitectura MCP**
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Claude Code    │────▶│   MCP Bridge    │────▶│   AI Service    │
+│  (Client)       │◀────│   (Port 8080)   │◀────│   (Port 3000)   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                        │                        │
+         │              https://mcp.anaxi.net              │
+         │                        │                        │
+         │                   Dedicated                     │
+         │                    Volume:                      │
+         │              /volume1/docker/                   │
+         │              ai-service-mcp                     │
+         └────────────────────────────────────────────────┘
+```
+
+### **Herramientas Disponibles** (24 total)
+
+#### 💰 **Financial Tools** (9)
+- `get_financial_summary` - Resumen financiero completo
+- `get_account_balance` - Balances de cuentas
+- `analyze_expenses` - Análisis de gastos
+- `get_transactions` - Obtener transacciones
+- `create_invoice` - Crear facturas
+- `categorize_transaction` - Categorizar transacciones
+- `auto_categorize_transactions` - Categorización automática con IA
+- `generate_financial_report` - Generar reportes PDF
+- `sync_financial_data` - Sincronizar con GoCardless
+
+#### 📄 **Document Tools** (7)
+- `search_documents` - Búsqueda semántica
+- `analyze_document` - Análisis con IA
+- `ask_document_question` - Q&A sobre documentos
+- `get_document_details` - Metadata de documentos
+- `extract_document_entities` - Extraer entidades
+- `generate_document_summary` - Generar resúmenes
+- `compare_documents` - Comparar documentos
+
+#### 🔧 **System Tools** (8)
+- `get_system_status` - Estado del sistema
+- `get_neural_status` - Estado neural
+- `get_system_metrics` - Métricas de rendimiento
+- `trigger_backup` - Activar backup
+- `clear_cache` - Limpiar caché
+- `get_service_logs` - Obtener logs
+- `health_check` - Chequeo de salud
+- `restart_service` - Reiniciar servicios
+
+### **Comandos MCP**
+
+```bash
+# Desplegar MCP Bridge
+make mcp-deploy
+
+# Ver estado
+make mcp-status
+
+# Ver logs
+make mcp-logs
+
+# Generar API keys
+make mcp-generate-keys
+
+# Testing local
+MCP_ENDPOINT=http://localhost:8380 \
+MCP_API_KEY=dev-api-key \
+python3 mcp-bridge/scripts/mcp-client.py list
+```
+
+### **Configuración de Seguridad**
+
+- JWT Secret: Mínimo 32 caracteres
+- API Keys: Formato `name:key,name2:key2`
+- Rate Limiting: Configurable por herramienta
+- CORS: Orígenes permitidos configurables
+
+### **Monitoreo**
+
+```bash
+# Health check
+curl http://192.168.1.11:8380/health
+
+# Capacidades MCP
+curl http://192.168.1.11:8380/mcp/capabilities
+
+# Información del sistema
+curl http://192.168.1.11:8380/mcp/info
+```
+
+### **Próximos Pasos**
+
+1. ✅ Configurar proxy inverso HTTPS
+2. ⏳ Implementar alertas de monitoreo
+3. ⏳ Configurar rotación de logs
+4. ⏳ Automatizar backups
+5. ⏳ Pipeline CI/CD
+
+### **Documentación**
+
+- [MCP Deployment Guide](docs/MCP_DEPLOYMENT_GUIDE.md)
+- [MCP Bridge Proposal](docs/MCP_BRIDGE_PROPOSAL.md)
+- [API Documentation](mcp-bridge/README.md)
+
+---
+
+**Última actualización**: 2025-07-17 | **Autor**: Claude + Christian

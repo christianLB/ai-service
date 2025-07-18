@@ -12,9 +12,10 @@
 1. Verificar `.make.env` configurado.
 2. `make st` o `make prod` para estado actual.
 3. Consultar `CENTRO_COMUNICACION.md`.
-4. Realizar tareas con `make`.
-5. Validar cambios con `make validate-deploy`.
-6. Documentar en `CENTRO_COMUNICACION.md`.
+4. Si necesitas ejecutar herramientas, considerar usar MCP Bridge.
+5. Realizar tareas con `make`.
+6. Validar cambios con `make validate-deploy`.
+7. Documentar en `CENTRO_COMUNICACION.md`.
 
 ## 📁 Comandos Útiles
 
@@ -28,6 +29,30 @@ make prod-logs        # Ver logs
 make financial-sync   # Sincronizar datos financieros
 make 911              # Guía de emergencia
 ```
+
+## 🌉 MCP Bridge - Model Context Protocol
+
+**URL**: https://mcp.anaxi.net | **Puerto local**: 8380
+
+El MCP Bridge permite acceso directo a las capacidades del AI Service. Usar cuando:
+- Necesites ejecutar herramientas financieras, documentales o del sistema
+- Quieras probar integraciones sin modificar código
+- Requieras acceso programático a las funcionalidades
+
+### Comandos MCP:
+```bash
+make mcp-status       # Estado del servicio
+make mcp-tools        # Listar herramientas disponibles  
+make mcp-logs         # Ver logs
+make mcp-test-tool TOOL=health_check  # Probar herramienta
+```
+
+### Herramientas disponibles (25):
+- **Financial** (9): Resúmenes, balances, análisis, reportes
+- **Documents** (7): Búsqueda, análisis, Q&A, extracción
+- **System** (8): Monitoreo, métricas, backups, logs
+
+Para usar desde código: `MCP_ENDPOINT=https://mcp.anaxi.net`
 
 ## 🔒 Buenas Prácticas
 
@@ -60,4 +85,4 @@ Usar sólo si explícitamente se indica. Por defecto no adoptarlas.
 
 ---
 
-**Última revisión:** 2025-07-13
+**Última revisión:** 2025-07-18

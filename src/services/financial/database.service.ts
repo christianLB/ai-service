@@ -458,4 +458,31 @@ export class FinancialDatabaseService {
     const result = await this.pool.query(query);
     return result.rows;
   }
+
+  // ============================================================================
+  // SYNC LOGGING
+  // ============================================================================
+
+  async logSync(data: {
+    accountId: string;
+    status: 'success' | 'failure';
+    syncedTransactions: number;
+    message?: string;
+    operationType?: string;
+  }): Promise<void> {
+    const query = `
+      INSERT INTO financial.sync_logs (
+        account_id, status, synced_transactions, message, operation_type
+      )
+      VALUES ($1, $2, $3, $4, $5)
+    `;
+    const values = [
+      data.accountId,
+      data.status,
+      data.syncedTransactions,
+      data.message || null,
+      data.operationType || 'full'
+    ];
+    await this.pool.query(query, values);
+  }
 }

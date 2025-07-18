@@ -202,8 +202,10 @@ export class FinancialSchedulerService {
           await this.logSyncMetrics({
             accountsSynced: result.data!.accountsSynced,
             transactionsSynced: result.data!.transactionsSynced,
+            balancesSynced: result.data!.balancesSynced,
             success: true,
-            attempts
+            attempts,
+            errors: result.data!.errors
           });
           
           return; // Success, exit retry loop
@@ -214,6 +216,7 @@ export class FinancialSchedulerService {
             await this.logSyncMetrics({
               accountsSynced: 0,
               transactionsSynced: 0,
+              balancesSynced: 0,
               success: false,
               attempts,
               error: result.error
@@ -227,6 +230,7 @@ export class FinancialSchedulerService {
           await this.logSyncMetrics({
             accountsSynced: 0,
             transactionsSynced: 0,
+            balancesSynced: 0,
             success: false,
             attempts,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -252,9 +256,11 @@ export class FinancialSchedulerService {
   private async logSyncMetrics(metrics: {
     accountsSynced: number;
     transactionsSynced: number;
+    balancesSynced?: number;
     success: boolean;
     attempts: number;
     error?: string;
+    errors?: string[];
   }): Promise<void> {
     try {
       // Create sync_logs table if it doesn't exist
@@ -345,9 +351,11 @@ export class FinancialSchedulerService {
       await this.logSyncMetrics({
         accountsSynced: result.data?.accountsSynced || 0,
         transactionsSynced: result.data?.transactionsSynced || 0,
+        balancesSynced: result.data?.balancesSynced || 0,
         success: result.success,
         attempts: 1,
-        error: result.error
+        error: result.error,
+        errors: result.data?.errors
       });
 
       return result;
@@ -357,6 +365,7 @@ export class FinancialSchedulerService {
       await this.logSyncMetrics({
         accountsSynced: 0,
         transactionsSynced: 0,
+        balancesSynced: 0,
         success: false,
         attempts: 1,
         error: errorMessage

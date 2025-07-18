@@ -5,6 +5,7 @@ import { FinancialDatabaseService } from '../services/financial/database.service
 import { FinancialSchedulerService } from '../services/financial/scheduler.service';
 import { FinancialReportingService } from '../services/financial/reporting.service';
 import { TransactionMatchingService } from '../services/financial/transaction-matching.service';
+import { Account } from '../services/financial/types';
 import clientsRoutes from './financial/clients.routes';
 import invoicesRoutes from './financial/invoices.routes';
 import transactionsRoutes, { setDatabaseService as setTransactionDbService } from './financial/transactions.routes';
@@ -54,101 +55,31 @@ const initializeServices = () => {
   }
 };
 
+
 // ============================================================================
-// SANDBOX ENDPOINTS
+// AUTHENTICATION
 // ============================================================================
 
 /**
- * GET /api/financial/sandbox-status
- * Check sandbox mode status and configuration
+ * POST /api/financial/refresh-auth
+ * Force refresh GoCardless authentication token
  */
-router.get('/sandbox-status', async (req: Request, res: Response): Promise<void> => {
+router.post('/refresh-auth', async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('[refresh-auth] Forcing GoCardless authentication refresh');
     initializeServices();
     
-    const status = await goCardlessService.getSandboxStatus();
+    await goCardlessService.refreshAuthentication();
     
-    res.json(status);
-  } catch (error) {
-    console.error('Get sandbox status failed:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get sandbox status',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    res.json({
+      success: true,
+      message: 'Authentication refreshed successfully'
     });
-  }
-});
-
-/**
- * POST /api/financial/setup-sandbox
- * Start sandbox account setup process (development only)
- */
-router.post('/setup-sandbox', async (req: Request, res: Response): Promise<void> => {
-  try {
-    console.log('[setup-sandbox] Initializing sandbox account setup process');
-    initializeServices();
-    
-    const result = await goCardlessService.setupSandboxAccount();
-    
-    if (result.success) {
-      console.log(`[setup-sandbox] Sandbox setup initiated successfully. Requisition ID: ${result.data?.requisitionId}`);
-      res.json({
-        success: true,
-        data: result.data,
-        message: '🧪 SANDBOX MODE: Visit the consentUrl to test with mock bank data',
-        instructions: [
-          '1. Open the consentUrl in your browser',
-          '2. Complete the mock authorization flow',
-          '3. Use any test credentials provided by GoCardless',
-          '4. Call POST /api/financial/complete-setup with the requisitionId'
-        ],
-        metadata: result.metadata
-      });
-    } else {
-      console.error(`[setup-sandbox] Setup failed: ${result.error}`);
-      res.status(400).json({
-        ...result,
-        message: 'Failed to initiate sandbox account setup. Check sandbox configuration.'
-      });
-    }
   } catch (error) {
-    console.error('[setup-sandbox] Unexpected error:', error);
+    console.error('[refresh-auth] Authentication refresh failed:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to setup sandbox account',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      message: 'An unexpected error occurred while setting up sandbox account.'
-    });
-  }
-});
-
-/**
- * POST /api/financial/sandbox-reset
- * Reset all sandbox data (development only)
- */
-router.post('/sandbox-reset', async (req: Request, res: Response): Promise<void> => {
-  try {
-    console.log('[sandbox-reset] Resetting sandbox data');
-    initializeServices();
-    
-    const result = await goCardlessService.resetSandboxData();
-    
-    if (result.success) {
-      console.log(`[sandbox-reset] Reset completed: ${result.data?.accountsDeleted} accounts, ${result.data?.transactionsDeleted} transactions`);
-      res.json({
-        success: true,
-        data: result.data,
-        message: '🧪 Sandbox data has been reset successfully'
-      });
-    } else {
-      console.error(`[sandbox-reset] Reset failed: ${result.error}`);
-      res.status(400).json(result);
-    }
-  } catch (error) {
-    console.error('[sandbox-reset] Unexpected error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to reset sandbox data',
+      error: 'Failed to refresh authentication',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -580,6 +511,171 @@ router.post('/sync', async (req: Request, res: Response): Promise<void> => {
 });
 
 /**
+ * POST /api/financial/sync/accounts
+ * Sync only account details for all accounts
+ */
+router.post('/sync/accounts', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    console.log('Account details sync requested');
+    const accounts = await databaseService.getAccounts();
+    const results = [];
+    
+    for (const account of accounts.filter((a: Account) => a.type === 'bank_account' && a.accountId)) {
+      const result = await goCardlessService.syncAccountDetails(account.accountId!);
+      results.push({
+        accountName: account.name,
+        accountId: account.accountId,
+        success: result.success,
+        error: result.error,
+        rateLimitInfo: result.metadata?.rateLimitInfo
+      });
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    res.json({
+      success: successCount > 0,
+      data: {
+        accountsSynced: successCount,
+        totalAccounts: results.length,
+        results
+      },
+      message: `Account details synced for ${successCount} out of ${results.length} accounts`
+    });
+  } catch (error) {
+    console.error('Account sync failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Account sync failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/sync/balances
+ * Sync only account balances for all accounts
+ */
+router.post('/sync/balances', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    console.log('Balance sync requested');
+    const accounts = await databaseService.getAccounts();
+    const results = [];
+    
+    for (const account of accounts.filter((a: Account) => a.type === 'bank_account' && a.accountId)) {
+      const result = await goCardlessService.syncAccountBalances(account.accountId!);
+      results.push({
+        accountName: account.name,
+        accountId: account.accountId,
+        success: result.success,
+        balance: result.data?.balance,
+        currency: result.data?.currency,
+        error: result.error,
+        rateLimitInfo: result.metadata?.rateLimitInfo
+      });
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    res.json({
+      success: successCount > 0,
+      data: {
+        balancesSynced: successCount,
+        totalAccounts: results.length,
+        results
+      },
+      message: `Balances synced for ${successCount} out of ${results.length} accounts`
+    });
+  } catch (error) {
+    console.error('Balance sync failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Balance sync failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/sync/transactions
+ * Sync only transactions for all accounts
+ */
+router.post('/sync/transactions', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { days = 7 } = req.body; // Default to 7 days
+    console.log(`Transaction sync requested for last ${days} days`);
+    
+    const accounts = await databaseService.getAccounts();
+    const results = [];
+    let totalTransactionsSynced = 0;
+    
+    for (const account of accounts.filter((a: Account) => a.type === 'bank_account' && a.accountId)) {
+      const result = await goCardlessService.syncAccountTransactions(account.accountId!, days);
+      results.push({
+        accountName: account.name,
+        accountId: account.accountId,
+        success: result.success,
+        transactionsSynced: result.data?.transactionsSynced || 0,
+        error: result.error,
+        rateLimitInfo: result.metadata?.rateLimitInfo
+      });
+      
+      if (result.success && result.data) {
+        totalTransactionsSynced += result.data.transactionsSynced;
+      }
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    res.json({
+      success: successCount > 0,
+      data: {
+        accountsSynced: successCount,
+        totalAccounts: results.length,
+        totalTransactionsSynced,
+        results
+      },
+      message: `Transactions synced for ${successCount} out of ${results.length} accounts (${totalTransactionsSynced} total transactions)`
+    });
+  } catch (error) {
+    console.error('Transaction sync failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Transaction sync failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/rate-limits
+ * Get current rate limit status for all accounts
+ */
+router.get('/rate-limits', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const rateLimitStatus = await goCardlessService.getRateLimitStatus();
+    
+    res.json({
+      success: rateLimitStatus.success,
+      data: rateLimitStatus.data,
+      metadata: rateLimitStatus.metadata
+    });
+  } catch (error) {
+    console.error('Get rate limits failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get rate limit status',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * GET /api/financial/sync-status
  * Get scheduler status and recent sync history
  */
@@ -825,6 +921,135 @@ router.post('/test-gocardless', async (req: Request, res: Response): Promise<voi
     res.status(500).json({
       success: false,
       error: 'Failed to test GoCardless connection',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/diagnose-gocardless
+ * Diagnose GoCardless configuration and connectivity issues
+ */
+router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const diagnosis: any = {
+      timestamp: new Date().toISOString(),
+      checks: []
+    };
+    
+    // Check 1: Credentials exist
+    try {
+      const hasCredentials = await goCardlessService.hasCredentials();
+      diagnosis.checks.push({
+        name: 'credentials_exist',
+        passed: hasCredentials,
+        message: hasCredentials ? 'Credentials found in database' : 'Credentials not found'
+      });
+      
+      if (!hasCredentials) {
+        res.json({ success: false, diagnosis });
+        return;
+      }
+    } catch (error) {
+      diagnosis.checks.push({
+        name: 'credentials_exist',
+        passed: false,
+        message: 'Error checking credentials',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+    
+    // Check 2: Get credentials and validate format
+    try {
+      const { integrationConfigService } = await import('../services/integrations');
+      
+      const secretId = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_id'
+      });
+      
+      const secretKey = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_key'
+      });
+      
+      const baseUrl = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'base_url'
+      }) || 'https://bankaccountdata.gocardless.com/api/v2';
+      
+      diagnosis.checks.push({
+        name: 'credential_format',
+        passed: true,
+        details: {
+          secretIdLength: secretId?.length || 0,
+          secretKeyLength: secretKey?.length || 0,
+          secretIdFormat: secretId ? `${secretId.substring(0, 8)}...${secretId.substring(secretId.length - 4)}` : 'missing',
+          baseUrl: baseUrl,
+          environment: baseUrl.includes('sandbox') ? 'sandbox' : 'production'
+        }
+      });
+      
+      // Check 3: Test direct authentication
+      const axios = require('axios');
+      const tokenUrl = `${baseUrl}/token/new/`;
+      
+      try {
+        const response = await axios.post(tokenUrl, {
+          secret_id: secretId,
+          secret_key: secretKey
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        
+        diagnosis.checks.push({
+          name: 'authentication',
+          passed: true,
+          message: 'Authentication successful',
+          tokenReceived: !!response.data?.access
+        });
+        
+      } catch (authError: any) {
+        diagnosis.checks.push({
+          name: 'authentication',
+          passed: false,
+          message: 'Authentication failed',
+          error: {
+            status: authError.response?.status,
+            statusText: authError.response?.statusText,
+            data: authError.response?.data,
+            url: tokenUrl
+          }
+        });
+      }
+      
+    } catch (error) {
+      diagnosis.checks.push({
+        name: 'credential_retrieval',
+        passed: false,
+        message: 'Error retrieving credentials',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+    
+    const allPassed = diagnosis.checks.every((check: any) => check.passed !== false);
+    
+    res.json({
+      success: allPassed,
+      diagnosis,
+      summary: allPassed ? 'All checks passed' : 'Some checks failed - review diagnosis for details'
+    });
+    
+  } catch (error) {
+    console.error('GoCardless diagnosis failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to diagnose GoCardless',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

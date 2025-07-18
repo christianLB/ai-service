@@ -29,6 +29,7 @@ import SyncStatusCard from "../components/financial/SyncStatusCard";
 import RecentSyncsCard from "../components/financial/RecentSyncsCard";
 import AccountsList from "../components/financial/AccountsList";
 import ConnectAccountModal from "../components/financial/ConnectAccountModal";
+import RateLimitCard from "../components/financial/RateLimitCard";
 
 dayjs.extend(relativeTime);
 dayjs.locale("es");
@@ -58,6 +59,7 @@ const BankAccounts: FC = () => {
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [rateLimits, setRateLimits] = useState<any[]>([]);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -83,17 +85,29 @@ const BankAccounts: FC = () => {
     }
   }, []);
 
+  const fetchRateLimits = useCallback(async () => {
+    try {
+      const response = await api.get("/financial/rate-limits");
+      setRateLimits(response.data.data || []);
+    } catch (error) {
+      console.error("Error fetching rate limits:", error);
+      // Rate limits are optional, don't show error message
+    }
+  }, []);
+
   useEffect(() => {
     fetchAccounts();
     fetchSyncStatus();
+    fetchRateLimits();
     
     // Refresh data every 30 seconds
     const interval = setInterval(() => {
       fetchSyncStatus();
+      fetchRateLimits();
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [fetchAccounts, fetchSyncStatus]);
+  }, [fetchAccounts, fetchSyncStatus, fetchRateLimits]);
 
   const toggleAutoSync = async () => {
     setToggleLoading(true);
@@ -122,6 +136,7 @@ const BankAccounts: FC = () => {
       setTimeout(() => {
         fetchAccounts();
         fetchSyncStatus();
+        fetchRateLimits();
       }, 2000);
     } catch (error) {
       console.error("Error starting manual sync:", error);
@@ -138,7 +153,8 @@ const BankAccounts: FC = () => {
   const handleAccountConnected = useCallback(() => {
     fetchAccounts();
     fetchSyncStatus();
-  }, [fetchAccounts, fetchSyncStatus]);
+    fetchRateLimits();
+  }, [fetchAccounts, fetchSyncStatus, fetchRateLimits]);
 
   const hasAccounts = accounts.length > 0;
 
@@ -221,6 +237,12 @@ const BankAccounts: FC = () => {
                   toggleLoading={toggleLoading}
                   onToggleAutoSync={toggleAutoSync}
                   onManualSync={handleSync}
+                  rateLimits={rateLimits}
+                  onSyncComplete={() => {
+                    fetchAccounts();
+                    fetchSyncStatus();
+                    fetchRateLimits();
+                  }}
                 />
               </Col>
               <Col xs={24} lg={16}>
@@ -242,12 +264,18 @@ const BankAccounts: FC = () => {
               ),
               children: (
             <Row gutter={[24, 24]}>
-              <Col xs={24} md={16}>
+              <Col xs={24} md={12}>
                 <RecentSyncsCard 
                   recentSyncs={syncStatus?.stats?.recentSyncs}
                 />
               </Col>
-              <Col xs={24} md={8}>
+              <Col xs={24} md={12}>
+                <RateLimitCard 
+                  rateLimits={rateLimits}
+                  loading={loading}
+                />
+              </Col>
+              <Col xs={24}>
                 <Card 
                   title={
                     <Space>
@@ -256,21 +284,30 @@ const BankAccounts: FC = () => {
                     </Space>
                   }
                 >
-                  <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                    <Alert
-                      message="Límites de API"
-                      description="GoCardless permite 4 solicitudes cada 24 horas por cuenta"
-                      type="info"
-                      showIcon
-                    />
-                    <Button 
-                      block
-                      icon={<BankOutlined />}
-                      onClick={handleSetupNewAccount}
-                    >
-                      Añadir otra cuenta
-                    </Button>
-                  </Space>
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} md={12}>
+                      <Alert
+                        message="Límites de API"
+                        description="GoCardless permite 4 solicitudes cada 24 horas por cuenta. Usa las sincronizaciones individuales para optimizar el uso."
+                        type="info"
+                        showIcon
+                      />
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Button 
+                          block
+                          icon={<BankOutlined />}
+                          onClick={handleSetupNewAccount}
+                        >
+                          Añadir otra cuenta bancaria
+                        </Button>
+                        <Text type="secondary" style={{ fontSize: '12px', textAlign: 'center', display: 'block' }}>
+                          Conecta más cuentas para gestionar todas tus finanzas en un solo lugar
+                        </Text>
+                      </Space>
+                    </Col>
+                  </Row>
                 </Card>
               </Col>
             </Row>

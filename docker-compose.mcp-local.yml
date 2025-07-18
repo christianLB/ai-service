@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  mcp-bridge:
+    build: ./mcp-bridge
+    container_name: mcp-bridge-local
+    restart: unless-stopped
+    ports:
+      - "8380:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - HOST=0.0.0.0
+      - AI_SERVICE_URL=http://ai-service-api-dev:8080
+      - JWT_SECRET=local-dev-secret-that-is-at-least-32-characters-long
+      - API_KEYS=dev:dev-api-key
+      - LOG_LEVEL=debug
+    volumes:
+      - ./mcp-bridge/logs:/app/logs
+      - ./mcp-bridge/.env:/app/config/.env:ro
+    networks:
+      - ai-service-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  ai-service-network:
+    name: ai-service_ai-service-network
+    external: true

@@ -83,6 +83,24 @@ export class IntegrationConfigService {
     // Could be improved with individual TTL tracking
     this.configCache.clear();
   }
+  
+  async clearCache(integrationType?: string): Promise<void> {
+    if (integrationType) {
+      // Clear cache entries for specific integration type
+      const keysToDelete: string[] = [];
+      this.configCache.forEach((value, key) => {
+        if (key.includes(`:${integrationType}:`)) {
+          keysToDelete.push(key);
+        }
+      });
+      keysToDelete.forEach(key => this.configCache.delete(key));
+      logger.info(`Cleared cache for integration type: ${integrationType}`);
+    } else {
+      // Clear all cache
+      this.configCache.clear();
+      logger.info('Cleared all config cache');
+    }
+  }
 
   async getConfig(options: GetConfigOptions): Promise<string | null> {
     const cacheKey = this.getCacheKey(options);
@@ -113,16 +131,6 @@ export class IntegrationConfigService {
       const result = await db.pool.query(query, params);
       
       if (result.rows.length === 0) {
-        // Fallback to environment variable
-        const envKey = `${options.integrationType.toUpperCase()}_${options.configKey.toUpperCase()}`;
-        const envValue = process.env[envKey];
-        
-        if (envValue) {
-          logger.debug('Using environment variable fallback', { envKey });
-          this.configCache.set(cacheKey, envValue);
-          return envValue;
-        }
-        
         return null;
       }
       
@@ -139,10 +147,7 @@ export class IntegrationConfigService {
       return value;
     } catch (error) {
       logger.error('Failed to get config', { error, options });
-      
-      // Fallback to environment variable on error
-      const envKey = `${options.integrationType.toUpperCase()}_${options.configKey.toUpperCase()}`;
-      return process.env[envKey] || null;
+      return null;
     }
   }
 
