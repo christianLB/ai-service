@@ -1132,9 +1132,9 @@ export class GoCardlessService {
       errors.push('Secret ID does not match expected UUID format');
     }
     
-    // GoCardless secret_key is typically 43 characters long
-    if (secretKey.length !== 43) {
-      errors.push(`Secret Key length is ${secretKey.length}, expected 43 characters`);
+    // GoCardless secret_key can be 43 or 128 characters long
+    if (secretKey.length !== 43 && secretKey.length !== 128) {
+      errors.push(`Secret Key length is ${secretKey.length}, expected 43 or 128 characters`);
     }
     
     // Check for common issues

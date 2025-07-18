@@ -824,6 +824,48 @@ router.get('/cash-flow', async (req: Request, res: Response): Promise<void> => {
 });
 
 // ============================================================================
+// YEARLY FINANCIAL REPORT ENDPOINT
+// ============================================================================
+
+/**
+ * GET /api/financial/dashboard/yearly-report
+ * Get yearly financial report with income/expense matrix by category and month
+ */
+router.get('/yearly-report', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeService();
+    
+    const { 
+      year = new Date().getFullYear().toString(), 
+      currency = 'EUR' 
+    } = req.query;
+
+    // Import reporting service
+    const { FinancialReportingService } = await import('../../services/financial/reporting.service');
+    const reportingService = new FinancialReportingService(databaseService.pool);
+    
+    // Get yearly report
+    const yearlyReport = await reportingService.getYearlyFinancialReport(
+      parseInt(year as string), 
+      currency as string
+    );
+
+    res.json({
+      success: true,
+      data: yearlyReport
+    });
+
+  } catch (error) {
+    console.error('Yearly report error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate yearly financial report',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================================
 // HEALTH CHECK
 // ============================================================================
 
@@ -847,7 +889,8 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
           'revenue-metrics',
           'invoice-stats', 
           'client-metrics',
-          'cash-flow'
+          'cash-flow',
+          'yearly-report'
         ]
       },
       timestamp: new Date().toISOString()

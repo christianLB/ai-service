@@ -18,6 +18,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === defaultJwt) {
 }
 
 import express from 'express';
+import { createServer } from 'http';
 import helmet from 'helmet';
 import cors from 'cors';
 import { createAuthRoutes } from './routes/auth/auth.routes';
@@ -40,8 +41,11 @@ import { FinancialDatabaseService } from './services/financial/database.service'
 import { DocumentStorageService } from './services/document-intelligence/storage.service';
 import { neuralOrchestrator } from './services/neural-orchestrator';
 import { forensicLogger, showForensicLogs } from './utils/forensic-logger';
+import { WebSocketService } from './services/websocket/websocket.service';
 
 const app = express();
+const httpServer = createServer(app);
+let websocketService: WebSocketService | null = null;
 
 // Trust proxy for rate limiting and forwarded headers
 app.set('trust proxy', true);
@@ -441,6 +445,12 @@ async function initializeServices() {
     // Inicializar Telegram si está configurado
     await initializeTelegramBot();
     
+    // Inicializar WebSocket service
+    logger.info('🔌 Initializing WebSocket service...');
+    websocketService = new WebSocketService(httpServer);
+    (global as any).websocketService = websocketService;
+    logger.info('✅ WebSocket service initialized successfully');
+    
     // Inicializar Neural Orchestrator
     logger.info('🧠 Initializing Neural Orchestrator...');
     await neuralOrchestrator.startMonitoring();
@@ -501,13 +511,14 @@ async function startServer() {
     // Obtener puerto del environment
     const port = process.env.PORT || 3000;
     
-    // Iniciar servidor
-    const server = app.listen(port, () => {
+    // Iniciar servidor HTTP con WebSocket
+    httpServer.listen(port, () => {
       logger.info(`🚀 AI Service listening on port ${port}`);
       logger.info(`🏦 Financial Dashboard at http://localhost:${port}/dashboard`);
       logger.info(`📊 Metrics available at http://localhost:${port}/api/metrics`);
       logger.info(`🏥 Health check at http://localhost:${port}/status`);
       logger.info(`📈 Performance dashboard at http://localhost:${port}/api/performance`);
+      logger.info(`🔌 WebSocket server ready for connections`);
       
       // Log de configuración actual
       logger.info('🔧 Configuration:', {
@@ -517,14 +528,15 @@ async function startServer() {
         redis_host: process.env.REDIS_HOST || 'localhost',
         n8n_url: process.env.N8N_API_URL || 'http://localhost:5678',
         openai_configured: !!process.env.OPENAI_API_KEY,
-        claude_configured: !!process.env.CLAUDE_API_KEY
+        claude_configured: !!process.env.CLAUDE_API_KEY,
+        websocket_enabled: true
       });
     });
     
     // Configurar timeout del servidor
-    server.timeout = 30000; // 30 segundos
+    httpServer.timeout = 30000; // 30 segundos
     
-    return server;
+    return httpServer;
   } catch (error: any) {
     logger.error('Failed to start server:', error.message);
     process.exit(1);

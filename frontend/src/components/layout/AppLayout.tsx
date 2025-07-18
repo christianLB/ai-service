@@ -15,6 +15,8 @@ import {
   ExclamationCircleOutlined,
   CloseCircleOutlined,
   ApiOutlined,
+  BankOutlined,
+  TransactionOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -54,6 +56,23 @@ const AppLayout: React.FC = () => {
       key: '/documents',
       icon: <FolderOutlined />,
       label: 'Documentos',
+    },
+    {
+      key: '/financial',
+      icon: <BankOutlined />,
+      label: 'Finanzas',
+      children: [
+        {
+          key: '/bank-accounts',
+          icon: <BankOutlined />,
+          label: 'Cuentas Bancarias',
+        },
+        {
+          key: '/transactions',
+          icon: <TransactionOutlined />,
+          label: 'Transacciones',
+        },
+      ],
     },
     {
       key: '/settings',

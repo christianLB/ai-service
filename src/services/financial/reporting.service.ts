@@ -191,6 +191,184 @@ export class FinancialReportingService {
   // ============================================================================
 
   /**
+   * Generate yearly financial report with income/expense matrix by category and month
+   */
+  async getYearlyFinancialReport(year: number, currency = 'EUR'): Promise<{
+    year: number;
+    currency: string;
+    categories: {
+      income: Array<{
+        categoryId: string;
+        categoryName: string;
+        categoryColor: string;
+        monthlyData: Record<string, string>;
+        total: string;
+        percentage: number;
+      }>;
+      expense: Array<{
+        categoryId: string;
+        categoryName: string;
+        categoryColor: string;
+        monthlyData: Record<string, string>;
+        total: string;
+        percentage: number;
+      }>;
+    };
+    monthlyTotals: {
+      income: Record<string, string>;
+      expense: Record<string, string>;
+      balance: Record<string, string>;
+    };
+    yearTotals: {
+      income: string;
+      expense: string;
+      balance: string;
+    };
+  }> {
+    const startDate = new Date(year, 0, 1);
+    const endDate = new Date(year, 11, 31);
+
+    // Get all transactions for the year grouped by category and month
+    const query = `
+      SELECT 
+        cat.id as category_id,
+        cat.name as category_name,
+        cat.type as category_type,
+        cat.color as category_color,
+        EXTRACT(MONTH FROM t.date)::text as month,
+        SUM(t.amount) as amount
+      FROM financial.transactions t
+      JOIN financial.currencies c ON t.currency_id = c.id
+      JOIN financial.transaction_categorizations tc ON t.id = tc.transaction_id
+      JOIN financial.categories cat ON tc.category_id = cat.id
+      WHERE t.date >= $1 AND t.date <= $2 
+        AND c.code = $3 
+        AND t.status = 'confirmed'
+        AND cat.type IN ('income', 'expense')
+      GROUP BY cat.id, cat.name, cat.type, cat.color, EXTRACT(MONTH FROM t.date)
+      ORDER BY cat.type, cat.name, EXTRACT(MONTH FROM t.date)
+    `;
+
+    const result = await this.pool.query(query, [startDate, endDate, currency]);
+
+    // Initialize data structures
+    const incomeCategories = new Map<string, any>();
+    const expenseCategories = new Map<string, any>();
+    const monthlyIncomeTotals: Record<string, number> = {};
+    const monthlyExpenseTotals: Record<string, number> = {};
+    
+    // Initialize monthly totals
+    for (let month = 1; month <= 12; month++) {
+      const monthStr = month.toString();
+      monthlyIncomeTotals[monthStr] = 0;
+      monthlyExpenseTotals[monthStr] = 0;
+    }
+
+    // Process results
+    for (const row of result.rows) {
+      const categoryId = row.category_id;
+      const amount = parseFloat(row.amount);
+      const month = row.month;
+      const isIncome = row.category_type === 'income';
+      
+      // Get or create category
+      const categories = isIncome ? incomeCategories : expenseCategories;
+      if (!categories.has(categoryId)) {
+        categories.set(categoryId, {
+          categoryId: row.category_id,
+          categoryName: row.category_name,
+          categoryColor: row.category_color,
+          monthlyData: {},
+          total: 0
+        });
+        
+        // Initialize all months with zero
+        for (let m = 1; m <= 12; m++) {
+          categories.get(categoryId).monthlyData[m.toString()] = '0.00';
+        }
+      }
+      
+      const category = categories.get(categoryId);
+      category.monthlyData[month] = Math.abs(amount).toFixed(2);
+      category.total += Math.abs(amount);
+      
+      // Update monthly totals
+      if (isIncome) {
+        monthlyIncomeTotals[month] += amount;
+      } else {
+        monthlyExpenseTotals[month] += Math.abs(amount);
+      }
+    }
+
+    // Calculate year totals
+    let yearIncomeTotal = 0;
+    let yearExpenseTotal = 0;
+    
+    // Convert to arrays and calculate percentages
+    const incomeCategoriesArray = Array.from(incomeCategories.values());
+    const expenseCategoriesArray = Array.from(expenseCategories.values());
+    
+    // Calculate total for percentages
+    incomeCategoriesArray.forEach(cat => {
+      yearIncomeTotal += cat.total;
+    });
+    expenseCategoriesArray.forEach(cat => {
+      yearExpenseTotal += cat.total;
+    });
+    
+    // Add percentages and format totals
+    incomeCategoriesArray.forEach(cat => {
+      cat.percentage = yearIncomeTotal > 0 ? (cat.total / yearIncomeTotal) * 100 : 0;
+      cat.total = cat.total.toFixed(2);
+    });
+    expenseCategoriesArray.forEach(cat => {
+      cat.percentage = yearExpenseTotal > 0 ? (cat.total / yearExpenseTotal) * 100 : 0;
+      cat.total = cat.total.toFixed(2);
+    });
+    
+    // Sort by total amount descending
+    incomeCategoriesArray.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
+    expenseCategoriesArray.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
+    
+    // Calculate monthly balances
+    const monthlyBalance: Record<string, string> = {};
+    for (let month = 1; month <= 12; month++) {
+      const monthStr = month.toString();
+      const balance = monthlyIncomeTotals[monthStr] - monthlyExpenseTotals[monthStr];
+      monthlyBalance[monthStr] = balance.toFixed(2);
+    }
+    
+    // Format monthly totals
+    const formattedMonthlyIncome: Record<string, string> = {};
+    const formattedMonthlyExpense: Record<string, string> = {};
+    
+    for (let month = 1; month <= 12; month++) {
+      const monthStr = month.toString();
+      formattedMonthlyIncome[monthStr] = monthlyIncomeTotals[monthStr].toFixed(2);
+      formattedMonthlyExpense[monthStr] = monthlyExpenseTotals[monthStr].toFixed(2);
+    }
+
+    return {
+      year,
+      currency,
+      categories: {
+        income: incomeCategoriesArray,
+        expense: expenseCategoriesArray
+      },
+      monthlyTotals: {
+        income: formattedMonthlyIncome,
+        expense: formattedMonthlyExpense,
+        balance: monthlyBalance
+      },
+      yearTotals: {
+        income: yearIncomeTotal.toFixed(2),
+        expense: yearExpenseTotal.toFixed(2),
+        balance: (yearIncomeTotal - yearExpenseTotal).toFixed(2)
+      }
+    };
+  }
+
+  /**
    * Generate comprehensive financial report
    */
   async generateReport(params: ReportQueryParams): Promise<FinancialReport> {

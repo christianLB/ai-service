@@ -20,6 +20,7 @@ import {
   SettingOutlined,
 } from "@ant-design/icons";
 import api from "../services/api";
+import { useWebSocket } from "../hooks/useWebSocket";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/es";
@@ -60,6 +61,8 @@ const BankAccounts: FC = () => {
   const [toggleLoading, setToggleLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [rateLimits, setRateLimits] = useState<any[]>([]);
+  
+  const { subscribe } = useWebSocket();
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -108,6 +111,32 @@ const BankAccounts: FC = () => {
     
     return () => clearInterval(interval);
   }, [fetchAccounts, fetchSyncStatus, fetchRateLimits]);
+
+  // Subscribe to WebSocket events
+  useEffect(() => {
+    const unsubscribeSyncStarted = subscribe('financial:sync:started', () => {
+      setSyncing(true);
+    });
+
+    const unsubscribeSyncCompleted = subscribe('financial:sync:completed', () => {
+      setSyncing(false);
+      // Refresh data after sync completes
+      fetchAccounts();
+      fetchSyncStatus();
+      fetchRateLimits();
+    });
+
+    const unsubscribeBalanceAlert = subscribe('financial:balance:alert', () => {
+      // Refresh accounts to show updated balances
+      fetchAccounts();
+    });
+
+    return () => {
+      unsubscribeSyncStarted();
+      unsubscribeSyncCompleted();
+      unsubscribeBalanceAlert();
+    };
+  }, [subscribe, fetchAccounts, fetchSyncStatus, fetchRateLimits]);
 
   const toggleAutoSync = async () => {
     setToggleLoading(true);

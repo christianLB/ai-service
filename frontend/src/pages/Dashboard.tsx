@@ -51,6 +51,7 @@ import type {
 } from '../types';
 import dayjs from 'dayjs';
 import VersionIndicator from '../components/VersionIndicator';
+import YearlyFinancialReport from '../components/YearlyFinancialReport.ant';
 
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -831,6 +832,16 @@ const Dashboard: React.FC = () => {
               </span>
             ),
             children: <BankAccounts />,
+          },
+          {
+            key: 'yearly-report',
+            label: (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <LineChartOutlined />
+                Reporte Anual
+              </span>
+            ),
+            children: <YearlyFinancialReport />,
           },
         ]}
       />

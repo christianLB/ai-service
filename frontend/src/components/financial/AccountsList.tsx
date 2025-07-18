@@ -9,6 +9,7 @@ import {
   CalendarOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -32,6 +33,8 @@ interface AccountsListProps {
 }
 
 const AccountsList: React.FC<AccountsListProps> = ({ accounts, loading }) => {
+  const navigate = useNavigate();
+  
   const formatIBAN = (iban: string) => {
     if (!iban) return '-';
     const last4 = iban.slice(-4);
@@ -132,10 +135,15 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, loading }) => {
       key: 'actions',
       width: '20%',
       align: 'center',
-      render: () => (
+      render: (_, record) => (
         <Space>
           <Tooltip title="Ver transacciones">
-            <Button type="link" size="small" icon={<EuroOutlined />}>
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<EuroOutlined />}
+              onClick={() => navigate(`/transactions?accountId=${record.id}`)}
+            >
               Transacciones
             </Button>
           </Tooltip>

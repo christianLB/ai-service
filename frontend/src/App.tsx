@@ -10,6 +10,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/auth/PrivateRoute';
 import { Login } from './pages/auth/Login';
 import AppLayout from './components/layout/AppLayout';
+import { WebSocketProvider } from './components/WebSocketProvider';
 import Dashboard from './pages/Dashboard';
 import ClientList from './pages/clients/ClientList';
 import ClientDetail from './pages/clients/ClientDetail';
@@ -23,6 +24,8 @@ import DocumentForm from './pages/documents/DocumentForm';
 import SystemHealth from './pages/SystemHealth';
 import IntegrationSettings from './pages/IntegrationSettings';
 import NotificationSettings from './pages/NotificationSettings';
+import BankAccounts from './pages/BankAccounts';
+import Transactions from './pages/Transactions';
 
 import './App.css';
 
@@ -53,10 +56,11 @@ const App: React.FC = () => {
         }}
       >
         <AuthProvider>
-          <Router>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
+          <WebSocketProvider>
+            <Router>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
               
               {/* Protected routes */}
               <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
@@ -80,6 +84,10 @@ const App: React.FC = () => {
               <Route path="documents/:id" element={<DocumentDetail />} />
               <Route path="documents/:id/edit" element={<DocumentForm />} />
               
+              {/* Financial Routes */}
+              <Route path="bank-accounts" element={<BankAccounts />} />
+              <Route path="transactions" element={<Transactions />} />
+              
               {/* System Routes */}
               <Route path="health" element={<SystemHealth />} />
               <Route path="integrations" element={<IntegrationSettings />} />
@@ -90,7 +98,8 @@ const App: React.FC = () => {
             </Route>
           </Routes>
         </Router>
-      </AuthProvider>
+      </WebSocketProvider>
+    </AuthProvider>
     </ConfigProvider>
   </QueryClientProvider>
   );

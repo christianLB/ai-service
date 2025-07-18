@@ -361,6 +361,45 @@ class DashboardService {
     const response = await api.get('/financial/dashboard/health');
     return response.data;
   }
+
+  async getYearlyReport(params: {
+    year: number;
+    currency?: string;
+  }): Promise<ApiResponse<{
+    year: number;
+    currency: string;
+    categories: {
+      income: Array<{
+        categoryId: string;
+        categoryName: string;
+        categoryColor: string;
+        monthlyData: Record<string, string>;
+        total: string;
+        percentage: number;
+      }>;
+      expense: Array<{
+        categoryId: string;
+        categoryName: string;
+        categoryColor: string;
+        monthlyData: Record<string, string>;
+        total: string;
+        percentage: number;
+      }>;
+    };
+    monthlyTotals: {
+      income: Record<string, string>;
+      expense: Record<string, string>;
+      balance: Record<string, string>;
+    };
+    yearTotals: {
+      income: string;
+      expense: string;
+      balance: string;
+    };
+  }>> {
+    const response = await api.get('/financial/dashboard/yearly-report', { params });
+    return response.data;
+  }
 }
 
 export default new DashboardService();
