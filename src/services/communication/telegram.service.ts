@@ -90,7 +90,14 @@ export class TelegramService {
       { command: 'revenue', description: 'Análisis de ingresos' },
       { command: 'pending', description: 'Pagos pendientes' },
       { command: 'client', description: 'Gestión de clientes' },
-      { command: 'payment', description: 'Registrar pago' }
+      { command: 'payment', description: 'Registrar pago' },
+      // Trading commands
+      { command: 'trading', description: 'Dashboard de trading' },
+      { command: 'positions', description: 'Ver posiciones abiertas' },
+      { command: 'strategies', description: 'Estado de estrategias' },
+      { command: 'pnl', description: 'Ver P&L del día' },
+      { command: 'stop_all', description: 'Detener todo el trading (emergencia)' },
+      { command: 'trade', description: 'Ejecutar trade manual' }
     ]);
   }
 
@@ -247,6 +254,28 @@ export class TelegramService {
         case '/payment':
           await this.handlePaymentCommand(chatId, params);
           break;
+        // Trading commands
+        case '/trading':
+          await this.handleTradingCommand(chatId);
+          break;
+        case '/positions':
+          await this.handlePositionsCommand(chatId);
+          break;
+        case '/strategies':
+          await this.handleStrategiesCommand(chatId);
+          break;
+        case '/pnl':
+          await this.handlePnLCommand(chatId);
+          break;
+        case '/stop_all':
+          await this.handleStopAllCommand(chatId);
+          break;
+        case '/trade':
+          await this.handleTradeCommand(chatId, params);
+          break;
+        case '/confirm_stop_all':
+          await this.handleConfirmStopAllCommand(chatId);
+          break;
         // Document Intelligence commands
         case '/upload':
           // Send upload instructions
@@ -331,6 +360,14 @@ Puedes enviarme documentos directamente para análisis automático.
 /sync - Sincronizar transacciones bancarias
 /setup - Configurar conexión bancaria
 
+<b>🤖 Trading:</b>
+/trading - Dashboard de trading
+/positions - Ver posiciones abiertas
+/strategies - Estado de estrategias
+/pnl - Ver P&L del día
+/trade [symbol] [side] [amount] - Trade manual
+/stop_all - Detener todo (emergencia)
+
 <b>📄 Documentos:</b>
 /upload - Subir documento para análisis
 /list - Listar tus documentos
@@ -351,6 +388,7 @@ Puedes enviarme documentos directamente para análisis automático.
 <i>• /invoice create "Acme Corp" 1500 "Servicios Marzo"</i>
 <i>• /revenue month</i>
 <i>• /client balance "Tech Solutions"</i>
+<i>• /trade BTC/USDT buy 0.001</i>
     `;
     
     await this.sendMessage(chatId, message);
@@ -1545,6 +1583,346 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
       logger.error('Error registrando pago:', error);
       await this.sendMessage(chatId, `❌ Error al registrar pago: ${error.message}`);
     }
+  }
+
+  // ============================================================================
+  // TRADING COMMAND HANDLERS
+  // ============================================================================
+
+  private async handleTradingCommand(chatId: string): Promise<void> {
+    try {
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/dashboard/overview`);
+      const dashboard = await response.json();
+
+      if (!dashboard || !dashboard.success) {
+        throw new Error('Unable to fetch trading dashboard');
+      }
+
+      const data = dashboard.data;
+      const portfolioEmoji = data.portfolio.dailyPnL > 0 ? '📈' : '📉';
+      
+      const message = `
+🤖 <b>Trading Dashboard</b>
+
+💼 <b>Portfolio</b>
+💰 Valor Total: $${data.portfolio.totalValue.toFixed(2)}
+${portfolioEmoji} P&L Diario: $${data.portfolio.dailyPnL.toFixed(2)} (${((data.portfolio.dailyPnL / data.portfolio.totalValue) * 100).toFixed(2)}%)
+📊 P&L Semanal: $${data.portfolio.weeklyPnL.toFixed(2)}
+📈 P&L Mensual: $${data.portfolio.monthlyPnL.toFixed(2)}
+
+📍 <b>Posiciones</b>
+🔵 Abiertas: ${data.positions.open}
+✅ En ganancia: ${data.positions.profitable}
+❌ En pérdida: ${data.positions.losing}
+💵 P&L Total: $${data.positions.totalPnL.toFixed(2)}
+
+🤖 <b>Estrategias</b>
+▶️ Activas: ${data.strategies.active}
+⏸️ Pausadas: ${data.strategies.paused}
+⏹️ Detenidas: ${data.strategies.stopped}
+
+📊 <b>Mercado</b>
+₿ BTC: $${data.marketOverview.btcPrice.toFixed(2)} (${data.marketOverview.btcChange24h > 0 ? '+' : ''}${data.marketOverview.btcChange24h.toFixed(2)}%)
+💎 Market Cap: $${(data.marketOverview.marketCap / 1e9).toFixed(1)}B
+😱 Fear & Greed: ${data.marketOverview.fearGreedIndex}/100
+
+<i>Actualizado: ${new Date().toLocaleString()}</i>
+      `;
+
+      await this.sendMessage(chatId, message);
+    } catch (error) {
+      logger.error('Error in trading command:', error);
+      await this.sendMessage(chatId, '❌ Error obteniendo dashboard de trading. Asegúrate de que el servicio de trading esté activo.');
+    }
+  }
+
+  private async handlePositionsCommand(chatId: string): Promise<void> {
+    try {
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/positions?status=open`);
+      const result = await response.json();
+
+      if (!result || !result.success) {
+        throw new Error('Unable to fetch positions');
+      }
+
+      const positions = result.data;
+
+      if (positions.length === 0) {
+        await this.sendMessage(chatId, `
+📊 <b>Posiciones Abiertas</b>
+
+No hay posiciones abiertas en este momento.
+
+Usa /strategies para ver el estado de las estrategias de trading.
+        `);
+        return;
+      }
+
+      let message = `📊 <b>Posiciones Abiertas (${positions.length})</b>\n\n`;
+
+      positions.forEach((pos: any) => {
+        const pnlEmoji = pos.unrealizedPnl > 0 ? '💚' : '💔';
+        const sideEmoji = pos.side === 'buy' ? '🟢' : '🔴';
+        
+        message += `${sideEmoji} <b>${pos.symbol}</b> - ${pos.side.toUpperCase()}\n`;
+        message += `💰 Cantidad: ${pos.quantity}\n`;
+        message += `📍 Entrada: $${pos.entryPrice.toFixed(2)}\n`;
+        message += `📊 Actual: $${pos.currentPrice.toFixed(2)}\n`;
+        message += `${pnlEmoji} P&L: $${pos.unrealizedPnl.toFixed(2)} (${((pos.unrealizedPnl / pos.positionValue) * 100).toFixed(2)}%)\n`;
+        
+        if (pos.stopLoss) {
+          message += `🛑 SL: $${pos.stopLoss.toFixed(2)}\n`;
+        }
+        if (pos.takeProfit) {
+          message += `🎯 TP: $${pos.takeProfit.toFixed(2)}\n`;
+        }
+        
+        message += `⏱️ Tiempo: ${this.formatDuration(Date.now() - new Date(pos.openedAt).getTime())}\n\n`;
+      });
+
+      const totalPnL = positions.reduce((sum: number, pos: any) => sum + pos.unrealizedPnl, 0);
+      message += `<b>💵 P&L Total: $${totalPnL.toFixed(2)}</b>`;
+
+      await this.sendMessage(chatId, message);
+    } catch (error) {
+      logger.error('Error in positions command:', error);
+      await this.sendMessage(chatId, '❌ Error obteniendo posiciones abiertas');
+    }
+  }
+
+  private async handleStrategiesCommand(chatId: string): Promise<void> {
+    try {
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/strategies`);
+      const result = await response.json();
+
+      if (!result || !result.success) {
+        throw new Error('Unable to fetch strategies');
+      }
+
+      const strategies = result.data;
+
+      let message = `🤖 <b>Estado de Estrategias</b>\n\n`;
+
+      strategies.forEach((strategy: any) => {
+        const statusEmoji = strategy.status === 'active' ? '▶️' : 
+                           strategy.status === 'paused' ? '⏸️' : '⏹️';
+        const pnlEmoji = strategy.performance.totalPnL > 0 ? '💚' : '💔';
+        
+        message += `${statusEmoji} <b>${strategy.name}</b>\n`;
+        message += `📊 Estado: ${strategy.status}\n`;
+        message += `📈 Trades: ${strategy.performance.totalTrades}\n`;
+        message += `🎯 Win Rate: ${(strategy.performance.winRate * 100).toFixed(1)}%\n`;
+        message += `${pnlEmoji} P&L: $${strategy.performance.totalPnL.toFixed(2)}\n`;
+        message += `📏 Sharpe: ${strategy.performance.sharpeRatio.toFixed(2)}\n`;
+        message += `📉 Max DD: ${(strategy.performance.maxDrawdown * 100).toFixed(1)}%\n\n`;
+      });
+
+      const totalPnL = strategies.reduce((sum: number, s: any) => sum + s.performance.totalPnL, 0);
+      const activeCount = strategies.filter((s: any) => s.status === 'active').length;
+
+      message += `<b>📊 Resumen:</b>\n`;
+      message += `🤖 Estrategias activas: ${activeCount}/${strategies.length}\n`;
+      message += `💵 P&L Total: $${totalPnL.toFixed(2)}`;
+
+      await this.sendMessage(chatId, message);
+    } catch (error) {
+      logger.error('Error in strategies command:', error);
+      await this.sendMessage(chatId, '❌ Error obteniendo estado de estrategias');
+    }
+  }
+
+  private async handlePnLCommand(chatId: string): Promise<void> {
+    try {
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/performance/metrics?timeRange=1D`);
+      const result = await response.json();
+
+      if (!result || !result.success) {
+        throw new Error('Unable to fetch P&L data');
+      }
+
+      const metrics = result.data.metrics;
+      const pnlEmoji = metrics.totalReturn > 0 ? '📈' : '📉';
+      
+      const message = `
+💰 <b>P&L del Día</b>
+
+${pnlEmoji} <b>Retorno Total:</b> $${metrics.totalReturn.toFixed(2)} (${metrics.totalReturnPercent.toFixed(2)}%)
+
+📊 <b>Métricas:</b>
+🎯 Win Rate: ${(metrics.winRate * 100).toFixed(1)}%
+📈 Trades Ganadores: ${metrics.winningTrades}
+📉 Trades Perdedores: ${metrics.losingTrades}
+💚 Promedio Ganancia: $${metrics.averageWin.toFixed(2)}
+💔 Promedio Pérdida: $${metrics.averageLoss.toFixed(2)}
+
+📏 <b>Ratios:</b>
+📊 Profit Factor: ${metrics.profitFactor.toFixed(2)}
+📐 Sharpe Ratio: ${metrics.sharpeRatio.toFixed(2)}
+📉 Max Drawdown: ${(metrics.maxDrawdown * 100).toFixed(1)}%
+
+🏆 <b>Extremos:</b>
+💎 Mejor Trade: $${metrics.bestTrade.toFixed(2)}
+💩 Peor Trade: $${metrics.worstTrade.toFixed(2)}
+
+⏱️ <b>Actividad:</b>
+📊 Total Trades: ${metrics.totalTrades}
+🔥 Racha Ganadora: ${metrics.consecutiveWins}
+❄️ Racha Perdedora: ${metrics.consecutiveLosses}
+⏳ Tiempo Promedio: ${metrics.averageHoldTime}h
+
+<i>Actualizado: ${new Date().toLocaleString()}</i>
+      `;
+
+      await this.sendMessage(chatId, message);
+    } catch (error) {
+      logger.error('Error in P&L command:', error);
+      await this.sendMessage(chatId, '❌ Error obteniendo P&L del día');
+    }
+  }
+
+  private async handleStopAllCommand(chatId: string): Promise<void> {
+    try {
+      await this.sendMessage(chatId, `
+⚠️ <b>CONFIRMACIÓN DE EMERGENCIA</b>
+
+¿Estás seguro de que quieres detener TODO el trading?
+
+Esto:
+• Detendrá todas las estrategias activas
+• Cancelará todas las órdenes pendientes
+• NO cerrará posiciones abiertas (debes hacerlo manualmente)
+
+Para confirmar, envía: /confirm_stop_all
+
+<i>Esta acción no se puede deshacer</i>
+      `);
+    } catch (error) {
+      logger.error('Error in stop all command:', error);
+      await this.sendMessage(chatId, '❌ Error procesando comando de emergencia');
+    }
+  }
+
+  private async handleConfirmStopAllCommand(chatId: string): Promise<void> {
+    try {
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/emergency/stop-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: `Emergency stop from Telegram by ${chatId}` })
+      });
+
+      const result = await response.json();
+
+      if (result && result.success) {
+        await this.sendMessage(chatId, `
+🛑 <b>TRADING DETENIDO</b>
+
+✅ Todas las estrategias han sido detenidas
+✅ Todas las órdenes pendientes han sido canceladas
+
+⚠️ <b>IMPORTANTE:</b> Las posiciones abiertas NO han sido cerradas.
+
+Para ver posiciones abiertas: /positions
+Para reactivar estrategias: Usa el dashboard web
+
+<i>Razón: Parada de emergencia desde Telegram</i>
+        `);
+      } else {
+        throw new Error(result.error || 'Failed to stop trading');
+      }
+    } catch (error) {
+      logger.error('Error in confirm stop all command:', error);
+      await this.sendMessage(chatId, '❌ Error ejecutando parada de emergencia');
+    }
+  }
+
+  private async handleTradeCommand(chatId: string, params: string[]): Promise<void> {
+    try {
+      if (params.length < 3) {
+        await this.sendMessage(chatId, `
+💹 <b>Ejecutar Trade Manual</b>
+
+Uso: /trade <symbol> <side> <amount>
+
+Ejemplos:
+• /trade BTC/USDT buy 0.001
+• /trade ETH/USDT sell 0.5
+
+<b>Parámetros:</b>
+• symbol: Par de trading (ej: BTC/USDT)
+• side: buy o sell
+• amount: Cantidad en moneda base
+
+⚠️ <b>Nota:</b> Los trades manuales están sujetos a los límites de riesgo configurados.
+        `);
+        return;
+      }
+
+      const [symbol, side, amountStr] = params;
+      const amount = parseFloat(amountStr);
+
+      if (isNaN(amount) || amount <= 0) {
+        await this.sendMessage(chatId, '❌ La cantidad debe ser un número positivo');
+        return;
+      }
+
+      if (!['buy', 'sell'].includes(side.toLowerCase())) {
+        await this.sendMessage(chatId, '❌ El lado debe ser "buy" o "sell"');
+        return;
+      }
+
+      await this.sendMessage(chatId, '⏳ Ejecutando trade...');
+
+      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exchange: 'binance', // Default exchange
+          symbol: symbol.toUpperCase(),
+          side: side.toLowerCase(),
+          amount,
+          type: 'market',
+          source: 'telegram',
+          userId: chatId
+        })
+      });
+
+      const result = await response.json();
+
+      if (result && result.success) {
+        const trade = result.data;
+        const sideEmoji = trade.side === 'buy' ? '🟢' : '🔴';
+        
+        await this.sendMessage(chatId, `
+✅ <b>Trade Ejecutado</b>
+
+${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
+💰 Cantidad: ${trade.amount}
+💵 Precio: $${trade.price.toFixed(2)}
+💸 Total: $${(trade.amount * trade.price).toFixed(2)}
+🏦 Exchange: ${trade.exchange}
+
+🆔 ID: ${trade.id}
+⏱️ Tiempo: ${new Date(trade.timestamp).toLocaleString()}
+
+<i>El trade ha sido ejecutado exitosamente</i>
+        `);
+      } else {
+        throw new Error(result.error || 'Failed to execute trade');
+      }
+    } catch (error: any) {
+      logger.error('Error in trade command:', error);
+      await this.sendMessage(chatId, `❌ Error ejecutando trade: ${error.message}`);
+    }
+  }
+
+  private formatDuration(ms: number): string {
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
   }
 
   // ============================================================================

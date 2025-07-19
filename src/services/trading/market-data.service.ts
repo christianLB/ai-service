@@ -1,0 +1,389 @@
+import { InfluxDB, Point, QueryApi, WriteApi } from '@influxdata/influxdb-client';
+import { Logger } from '../../utils/logger';
+import { db } from '../database';
+import { BinanceConnector, CoinbaseConnector } from './connectors';
+import ccxt from 'ccxt';
+import * as cron from 'node-cron';
+
+const logger = new Logger('MarketDataService');
+
+export interface MarketDataConfig {
+  influxUrl: string;
+  influxToken: string;
+  influxOrg: string;
+  influxBucket: string;
+}
+
+export interface MarketSnapshot {
+  exchange: string;
+  symbol: string;
+  timestamp: Date;
+  price: number;
+  bid: number;
+  ask: number;
+  volume24h: number;
+  high24h: number;
+  low24h: number;
+  change24h: number;
+  changePercent24h: number;
+}
+
+export interface OHLCVData {
+  timestamp: Date;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export class MarketDataService {
+  private static instance: MarketDataService;
+  private influxDB?: InfluxDB;
+  private writeApi?: WriteApi;
+  private queryApi?: QueryApi;
+  private connectors: Map<string, BinanceConnector | CoinbaseConnector> = new Map();
+  private subscriptions: Map<string, cron.ScheduledTask> = new Map();
+  private config?: MarketDataConfig;
+
+  private constructor() {}
+
+  static getInstance(): MarketDataService {
+    if (!MarketDataService.instance) {
+      MarketDataService.instance = new MarketDataService();
+    }
+    return MarketDataService.instance;
+  }
+
+  async initialize(config: MarketDataConfig): Promise<void> {
+    try {
+      this.config = config;
+      
+      // Initialize InfluxDB connection
+      this.influxDB = new InfluxDB({
+        url: config.influxUrl,
+        token: config.influxToken,
+      });
+
+      this.writeApi = this.influxDB.getWriteApi(config.influxOrg, config.influxBucket, 'ns');
+      this.queryApi = this.influxDB.getQueryApi(config.influxOrg);
+
+      // Test connection
+      await this.testInfluxConnection();
+      
+      logger.info('MarketDataService initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize MarketDataService', error);
+      throw error;
+    }
+  }
+
+  private async testInfluxConnection(): Promise<void> {
+    try {
+      const query = `from(bucket: "${this.config!.influxBucket}")
+        |> range(start: -1m)
+        |> limit(n: 1)`;
+      
+      await this.queryApi!.collectRows(query);
+      logger.info('InfluxDB connection test successful');
+    } catch (error) {
+      // It's okay if there's no data yet
+      if (error.message?.includes('no data')) {
+        logger.info('InfluxDB connected (no data yet)');
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  async startDataCollection(
+    exchange: string,
+    symbols: string[],
+    interval: string = '1m',
+    userId?: string
+  ): Promise<void> {
+    try {
+      // Initialize exchange connector
+      let connector: BinanceConnector | CoinbaseConnector;
+      
+      switch (exchange.toLowerCase()) {
+        case 'binance':
+          connector = new BinanceConnector(userId);
+          break;
+        case 'coinbase':
+          connector = new CoinbaseConnector(userId);
+          break;
+        default:
+          throw new Error(`Unsupported exchange: ${exchange}`);
+      }
+
+      await connector.connect();
+      this.connectors.set(`${exchange}:${userId || 'global'}`, connector);
+
+      // Convert interval to cron expression
+      const cronExpression = this.intervalToCron(interval);
+      
+      // Create scheduled task for data collection
+      const task = cron.schedule(cronExpression, async () => {
+        await this.collectMarketData(exchange, symbols, connector);
+      });
+
+      task.start();
+      this.subscriptions.set(`${exchange}:${symbols.join(',')}`, task);
+      
+      // Collect initial data
+      await this.collectMarketData(exchange, symbols, connector);
+      
+      logger.info(`Started data collection for ${exchange} - ${symbols.join(', ')}`);
+    } catch (error) {
+      logger.error('Failed to start data collection', error);
+      throw error;
+    }
+  }
+
+  private intervalToCron(interval: string): string {
+    const intervals: { [key: string]: string } = {
+      '1m': '* * * * *',
+      '5m': '*/5 * * * *',
+      '15m': '*/15 * * * *',
+      '30m': '*/30 * * * *',
+      '1h': '0 * * * *',
+      '4h': '0 */4 * * *',
+      '1d': '0 0 * * *',
+    };
+    
+    return intervals[interval] || '* * * * *';
+  }
+
+  private async collectMarketData(
+    exchange: string,
+    symbols: string[],
+    connector: BinanceConnector | CoinbaseConnector
+  ): Promise<void> {
+    for (const symbol of symbols) {
+      try {
+        // Fetch ticker data
+        const ticker = await connector.getTicker(symbol);
+        
+        // Store in InfluxDB
+        await this.storeMarketSnapshot({
+          exchange,
+          symbol,
+          timestamp: new Date(ticker.timestamp || Date.now()),
+          price: ticker.last || 0,
+          bid: ticker.bid || 0,
+          ask: ticker.ask || 0,
+          volume24h: ticker.baseVolume || 0,
+          high24h: ticker.high || 0,
+          low24h: ticker.low || 0,
+          change24h: ticker.change || 0,
+          changePercent24h: ticker.percentage || 0,
+        });
+
+        // Also store in PostgreSQL cache for quick access
+        await this.cacheMarketData(exchange, symbol, ticker);
+        
+      } catch (error) {
+        logger.error(`Failed to collect data for ${symbol} on ${exchange}`, error);
+      }
+    }
+  }
+
+  private async storeMarketSnapshot(snapshot: MarketSnapshot): Promise<void> {
+    if (!this.writeApi) {
+      throw new Error('InfluxDB not initialized');
+    }
+
+    const point = new Point('market_data')
+      .tag('exchange', snapshot.exchange)
+      .tag('symbol', snapshot.symbol)
+      .floatField('price', snapshot.price)
+      .floatField('bid', snapshot.bid)
+      .floatField('ask', snapshot.ask)
+      .floatField('volume_24h', snapshot.volume24h)
+      .floatField('high_24h', snapshot.high24h)
+      .floatField('low_24h', snapshot.low24h)
+      .floatField('change_24h', snapshot.change24h)
+      .floatField('change_percent_24h', snapshot.changePercent24h)
+      .timestamp(snapshot.timestamp);
+
+    this.writeApi.writePoint(point);
+    await this.writeApi.flush();
+  }
+
+  private async cacheMarketData(
+    exchange: string,
+    symbol: string,
+    ticker: ccxt.Ticker
+  ): Promise<void> {
+    try {
+      await db.pool.query(
+        `INSERT INTO trading.market_data_cache 
+         (exchange, symbol, timeframe, timestamp, open, high, low, close, volume, indicators)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         ON CONFLICT (exchange, symbol, timeframe, timestamp)
+         DO UPDATE SET
+           open = EXCLUDED.open,
+           high = EXCLUDED.high,
+           low = EXCLUDED.low,
+           close = EXCLUDED.close,
+           volume = EXCLUDED.volume`,
+        [
+          exchange,
+          symbol,
+          '1m',
+          new Date(ticker.timestamp || Date.now()),
+          ticker.open || ticker.last || 0,
+          ticker.high || ticker.last || 0,
+          ticker.low || ticker.last || 0,
+          ticker.last || 0,
+          ticker.baseVolume || 0,
+          JSON.stringify({}),
+        ]
+      );
+    } catch (error) {
+      logger.error('Failed to cache market data', error);
+    }
+  }
+
+  async getOHLCV(
+    exchange: string,
+    symbol: string,
+    timeframe: string,
+    since?: Date,
+    limit?: number,
+    userId?: string
+  ): Promise<OHLCVData[]> {
+    try {
+      const connectorKey = `${exchange}:${userId || 'global'}`;
+      const connector = this.connectors.get(connectorKey);
+      
+      if (!connector) {
+        throw new Error(`No connector found for ${exchange}`);
+      }
+
+      const sinceTimestamp = since ? since.getTime() : undefined;
+      const ohlcv = await connector.getOHLCV(symbol, timeframe, sinceTimestamp, limit);
+      
+      return ohlcv.map(candle => ({
+        timestamp: new Date(candle[0]),
+        open: candle[1],
+        high: candle[2],
+        low: candle[3],
+        close: candle[4],
+        volume: candle[5],
+      }));
+    } catch (error) {
+      logger.error(`Failed to get OHLCV for ${symbol} on ${exchange}`, error);
+      throw error;
+    }
+  }
+
+  async getLatestPrice(exchange: string, symbol: string): Promise<number> {
+    try {
+      // First try to get from cache
+      const cached = await db.pool.query(
+        `SELECT close FROM trading.market_data_cache
+         WHERE exchange = $1 AND symbol = $2
+         ORDER BY timestamp DESC
+         LIMIT 1`,
+        [exchange, symbol]
+      );
+
+      if (cached.rows[0]) {
+        return cached.rows[0].close;
+      }
+
+      // If not in cache, fetch from exchange
+      const connector = Array.from(this.connectors.values()).find(c => 
+        c.constructor.name.toLowerCase().includes(exchange.toLowerCase())
+      );
+
+      if (connector) {
+        const ticker = await connector.getTicker(symbol);
+        return ticker.last || 0;
+      }
+
+      throw new Error(`No price data available for ${symbol} on ${exchange}`);
+    } catch (error) {
+      logger.error(`Failed to get latest price for ${symbol} on ${exchange}`, error);
+      throw error;
+    }
+  }
+
+  async getMarketStats(
+    exchange: string,
+    symbol: string,
+    period: string = '24h'
+  ): Promise<any> {
+    if (!this.queryApi) {
+      throw new Error('InfluxDB not initialized');
+    }
+
+    try {
+      const query = `
+        from(bucket: "${this.config!.influxBucket}")
+        |> range(start: -${period})
+        |> filter(fn: (r) => r["exchange"] == "${exchange}" and r["symbol"] == "${symbol}")
+        |> filter(fn: (r) => r["_field"] == "price")
+        |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
+        |> yield(name: "hourly_avg")
+      `;
+
+      const data = await this.queryApi.collectRows(query);
+      
+      // Calculate statistics
+      const prices = data.map((row: any) => row._value);
+      const stats = {
+        exchange,
+        symbol,
+        period,
+        avg: prices.reduce((a, b) => a + b, 0) / prices.length,
+        min: Math.min(...prices),
+        max: Math.max(...prices),
+        count: prices.length,
+        lastUpdate: new Date(),
+      };
+
+      return stats;
+    } catch (error) {
+      logger.error('Failed to get market stats', error);
+      throw error;
+    }
+  }
+
+  async stopDataCollection(exchange: string, symbols: string[]): Promise<void> {
+    const key = `${exchange}:${symbols.join(',')}`;
+    const task = this.subscriptions.get(key);
+    
+    if (task) {
+      task.stop();
+      this.subscriptions.delete(key);
+      logger.info(`Stopped data collection for ${key}`);
+    }
+  }
+
+  async stopAllDataCollection(): Promise<void> {
+    for (const [key, task] of this.subscriptions) {
+      task.stop();
+      logger.info(`Stopped data collection for ${key}`);
+    }
+    this.subscriptions.clear();
+
+    // Disconnect all connectors
+    for (const [key, connector] of this.connectors) {
+      await connector.disconnect();
+    }
+    this.connectors.clear();
+  }
+
+  async cleanup(): Promise<void> {
+    await this.stopAllDataCollection();
+    
+    if (this.writeApi) {
+      await this.writeApi.close();
+    }
+  }
+}
+
+export const marketDataService = MarketDataService.getInstance();

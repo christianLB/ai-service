@@ -128,6 +128,38 @@ mcp-test-tool: ## 🎯 Probar una herramienta MCP (uso: make mcp-test-tool TOOL=
 	@$(MAKE) -f Makefile.mcp mcp-test-tool TOOL=$(TOOL)
 
 # =============================================================================
+# 💹 COMANDOS DE TRADING
+# =============================================================================
+
+.PHONY: trading-status
+trading-status: ## 📊 Ver estado del módulo de trading
+	@$(MAKE) -f Makefile.trading trading-status
+
+.PHONY: trading-up
+trading-up: ## 🚀 Iniciar servicios de trading
+	@$(MAKE) -f Makefile.trading trading-dev-up
+
+.PHONY: trading-down
+trading-down: ## 🛑 Detener servicios de trading
+	@$(MAKE) -f Makefile.trading trading-dev-down
+
+.PHONY: trading-migrate
+trading-migrate: ## 📄 Aplicar migraciones de trading
+	@$(MAKE) -f Makefile.trading trading-migrate
+
+.PHONY: trading-setup
+trading-setup: ## 🔧 Configurar API keys de exchanges
+	@$(MAKE) -f Makefile.trading trading-setup-keys
+
+.PHONY: trading-paper
+trading-paper: ## 📝 Activar paper trading
+	@$(MAKE) -f Makefile.trading trading-paper
+
+.PHONY: trading-positions
+trading-positions: ## 📈 Ver posiciones abiertas
+	@$(MAKE) -f Makefile.trading trading-positions
+
+# =============================================================================
 # 🔐 COMANDOS DE AUTENTICACIÓN
 # =============================================================================
 

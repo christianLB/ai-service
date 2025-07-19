@@ -27,6 +27,14 @@ import NotificationSettings from './pages/NotificationSettings';
 import BankAccounts from './pages/BankAccounts';
 import Transactions from './pages/Transactions';
 
+// Trading routes
+import TradingDashboard from './pages/trading/TradingDashboard';
+import Positions from './pages/trading/Positions';
+import Strategies from './pages/trading/Strategies';
+import Backtest from './pages/trading/Backtest';
+import Performance from './pages/trading/Performance';
+import TradingSettings from './pages/trading/Settings';
+
 import './App.css';
 
 // Configure dayjs
@@ -87,6 +95,14 @@ const App: React.FC = () => {
               {/* Financial Routes */}
               <Route path="bank-accounts" element={<BankAccounts />} />
               <Route path="transactions" element={<Transactions />} />
+              
+              {/* Trading Routes */}
+              <Route path="trading" element={<TradingDashboard />} />
+              <Route path="trading/positions" element={<Positions />} />
+              <Route path="trading/strategies" element={<Strategies />} />
+              <Route path="trading/backtest" element={<Backtest />} />
+              <Route path="trading/performance" element={<Performance />} />
+              <Route path="trading/settings" element={<TradingSettings />} />
               
               {/* System Routes */}
               <Route path="health" element={<SystemHealth />} />
