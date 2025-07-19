@@ -179,6 +179,27 @@ export class AIServiceClient {
     }
     return response.data;
   }
+
+  // Generic HTTP methods for trading tools
+  async get(path: string, params?: any) {
+    const response = await this.client.get(path, { params });
+    return response.data;
+  }
+
+  async post(path: string, data?: any) {
+    const response = await this.client.post(path, data);
+    return response.data;
+  }
+
+  async put(path: string, data?: any) {
+    const response = await this.client.put(path, data);
+    return response.data;
+  }
+
+  async delete(path: string, params?: any) {
+    const response = await this.client.delete(path, { params });
+    return response.data;
+  }
 }
 
 // Singleton instance

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { MCPTool } from '../types/mcp.types';
-import { aiServiceAPI } from '../utils/api-client';
+import { aiServiceClient as aiServiceAPI } from '../utils/ai-service-client';
 import logger from '../utils/logger';
 
 // Schema definitions

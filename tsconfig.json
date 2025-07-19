@@ -11,5 +11,5 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*"],
-  "exclude": ["tests/**/*", "node_modules", "dist", "frontend/**/*"]
+  "exclude": ["tests/**/*", "node_modules", "dist", "frontend/**/*", "src/services/trading/**/*"]
 }

@@ -6,7 +6,7 @@ export interface MCPTool {
   description: string;
   inputSchema: z.ZodSchema<any>;
   handler: (params: any) => Promise<MCPToolResult>;
-  category: 'financial' | 'documents' | 'system' | 'general';
+  category: 'financial' | 'documents' | 'system' | 'general' | 'trading';
   requiresAuth: boolean;
   rateLimit?: {
     maxPerMinute: number;

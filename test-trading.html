@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trading Module Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Trading Module Test Results</h1>
+    
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        async function testEndpoint(name, url, options = {}) {
+            const test = document.createElement('div');
+            test.className = 'test';
+            test.innerHTML = `<h3>${name}</h3><p>Testing: ${url}</p>`;
+            results.appendChild(test);
+            
+            try {
+                const response = await fetch(url, options);
+                const data = await response.text();
+                
+                if (response.ok) {
+                    test.className += ' success';
+                    test.innerHTML += `<p>✅ Status: ${response.status}</p>`;
+                } else {
+                    test.className += ' error';
+                    test.innerHTML += `<p>❌ Status: ${response.status}</p>`;
+                }
+                
+                test.innerHTML += `<pre>${data}</pre>`;
+            } catch (error) {
+                test.className += ' error';
+                test.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Run tests
+        (async () => {
+            // Test frontend trading route
+            await testEndpoint('Frontend Trading Route', 'http://localhost:3000/trading');
+            
+            // Test API endpoints
+            await testEndpoint('API Health', 'http://localhost:3001/health');
+            await testEndpoint('API Trading Dashboard', 'http://localhost:3001/api/trading/dashboard/overview');
+            
+            // Test MCP Bridge
+            await testEndpoint('MCP Bridge Health', 'http://localhost:8380/health');
+            await testEndpoint('MCP Bridge Tools', 'http://localhost:8380/mcp/tools?category=trading');
+            
+            // Test InfluxDB
+            await testEndpoint('InfluxDB Health', 'http://localhost:8086/health');
+            
+            // Test Qdrant
+            await testEndpoint('Qdrant Health', 'http://localhost:6333/');
+        })();
+    </script>
+</body>
+</html>

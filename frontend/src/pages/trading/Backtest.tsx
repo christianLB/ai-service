@@ -1,446 +1,435 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Paper,
-  Typography,
-  Grid,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  TextField,
-  Chip,
-  CircularProgress,
-  Alert,
-  Tab,
-  Tabs,
   Card,
-  CardContent,
-  LinearProgress,
+  Row,
+  Col,
+  Button,
+  Form,
+  Select,
+  InputNumber,
+  DatePicker,
+  Tag,
+  Spin,
+  Alert,
+  Tabs,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Tooltip
-} from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+  Statistic,
+  Space,
+  Typography,
+  Progress,
+  Empty
+} from 'antd';
+import {
+  PlayCircleOutlined,
+  DownloadOutlined,
+  RiseOutlined,
+  FallOutlined,
+  LineChartOutlined,
+  BarChartOutlined
+} from '@ant-design/icons';
 import {
   LineChart,
   Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
+  Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import {
-  PlayArrow,
-  Download,
-  CompareArrows,
-  TrendingUp,
-  TrendingDown,
-  Assessment
-} from '@mui/icons-material';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { tradingService, BacktestRequest, BacktestResult } from '../../services/tradingService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { tradingService } from '../../services/tradingService';
+import type { BacktestRequest, BacktestResult } from '../../services/tradingService';
 import { formatCurrency, formatPercentage, formatDate } from '../../utils/formatters';
+import dayjs from 'dayjs';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { RangePicker } = DatePicker;
+const { TabPane } = Tabs;
 
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+export default function Backtest() {
+  const [form] = Form.useForm();
+  const [activeTab, setActiveTab] = useState('1');
+  const [selectedStrategy, setSelectedStrategy] = useState<string>('');
+  const queryClient = useQueryClient();
+
+  // Queries
+  const { data: strategies } = useQuery({
+    queryKey: ['strategies'],
+    queryFn: tradingService.getStrategies
+  });
+
+  const { data: backtestResults } = useQuery({
+    queryKey: ['backtest-results'],
+    queryFn: tradingService.getBacktestResults
+  });
+
+  // Mutations
+  const runBacktestMutation = useMutation({
+    mutationFn: (params: BacktestRequest) => tradingService.runBacktest(params),
+    onSuccess: () => {
+      // Refresh results
+      queryClient.invalidateQueries({ queryKey: ['backtest-results'] });
+    }
+  });
+
+  const handleRunBacktest = (values: any) => {
+    const [startDate, endDate] = values.dateRange;
+    const backtestParams: BacktestRequest = {
+      strategyId: values.strategy,
+      startDate: startDate.format('YYYY-MM-DD'),
+      endDate: endDate.format('YYYY-MM-DD'),
+      symbols: values.symbols,
+      initialCapital: values.initialCapital
+    };
+    runBacktestMutation.mutate(backtestParams);
+  };
+
+  const renderPerformanceMetrics = (result: BacktestResult) => {
+    if (!result) return null;
+
+    const metrics = [
+      {
+        title: 'Total Return',
+        value: formatPercentage(result.metrics.totalReturn),
+        color: result.metrics.totalReturn >= 0 ? '#3f8600' : '#cf1322'
+      },
+      {
+        title: 'Sharpe Ratio',
+        value: result.metrics.sharpeRatio.toFixed(2),
+        color: result.metrics.sharpeRatio >= 1 ? '#3f8600' : '#fa8c16'
+      },
+      {
+        title: 'Max Drawdown',
+        value: formatPercentage(result.metrics.maxDrawdown),
+        color: '#cf1322'
+      },
+      {
+        title: 'Win Rate',
+        value: formatPercentage(result.metrics.winRate),
+        color: result.metrics.winRate >= 0.5 ? '#3f8600' : '#cf1322'
+      }
+    ];
+
+    return (
+      <Row gutter={16}>
+        {metrics.map((metric, index) => (
+          <Col span={6} key={index}>
+            <Card>
+              <Statistic
+                title={metric.title}
+                value={metric.value}
+                valueStyle={{ color: metric.color }}
+              />
+            </Card>
+          </Col>
+        ))}
+      </Row>
+    );
+  };
+
+  const columns = [
+    {
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
+      render: (date: string) => formatDate(date)
+    },
+    {
+      title: 'Symbol',
+      dataIndex: 'symbol',
+      key: 'symbol'
+    },
+    {
+      title: 'Side',
+      dataIndex: 'side',
+      key: 'side',
+      render: (side: string) => (
+        <Tag color={side === 'buy' ? 'green' : 'red'}>
+          {side.toUpperCase()}
+        </Tag>
+      )
+    },
+    {
+      title: 'Entry Price',
+      dataIndex: 'entryPrice',
+      key: 'entryPrice',
+      render: (price: number) => formatCurrency(price)
+    },
+    {
+      title: 'Exit Price',
+      dataIndex: 'exitPrice',
+      key: 'exitPrice',
+      render: (price: number) => formatCurrency(price)
+    },
+    {
+      title: 'P&L',
+      dataIndex: 'pnl',
+      key: 'pnl',
+      render: (pnl: number) => (
+        <Text type={pnl >= 0 ? 'success' : 'danger'}>
+          {formatCurrency(pnl)}
+        </Text>
+      )
+    },
+    {
+      title: 'Return',
+      dataIndex: 'returnPct',
+      key: 'returnPct',
+      render: (pct: number) => (
+        <Text type={pct >= 0 ? 'success' : 'danger'}>
+          {formatPercentage(pct)}
+        </Text>
+      )
+    }
+  ];
+
   return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`backtest-tabpanel-${index}`}
-      aria-labelledby={`backtest-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    <div style={{ padding: '24px' }}>
+      <Title level={2}>
+        <BarChartOutlined /> Strategy Backtesting
+      </Title>
+
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Card title="Backtest Configuration">
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleRunBacktest}
+              initialValues={{
+                initialCapital: 10000,
+                symbols: ['BTC/USDT', 'ETH/USDT']
+              }}
+            >
+              <Row gutter={16}>
+                <Col span={6}>
+                  <Form.Item
+                    name="strategy"
+                    label="Strategy"
+                    rules={[{ required: true, message: 'Please select a strategy' }]}
+                  >
+                    <Select
+                      placeholder="Select strategy"
+                      onChange={setSelectedStrategy}
+                    >
+                      {strategies?.map((strategy: any) => (
+                        <Option key={strategy.id} value={strategy.id}>
+                          {strategy.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+
+                <Col span={6}>
+                  <Form.Item
+                    name="dateRange"
+                    label="Date Range"
+                    rules={[{ required: true, message: 'Please select date range' }]}
+                  >
+                    <RangePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+
+                <Col span={6}>
+                  <Form.Item
+                    name="symbols"
+                    label="Symbols"
+                    rules={[{ required: true, message: 'Please select symbols' }]}
+                  >
+                    <Select
+                      mode="multiple"
+                      placeholder="Select symbols"
+                    >
+                      <Option value="BTC/USDT">BTC/USDT</Option>
+                      <Option value="ETH/USDT">ETH/USDT</Option>
+                      <Option value="BNB/USDT">BNB/USDT</Option>
+                      <Option value="SOL/USDT">SOL/USDT</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+
+                <Col span={6}>
+                  <Form.Item
+                    name="initialCapital"
+                    label="Initial Capital"
+                    rules={[{ required: true, message: 'Please enter initial capital' }]}
+                  >
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      parser={value => value!.replace(/\$\s?|(,*)/g, '')}
+                      min={1000}
+                      step={1000}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  icon={<PlayCircleOutlined />}
+                  loading={runBacktestMutation.isPending}
+                  size="large"
+                >
+                  Run Backtest
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
+        </Col>
+
+        {runBacktestMutation.data && (
+          <Col span={24}>
+            <Card title="Backtest Results">
+              <Tabs activeKey={activeTab} onChange={setActiveTab}>
+                <TabPane tab="Overview" key="1">
+                  <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    {renderPerformanceMetrics(runBacktestMutation.data)}
+                    
+                    <Card title="Equity Curve">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={runBacktestMutation.data.equityCurve}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke="#1890ff"
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Card>
+                  </Space>
+                </TabPane>
+
+                <TabPane tab="Trades" key="2">
+                  <Table
+                    columns={columns}
+                    dataSource={runBacktestMutation.data.trades}
+                    rowKey="id"
+                    pagination={{ pageSize: 20 }}
+                  />
+                </TabPane>
+
+                <TabPane tab="Statistics" key="3">
+                  <Row gutter={[16, 16]}>
+                    <Col span={12}>
+                      <Card title="Trade Statistics">
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                          <Statistic
+                            title="Total Trades"
+                            value={runBacktestMutation.data.metrics.totalTrades}
+                          />
+                          <Statistic
+                            title="Winning Trades"
+                            value={runBacktestMutation.data.metrics.winningTrades}
+                            suffix={`/ ${runBacktestMutation.data.metrics.totalTrades}`}
+                          />
+                          <Statistic
+                            title="Average Win"
+                            value={formatCurrency(runBacktestMutation.data.metrics.avgWin)}
+                            valueStyle={{ color: '#3f8600' }}
+                          />
+                          <Statistic
+                            title="Average Loss"
+                            value={formatCurrency(runBacktestMutation.data.metrics.avgLoss)}
+                            valueStyle={{ color: '#cf1322' }}
+                          />
+                        </Space>
+                      </Card>
+                    </Col>
+
+                    <Col span={12}>
+                      <Card title="Risk Metrics">
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                          <Statistic
+                            title="Profit Factor"
+                            value={runBacktestMutation.data.metrics.profitFactor.toFixed(2)}
+                          />
+                          <Statistic
+                            title="Recovery Factor"
+                            value={runBacktestMutation.data.metrics.recoveryFactor.toFixed(2)}
+                          />
+                          <Statistic
+                            title="Expectancy"
+                            value={formatCurrency(runBacktestMutation.data.metrics.expectancy)}
+                          />
+                          <Statistic
+                            title="Max Consecutive Losses"
+                            value={runBacktestMutation.data.metrics.maxConsecutiveLosses}
+                          />
+                        </Space>
+                      </Card>
+                    </Col>
+                  </Row>
+                </TabPane>
+              </Tabs>
+            </Card>
+          </Col>
+        )}
+
+        <Col span={24}>
+          <Card title="Previous Backtests">
+            {backtestResults && backtestResults.length > 0 ? (
+              <Table
+                columns={[
+                  {
+                    title: 'Strategy',
+                    dataIndex: 'strategyName',
+                    key: 'strategyName'
+                  },
+                  {
+                    title: 'Period',
+                    key: 'period',
+                    render: (_, record) => `${record.startDate} - ${record.endDate}`
+                  },
+                  {
+                    title: 'Return',
+                    dataIndex: ['metrics', 'totalReturn'],
+                    key: 'return',
+                    render: (value: number) => (
+                      <Text type={value >= 0 ? 'success' : 'danger'}>
+                        {formatPercentage(value)}
+                      </Text>
+                    )
+                  },
+                  {
+                    title: 'Sharpe',
+                    dataIndex: ['metrics', 'sharpeRatio'],
+                    key: 'sharpe',
+                    render: (value: number) => value.toFixed(2)
+                  },
+                  {
+                    title: 'Actions',
+                    key: 'actions',
+                    render: () => (
+                      <Button
+                        type="link"
+                        icon={<DownloadOutlined />}
+                        size="small"
+                      >
+                        Export
+                      </Button>
+                    )
+                  }
+                ]}
+                dataSource={backtestResults}
+                rowKey="id"
+              />
+            ) : (
+              <Empty description="No backtest results yet" />
+            )}
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 }
-
-export const Backtest: React.FC = () => {
-  const [tabValue, setTabValue] = useState(0);
-  const [selectedStrategy, setSelectedStrategy] = useState('');
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState<Date | null>(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
-  const [endDate, setEndDate] = useState<Date | null>(new Date());
-  const [initialCapital, setInitialCapital] = useState(10000);
-  const [runningBacktest, setRunningBacktest] = useState(false);
-  const [selectedResult, setSelectedResult] = useState<BacktestResult | null>(null);
-
-  const { data: strategies } = useQuery({
-    queryKey: ['strategies'],
-    queryFn: () => tradingService.getStrategies(),
-  });
-
-  const { data: exchanges } = useQuery({
-    queryKey: ['exchanges'],
-    queryFn: () => tradingService.getExchanges(),
-  });
-
-  const { data: backtestResults, refetch: refetchResults } = useQuery({
-    queryKey: ['backtest-results'],
-    queryFn: () => tradingService.getBacktestResults(20),
-  });
-
-  const runBacktestMutation = useMutation({
-    mutationFn: (request: BacktestRequest) => tradingService.runBacktest(request),
-    onSuccess: () => {
-      setRunningBacktest(false);
-      refetchResults();
-      setTabValue(1); // Switch to results tab
-    },
-    onError: () => {
-      setRunningBacktest(false);
-    },
-  });
-
-  const handleRunBacktest = () => {
-    if (!selectedStrategy || selectedSymbols.length === 0 || !startDate || !endDate) {
-      return;
-    }
-
-    setRunningBacktest(true);
-    runBacktestMutation.mutate({
-      strategyId: selectedStrategy,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-      symbols: selectedSymbols,
-      initialCapital,
-    });
-  };
-
-  const handleExportResults = (result: BacktestResult) => {
-    const csv = [
-      ['Date', 'Symbol', 'Side', 'Entry Date', 'Exit Date', 'P&L'],
-      ...result.trades.map(t => [
-        formatDate(t.exitDate),
-        t.symbol,
-        t.side,
-        formatDate(t.entryDate),
-        formatDate(t.exitDate),
-        t.pnl.toString()
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backtest-${result.id}.csv`;
-    a.click();
-  };
-
-  const commonSymbols = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT'];
-
-  return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Backtesting
-      </Typography>
-
-      <Paper sx={{ width: '100%' }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
-            <Tab label="Configurar Backtest" />
-            <Tab label="Resultados" />
-            <Tab label="Comparación" />
-          </Tabs>
-        </Box>
-
-        <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Estrategia</InputLabel>
-                <Select
-                  value={selectedStrategy}
-                  onChange={(e) => setSelectedStrategy(e.target.value)}
-                  label="Estrategia"
-                >
-                  {strategies?.map((strategy) => (
-                    <MenuItem key={strategy.id} value={strategy.id}>
-                      {strategy.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Capital Inicial"
-                type="number"
-                value={initialCapital}
-                onChange={(e) => setInitialCapital(parseInt(e.target.value))}
-                InputProps={{
-                  startAdornment: '$',
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Fecha Inicio"
-                  value={startDate}
-                  onChange={setStartDate}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </LocalizationProvider>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Fecha Fin"
-                  value={endDate}
-                  onChange={setEndDate}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </LocalizationProvider>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
-                Símbolos a probar
-              </Typography>
-              <Box display="flex" gap={1} flexWrap="wrap">
-                {commonSymbols.map((symbol) => (
-                  <Chip
-                    key={symbol}
-                    label={symbol}
-                    onClick={() => {
-                      if (selectedSymbols.includes(symbol)) {
-                        setSelectedSymbols(selectedSymbols.filter(s => s !== symbol));
-                      } else {
-                        setSelectedSymbols([...selectedSymbols, symbol]);
-                      }
-                    }}
-                    color={selectedSymbols.includes(symbol) ? 'primary' : 'default'}
-                    clickable
-                  />
-                ))}
-              </Box>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={runningBacktest ? <CircularProgress size={20} /> : <PlayArrow />}
-                onClick={handleRunBacktest}
-                disabled={runningBacktest || !selectedStrategy || selectedSymbols.length === 0}
-                fullWidth
-              >
-                {runningBacktest ? 'Ejecutando Backtest...' : 'Ejecutar Backtest'}
-              </Button>
-            </Grid>
-          </Grid>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={1}>
-          {backtestResults?.length === 0 ? (
-            <Alert severity="info">
-              No hay resultados de backtest disponibles. Ejecuta un backtest primero.
-            </Alert>
-          ) : (
-            <Grid container spacing={3}>
-              {/* Results List */}
-              <Grid item xs={12} md={4}>
-                <Typography variant="h6" gutterBottom>
-                  Resultados Recientes
-                </Typography>
-                {backtestResults?.map((result) => (
-                  <Card 
-                    key={result.id} 
-                    sx={{ mb: 2, cursor: 'pointer' }}
-                    onClick={() => setSelectedResult(result)}
-                  >
-                    <CardContent>
-                      <Typography variant="subtitle1">
-                        {strategies?.find(s => s.id === result.strategyId)?.name}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        {formatDate(result.startDate)} - {formatDate(result.endDate)}
-                      </Typography>
-                      <Box display="flex" justifyContent="space-between" mt={1}>
-                        <Typography variant="body2">
-                          Return: {formatPercentage(result.metrics.totalReturn)}
-                        </Typography>
-                        <Typography variant="body2">
-                          Sharpe: {result.metrics.sharpeRatio.toFixed(2)}
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Grid>
-
-              {/* Selected Result Details */}
-              {selectedResult && (
-                <Grid item xs={12} md={8}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6">
-                      Detalles del Backtest
-                    </Typography>
-                    <IconButton onClick={() => handleExportResults(selectedResult)}>
-                      <Download />
-                    </IconButton>
-                  </Box>
-
-                  {/* Metrics Summary */}
-                  <Grid container spacing={2} mb={3}>
-                    <Grid item xs={6} md={3}>
-                      <Card>
-                        <CardContent>
-                          <Typography variant="body2" color="textSecondary">
-                            Retorno Total
-                          </Typography>
-                          <Typography variant="h6" color={selectedResult.metrics.totalReturn > 0 ? 'success.main' : 'error.main'}>
-                            {formatPercentage(selectedResult.metrics.totalReturn)}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                      <Card>
-                        <CardContent>
-                          <Typography variant="body2" color="textSecondary">
-                            Sharpe Ratio
-                          </Typography>
-                          <Typography variant="h6">
-                            {selectedResult.metrics.sharpeRatio.toFixed(2)}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                      <Card>
-                        <CardContent>
-                          <Typography variant="body2" color="textSecondary">
-                            Max Drawdown
-                          </Typography>
-                          <Typography variant="h6" color="error.main">
-                            {formatPercentage(selectedResult.metrics.maxDrawdown)}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                      <Card>
-                        <CardContent>
-                          <Typography variant="body2" color="textSecondary">
-                            Win Rate
-                          </Typography>
-                          <Typography variant="h6">
-                            {formatPercentage(selectedResult.metrics.winRate)}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  </Grid>
-
-                  {/* Equity Curve */}
-                  <Paper sx={{ p: 2, mb: 3 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Curva de Equity
-                    </Typography>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={selectedResult.equityCurve}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <RechartsTooltip />
-                        <Line 
-                          type="monotone" 
-                          dataKey="equity" 
-                          stroke="#8884d8" 
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </Paper>
-
-                  {/* Trade List */}
-                  <Paper sx={{ p: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Trades ({selectedResult.trades.length})
-                    </Typography>
-                    <TableContainer sx={{ maxHeight: 400 }}>
-                      <Table stickyHeader size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Símbolo</TableCell>
-                            <TableCell>Lado</TableCell>
-                            <TableCell>Entrada</TableCell>
-                            <TableCell>Salida</TableCell>
-                            <TableCell align="right">P&L</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {selectedResult.trades.map((trade, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell>{trade.symbol}</TableCell>
-                              <TableCell>
-                                <Chip 
-                                  label={trade.side} 
-                                  size="small"
-                                  color={trade.side === 'buy' ? 'success' : 'error'}
-                                />
-                              </TableCell>
-                              <TableCell>{formatDate(trade.entryDate)}</TableCell>
-                              <TableCell>{formatDate(trade.exitDate)}</TableCell>
-                              <TableCell 
-                                align="right"
-                                sx={{ 
-                                  color: trade.pnl > 0 ? 'success.main' : 'error.main',
-                                  fontWeight: 'medium'
-                                }}
-                              >
-                                {formatCurrency(trade.pnl)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Paper>
-                </Grid>
-              )}
-            </Grid>
-          )}
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={2}>
-          <Alert severity="info">
-            La funcionalidad de comparación de backtests estará disponible próximamente.
-          </Alert>
-        </TabPanel>
-      </Paper>
-    </Box>
-  );
-};
-
-export default Backtest;
