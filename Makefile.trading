@@ -1,0 +1,179 @@
+# Makefile.trading - Comandos para el módulo de Trading Intelligence
+# =============================================================================
+
+# Cargar configuración local si existe
+-include .make.env
+
+# Variables
+DOCKER_COMPOSE := docker-compose
+DB_NAME ?= ai_service
+NAS_HOST ?= 192.168.1.11
+NAS_USER ?= admin
+
+# Colores para output
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+NC := \033[0m
+
+# =============================================================================
+# 📊 COMANDOS DE TRADING
+# =============================================================================
+
+.PHONY: trading-migrate
+trading-migrate: ## Aplicar migraciones de trading
+	@echo "$(YELLOW)Aplicando migraciones de trading...$(NC)"
+	@$(DOCKER_COMPOSE) exec postgres psql -U postgres -d $(DB_NAME) -f /docker-entrypoint-initdb.d/migrations/009-create-trading-tables.sql
+	@echo "$(GREEN)✅ Migraciones de trading aplicadas$(NC)"
+
+.PHONY: trading-status
+trading-status: ## Ver estado del módulo de trading
+	@echo "$(YELLOW)🔍 Estado del módulo de trading$(NC)"
+	@echo ""
+	@echo "$(YELLOW)📊 Servicios de Trading:$(NC)"
+	@$(DOCKER_COMPOSE) ps | grep -E "(influxdb|qdrant)" || echo "$(RED)No hay servicios de trading activos$(NC)"
+	@echo ""
+	@echo "$(YELLOW)📈 Tablas de Trading:$(NC)"
+	@$(DOCKER_COMPOSE) exec postgres psql -U postgres -d $(DB_NAME) -c "\dt trading.*" 2>/dev/null || echo "$(RED)Schema trading no encontrado$(NC)"
+
+.PHONY: trading-dev-up
+trading-dev-up: ## Levantar servicios de trading en desarrollo
+	@echo "$(YELLOW)🚀 Iniciando servicios de trading...$(NC)"
+	@$(DOCKER_COMPOSE) up -d influxdb qdrant
+	@echo "$(GREEN)✅ Servicios de trading iniciados$(NC)"
+	@echo ""
+	@echo "$(YELLOW)📍 URLs de acceso:$(NC)"
+	@echo "  - InfluxDB: http://localhost:8086"
+	@echo "  - Qdrant: http://localhost:6333/dashboard"
+
+.PHONY: trading-dev-down
+trading-dev-down: ## Detener servicios de trading
+	@echo "$(YELLOW)🛑 Deteniendo servicios de trading...$(NC)"
+	@$(DOCKER_COMPOSE) stop influxdb qdrant
+	@echo "$(GREEN)✅ Servicios detenidos$(NC)"
+
+.PHONY: trading-logs
+trading-logs: ## Ver logs de servicios de trading
+	@$(DOCKER_COMPOSE) logs -f influxdb qdrant
+
+.PHONY: trading-influx-cli
+trading-influx-cli: ## Abrir CLI de InfluxDB
+	@echo "$(YELLOW)🔧 Abriendo InfluxDB CLI...$(NC)"
+	@$(DOCKER_COMPOSE) exec influxdb influx -t $${INFLUXDB_TOKEN:-dev-token-influxdb-2025}
+
+.PHONY: trading-test-connection
+trading-test-connection: ## Probar conexiones a exchanges
+	@echo "$(YELLOW)🔌 Probando conexiones a exchanges...$(NC)"
+	@echo "$(RED)⚠️  Asegúrate de configurar las API keys primero$(NC)"
+	@echo "Use: make trading-setup-keys"
+
+.PHONY: trading-setup-keys
+trading-setup-keys: ## Configurar API keys de exchanges
+	@echo "$(YELLOW)🔐 Configuración de API Keys de Trading$(NC)"
+	@echo ""
+	@echo "Para configurar las claves de los exchanges, ejecuta:"
+	@echo ""
+	@echo "$(GREEN)# Binance:$(NC)"
+	@echo "curl -X POST http://localhost:3003/api/integrations/keys \\"
+	@echo "  -H 'Content-Type: application/json' \\"
+	@echo "  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \\"
+	@echo "  -d '{"
+	@echo '    "service": "trading_binance",'
+	@echo '    "keys": {'
+	@echo '      "api_key": "YOUR_BINANCE_API_KEY",'
+	@echo '      "secret": "YOUR_BINANCE_SECRET",'
+	@echo '      "testnet": "true"'
+	@echo '    }'
+	@echo "  }'"
+	@echo ""
+	@echo "$(GREEN)# Coinbase:$(NC)"
+	@echo "curl -X POST http://localhost:3003/api/integrations/keys \\"
+	@echo "  -H 'Content-Type: application/json' \\"
+	@echo "  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \\"
+	@echo "  -d '{"
+	@echo '    "service": "trading_coinbase",'
+	@echo '    "keys": {'
+	@echo '      "api_key": "YOUR_COINBASE_API_KEY",'
+	@echo '      "secret": "YOUR_COINBASE_SECRET",'
+	@echo '      "passphrase": "YOUR_COINBASE_PASSPHRASE"'
+	@echo '    }'
+	@echo "  }'"
+
+.PHONY: trading-backtest
+trading-backtest: ## Ejecutar backtesting (ejemplo)
+	@echo "$(YELLOW)📊 Ejecutando backtest...$(NC)"
+	@echo "$(RED)⚠️  Esta funcionalidad requiere implementación adicional$(NC)"
+
+.PHONY: trading-paper
+trading-paper: ## Activar modo paper trading
+	@echo "$(YELLOW)📝 Activando paper trading...$(NC)"
+	@$(DOCKER_COMPOSE) exec postgres psql -U postgres -d $(DB_NAME) -c \
+		"UPDATE trading.config SET config_value = '\"paper\"' WHERE config_key = 'global.trading_mode';"
+	@echo "$(GREEN)✅ Paper trading activado$(NC)"
+
+.PHONY: trading-live
+trading-live: ## ⚠️  Activar modo trading real
+	@echo "$(RED)⚠️  ADVERTENCIA: Esto activará el trading con dinero real$(NC)"
+	@echo "¿Estás seguro? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@$(DOCKER_COMPOSE) exec postgres psql -U postgres -d $(DB_NAME) -c \
+		"UPDATE trading.config SET config_value = '\"live\"' WHERE config_key = 'global.trading_mode';"
+	@echo "$(RED)🔴 Trading REAL activado - ¡Ten cuidado!$(NC)"
+
+.PHONY: trading-positions
+trading-positions: ## Ver posiciones abiertas
+	@echo "$(YELLOW)📊 Posiciones abiertas:$(NC)"
+	@$(DOCKER_COMPOSE) exec postgres psql -U postgres -d $(DB_NAME) -c \
+		"SELECT exchange, symbol, side, quantity, entry_price, current_price, unrealized_pnl \
+		 FROM trading.positions WHERE status = 'open';"
+
+.PHONY: trading-strategies
+trading-strategies: ## Ver estrategias configuradas
+	@echo "$(YELLOW)🧠 Estrategias de trading:$(NC)"
+	@$(DOCKER_COMPOSE) exec postgres psql -U postgres -d $(DB_NAME) -c \
+		"SELECT name, type, status, total_trades, winning_trades, total_pnl, is_active \
+		 FROM trading.strategies ORDER BY created_at DESC;"
+
+.PHONY: trading-config
+trading-config: ## Ver configuración de trading
+	@echo "$(YELLOW)⚙️  Configuración de trading:$(NC)"
+	@$(DOCKER_COMPOSE) exec postgres psql -U postgres -d $(DB_NAME) -c \
+		"SELECT config_key, config_value, description FROM trading.config ORDER BY config_key;"
+
+.PHONY: trading-clean
+trading-clean: ## Limpiar datos de trading (⚠️  desarrollo solo)
+	@echo "$(RED)⚠️  Esto eliminará todos los datos de trading$(NC)"
+	@echo "¿Estás seguro? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@$(DOCKER_COMPOSE) exec postgres psql -U postgres -d $(DB_NAME) -c "DROP SCHEMA IF EXISTS trading CASCADE;"
+	@echo "$(GREEN)✅ Datos de trading eliminados$(NC)"
+
+# =============================================================================
+# 🚀 COMANDOS DE DEPLOY PARA TRADING
+# =============================================================================
+
+.PHONY: trading-deploy-nas
+trading-deploy-nas: ## Desplegar módulo de trading en NAS
+	@echo "$(YELLOW)🚀 Desplegando módulo de trading en NAS...$(NC)"
+	@ssh $(NAS_USER)@$(NAS_HOST) "cd /volume1/docker/ai-service && docker-compose up -d influxdb qdrant"
+	@echo "$(GREEN)✅ Módulo de trading desplegado$(NC)"
+
+.PHONY: trading-prod-migrate
+trading-prod-migrate: ## Aplicar migraciones de trading en producción
+	@echo "$(YELLOW)🔄 Aplicando migraciones en producción...$(NC)"
+	@scp migrations/009-create-trading-tables.sql $(NAS_USER)@$(NAS_HOST):/tmp/
+	@ssh $(NAS_USER)@$(NAS_HOST) "docker exec ai-postgres psql -U ai_user -d ai_service -f /tmp/009-create-trading-tables.sql"
+	@ssh $(NAS_USER)@$(NAS_HOST) "rm /tmp/009-create-trading-tables.sql"
+	@echo "$(GREEN)✅ Migraciones aplicadas en producción$(NC)"
+
+# =============================================================================
+# 📚 AYUDA
+# =============================================================================
+
+.PHONY: trading-help
+trading-help: ## Mostrar ayuda del módulo de trading
+	@echo "$(YELLOW)📚 Comandos del Módulo de Trading Intelligence$(NC)"
+	@echo ""
+	@grep -E '^trading-[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-25s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Uso:$(NC) make -f Makefile.trading [comando]"
+	@echo "$(YELLOW)Ejemplo:$(NC) make -f Makefile.trading trading-status"

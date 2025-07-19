@@ -14,6 +14,7 @@ import { errorHandler } from '../middleware/error-handler';
 import { financialTools } from '../tools/financial.tools';
 import { documentTools } from '../tools/document.tools';
 import { systemTools } from '../tools/system.tools';
+import { tradingTools } from '../tools/trading.tools';
 
 export class MCPServer {
   private app: express.Application;
@@ -63,6 +64,7 @@ export class MCPServer {
       ...financialTools,
       ...documentTools,
       ...systemTools,
+      ...tradingTools,
     ]);
 
     logger.info('Tools registered', {
