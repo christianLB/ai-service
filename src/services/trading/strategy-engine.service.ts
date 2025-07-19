@@ -56,9 +56,9 @@ export abstract class BaseStrategy extends EventEmitter {
     };
   }
 
-  abstract async analyze(exchange: string, symbol: string, data: any): Promise<TradingSignal | null>;
-  abstract async initialize(): Promise<void>;
-  abstract async cleanup(): Promise<void>;
+  abstract analyze(exchange: string, symbol: string, data: any): Promise<TradingSignal | null>;
+  abstract initialize(): Promise<void>;
+  abstract cleanup(): Promise<void>;
 
   async start(): Promise<void> {
     if (this.isRunning) {

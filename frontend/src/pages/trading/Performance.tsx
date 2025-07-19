@@ -5,15 +5,10 @@ import {
   Col,
   Select,
   Radio,
-  Table,
-  Tag,
   Button,
   Space,
   Typography,
-  Statistic,
-  Progress,
-  Tooltip,
-  Empty
+  Statistic
 } from 'antd';
 import {
   LineChart,
@@ -36,36 +31,18 @@ import {
   RiseOutlined,
   FallOutlined,
   BarChartOutlined,
-  PieChartOutlined,
   DownloadOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { tradingService } from '../../services/tradingService';
-import { formatCurrency, formatPercentage, formatNumber } from '../../utils/formatters';
+import { formatCurrency, formatPercentage } from '../../utils/formatters';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 type TimeRange = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
-interface PerformanceMetrics {
-  totalReturn: number;
-  totalReturnPercent: number;
-  sharpeRatio: number;
-  maxDrawdown: number;
-  winRate: number;
-  profitFactor: number;
-  totalTrades: number;
-  winningTrades: number;
-  losingTrades: number;
-  avgWin: number;
-  avgLoss: number;
-  expectancy: number;
-  equity: Array<{ date: string; value: number }>;
-  monthlyReturns: Array<{ month: string; return: number }>;
-  tradeDistribution: Array<{ range: string; count: number }>;
-}
 
 export default function Performance() {
   const [timeRange, setTimeRange] = useState<TimeRange>('1M');
@@ -80,7 +57,7 @@ export default function Performance() {
 
   const { data: performanceMetrics } = useQuery({
     queryKey: ['performance', timeRange, selectedStrategy],
-    queryFn: () => tradingService.getPerformanceMetrics(timeRange, selectedStrategy),
+    queryFn: () => tradingService.getPerformanceMetrics(),
     refetchInterval: 60000 // Refresh every minute
   });
 
@@ -218,7 +195,7 @@ export default function Performance() {
             <YAxis />
             <RechartsTooltip formatter={(value: number) => formatPercentage(value)} />
             <Bar dataKey="return">
-              {performanceMetrics.monthlyReturns.map((entry, index) => (
+              {performanceMetrics.monthlyReturns.map((entry: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={entry.return >= 0 ? '#52c41a' : '#ff4d4f'} />
               ))}
             </Bar>
@@ -244,7 +221,7 @@ export default function Performance() {
               outerRadius={100}
               label
             >
-              {performanceMetrics.tradeDistribution.map((entry, index) => (
+              {performanceMetrics.tradeDistribution.map((_: any, index: number) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>

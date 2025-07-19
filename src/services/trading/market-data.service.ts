@@ -2,7 +2,8 @@ import { InfluxDB, Point, QueryApi, WriteApi } from '@influxdata/influxdb-client
 import { Logger } from '../../utils/logger';
 import { db } from '../database';
 import { BinanceConnector, CoinbaseConnector } from './connectors';
-import ccxt from 'ccxt';
+import * as ccxt from 'ccxt';
+import type { Ticker } from 'ccxt';
 import * as cron from 'node-cron';
 
 const logger = new Logger('MarketDataService');
@@ -86,7 +87,7 @@ export class MarketDataService {
       
       await this.queryApi!.collectRows(query);
       logger.info('InfluxDB connection test successful');
-    } catch (error) {
+    } catch (error: any) {
       // It's okay if there's no data yet
       if (error.message?.includes('no data')) {
         logger.info('InfluxDB connected (no data yet)');
@@ -214,7 +215,7 @@ export class MarketDataService {
   private async cacheMarketData(
     exchange: string,
     symbol: string,
-    ticker: ccxt.Ticker
+    ticker: Ticker
   ): Promise<void> {
     try {
       await db.pool.query(
@@ -266,12 +267,12 @@ export class MarketDataService {
       const ohlcv = await connector.getOHLCV(symbol, timeframe, sinceTimestamp, limit);
       
       return ohlcv.map(candle => ({
-        timestamp: new Date(candle[0]),
-        open: candle[1],
-        high: candle[2],
-        low: candle[3],
-        close: candle[4],
-        volume: candle[5],
+        timestamp: new Date(candle[0] || 0),
+        open: Number(candle[1]) || 0,
+        high: Number(candle[2]) || 0,
+        low: Number(candle[3]) || 0,
+        close: Number(candle[4]) || 0,
+        volume: Number(candle[5]) || 0,
       }));
     } catch (error) {
       logger.error(`Failed to get OHLCV for ${symbol} on ${exchange}`, error);

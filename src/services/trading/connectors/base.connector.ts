@@ -1,4 +1,5 @@
-import ccxt from 'ccxt';
+import * as ccxt from 'ccxt';
+import type { Exchange, Order, Ticker, OrderBook, Balances, Market, OHLCV, Trade, Dictionary } from 'ccxt';
 import { Logger } from '../../../utils/logger';
 import { tradingConnectorService } from '../trading-connector.service';
 
@@ -26,7 +27,7 @@ export interface PositionInfo {
 
 export abstract class BaseExchangeConnector {
   protected logger: Logger;
-  protected exchange?: ccxt.Exchange;
+  protected exchange?: Exchange;
   protected exchangeId: string;
   protected userId?: string;
 
@@ -68,17 +69,17 @@ export abstract class BaseExchangeConnector {
     }
   }
 
-  async getBalance(): Promise<ccxt.Balances> {
+  async getBalance(): Promise<Balances> {
     this.ensureConnected();
     return await this.exchange!.fetchBalance();
   }
 
-  async getTicker(symbol: string): Promise<ccxt.Ticker> {
+  async getTicker(symbol: string): Promise<Ticker> {
     this.ensureConnected();
     return await this.exchange!.fetchTicker(symbol);
   }
 
-  async getOrderBook(symbol: string, limit?: number): Promise<ccxt.OrderBook> {
+  async getOrderBook(symbol: string, limit?: number): Promise<OrderBook> {
     this.ensureConnected();
     return await this.exchange!.fetchOrderBook(symbol, limit);
   }
@@ -88,12 +89,12 @@ export abstract class BaseExchangeConnector {
     timeframe: string = '1h',
     since?: number,
     limit?: number
-  ): Promise<ccxt.OHLCV[]> {
+  ): Promise<OHLCV[]> {
     this.ensureConnected();
     return await this.exchange!.fetchOHLCV(symbol, timeframe, since, limit);
   }
 
-  async createOrder(params: OrderParams): Promise<ccxt.Order> {
+  async createOrder(params: OrderParams): Promise<Order> {
     this.ensureConnected();
     
     const { symbol, type, side, amount, price, stopPrice, params: extraParams } = params;
@@ -120,32 +121,32 @@ export abstract class BaseExchangeConnector {
     return await this.exchange!.cancelOrder(orderId, symbol);
   }
 
-  async getOrder(orderId: string, symbol: string): Promise<ccxt.Order> {
+  async getOrder(orderId: string, symbol: string): Promise<Order> {
     this.ensureConnected();
     return await this.exchange!.fetchOrder(orderId, symbol);
   }
 
-  async getOpenOrders(symbol?: string): Promise<ccxt.Order[]> {
+  async getOpenOrders(symbol?: string): Promise<Order[]> {
     this.ensureConnected();
     return await this.exchange!.fetchOpenOrders(symbol);
   }
 
-  async getClosedOrders(symbol?: string, since?: number, limit?: number): Promise<ccxt.Order[]> {
+  async getClosedOrders(symbol?: string, since?: number, limit?: number): Promise<Order[]> {
     this.ensureConnected();
     return await this.exchange!.fetchClosedOrders(symbol, since, limit);
   }
 
-  async getTrades(symbol: string, since?: number, limit?: number): Promise<ccxt.Trade[]> {
+  async getTrades(symbol: string, since?: number, limit?: number): Promise<Trade[]> {
     this.ensureConnected();
     return await this.exchange!.fetchMyTrades(symbol, since, limit);
   }
 
-  async getMarkets(): Promise<ccxt.Dictionary<ccxt.Market>> {
+  async getMarkets(): Promise<Dictionary<Market>> {
     this.ensureConnected();
     return this.exchange!.markets;
   }
 
-  async loadMarkets(reload?: boolean): Promise<ccxt.Dictionary<ccxt.Market>> {
+  async loadMarkets(reload?: boolean): Promise<Dictionary<Market>> {
     this.ensureConnected();
     return await this.exchange!.loadMarkets(reload);
   }

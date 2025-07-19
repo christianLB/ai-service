@@ -167,7 +167,7 @@ export class BacktestService {
             if (validation.approved) {
               const trade = this.executeBacktestTrade(
                 symbol,
-                signal.action,
+                signal.action === 'close' ? 'sell' : signal.action,
                 currentCandle,
                 balance,
                 config

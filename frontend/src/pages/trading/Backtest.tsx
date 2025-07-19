@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Card,
   Row,
@@ -9,22 +9,16 @@ import {
   InputNumber,
   DatePicker,
   Tag,
-  Spin,
-  Alert,
   Tabs,
   Table,
   Statistic,
   Space,
   Typography,
-  Progress,
   Empty
 } from 'antd';
 import {
   PlayCircleOutlined,
   DownloadOutlined,
-  RiseOutlined,
-  FallOutlined,
-  LineChartOutlined,
   BarChartOutlined
 } from '@ant-design/icons';
 import {
@@ -40,7 +34,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradingService } from '../../services/tradingService';
 import type { BacktestRequest, BacktestResult } from '../../services/tradingService';
 import { formatCurrency, formatPercentage, formatDate } from '../../utils/formatters';
-import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -50,7 +43,7 @@ const { TabPane } = Tabs;
 export default function Backtest() {
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState('1');
-  const [selectedStrategy, setSelectedStrategy] = useState<string>('');
+  const [currentBacktestId, setCurrentBacktestId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Queries
@@ -61,14 +54,15 @@ export default function Backtest() {
 
   const { data: backtestResults } = useQuery({
     queryKey: ['backtest-results'],
-    queryFn: tradingService.getBacktestResults
+    queryFn: () => tradingService.getBacktestResults()
   });
 
   // Mutations
   const runBacktestMutation = useMutation({
     mutationFn: (params: BacktestRequest) => tradingService.runBacktest(params),
-    onSuccess: () => {
-      // Refresh results
+    onSuccess: (data) => {
+      // Store the task ID and refresh results
+      setCurrentBacktestId(data.taskId);
       queryClient.invalidateQueries({ queryKey: ['backtest-results'] });
     }
   });
@@ -211,7 +205,6 @@ export default function Backtest() {
                   >
                     <Select
                       placeholder="Select strategy"
-                      onChange={setSelectedStrategy}
                     >
                       {strategies?.map((strategy: any) => (
                         <Option key={strategy.id} value={strategy.id}>
@@ -258,8 +251,7 @@ export default function Backtest() {
                   >
                     <InputNumber
                       style={{ width: '100%' }}
-                      formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                      parser={value => value!.replace(/\$\s?|(,*)/g, '')}
+                      formatter={(value) => value ? `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '$ '}
                       min={1000}
                       step={1000}
                     />
@@ -282,17 +274,19 @@ export default function Backtest() {
           </Card>
         </Col>
 
-        {runBacktestMutation.data && (
+        {currentBacktestId && backtestResults && (() => {
+          const currentResult = (backtestResults as BacktestResult[]).find(r => r.id === currentBacktestId);
+          return currentResult ? (
           <Col span={24}>
             <Card title="Backtest Results">
               <Tabs activeKey={activeTab} onChange={setActiveTab}>
                 <TabPane tab="Overview" key="1">
                   <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                    {renderPerformanceMetrics(runBacktestMutation.data)}
+                    {renderPerformanceMetrics(currentResult)}
                     
                     <Card title="Equity Curve">
                       <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={runBacktestMutation.data.equityCurve}>
+                        <LineChart data={currentResult.equityCurve}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" />
                           <YAxis />
@@ -313,7 +307,7 @@ export default function Backtest() {
                 <TabPane tab="Trades" key="2">
                   <Table
                     columns={columns}
-                    dataSource={runBacktestMutation.data.trades}
+                    dataSource={currentResult.trades}
                     rowKey="id"
                     pagination={{ pageSize: 20 }}
                   />
@@ -326,21 +320,21 @@ export default function Backtest() {
                         <Space direction="vertical" style={{ width: '100%' }}>
                           <Statistic
                             title="Total Trades"
-                            value={runBacktestMutation.data.metrics.totalTrades}
+                            value={currentResult.metrics.totalTrades}
                           />
                           <Statistic
                             title="Winning Trades"
-                            value={runBacktestMutation.data.metrics.winningTrades}
-                            suffix={`/ ${runBacktestMutation.data.metrics.totalTrades}`}
+                            value={(currentResult.metrics as any).winningTrades || 0}
+                            suffix={`/ ${currentResult.metrics.totalTrades}`}
                           />
                           <Statistic
                             title="Average Win"
-                            value={formatCurrency(runBacktestMutation.data.metrics.avgWin)}
+                            value={formatCurrency((currentResult.metrics as any).avgWin || 0)}
                             valueStyle={{ color: '#3f8600' }}
                           />
                           <Statistic
                             title="Average Loss"
-                            value={formatCurrency(runBacktestMutation.data.metrics.avgLoss)}
+                            value={formatCurrency((currentResult.metrics as any).avgLoss || 0)}
                             valueStyle={{ color: '#cf1322' }}
                           />
                         </Space>
@@ -352,19 +346,19 @@ export default function Backtest() {
                         <Space direction="vertical" style={{ width: '100%' }}>
                           <Statistic
                             title="Profit Factor"
-                            value={runBacktestMutation.data.metrics.profitFactor.toFixed(2)}
+                            value={currentResult.metrics.profitFactor.toFixed(2)}
                           />
                           <Statistic
                             title="Recovery Factor"
-                            value={runBacktestMutation.data.metrics.recoveryFactor.toFixed(2)}
+                            value={(currentResult.metrics as any).recoveryFactor?.toFixed(2) || 'N/A'}
                           />
                           <Statistic
                             title="Expectancy"
-                            value={formatCurrency(runBacktestMutation.data.metrics.expectancy)}
+                            value={formatCurrency((currentResult.metrics as any).expectancy || 0)}
                           />
                           <Statistic
                             title="Max Consecutive Losses"
-                            value={runBacktestMutation.data.metrics.maxConsecutiveLosses}
+                            value={(currentResult.metrics as any).maxConsecutiveLosses || 0}
                           />
                         </Space>
                       </Card>
@@ -374,22 +368,27 @@ export default function Backtest() {
               </Tabs>
             </Card>
           </Col>
-        )}
+          ) : null;
+        })()}
 
         <Col span={24}>
           <Card title="Previous Backtests">
-            {backtestResults && backtestResults.length > 0 ? (
+            {backtestResults && (backtestResults as BacktestResult[]).length > 0 ? (
               <Table
                 columns={[
                   {
                     title: 'Strategy',
-                    dataIndex: 'strategyName',
-                    key: 'strategyName'
+                    dataIndex: 'strategyId',
+                    key: 'strategyId',
+                    render: (id: string) => {
+                      const strategy = strategies?.find((s: any) => s.id === id);
+                      return strategy?.name || id;
+                    }
                   },
                   {
                     title: 'Period',
                     key: 'period',
-                    render: (_, record) => `${record.startDate} - ${record.endDate}`
+                    render: (_: any, record: BacktestResult) => `${record.startDate} - ${record.endDate}`
                   },
                   {
                     title: 'Return',
@@ -421,7 +420,7 @@ export default function Backtest() {
                     )
                   }
                 ]}
-                dataSource={backtestResults}
+                dataSource={backtestResults as BacktestResult[]}
                 rowKey="id"
               />
             ) : (

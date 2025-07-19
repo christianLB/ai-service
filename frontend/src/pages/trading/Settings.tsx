@@ -1,44 +1,38 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Paper,
+  Card,
   Typography,
-  Grid,
-  TextField,
+  Row,
+  Col,
+  Input,
+  InputNumber,
   Button,
   Switch,
-  FormControlLabel,
-  FormControl,
-  InputLabel,
+  Form,
   Select,
-  MenuItem,
   Divider,
   Alert,
-  Chip,
-  IconButton,
+  Tag,
   List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  InputAdornment
-} from '@mui/material';
+  Modal,
+  Space,
+  Tabs,
+  message
+} from 'antd';
 import {
-  Save,
-  Add,
-  Delete,
-  Warning,
-  Security,
-  Notifications,
-  AccountBalanceWallet,
-  Speed,
-  Api
-} from '@mui/icons-material';
+  SaveOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  WarningOutlined,
+  SafetyOutlined,
+  NotificationOutlined,
+  ApiOutlined
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradingService } from '../../services/tradingService';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 interface RiskSettings {
   maxPositionSize: number;
@@ -50,18 +44,6 @@ interface RiskSettings {
   defaultTakeProfit: number;
 }
 
-interface NotificationSettings {
-  telegramEnabled: boolean;
-  telegramChatId: string;
-  emailEnabled: boolean;
-  emailAddress: string;
-  alertTypes: {
-    trades: boolean;
-    errors: boolean;
-    dailyReport: boolean;
-    riskAlerts: boolean;
-  };
-}
 
 interface ExchangeCredential {
   id: string;
@@ -72,38 +54,10 @@ interface ExchangeCredential {
 }
 
 export const Settings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'risk' | 'notifications' | 'exchanges'>('risk');
-  const [riskSettings, setRiskSettings] = useState<RiskSettings>({
-    maxPositionSize: 10,
-    maxDailyLoss: 5,
-    maxDrawdown: 20,
-    maxLeverage: 3,
-    stopLossRequired: true,
-    defaultStopLoss: 2,
-    defaultTakeProfit: 3
-  });
-  
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    telegramEnabled: false,
-    telegramChatId: '',
-    emailEnabled: false,
-    emailAddress: '',
-    alertTypes: {
-      trades: true,
-      errors: true,
-      dailyReport: true,
-      riskAlerts: true
-    }
-  });
-
-  const [addExchangeDialog, setAddExchangeDialog] = useState(false);
-  const [newExchange, setNewExchange] = useState({
-    exchange: '',
-    name: '',
-    apiKey: '',
-    apiSecret: '',
-    testnet: true
-  });
+  const [riskForm] = Form.useForm();
+  const [notificationForm] = Form.useForm();
+  const [exchangeForm] = Form.useForm();
+  const [addExchangeModal, setAddExchangeModal] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -122,532 +76,493 @@ export const Settings: React.FC = () => {
     mutationFn: (settings: RiskSettings) => tradingService.updateRiskParams(settings),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['risk-settings'] });
+      message.success('Configuración de riesgo actualizada');
+    },
+    onError: () => {
+      message.error('Error al actualizar configuración de riesgo');
     }
   });
 
   const handleSaveRiskSettings = () => {
-    updateRiskSettingsMutation.mutate(riskSettings);
-  };
-
-  const handleAddExchange = () => {
-    // Add exchange logic
-    setAddExchangeDialog(false);
-    setNewExchange({
-      exchange: '',
-      name: '',
-      apiKey: '',
-      apiSecret: '',
-      testnet: true
+    riskForm.validateFields().then((values) => {
+      updateRiskSettingsMutation.mutate(values);
     });
   };
 
-  return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Configuración de Trading
-      </Typography>
+  const handleSaveNotificationSettings = () => {
+    notificationForm.validateFields().then((values) => {
+      console.log('Save notification settings:', values);
+      message.success('Configuración de notificaciones actualizada');
+    });
+  };
 
-      <Paper sx={{ mb: 3 }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Grid container>
-            <Grid 
-              item xs={4} 
-              sx={{ 
-                p: 2, 
-                cursor: 'pointer',
-                bgcolor: activeTab === 'risk' ? 'action.selected' : 'transparent',
-                borderBottom: activeTab === 'risk' ? 2 : 0,
-                borderColor: 'primary.main'
-              }}
-              onClick={() => setActiveTab('risk')}
+  const handleAddExchange = () => {
+    exchangeForm.validateFields().then((values) => {
+      console.log('Add exchange:', values);
+      message.success('Exchange agregado exitosamente');
+      setAddExchangeModal(false);
+      exchangeForm.resetFields();
+    });
+  };
+
+  const handleDeleteExchange = (id: string) => {
+    Modal.confirm({
+      title: '¿Eliminar exchange?',
+      content: '¿Está seguro de eliminar esta configuración de exchange?',
+      okText: 'Sí, eliminar',
+      cancelText: 'Cancelar',
+      onOk: () => {
+        console.log('Delete exchange:', id);
+        message.success('Exchange eliminado');
+      }
+    });
+  };
+
+  const tabItems = [
+    {
+      key: 'risk',
+      label: (
+        <Space>
+          <SafetyOutlined />
+          Gestión de Riesgo
+        </Space>
+      ),
+      children: (
+        <Form
+          form={riskForm}
+          layout="vertical"
+          initialValues={{
+            maxPositionSize: 10,
+            maxDailyLoss: 5,
+            maxDrawdown: 20,
+            maxLeverage: 3,
+            stopLossRequired: true,
+            defaultStopLoss: 2,
+            defaultTakeProfit: 3
+          }}
+        >
+          <Alert
+            message="Los límites de riesgo son críticos para proteger tu capital. Configúralos cuidadosamente según tu tolerancia al riesgo."
+            type="warning"
+            icon={<WarningOutlined />}
+            showIcon
+            style={{ marginBottom: 24 }}
+          />
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="maxPositionSize"
+                label="Tamaño Máximo de Posición (%)"
+                tooltip="Porcentaje máximo del capital por posición"
+                rules={[{ required: true, min: 1, max: 100, type: 'number' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={1}
+                  max={100}
+                  step={1}
+                  suffix="%"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="maxDailyLoss"
+                label="Pérdida Máxima Diaria (%)"
+                tooltip="Se detendrá el trading al alcanzar este límite"
+                rules={[{ required: true, min: 0.1, max: 20, type: 'number' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0.1}
+                  max={20}
+                  step={0.1}
+                  suffix="%"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="maxDrawdown"
+                label="Drawdown Máximo (%)"
+                tooltip="Pérdida máxima desde el pico de equity"
+                rules={[{ required: true, min: 5, max: 50, type: 'number' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={5}
+                  max={50}
+                  step={1}
+                  suffix="%"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="maxLeverage"
+                label="Apalancamiento Máximo"
+                tooltip="Apalancamiento máximo permitido"
+                rules={[{ required: true, min: 1, max: 10, type: 'number' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={1}
+                  max={10}
+                  step={1}
+                  suffix="x"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Title level={5}>Configuración de Stop Loss / Take Profit</Title>
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24}>
+              <Form.Item
+                name="stopLossRequired"
+                valuePropName="checked"
+              >
+                <Switch checkedChildren="Sí" unCheckedChildren="No" />
+                <Text style={{ marginLeft: 12 }}>Requerir Stop Loss en todas las operaciones</Text>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="defaultStopLoss"
+                label="Stop Loss por Defecto (%)"
+                rules={[{ required: true, min: 0.1, max: 10, type: 'number' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0.1}
+                  max={10}
+                  step={0.1}
+                  suffix="%"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="defaultTakeProfit"
+                label="Take Profit por Defecto (%)"
+                rules={[{ required: true, min: 0.1, max: 50, type: 'number' }]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0.1}
+                  max={50}
+                  step={0.1}
+                  suffix="%"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <div style={{ textAlign: 'right', marginTop: 24 }}>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSaveRiskSettings}
+              loading={updateRiskSettingsMutation.isPending}
             >
-              <Box display="flex" alignItems="center" justifyContent="center">
-                <Security sx={{ mr: 1 }} />
-                <Typography>Gestión de Riesgo</Typography>
-              </Box>
-            </Grid>
-            <Grid 
-              item xs={4} 
-              sx={{ 
-                p: 2, 
-                cursor: 'pointer',
-                bgcolor: activeTab === 'notifications' ? 'action.selected' : 'transparent',
-                borderBottom: activeTab === 'notifications' ? 2 : 0,
-                borderColor: 'primary.main'
-              }}
-              onClick={() => setActiveTab('notifications')}
-            >
-              <Box display="flex" alignItems="center" justifyContent="center">
-                <Notifications sx={{ mr: 1 }} />
-                <Typography>Notificaciones</Typography>
-              </Box>
-            </Grid>
-            <Grid 
-              item xs={4} 
-              sx={{ 
-                p: 2, 
-                cursor: 'pointer',
-                bgcolor: activeTab === 'exchanges' ? 'action.selected' : 'transparent',
-                borderBottom: activeTab === 'exchanges' ? 2 : 0,
-                borderColor: 'primary.main'
-              }}
-              onClick={() => setActiveTab('exchanges')}
-            >
-              <Box display="flex" alignItems="center" justifyContent="center">
-                <Api sx={{ mr: 1 }} />
-                <Typography>Exchanges</Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </Box>
+              Guardar Configuración de Riesgo
+            </Button>
+          </div>
+        </Form>
+      ),
+    },
+    {
+      key: 'notifications',
+      label: (
+        <Space>
+          <NotificationOutlined />
+          Notificaciones
+        </Space>
+      ),
+      children: (
+        <Form
+          form={notificationForm}
+          layout="vertical"
+          initialValues={{
+            telegramEnabled: false,
+            telegramChatId: '',
+            emailEnabled: false,
+            emailAddress: '',
+            trades: true,
+            errors: true,
+            dailyReport: true,
+            riskAlerts: true
+          }}
+        >
+          <Title level={5}>Telegram</Title>
 
-        <Box sx={{ p: 3 }}>
-          {activeTab === 'risk' && (
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <Alert severity="warning" icon={<Warning />}>
-                  Los límites de riesgo son críticos para proteger tu capital. 
-                  Configúralos cuidadosamente según tu tolerancia al riesgo.
-                </Alert>
-              </Grid>
+          <Row gutter={[16, 16]}>
+            <Col xs={24}>
+              <Form.Item
+                name="telegramEnabled"
+                valuePropName="checked"
+              >
+                <Switch checkedChildren="Habilitado" unCheckedChildren="Deshabilitado" />
+                <Text style={{ marginLeft: 12 }}>Habilitar notificaciones por Telegram</Text>
+              </Form.Item>
+            </Col>
 
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Tamaño Máximo de Posición (%)"
-                  type="number"
-                  value={riskSettings.maxPositionSize}
-                  onChange={(e) => setRiskSettings({
-                    ...riskSettings,
-                    maxPositionSize: parseFloat(e.target.value)
-                  })}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                    inputProps: { min: 1, max: 100, step: 1 }
-                  }}
-                  helperText="Porcentaje máximo del capital por posición"
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Pérdida Máxima Diaria (%)"
-                  type="number"
-                  value={riskSettings.maxDailyLoss}
-                  onChange={(e) => setRiskSettings({
-                    ...riskSettings,
-                    maxDailyLoss: parseFloat(e.target.value)
-                  })}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                    inputProps: { min: 0.1, max: 20, step: 0.1 }
-                  }}
-                  helperText="Se detendrá el trading al alcanzar este límite"
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Drawdown Máximo (%)"
-                  type="number"
-                  value={riskSettings.maxDrawdown}
-                  onChange={(e) => setRiskSettings({
-                    ...riskSettings,
-                    maxDrawdown: parseFloat(e.target.value)
-                  })}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                    inputProps: { min: 5, max: 50, step: 1 }
-                  }}
-                  helperText="Pérdida máxima desde el pico de equity"
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Apalancamiento Máximo"
-                  type="number"
-                  value={riskSettings.maxLeverage}
-                  onChange={(e) => setRiskSettings({
-                    ...riskSettings,
-                    maxLeverage: parseFloat(e.target.value)
-                  })}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">x</InputAdornment>,
-                    inputProps: { min: 1, max: 10, step: 1 }
-                  }}
-                  helperText="Apalancamiento máximo permitido"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Configuración de Stop Loss / Take Profit
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={riskSettings.stopLossRequired}
-                      onChange={(e) => setRiskSettings({
-                        ...riskSettings,
-                        stopLossRequired: e.target.checked
-                      })}
-                    />
-                  }
-                  label="Requerir Stop Loss en todas las operaciones"
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Stop Loss por Defecto (%)"
-                  type="number"
-                  value={riskSettings.defaultStopLoss}
-                  onChange={(e) => setRiskSettings({
-                    ...riskSettings,
-                    defaultStopLoss: parseFloat(e.target.value)
-                  })}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                    inputProps: { min: 0.1, max: 10, step: 0.1 }
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Take Profit por Defecto (%)"
-                  type="number"
-                  value={riskSettings.defaultTakeProfit}
-                  onChange={(e) => setRiskSettings({
-                    ...riskSettings,
-                    defaultTakeProfit: parseFloat(e.target.value)
-                  })}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                    inputProps: { min: 0.1, max: 50, step: 0.1 }
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Box display="flex" justifyContent="flex-end">
-                  <Button
-                    variant="contained"
-                    startIcon={<Save />}
-                    onClick={handleSaveRiskSettings}
-                    disabled={updateRiskSettingsMutation.isLoading}
-                  >
-                    Guardar Configuración de Riesgo
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          )}
-
-          {activeTab === 'notifications' && (
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>
-                  Telegram
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={notificationSettings.telegramEnabled}
-                      onChange={(e) => setNotificationSettings({
-                        ...notificationSettings,
-                        telegramEnabled: e.target.checked
-                      })}
-                    />
-                  }
-                  label="Habilitar notificaciones por Telegram"
-                />
-              </Grid>
-
-              {notificationSettings.telegramEnabled && (
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Chat ID de Telegram"
-                    value={notificationSettings.telegramChatId}
-                    onChange={(e) => setNotificationSettings({
-                      ...notificationSettings,
-                      telegramChatId: e.target.value
-                    })}
-                    helperText="Obtén tu Chat ID del bot @userinfobot"
-                  />
-                </Grid>
-              )}
-
-              <Grid item xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Email
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={notificationSettings.emailEnabled}
-                      onChange={(e) => setNotificationSettings({
-                        ...notificationSettings,
-                        emailEnabled: e.target.checked
-                      })}
-                    />
-                  }
-                  label="Habilitar notificaciones por email"
-                />
-              </Grid>
-
-              {notificationSettings.emailEnabled && (
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Dirección de Email"
-                    type="email"
-                    value={notificationSettings.emailAddress}
-                    onChange={(e) => setNotificationSettings({
-                      ...notificationSettings,
-                      emailAddress: e.target.value
-                    })}
-                  />
-                </Grid>
-              )}
-
-              <Grid item xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Tipos de Alertas
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={notificationSettings.alertTypes.trades}
-                      onChange={(e) => setNotificationSettings({
-                        ...notificationSettings,
-                        alertTypes: {
-                          ...notificationSettings.alertTypes,
-                          trades: e.target.checked
-                        }
-                      })}
-                    />
-                  }
-                  label="Ejecución de trades"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={notificationSettings.alertTypes.errors}
-                      onChange={(e) => setNotificationSettings({
-                        ...notificationSettings,
-                        alertTypes: {
-                          ...notificationSettings.alertTypes,
-                          errors: e.target.checked
-                        }
-                      })}
-                    />
-                  }
-                  label="Errores y fallos"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={notificationSettings.alertTypes.dailyReport}
-                      onChange={(e) => setNotificationSettings({
-                        ...notificationSettings,
-                        alertTypes: {
-                          ...notificationSettings.alertTypes,
-                          dailyReport: e.target.checked
-                        }
-                      })}
-                    />
-                  }
-                  label="Reporte diario"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={notificationSettings.alertTypes.riskAlerts}
-                      onChange={(e) => setNotificationSettings({
-                        ...notificationSettings,
-                        alertTypes: {
-                          ...notificationSettings.alertTypes,
-                          riskAlerts: e.target.checked
-                        }
-                      })}
-                    />
-                  }
-                  label="Alertas de riesgo"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Box display="flex" justifyContent="flex-end">
-                  <Button
-                    variant="contained"
-                    startIcon={<Save />}
-                    onClick={() => console.log('Save notification settings')}
-                  >
-                    Guardar Configuración de Notificaciones
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          )}
-
-          {activeTab === 'exchanges' && (
-            <Box>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h6">
-                  Credenciales de Exchange
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => setAddExchangeDialog(true)}
-                >
-                  Agregar Exchange
-                </Button>
-              </Box>
-
-              <List>
-                {exchanges?.map((exchange) => (
-                  <ListItem key={exchange.id} divider>
-                    <ListItemText
-                      primary={exchange.name}
-                      secondary={
-                        <Box display="flex" gap={1} mt={0.5}>
-                          <Chip 
-                            label={exchange.exchange.toUpperCase()} 
-                            size="small" 
-                          />
-                          {exchange.testnet && (
-                            <Chip 
-                              label="TESTNET" 
-                              size="small" 
-                              color="warning"
-                            />
-                          )}
-                          <Chip 
-                            label={exchange.active ? 'Activo' : 'Inactivo'} 
-                            size="small"
-                            color={exchange.active ? 'success' : 'default'}
-                          />
-                        </Box>
-                      }
-                    />
-                    <ListItemSecondaryAction>
-                      <IconButton edge="end" aria-label="delete">
-                        <Delete />
-                      </IconButton>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                ))}
-              </List>
-
-              {exchanges?.length === 0 && (
-                <Alert severity="info">
-                  No hay exchanges configurados. Agrega uno para comenzar a operar.
-                </Alert>
-              )}
-            </Box>
-          )}
-        </Box>
-      </Paper>
-
-      {/* Add Exchange Dialog */}
-      <Dialog open={addExchangeDialog} onClose={() => setAddExchangeDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Agregar Exchange</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Exchange</InputLabel>
-                <Select
-                  value={newExchange.exchange}
-                  onChange={(e) => setNewExchange({ ...newExchange, exchange: e.target.value })}
-                  label="Exchange"
-                >
-                  <MenuItem value="binance">Binance</MenuItem>
-                  <MenuItem value="coinbase">Coinbase</MenuItem>
-                  <MenuItem value="kraken">Kraken</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Nombre de la conexión"
-                value={newExchange.name}
-                onChange={(e) => setNewExchange({ ...newExchange, name: e.target.value })}
-                helperText="Ej: Binance Principal, Binance Test"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="API Key"
-                value={newExchange.apiKey}
-                onChange={(e) => setNewExchange({ ...newExchange, apiKey: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="API Secret"
-                type="password"
-                value={newExchange.apiSecret}
-                onChange={(e) => setNewExchange({ ...newExchange, apiSecret: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={newExchange.testnet}
-                    onChange={(e) => setNewExchange({ ...newExchange, testnet: e.target.checked })}
-                  />
+            <Col xs={24} md={12}>
+              <Form.Item
+                noStyle
+                shouldUpdate={(prevValues, currentValues) => 
+                  prevValues.telegramEnabled !== currentValues.telegramEnabled
                 }
-                label="Usar Testnet (recomendado para pruebas)"
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddExchangeDialog(false)}>Cancelar</Button>
-          <Button onClick={handleAddExchange} variant="contained">
-            Agregar
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+              >
+                {({ getFieldValue }) =>
+                  getFieldValue('telegramEnabled') && (
+                    <Form.Item
+                      name="telegramChatId"
+                      label="Chat ID de Telegram"
+                      tooltip="Obtén tu Chat ID del bot @userinfobot"
+                      rules={[{ required: true, message: 'Chat ID requerido' }]}
+                    >
+                      <Input />
+                    </Form.Item>
+                  )
+                }
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Title level={5}>Email</Title>
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24}>
+              <Form.Item
+                name="emailEnabled"
+                valuePropName="checked"
+              >
+                <Switch checkedChildren="Habilitado" unCheckedChildren="Deshabilitado" />
+                <Text style={{ marginLeft: 12 }}>Habilitar notificaciones por email</Text>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                noStyle
+                shouldUpdate={(prevValues, currentValues) => 
+                  prevValues.emailEnabled !== currentValues.emailEnabled
+                }
+              >
+                {({ getFieldValue }) =>
+                  getFieldValue('emailEnabled') && (
+                    <Form.Item
+                      name="emailAddress"
+                      label="Dirección de Email"
+                      rules={[
+                        { required: true, message: 'Email requerido' },
+                        { type: 'email', message: 'Email inválido' }
+                      ]}
+                    >
+                      <Input type="email" />
+                    </Form.Item>
+                  )
+                }
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Title level={5}>Tipos de Alertas</Title>
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="trades"
+                valuePropName="checked"
+              >
+                <Switch />
+                <Text style={{ marginLeft: 12 }}>Ejecución de trades</Text>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="errors"
+                valuePropName="checked"
+              >
+                <Switch />
+                <Text style={{ marginLeft: 12 }}>Errores y fallos</Text>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="dailyReport"
+                valuePropName="checked"
+              >
+                <Switch />
+                <Text style={{ marginLeft: 12 }}>Reporte diario</Text>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="riskAlerts"
+                valuePropName="checked"
+              >
+                <Switch />
+                <Text style={{ marginLeft: 12 }}>Alertas de riesgo</Text>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <div style={{ textAlign: 'right', marginTop: 24 }}>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSaveNotificationSettings}
+            >
+              Guardar Configuración de Notificaciones
+            </Button>
+          </div>
+        </Form>
+      ),
+    },
+    {
+      key: 'exchanges',
+      label: (
+        <Space>
+          <ApiOutlined />
+          Exchanges
+        </Space>
+      ),
+      children: (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <Title level={5}>Credenciales de Exchange</Title>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setAddExchangeModal(true)}
+            >
+              Agregar Exchange
+            </Button>
+          </div>
+
+          <List
+            dataSource={exchanges}
+            renderItem={(exchange) => (
+              <List.Item
+                actions={[
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleDeleteExchange(exchange.id)}
+                  />
+                ]}
+              >
+                <List.Item.Meta
+                  title={exchange.name}
+                  description={
+                    <Space wrap>
+                      <Tag>{exchange.exchange.toUpperCase()}</Tag>
+                      {exchange.testnet && <Tag color="warning">TESTNET</Tag>}
+                      <Tag color={exchange.active ? 'success' : 'default'}>
+                        {exchange.active ? 'Activo' : 'Inactivo'}
+                      </Tag>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+            locale={{ emptyText: 'No hay exchanges configurados. Agrega uno para comenzar a operar.' }}
+          />
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <Title level={2}>Configuración de Trading</Title>
+
+      <Card>
+        <Tabs items={tabItems} />
+      </Card>
+
+      {/* Add Exchange Modal */}
+      <Modal
+        title="Agregar Exchange"
+        open={addExchangeModal}
+        onOk={handleAddExchange}
+        onCancel={() => {
+          setAddExchangeModal(false);
+          exchangeForm.resetFields();
+        }}
+        width={600}
+      >
+        <Form
+          form={exchangeForm}
+          layout="vertical"
+          initialValues={{ testnet: true }}
+        >
+          <Form.Item
+            name="exchange"
+            label="Exchange"
+            rules={[{ required: true, message: 'Selecciona un exchange' }]}
+          >
+            <Select placeholder="Selecciona un exchange">
+              <Option value="binance">Binance</Option>
+              <Option value="coinbase">Coinbase</Option>
+              <Option value="kraken">Kraken</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="name"
+            label="Nombre de la conexión"
+            tooltip="Ej: Binance Principal, Binance Test"
+            rules={[{ required: true, message: 'Ingresa un nombre' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="apiKey"
+            label="API Key"
+            rules={[{ required: true, message: 'API Key requerida' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="apiSecret"
+            label="API Secret"
+            rules={[{ required: true, message: 'API Secret requerida' }]}
+          >
+            <Input.Password />
+          </Form.Item>
+
+          <Form.Item
+            name="testnet"
+            valuePropName="checked"
+          >
+            <Switch checkedChildren="Testnet" unCheckedChildren="Mainnet" />
+            <Text style={{ marginLeft: 12 }}>Usar Testnet (recomendado para pruebas)</Text>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   );
 };
 

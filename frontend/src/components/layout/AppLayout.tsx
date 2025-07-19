@@ -17,6 +17,10 @@ import {
   ApiOutlined,
   BankOutlined,
   TransactionOutlined,
+  LineChartOutlined,
+  FundOutlined,
+  StockOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -74,44 +78,44 @@ const AppLayout: React.FC = () => {
         },
       ],
     },
-    // Trading menu - temporarily commented out for build
-    // {
-    //   key: '/trading',
-    //   icon: <LineChartOutlined />,
-    //   label: 'Trading',
-    //   children: [
-    //     {
-    //       key: '/trading',
-    //       icon: <FundOutlined />,
-    //       label: 'Dashboard',
-    //     },
-    //     {
-    //       key: '/trading/positions',
-    //       icon: <StockOutlined />,
-    //       label: 'Posiciones',
-    //     },
-    //     {
-    //       key: '/trading/strategies',
-    //       icon: <BarChartOutlined />,
-    //       label: 'Estrategias',
-    //     },
-    //     {
-    //       key: '/trading/backtest',
-    //       icon: <LineChartOutlined />,
-    //       label: 'Backtest',
-    //     },
-    //     {
-    //       key: '/trading/performance',
-    //       icon: <BarChartOutlined />,
-    //       label: 'Rendimiento',
-    //     },
-    //     {
-    //       key: '/trading/settings',
-    //       icon: <SettingOutlined />,
-    //       label: 'Configuración',
-    //     },
-    //   ],
-    // },
+    // Trading menu
+    {
+      key: '/trading',
+      icon: <LineChartOutlined />,
+      label: 'Trading',
+      children: [
+        {
+          key: '/trading',
+          icon: <FundOutlined />,
+          label: 'Dashboard',
+        },
+        {
+          key: '/trading/positions',
+          icon: <StockOutlined />,
+          label: 'Posiciones',
+        },
+        {
+          key: '/trading/strategies',
+          icon: <BarChartOutlined />,
+          label: 'Estrategias',
+        },
+        {
+          key: '/trading/backtest',
+          icon: <LineChartOutlined />,
+          label: 'Backtest',
+        },
+        {
+          key: '/trading/performance',
+          icon: <BarChartOutlined />,
+          label: 'Rendimiento',
+        },
+        {
+          key: '/trading/settings',
+          icon: <SettingOutlined />,
+          label: 'Configuración',
+        },
+      ],
+    },
     {
       key: '/settings',
       icon: <SettingOutlined />,

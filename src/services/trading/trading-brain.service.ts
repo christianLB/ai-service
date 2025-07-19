@@ -626,7 +626,7 @@ Format your response as JSON.`;
   }
 
   async suggestImprovements(strategyId: string): Promise<string[]> {
-    const suggestions = [];
+    const suggestions: string[] = [];
     
     try {
       // Get strategy performance

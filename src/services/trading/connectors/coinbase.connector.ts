@@ -24,7 +24,7 @@ export class CoinbaseConnector extends BaseExchangeConnector {
       const positions: PositionInfo[] = [];
       
       for (const [currency, balanceInfo] of Object.entries(balance)) {
-        if (balanceInfo.total > 0 && currency !== 'USD' && currency !== 'USDT') {
+        if ((balanceInfo as any).total > 0 && currency !== 'USD' && currency !== 'USDT') {
           try {
             // Try to get current price
             const ticker = await this.getTicker(`${currency}/USD`);
@@ -32,7 +32,7 @@ export class CoinbaseConnector extends BaseExchangeConnector {
             positions.push({
               symbol: `${currency}/USD`,
               side: 'long',
-              amount: balanceInfo.total,
+              amount: (balanceInfo as any).total,
               entryPrice: 0, // Coinbase doesn't track entry price in spot
               markPrice: ticker.last || 0,
               unrealizedPnl: 0, // Would need to track purchase price
@@ -202,6 +202,9 @@ export class CoinbaseConnector extends BaseExchangeConnector {
     
     try {
       const time = await this.exchange!.fetchTime();
+      if (time === undefined) {
+        throw new Error('Failed to fetch time from exchange');
+      }
       return {
         iso: new Date(time).toISOString(),
         epoch: time / 1000,

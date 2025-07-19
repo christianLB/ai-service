@@ -1,4 +1,5 @@
-import ccxt from 'ccxt';
+import * as ccxt from 'ccxt';
+import type { Exchange } from 'ccxt';
 import { Logger } from '../../utils/logger';
 import { integrationConfigService } from '../integrations/integration-config.service';
 import { db } from '../database';
@@ -16,7 +17,7 @@ export interface ExchangeConfig {
 export interface TradingExchange {
   id: string;
   name: string;
-  exchange: ccxt.Exchange;
+  exchange: Exchange;
   connected: boolean;
   lastSync?: Date;
 }
@@ -47,7 +48,7 @@ export class TradingConnectorService {
       }
 
       // Create exchange instance based on ID
-      let exchange: ccxt.Exchange;
+      let exchange: Exchange;
       
       switch (exchangeId.toLowerCase()) {
         case 'binance':
@@ -88,7 +89,7 @@ export class TradingConnectorService {
       
       const tradingExchange: TradingExchange = {
         id: exchangeId,
-        name: exchange.name,
+        name: exchange.name || exchangeId,
         exchange,
         connected: true,
         lastSync: new Date(),

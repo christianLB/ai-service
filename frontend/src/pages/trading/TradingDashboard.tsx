@@ -1,65 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box,
-  Grid,
-  Paper,
-  Typography,
-  CircularProgress,
-  Alert,
   Card,
-  CardContent,
-  Chip,
-  IconButton,
+  Col,
+  Row,
+  Typography,
+  Spin,
+  Alert,
+  Tag,
   Button,
-  Tooltip
-} from '@mui/material';
+  Space,
+  Statistic,
+  Tooltip,
+  Switch,
+  Badge,
+  Divider,
+  Progress
+} from 'antd';
 import {
-  TrendingUp,
-  TrendingDown,
-  ShowChart,
-  Stop,
-  PlayArrow,
-  Pause,
-  Refresh,
-  Warning
-} from '@mui/icons-material';
+  RiseOutlined,
+  FallOutlined,
+  StopOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
+  ReloadOutlined,
+  WarningOutlined,
+  DollarOutlined
+} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { tradingService } from '../../services/tradingService';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
 
-interface DashboardData {
-  portfolio: {
-    totalValue: number;
-    dailyPnL: number;
-    weeklyPnL: number;
-    monthlyPnL: number;
-    exposure: Record<string, number>;
-  };
-  positions: {
-    open: number;
-    profitable: number;
-    losing: number;
-    totalPnL: number;
-  };
-  strategies: {
-    active: number;
-    paused: number;
-    stopped: number;
-    performance: Record<string, number>;
-  };
-  marketOverview: {
-    btcPrice: number;
-    btcChange24h: number;
-    marketCap: number;
-    fearGreedIndex: number;
-  };
-  alerts: Array<{
-    id: string;
-    type: 'info' | 'warning' | 'error';
-    message: string;
-    timestamp: Date;
-  }>;
-}
+const { Title, Text } = Typography;
 
 export const TradingDashboard: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -75,7 +46,7 @@ export const TradingDashboard: React.FC = () => {
     
     ws.subscribe(['dashboard']);
     
-    ws.on('dashboard_update', (update: Partial<DashboardData>) => {
+    ws.on('dashboard_update', () => {
       // Handle real-time updates
       refetch();
     });
@@ -87,291 +58,264 @@ export const TradingDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ m: 2 }}>
-        Error al cargar el dashboard de trading
-      </Alert>
+      <Alert
+        type="error"
+        message="Error al cargar el dashboard de trading"
+        style={{ margin: 16 }}
+      />
     );
   }
 
   const getPnLColor = (value: number) => {
-    if (value > 0) return 'success.main';
-    if (value < 0) return 'error.main';
-    return 'text.secondary';
+    if (value > 0) return '#52c41a';
+    if (value < 0) return '#ff4d4f';
+    return '#8c8c8c';
+  };
+
+  const getPnLIcon = (value: number) => {
+    if (value > 0) return <RiseOutlined />;
+    if (value < 0) return <FallOutlined />;
+    return null;
   };
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Trading Dashboard
-        </Typography>
-        <Box display="flex" gap={2}>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={2}>Trading Dashboard</Title>
+        <Space>
           <Button
-            variant="contained"
-            color="error"
-            startIcon={<Stop />}
+            type="primary"
+            danger
+            icon={<StopOutlined />}
             onClick={() => tradingService.emergencyStop()}
+            size="large"
           >
             EMERGENCY STOP
           </Button>
-          <IconButton onClick={() => refetch()}>
-            <Refresh />
-          </IconButton>
-        </Box>
-      </Box>
+          <Tooltip title="Actualizar">
+            <Button icon={<ReloadOutlined />} onClick={() => refetch()} />
+          </Tooltip>
+        </Space>
+      </div>
 
       {/* Alerts */}
       {dashboard?.alerts && dashboard.alerts.length > 0 && (
-        <Box mb={3}>
-          {dashboard.alerts.map(alert => (
-            <Alert 
-              key={alert.id} 
-              severity={alert.type}
-              sx={{ mb: 1 }}
-              icon={alert.type === 'warning' ? <Warning /> : undefined}
-            >
-              {alert.message}
-            </Alert>
+        <div style={{ marginBottom: 24 }}>
+          {dashboard.alerts.map((alert: any) => (
+            <Alert
+              key={alert.id}
+              type={alert.type}
+              message={alert.message}
+              icon={alert.type === 'warning' ? <WarningOutlined /> : undefined}
+              style={{ marginBottom: 8 }}
+              showIcon
+            />
           ))}
-        </Box>
+        </div>
       )}
 
       {/* Portfolio Overview */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={3}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} md={6}>
           <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Valor Total Portfolio
-              </Typography>
-              <Typography variant="h4">
-                {formatCurrency(dashboard?.portfolio.totalValue || 0)}
-              </Typography>
-            </CardContent>
+            <Statistic
+              title="Valor Total Portfolio"
+              value={dashboard?.portfolio.totalValue || 0}
+              prefix={<DollarOutlined />}
+              formatter={(value) => formatCurrency(Number(value))}
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
+        </Col>
+        <Col xs={24} md={6}>
           <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                P&L Diario
-              </Typography>
-              <Typography 
-                variant="h4" 
-                color={getPnLColor(dashboard?.portfolio.dailyPnL || 0)}
-              >
-                {formatCurrency(dashboard?.portfolio.dailyPnL || 0)}
-                <Typography variant="body2" component="span" sx={{ ml: 1 }}>
+            <Statistic
+              title="P&L Diario"
+              value={dashboard?.portfolio.dailyPnL || 0}
+              prefix={getPnLIcon(dashboard?.portfolio.dailyPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.portfolio.dailyPnL || 0) }}
+              formatter={(value) => formatCurrency(Number(value))}
+              suffix={
+                <Text type="secondary" style={{ fontSize: 14 }}>
                   ({formatPercentage((dashboard?.portfolio.dailyPnL || 0) / (dashboard?.portfolio.totalValue || 1))})
-                </Typography>
-              </Typography>
-            </CardContent>
+                </Text>
+              }
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
+        </Col>
+        <Col xs={24} md={6}>
           <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                P&L Semanal
-              </Typography>
-              <Typography 
-                variant="h4" 
-                color={getPnLColor(dashboard?.portfolio.weeklyPnL || 0)}
-              >
-                {formatCurrency(dashboard?.portfolio.weeklyPnL || 0)}
-              </Typography>
-            </CardContent>
+            <Statistic
+              title="P&L Semanal"
+              value={dashboard?.portfolio.weeklyPnL || 0}
+              prefix={getPnLIcon(dashboard?.portfolio.weeklyPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.portfolio.weeklyPnL || 0) }}
+              formatter={(value) => formatCurrency(Number(value))}
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
+        </Col>
+        <Col xs={24} md={6}>
           <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                P&L Mensual
-              </Typography>
-              <Typography 
-                variant="h4" 
-                color={getPnLColor(dashboard?.portfolio.monthlyPnL || 0)}
-              >
-                {formatCurrency(dashboard?.portfolio.monthlyPnL || 0)}
-              </Typography>
-            </CardContent>
+            <Statistic
+              title="P&L Mensual"
+              value={dashboard?.portfolio.monthlyPnL || 0}
+              prefix={getPnLIcon(dashboard?.portfolio.monthlyPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.portfolio.monthlyPnL || 0) }}
+              formatter={(value) => formatCurrency(Number(value))}
+            />
           </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
       {/* Main Content Grid */}
-      <Grid container spacing={3}>
+      <Row gutter={[16, 16]}>
         {/* Positions Summary */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Resumen de Posiciones
-            </Typography>
-            <Box display="flex" justifyContent="space-between" mb={2}>
-              <Box>
-                <Typography variant="body2" color="textSecondary">
-                  Posiciones Abiertas
-                </Typography>
-                <Typography variant="h4">{dashboard?.positions.open || 0}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="textSecondary">
-                  En Ganancia
-                </Typography>
-                <Typography variant="h4" color="success.main">
-                  {dashboard?.positions.profitable || 0}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="textSecondary">
-                  En Pérdida
-                </Typography>
-                <Typography variant="h4" color="error.main">
-                  {dashboard?.positions.losing || 0}
-                </Typography>
-              </Box>
-            </Box>
-            <Box mt={2}>
-              <Typography variant="body2" color="textSecondary">
-                P&L Total Abierto
-              </Typography>
-              <Typography 
-                variant="h5" 
-                color={getPnLColor(dashboard?.positions.totalPnL || 0)}
-              >
-                {formatCurrency(dashboard?.positions.totalPnL || 0)}
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+        <Col xs={24} md={12}>
+          <Card title="Resumen de Posiciones">
+            <Row gutter={[16, 16]}>
+              <Col span={8}>
+                <Statistic
+                  title="Posiciones Abiertas"
+                  value={dashboard?.positions.open || 0}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="En Ganancia"
+                  value={dashboard?.positions.profitable || 0}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="En Pérdida"
+                  value={dashboard?.positions.losing || 0}
+                  valueStyle={{ color: '#ff4d4f' }}
+                />
+              </Col>
+            </Row>
+            <Divider />
+            <Statistic
+              title="P&L Total Abierto"
+              value={dashboard?.positions.totalPnL || 0}
+              prefix={getPnLIcon(dashboard?.positions.totalPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.positions.totalPnL || 0) }}
+              formatter={(value) => formatCurrency(Number(value))}
+            />
+          </Card>
+        </Col>
 
         {/* Strategy Status */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Estado de Estrategias
-            </Typography>
-            <Box display="flex" gap={2} mb={2}>
-              <Chip 
-                icon={<PlayArrow />} 
-                label={`${dashboard?.strategies.active || 0} Activas`} 
-                color="success" 
-              />
-              <Chip 
-                icon={<Pause />} 
-                label={`${dashboard?.strategies.paused || 0} Pausadas`} 
-                color="warning" 
-              />
-              <Chip 
-                icon={<Stop />} 
-                label={`${dashboard?.strategies.stopped || 0} Detenidas`} 
-              />
-            </Box>
-            <Box mt={3}>
-              <Typography variant="body2" color="textSecondary" gutterBottom>
-                Rendimiento por Estrategia
-              </Typography>
-              {dashboard?.strategies.performance && 
-                Object.entries(dashboard.strategies.performance).map(([strategy, pnl]) => (
-                  <Box 
-                    key={strategy} 
-                    display="flex" 
-                    justifyContent="space-between" 
-                    alignItems="center"
-                    py={1}
-                  >
-                    <Typography>{strategy}</Typography>
-                    <Typography color={getPnLColor(pnl)}>
-                      {formatCurrency(pnl)}
-                    </Typography>
-                  </Box>
-                ))
-              }
-            </Box>
-          </Paper>
-        </Grid>
+        <Col xs={24} md={12}>
+          <Card title="Estado de Estrategias">
+            <Space size="middle" style={{ marginBottom: 16 }}>
+              <Tag icon={<PlayCircleOutlined />} color="success">
+                {dashboard?.strategies.active || 0} Activas
+              </Tag>
+              <Tag icon={<PauseCircleOutlined />} color="warning">
+                {dashboard?.strategies.paused || 0} Pausadas
+              </Tag>
+              <Tag icon={<StopOutlined />} color="default">
+                {dashboard?.strategies.stopped || 0} Detenidas
+              </Tag>
+            </Space>
+            <Divider />
+            <Title level={5}>Rendimiento por Estrategia</Title>
+            {dashboard?.strategies.performance && 
+              Object.entries(dashboard.strategies.performance).map(([strategy, pnl]) => (
+                <div key={strategy} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text>{strategy}</Text>
+                    <Text style={{ color: getPnLColor(Number(pnl)) }}>
+                      {formatCurrency(Number(pnl))}
+                    </Text>
+                  </div>
+                  <Progress
+                    percent={Math.abs(Number(pnl)) / 1000 * 100}
+                    showInfo={false}
+                    strokeColor={getPnLColor(Number(pnl))}
+                    size="small"
+                  />
+                </div>
+              ))
+            }
+          </Card>
+        </Col>
 
         {/* Market Overview */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Vista General del Mercado
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={6} md={3}>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">
-                    BTC/USDT
-                  </Typography>
-                  <Typography variant="h5">
-                    {formatCurrency(dashboard?.marketOverview.btcPrice || 0)}
-                  </Typography>
-                  <Box display="flex" alignItems="center">
-                    {(dashboard?.marketOverview.btcChange24h || 0) > 0 ? 
-                      <TrendingUp color="success" /> : 
-                      <TrendingDown color="error" />
-                    }
-                    <Typography 
-                      color={getPnLColor(dashboard?.marketOverview.btcChange24h || 0)}
-                      sx={{ ml: 0.5 }}
-                    >
-                      {formatPercentage(dashboard?.marketOverview.btcChange24h || 0)}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">
-                    Market Cap Total
-                  </Typography>
-                  <Typography variant="h5">
-                    ${((dashboard?.marketOverview.marketCap || 0) / 1e9).toFixed(1)}B
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">
-                    Fear & Greed Index
-                  </Typography>
-                  <Typography variant="h5">
-                    {dashboard?.marketOverview.fearGreedIndex || 0}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {getFearGreedLabel(dashboard?.marketOverview.fearGreedIndex || 0)}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">
-                    Auto-Refresh
-                  </Typography>
-                  <Tooltip title={autoRefresh ? "Desactivar actualización automática" : "Activar actualización automática"}>
-                    <IconButton 
-                      onClick={() => setAutoRefresh(!autoRefresh)}
-                      color={autoRefresh ? "primary" : "default"}
-                    >
-                      <Refresh />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
+        <Col xs={24}>
+          <Card title="Vista General del Mercado">
+            <Row gutter={[16, 16]}>
+              <Col xs={12} md={6}>
+                <Statistic
+                  title="BTC/USDT"
+                  value={dashboard?.marketOverview.btcPrice || 0}
+                  prefix={<DollarOutlined />}
+                  formatter={(value) => formatCurrency(Number(value))}
+                />
+                <Space align="center" style={{ marginTop: 8 }}>
+                  {(dashboard?.marketOverview.btcChange24h || 0) > 0 ? 
+                    <RiseOutlined style={{ color: '#52c41a' }} /> : 
+                    <FallOutlined style={{ color: '#ff4d4f' }} />
+                  }
+                  <Text style={{ color: getPnLColor(dashboard?.marketOverview.btcChange24h || 0) }}>
+                    {formatPercentage(dashboard?.marketOverview.btcChange24h || 0)}
+                  </Text>
+                </Space>
+              </Col>
+              <Col xs={12} md={6}>
+                <Statistic
+                  title="Market Cap Total"
+                  value={`${((dashboard?.marketOverview.marketCap || 0) / 1e9).toFixed(1)}B`}
+                  prefix="$"
+                />
+              </Col>
+              <Col xs={12} md={6}>
+                <div>
+                  <Text type="secondary">Fear & Greed Index</Text>
+                  <div style={{ marginTop: 8 }}>
+                    <Badge
+                      count={dashboard?.marketOverview.fearGreedIndex || 0}
+                      style={{ backgroundColor: getFearGreedColor(dashboard?.marketOverview.fearGreedIndex || 0) }}
+                      showZero
+                    />
+                    <Text style={{ marginLeft: 12 }}>
+                      {getFearGreedLabel(dashboard?.marketOverview.fearGreedIndex || 0)}
+                    </Text>
+                  </div>
+                  <Progress
+                    percent={dashboard?.marketOverview.fearGreedIndex || 0}
+                    strokeColor={getFearGreedColor(dashboard?.marketOverview.fearGreedIndex || 0)}
+                    showInfo={false}
+                    style={{ marginTop: 8 }}
+                  />
+                </div>
+              </Col>
+              <Col xs={12} md={6}>
+                <div>
+                  <Text type="secondary">Auto-Refresh</Text>
+                  <div style={{ marginTop: 8 }}>
+                    <Switch
+                      checked={autoRefresh}
+                      onChange={setAutoRefresh}
+                      checkedChildren="ON"
+                      unCheckedChildren="OFF"
+                    />
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 };
 
@@ -381,6 +325,14 @@ function getFearGreedLabel(value: number): string {
   if (value < 60) return 'Neutral';
   if (value < 80) return 'Greed';
   return 'Extreme Greed';
+}
+
+function getFearGreedColor(value: number): string {
+  if (value < 20) return '#ff4d4f';
+  if (value < 40) return '#ffa940';
+  if (value < 60) return '#fadb14';
+  if (value < 80) return '#95de64';
+  return '#52c41a';
 }
 
 export default TradingDashboard;

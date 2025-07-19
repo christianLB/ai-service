@@ -45,6 +45,7 @@ export async function initializeTradingModule(): Promise<void> {
     logger.info('Initializing Trading Module...');
     
     // Initialize market data service
+    const { marketDataService } = await import('./market-data.service');
     await marketDataService.initialize({
       influxUrl: process.env.INFLUXDB_URL || 'http://localhost:8086',
       influxToken: process.env.INFLUXDB_TOKEN || 'dev-token-influxdb-2025',
@@ -53,12 +54,15 @@ export async function initializeTradingModule(): Promise<void> {
     });
     
     // Initialize risk manager
+    const { riskManagerService } = await import('./risk-manager.service');
     await riskManagerService.initialize();
     
     // Initialize trading brain
+    const { tradingBrainService } = await import('./trading-brain.service');
     await tradingBrainService.initialize();
     
     // Load strategies
+    const { strategyEngineService } = await import('./strategy-engine.service');
     await strategyEngineService.loadStrategies();
     
     logger.info('Trading Module initialized successfully');

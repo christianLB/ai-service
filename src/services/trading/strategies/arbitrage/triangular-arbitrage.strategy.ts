@@ -1,7 +1,8 @@
 import { BaseStrategy, TradingSignal, StrategyConfig } from '../../strategy-engine.service';
 import { marketDataService } from '../../market-data.service';
 import { tradingConnectorService } from '../../trading-connector.service';
-import ccxt from 'ccxt';
+import * as ccxt from 'ccxt';
+import type { Ticker } from 'ccxt';
 
 interface ArbitrageOpportunity {
   path: string[];
@@ -22,8 +23,8 @@ interface TriangularArbitrageParams {
 
 export class TriangularArbitrageStrategy extends BaseStrategy {
   private params: TriangularArbitrageParams;
-  private marketCache: Map<string, ccxt.Ticker> = new Map();
-  private scanInterval?: NodeJS.Timer;
+  private marketCache: Map<string, Ticker> = new Map();
+  private scanInterval?: NodeJS.Timeout;
 
   constructor(config: StrategyConfig) {
     super(config);

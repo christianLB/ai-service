@@ -1,7 +1,8 @@
 import { BaseStrategy, TradingSignal, StrategyConfig } from '../../strategy-engine.service';
 import { marketDataService } from '../../market-data.service';
 import { tradingConnectorService } from '../../trading-connector.service';
-import ccxt from 'ccxt';
+import * as ccxt from 'ccxt';
+import type { Order, Ticker } from 'ccxt';
 
 interface MarketMakingParams {
   spread: number; // Spread percentage (e.g., 0.2 for 0.2%)
@@ -15,8 +16,8 @@ interface MarketMakingParams {
 }
 
 interface OrderPair {
-  buyOrder?: ccxt.Order;
-  sellOrder?: ccxt.Order;
+  buyOrder?: Order;
+  sellOrder?: Order;
   symbol: string;
   midPrice: number;
   spread: number;
@@ -26,7 +27,7 @@ export class SimpleMarketMakingStrategy extends BaseStrategy {
   private params: MarketMakingParams;
   private activeOrders: Map<string, OrderPair> = new Map();
   private inventory: Map<string, number> = new Map();
-  private refreshInterval?: NodeJS.Timer;
+  private refreshInterval?: NodeJS.Timeout;
   private lastVolatility: Map<string, number> = new Map();
 
   constructor(config: StrategyConfig) {
@@ -84,8 +85,10 @@ export class SimpleMarketMakingStrategy extends BaseStrategy {
       const orderBook = await connector.exchange.fetchOrderBook(symbol, 20);
       
       // Calculate market metrics
-      const midPrice = (ticker.bid + ticker.ask) / 2;
-      const currentSpread = ((ticker.ask - ticker.bid) / midPrice) * 100;
+      const bid = ticker.bid || 0;
+      const ask = ticker.ask || 0;
+      const midPrice = (bid + ask) / 2;
+      const currentSpread = ask > 0 && bid > 0 ? ((ask - bid) / midPrice) * 100 : 0;
       const volatility = await this.calculateVolatility(exchange, symbol);
       
       // Determine optimal spread
@@ -391,7 +394,7 @@ export class SimpleMarketMakingStrategy extends BaseStrategy {
   }
 
   // Called when orders are filled
-  async onOrderFilled(order: ccxt.Order, exchange: string): Promise<void> {
+  async onOrderFilled(order: Order, exchange: string): Promise<void> {
     const symbol = order.symbol;
     const amount = order.filled;
     

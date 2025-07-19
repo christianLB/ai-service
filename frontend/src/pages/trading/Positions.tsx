@@ -1,121 +1,130 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
-  Box,
-  Paper,
-  Typography,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Card,
+  Typography,
   Button,
-  TextField,
-  TableSortLabel,
-  TablePagination,
+  Space,
+  Tag,
+  Modal,
+  Form,
+  InputNumber,
   Alert,
-  Tooltip,
-  Menu,
-  MenuItem
-} from '@mui/material';
+  Dropdown,
+  Statistic,
+  Row,
+  Col,
+  message
+} from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import type { MenuProps } from 'antd';
 import {
-  Close,
-  Edit,
-  MoreVert,
-  TrendingUp,
-  TrendingDown,
-  Info
-} from '@mui/icons-material';
+  CloseOutlined,
+  EditOutlined,
+  MoreOutlined,
+  RiseOutlined,
+  FallOutlined
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { tradingService, Position } from '../../services/tradingService';
-import { formatCurrency, formatPercentage, formatDate } from '../../utils/formatters';
+import { tradingService, type Position } from '../../services/tradingService';
+import { formatCurrency, formatPercentage } from '../../utils/formatters';
 
-type OrderBy = 'symbol' | 'pnl' | 'pnlPercent' | 'openedAt' | 'currentValue';
-type Order = 'asc' | 'desc';
+const { Title, Text } = Typography;
 
-interface ModifySLTPDialogProps {
+interface ModifySLTPModalProps {
   open: boolean;
   position: Position | null;
   onClose: () => void;
   onConfirm: (positionId: string, stopLoss: number, takeProfit: number) => void;
 }
 
-const ModifySLTPDialog: React.FC<ModifySLTPDialogProps> = ({ open, position, onClose, onConfirm }) => {
-  const [stopLoss, setStopLoss] = useState(position?.stopLoss || 0);
-  const [takeProfit, setTakeProfit] = useState(position?.takeProfit || 0);
+const ModifySLTPModal: React.FC<ModifySLTPModalProps> = ({ open, position, onClose, onConfirm }) => {
+  const [form] = Form.useForm();
 
   React.useEffect(() => {
     if (position) {
-      setStopLoss(position.stopLoss || 0);
-      setTakeProfit(position.takeProfit || 0);
+      form.setFieldsValue({
+        stopLoss: position.stopLoss || 0,
+        takeProfit: position.takeProfit || 0,
+      });
     }
-  }, [position]);
+  }, [position, form]);
 
   const handleConfirm = () => {
-    if (position) {
-      onConfirm(position.id, stopLoss, takeProfit);
-    }
+    form.validateFields().then((values) => {
+      if (position) {
+        onConfirm(position.id, values.stopLoss, values.takeProfit);
+        form.resetFields();
+      }
+    });
+  };
+
+  const calculatePnL = (price: number) => {
+    if (!position) return 0;
+    const diff = position.side === 'buy' ? price - position.entryPrice : position.entryPrice - price;
+    return diff * position.quantity;
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Modificar Stop Loss / Take Profit</DialogTitle>
-      <DialogContent>
-        <Box sx={{ pt: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            {position?.symbol} - {position?.side}
-          </Typography>
-          <Typography variant="body2" color="textSecondary" gutterBottom>
-            Precio actual: {formatCurrency(position?.currentPrice || 0)}
-          </Typography>
-          <Box mt={3}>
-            <TextField
-              fullWidth
-              label="Stop Loss"
-              type="number"
-              value={stopLoss}
-              onChange={(e) => setStopLoss(parseFloat(e.target.value))}
-              margin="normal"
-              helperText={`Pérdida estimada: ${formatCurrency((position?.entryPrice || 0) - stopLoss)}`}
-            />
-            <TextField
-              fullWidth
-              label="Take Profit"
-              type="number"
-              value={takeProfit}
-              onChange={(e) => setTakeProfit(parseFloat(e.target.value))}
-              margin="normal"
-              helperText={`Ganancia estimada: ${formatCurrency(takeProfit - (position?.entryPrice || 0))}`}
-            />
-          </Box>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleConfirm} variant="contained">
-          Confirmar
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <Modal
+      title="Modificar Stop Loss / Take Profit"
+      open={open}
+      onOk={handleConfirm}
+      onCancel={onClose}
+      width={500}
+    >
+      <div style={{ marginBottom: 16 }}>
+        <Title level={5}>{position?.symbol} - {position?.side?.toUpperCase()}</Title>
+        <Text type="secondary">
+          Precio actual: {formatCurrency(position?.currentPrice || 0)}
+        </Text>
+      </div>
+      
+      <Form form={form} layout="vertical">
+        <Form.Item
+          name="stopLoss"
+          label="Stop Loss"
+          help={
+            <Text type={position && calculatePnL(form.getFieldValue('stopLoss')) < 0 ? 'danger' : 'secondary'}>
+              Pérdida estimada: {formatCurrency(calculatePnL(form.getFieldValue('stopLoss') || 0))}
+            </Text>
+          }
+        >
+          <InputNumber
+            style={{ width: '100%' }}
+            min={0}
+            step={0.01}
+            precision={2}
+            placeholder="0.00"
+          />
+        </Form.Item>
+        
+        <Form.Item
+          name="takeProfit"
+          label="Take Profit"
+          help={
+            <Text type={position && calculatePnL(form.getFieldValue('takeProfit')) > 0 ? 'success' : 'secondary'}>
+              Ganancia estimada: {formatCurrency(calculatePnL(form.getFieldValue('takeProfit') || 0))}
+            </Text>
+          }
+        >
+          <InputNumber
+            style={{ width: '100%' }}
+            min={0}
+            step={0.01}
+            precision={2}
+            placeholder="0.00"
+          />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 };
 
 export const Positions: React.FC = () => {
-  const [order, setOrder] = useState<Order>('desc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('openedAt');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
-  const [modifyDialogOpen, setModifyDialogOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [menuPosition, setMenuPosition] = useState<Position | null>(null);
-
+  const [modifyModalOpen, setModifyModalOpen] = useState(false);
+  
   const queryClient = useQueryClient();
 
   const { data: positions, isLoading, error } = useQuery({
@@ -129,6 +138,10 @@ export const Positions: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
       queryClient.invalidateQueries({ queryKey: ['trading-dashboard'] });
+      message.success('Posición cerrada exitosamente');
+    },
+    onError: () => {
+      message.error('Error al cerrar la posición');
     },
   });
 
@@ -137,98 +150,175 @@ export const Positions: React.FC = () => {
       tradingService.updatePositionSLTP(positionId, stopLoss, takeProfit),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['positions'] });
-      setModifyDialogOpen(false);
+      setModifyModalOpen(false);
+      message.success('Stop Loss/Take Profit actualizado');
+    },
+    onError: () => {
+      message.error('Error al actualizar Stop Loss/Take Profit');
     },
   });
 
-  const handleRequestSort = (property: OrderBy) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, position: Position) => {
-    setAnchorEl(event.currentTarget);
-    setMenuPosition(position);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setMenuPosition(null);
-  };
-
   const handleClosePosition = async (position: Position) => {
-    if (window.confirm(`¿Cerrar posición ${position.symbol}?`)) {
-      await closePositionMutation.mutateAsync(position.id);
-    }
-    handleMenuClose();
+    Modal.confirm({
+      title: '¿Cerrar posición?',
+      content: `¿Está seguro de cerrar la posición ${position.symbol}?`,
+      okText: 'Sí, cerrar',
+      cancelText: 'Cancelar',
+      onOk: () => closePositionMutation.mutate(position.id),
+    });
   };
 
   const handleModifySLTP = (position: Position) => {
     setSelectedPosition(position);
-    setModifyDialogOpen(true);
-    handleMenuClose();
+    setModifyModalOpen(true);
   };
 
-  const sortedPositions = useMemo(() => {
-    if (!positions) return [];
-    
-    return [...positions].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+  const getActionItems = (position: Position): MenuProps['items'] => [
+    {
+      key: 'modify',
+      label: 'Modificar SL/TP',
+      icon: <EditOutlined />,
+      onClick: () => handleModifySLTP(position),
+    },
+    {
+      key: 'close',
+      label: 'Cerrar Posición',
+      icon: <CloseOutlined />,
+      danger: true,
+      onClick: () => handleClosePosition(position),
+    },
+  ];
 
-      switch (orderBy) {
-        case 'symbol':
-          aValue = a.symbol;
-          bValue = b.symbol;
-          break;
-        case 'pnl':
-          aValue = a.unrealizedPnl;
-          bValue = b.unrealizedPnl;
-          break;
-        case 'pnlPercent':
-          aValue = a.unrealizedPnl / a.positionValue;
-          bValue = b.unrealizedPnl / b.positionValue;
-          break;
-        case 'openedAt':
-          aValue = new Date(a.openedAt).getTime();
-          bValue = new Date(b.openedAt).getTime();
-          break;
-        case 'currentValue':
-          aValue = a.positionValue;
-          bValue = b.positionValue;
-          break;
-        default:
-          return 0;
-      }
-
-      if (order === 'asc') {
-        return aValue < bValue ? -1 : 1;
-      } else {
-        return aValue > bValue ? -1 : 1;
-      }
-    });
-  }, [positions, order, orderBy]);
-
-  const paginatedPositions = sortedPositions.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  const columns: ColumnsType<Position> = [
+    {
+      title: 'Símbolo',
+      dataIndex: 'symbol',
+      key: 'symbol',
+      sorter: (a, b) => a.symbol.localeCompare(b.symbol),
+      render: (symbol, record) => (
+        <Space>
+          {record.side === 'buy' ? 
+            <RiseOutlined style={{ color: '#52c41a' }} /> : 
+            <FallOutlined style={{ color: '#ff4d4f' }} />
+          }
+          <Text strong>{symbol}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: 'Lado',
+      dataIndex: 'side',
+      key: 'side',
+      render: (side) => (
+        <Tag color={side === 'buy' ? 'success' : 'error'}>
+          {side.toUpperCase()}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Cantidad',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      align: 'right',
+    },
+    {
+      title: 'Precio Entrada',
+      dataIndex: 'entryPrice',
+      key: 'entryPrice',
+      align: 'right',
+      render: (price) => formatCurrency(price),
+    },
+    {
+      title: 'Precio Actual',
+      dataIndex: 'currentPrice',
+      key: 'currentPrice',
+      align: 'right',
+      render: (price) => formatCurrency(price),
+    },
+    {
+      title: 'P&L ($)',
+      dataIndex: 'unrealizedPnl',
+      key: 'unrealizedPnl',
+      align: 'right',
+      sorter: (a, b) => a.unrealizedPnl - b.unrealizedPnl,
+      render: (pnl) => (
+        <Text style={{ color: pnl > 0 ? '#52c41a' : pnl < 0 ? '#ff4d4f' : '#8c8c8c' }} strong>
+          {formatCurrency(pnl)}
+        </Text>
+      ),
+    },
+    {
+      title: 'P&L (%)',
+      key: 'pnlPercent',
+      align: 'right',
+      sorter: (a, b) => {
+        const aPercent = (a.unrealizedPnl / a.positionValue) * 100;
+        const bPercent = (b.unrealizedPnl / b.positionValue) * 100;
+        return aPercent - bPercent;
+      },
+      render: (_, record) => {
+        const pnlPercent = (record.unrealizedPnl / record.positionValue) * 100;
+        return (
+          <Text style={{ color: pnlPercent > 0 ? '#52c41a' : pnlPercent < 0 ? '#ff4d4f' : '#8c8c8c' }} strong>
+            {formatPercentage(pnlPercent)}
+          </Text>
+        );
+      },
+    },
+    {
+      title: 'SL',
+      dataIndex: 'stopLoss',
+      key: 'stopLoss',
+      align: 'right',
+      render: (sl) => sl ? formatCurrency(sl) : '-',
+    },
+    {
+      title: 'TP',
+      dataIndex: 'takeProfit',
+      key: 'takeProfit',
+      align: 'right',
+      render: (tp) => tp ? formatCurrency(tp) : '-',
+    },
+    {
+      title: 'Estrategia',
+      dataIndex: 'strategyName',
+      key: 'strategyName',
+      render: (strategy) => <Tag>{strategy || 'Manual'}</Tag>,
+    },
+    {
+      title: 'Duración',
+      dataIndex: 'openedAt',
+      key: 'openedAt',
+      sorter: (a, b) => new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime(),
+      render: (date) => {
+        const duration = Date.now() - new Date(date).getTime();
+        const hours = Math.floor(duration / (1000 * 60 * 60));
+        const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+        return <Text type="secondary">{hours}h {minutes}m</Text>;
+      },
+    },
+    {
+      title: 'Acciones',
+      key: 'actions',
+      align: 'center',
+      render: (_, record) => (
+        <Dropdown
+          menu={{ items: getActionItems(record) }}
+          trigger={['click']}
+        >
+          <Button type="text" icon={<MoreOutlined />} />
+        </Dropdown>
+      ),
+    },
+  ];
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ m: 2 }}>
-        Error al cargar las posiciones
-      </Alert>
+      <Alert
+        type="error"
+        message="Error al cargar las posiciones"
+        style={{ margin: 16 }}
+      />
     );
   }
 
@@ -236,181 +326,55 @@ export const Positions: React.FC = () => {
   const totalValue = positions?.reduce((sum, pos) => sum + pos.positionValue, 0) || 0;
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Posiciones Abiertas
-        </Typography>
-        <Box>
-          <Typography variant="h6" component="span" sx={{ mr: 3 }}>
-            Total: {positions?.length || 0} posiciones
-          </Typography>
-          <Typography 
-            variant="h6" 
-            component="span"
-            color={totalPnL > 0 ? 'success.main' : totalPnL < 0 ? 'error.main' : 'text.secondary'}
-          >
-            P&L: {formatCurrency(totalPnL)} ({formatPercentage(totalPnL / totalValue)})
-          </Typography>
-        </Box>
-      </Box>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={2}>Posiciones Abiertas</Title>
+        <Row gutter={24}>
+          <Col>
+            <Statistic
+              title="Total Posiciones"
+              value={positions?.length || 0}
+            />
+          </Col>
+          <Col>
+            <Statistic
+              title="P&L Total"
+              value={totalPnL}
+              formatter={(value) => formatCurrency(Number(value))}
+              valueStyle={{ color: totalPnL > 0 ? '#52c41a' : totalPnL < 0 ? '#ff4d4f' : '#8c8c8c' }}
+              suffix={
+                <Text type="secondary" style={{ fontSize: 14 }}>
+                  ({formatPercentage(totalPnL / totalValue)})
+                </Text>
+              }
+            />
+          </Col>
+        </Row>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <TableSortLabel
-                  active={orderBy === 'symbol'}
-                  direction={orderBy === 'symbol' ? order : 'asc'}
-                  onClick={() => handleRequestSort('symbol')}
-                >
-                  Símbolo
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>Lado</TableCell>
-              <TableCell align="right">Cantidad</TableCell>
-              <TableCell align="right">Precio Entrada</TableCell>
-              <TableCell align="right">Precio Actual</TableCell>
-              <TableCell align="right">
-                <TableSortLabel
-                  active={orderBy === 'pnl'}
-                  direction={orderBy === 'pnl' ? order : 'asc'}
-                  onClick={() => handleRequestSort('pnl')}
-                >
-                  P&L ($)
-                </TableSortLabel>
-              </TableCell>
-              <TableCell align="right">
-                <TableSortLabel
-                  active={orderBy === 'pnlPercent'}
-                  direction={orderBy === 'pnlPercent' ? order : 'asc'}
-                  onClick={() => handleRequestSort('pnlPercent')}
-                >
-                  P&L (%)
-                </TableSortLabel>
-              </TableCell>
-              <TableCell align="right">SL</TableCell>
-              <TableCell align="right">TP</TableCell>
-              <TableCell>Estrategia</TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={orderBy === 'openedAt'}
-                  direction={orderBy === 'openedAt' ? order : 'asc'}
-                  onClick={() => handleRequestSort('openedAt')}
-                >
-                  Duración
-                </TableSortLabel>
-              </TableCell>
-              <TableCell align="center">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedPositions.map((position) => {
-              const pnlPercent = (position.unrealizedPnl / position.positionValue) * 100;
-              const duration = Date.now() - new Date(position.openedAt).getTime();
-              const hours = Math.floor(duration / (1000 * 60 * 60));
-              const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
-
-              return (
-                <TableRow key={position.id} hover>
-                  <TableCell>
-                    <Box display="flex" alignItems="center">
-                      {position.side === 'buy' ? 
-                        <TrendingUp color="success" sx={{ mr: 1 }} /> : 
-                        <TrendingDown color="error" sx={{ mr: 1 }} />
-                      }
-                      <Typography fontWeight="medium">{position.symbol}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={position.side.toUpperCase()} 
-                      size="small"
-                      color={position.side === 'buy' ? 'success' : 'error'}
-                    />
-                  </TableCell>
-                  <TableCell align="right">{position.quantity}</TableCell>
-                  <TableCell align="right">{formatCurrency(position.entryPrice)}</TableCell>
-                  <TableCell align="right">{formatCurrency(position.currentPrice)}</TableCell>
-                  <TableCell align="right">
-                    <Typography
-                      color={position.unrealizedPnl > 0 ? 'success.main' : 
-                             position.unrealizedPnl < 0 ? 'error.main' : 'text.secondary'}
-                      fontWeight="medium"
-                    >
-                      {formatCurrency(position.unrealizedPnl)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography
-                      color={pnlPercent > 0 ? 'success.main' : 
-                             pnlPercent < 0 ? 'error.main' : 'text.secondary'}
-                      fontWeight="medium"
-                    >
-                      {formatPercentage(pnlPercent)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    {position.stopLoss ? formatCurrency(position.stopLoss) : '-'}
-                  </TableCell>
-                  <TableCell align="right">
-                    {position.takeProfit ? formatCurrency(position.takeProfit) : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={position.strategyName || 'Manual'} size="small" />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {hours}h {minutes}m
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleMenuOpen(e, position)}
-                    >
-                      <MoreVert />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={sortedPositions.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
+      <Card>
+        <Table
+          columns={columns}
+          dataSource={positions}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total) => `Total ${total} posiciones`,
+          }}
         />
-      </TableContainer>
+      </Card>
 
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={() => menuPosition && handleModifySLTP(menuPosition)}>
-          <Edit sx={{ mr: 1 }} /> Modificar SL/TP
-        </MenuItem>
-        <MenuItem onClick={() => menuPosition && handleClosePosition(menuPosition)}>
-          <Close sx={{ mr: 1 }} /> Cerrar Posición
-        </MenuItem>
-      </Menu>
-
-      <ModifySLTPDialog
-        open={modifyDialogOpen}
+      <ModifySLTPModal
+        open={modifyModalOpen}
         position={selectedPosition}
-        onClose={() => setModifyDialogOpen(false)}
+        onClose={() => setModifyModalOpen(false)}
         onConfirm={(positionId, stopLoss, takeProfit) => {
           updateSLTPMutation.mutate({ positionId, stopLoss, takeProfit });
         }}
       />
-    </Box>
+    </div>
   );
 };
 

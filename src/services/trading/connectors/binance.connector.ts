@@ -1,5 +1,6 @@
 import { BaseExchangeConnector, PositionInfo } from './base.connector';
-import ccxt from 'ccxt';
+import * as ccxt from 'ccxt';
+import type { OrderBook } from 'ccxt';
 
 export class BinanceConnector extends BaseExchangeConnector {
   constructor(userId?: string) {
@@ -147,7 +148,7 @@ export class BinanceConnector extends BaseExchangeConnector {
 
   async listenToOrderBook(
     symbol: string, 
-    callback: (orderbook: ccxt.OrderBook) => void
+    callback: (orderbook: OrderBook) => void
   ): Promise<void> {
     this.ensureConnected();
     
@@ -182,7 +183,7 @@ export class BinanceConnector extends BaseExchangeConnector {
       // Simple connectivity check
       await this.exchange!.fetchTime();
       return { status: 'online', timestamp: Date.now() };
-    } catch (error) {
+    } catch (error: any) {
       return { status: 'offline', timestamp: Date.now(), error: error.message };
     }
   }

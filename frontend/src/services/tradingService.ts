@@ -94,7 +94,6 @@ class TradingService {
   private apiUrl: string;
   private wsUrl: string;
   private socket: Socket | null = null;
-  private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
 
   constructor() {
@@ -115,7 +114,6 @@ class TradingService {
 
       this.socket.on('connect', () => {
         console.log('Trading WebSocket connected');
-        this.reconnectAttempts = 0;
       });
 
       this.socket.on('disconnect', () => {
@@ -389,6 +387,14 @@ class TradingService {
       credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch symbols');
+    return response.json();
+  }
+
+  async getPerformanceMetrics() {
+    const response = await fetch(`${this.apiUrl}/trading/performance/metrics`, {
+      credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Failed to fetch performance metrics');
     return response.json();
   }
 
