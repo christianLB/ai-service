@@ -61,12 +61,13 @@ export interface Invoice {
   clientId: string;
   clientName: string;
   clientTaxId: string;
-  clientAddress?: ClientAddress;
+  clientAddress?: string | ClientAddress;
   type: 'invoice' | 'credit_note' | 'proforma' | 'receipt';
   status: 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled' | 'refunded';
   issueDate: string;
   dueDate: string;
   paidDate?: string;
+  sentDate?: string;
   serviceStartDate?: string;
   serviceEndDate?: string;
   currency: string;
@@ -102,14 +103,14 @@ export interface Invoice {
 }
 
 export interface InvoiceItem {
-  id: string;
+  id?: string;
   description: string;
   quantity: number;
   unitPrice: number;
   unit?: string;
   amount: number;
-  taxRate?: number;
-  taxAmount?: number;
+  taxRate: number;
+  taxAmount: number;
   discount?: number;
   total: number;
   category?: string;
@@ -223,14 +224,21 @@ export interface ClientFormData {
 
 export interface InvoiceFormData {
   clientId: string;
+  clientName: string;
+  clientTaxId: string;
+  clientAddress?: string;
   type: 'invoice' | 'credit_note' | 'proforma' | 'receipt';
+  issueDate: string;
   dueDate: string;
   serviceStartDate?: string;
   serviceEndDate?: string;
   currency: string;
-  items: Omit<InvoiceItem, 'id' | 'amount' | 'total'>[];
+  items: Omit<InvoiceItem, 'id'>[];
+  subtotal: number;
+  taxAmount: number;
   taxRate: number;
   taxType: 'IVA' | 'VAT' | 'GST' | 'NONE';
+  total: number;
   discount?: number;
   discountType?: 'percentage' | 'fixed';
   paymentMethod?: 'transfer' | 'cash' | 'card' | 'crypto' | 'other';

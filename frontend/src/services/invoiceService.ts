@@ -104,6 +104,11 @@ class InvoiceService {
     return response.data;
   }
 
+  async updateInvoiceStatus(id: string, status: string): Promise<ApiResponse<{ invoice: Invoice }>> {
+    const response = await api.put(`/financial/invoices/${id}/status`, { status });
+    return response.data;
+  }
+
   async getHealthCheck(): Promise<ApiResponse<any>> {
     const response = await api.get('/financial/invoices/health');
     return response.data;
