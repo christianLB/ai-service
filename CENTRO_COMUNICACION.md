@@ -91,6 +91,18 @@ Workflow Automation System
 └── Version Control
 ```
 
+#### **📈 Hemisferio Trading** ⭐ **NUEVO**
+**Estado**: OPERATIONAL | **Falla**: HEMISFERIO DEGRADADO
+```
+Trading Intelligence System
+├── Multi-Exchange Support (Binance, Coinbase)
+├── AI-Powered Trading Strategies
+├── Real-time Market Analysis
+├── Risk Management System
+├── Backtesting & Optimization
+└── Performance Analytics
+```
+
 ### 🦾 EXTREMIDADES (Funcionalidades Opcionales)
 
 #### **📱 Comunicación**
@@ -224,6 +236,35 @@ GET /api/financial/insights/accounts
 GET /dashboard (HTML Dashboard)
 GET /api/financial/dashboard/overview
 GET /api/financial/dashboard/quick-stats
+
+# 📈 Trading Intelligence APIs ⭐ NUEVOS
+# Dashboard de trading
+GET /api/trading/dashboard/overview
+GET /api/trading/dashboard/metrics
+
+# Gestión de posiciones
+GET /api/trading/positions
+POST /api/trading/positions/close/:id
+PUT /api/trading/positions/:id/sl-tp
+
+# Estrategias de trading
+GET /api/trading/strategies
+POST /api/trading/strategies/:id/start
+POST /api/trading/strategies/:id/stop
+PUT /api/trading/strategies/:id/params
+
+# Backtesting
+POST /api/trading/backtest/run
+GET /api/trading/backtest/results
+
+# Performance
+GET /api/trading/performance/metrics
+
+# Configuración
+GET /api/trading/config/exchanges
+GET /api/trading/config/symbols
+PUT /api/trading/config/risk-params
+POST /api/trading/config/emergency/stop-all
 ```
 
 #### **Monitoreo Disponible**
@@ -1000,6 +1041,45 @@ tail -f logs/ai-service.log
 ---
 
 ## 📝 Registro de Cambios
+
+### Versión 2.2.1 - 2025-07-20 ⭐ **CLIENT & INVOICE FIX**
+
+#### **💼 Sistema de Clientes y Facturas - CORREGIDO**
+
+- ✅ **CRUD de Clientes**: Backend + Frontend + DB completamente funcional
+- ✅ **Gestión de Facturas**: Backend + Frontend + DB completamente funcional
+- ✅ **Base de Datos**: Tablas creadas con esquema completo
+- ✅ **Frontend Actualizado**: InvoiceList ahora obtiene datos del backend
+- ✅ **API REST Completa**: Todos los endpoints funcionando
+
+#### **🔧 Problemas Resueltos**:
+
+- Tablas de clientes y facturas no existían en la base de datos
+- Frontend de facturas no obtenía datos (hardcoded empty array)
+- Migraciones con problemas por archivos SQL mezclados con JS
+- InvoiceList component actualizado con fetching completo
+
+### Versión 2.2.0 - 2025-07-20 ⭐ **TRADING INTELLIGENCE RELEASE**
+
+#### **📈 Trading Intelligence System - IMPLEMENTADO**
+
+- ✅ **Frontend Trading Module**: Interfaz completa con 6 páginas especializadas
+- ✅ **Conversión UI Completa**: Material UI → Ant Design para consistencia
+- ✅ **API Trading Completa**: 25+ endpoints para trading automatizado
+- ✅ **Estrategias IA**: Trend Following, Market Making, Triangular Arbitrage
+- ✅ **Multi-Exchange**: Binance y Coinbase integrados
+- ✅ **Backtesting Engine**: Sistema completo de pruebas históricas
+- ✅ **Risk Management**: Control avanzado de riesgos y límites
+- ✅ **Performance Analytics**: Dashboards con métricas en tiempo real
+- ✅ **WebSocket Support**: Actualizaciones en tiempo real de mercado
+
+#### **🔧 Problemas Resueltos**:
+
+- TypeScript errors con ccxt namespace
+- React Query v5 migration (isLoading → isPending)
+- Material UI → Ant Design conversion completa
+- API routes missing para trading endpoints
+- Build errors en frontend y backend
 
 ### Versión 2.0.0 - 2025-07-02 ⭐ **MAJOR RELEASE**
 

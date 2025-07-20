@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run service validation for frontend
+echo "🔍 Validating frontend services..."
+cd frontend && npm run validate:services

@@ -33,6 +33,7 @@ import documentRoutes from './routes/documents';
 // import { createCryptoRoutes } from './routes/crypto.routes';
 import realEstateRoutes from './routes/real-estate';
 import integrationRoutes from './routes/integrations';
+import { tradingRouter } from './api/trading';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
@@ -244,6 +245,9 @@ app.use('/api/real-estate', authMiddleware, realEstateRoutes);
 app.use('/api/telegram', authMiddleware, telegramRoutes);
 app.use('/api/documents', authMiddleware, documentRoutes);
 app.use('/api/integrations', authMiddleware, integrationRoutes);
+
+// Trading routes
+app.use('/api/trading', authMiddleware, tradingRouter);
 
 // Servir archivos estáticos del frontend
 // En producción, el volumen se monta en /app/public según docker-compose.production.yml

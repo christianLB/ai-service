@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:service": "node scripts/generate-service.cjs",
+    "validate:services": "node scripts/validate-services.cjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",

@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import api from './api';
 
 // Types
 export interface Position {
@@ -91,21 +92,24 @@ export interface TradingWebSocket {
 }
 
 class TradingService {
-  private apiUrl: string;
   private wsUrl: string;
   private socket: Socket | null = null;
   private maxReconnectAttempts = 5;
 
   constructor() {
-    this.apiUrl = import.meta.env.VITE_API_URL || 'https://ai-service.anaxi.net/api';
     this.wsUrl = import.meta.env.VITE_WS_URL || 'wss://ai-service.anaxi.net';
   }
 
   // WebSocket Management
   connectWebSocket(): TradingWebSocket {
     if (!this.socket || this.socket.disconnected) {
+      const token = localStorage.getItem('auth_token');
+      
       this.socket = io(this.wsUrl, {
         path: '/ws/trading',
+        auth: {
+          token: token || ''
+        },
         transports: ['websocket'],
         reconnection: true,
         reconnectionAttempts: this.maxReconnectAttempts,
@@ -150,130 +154,86 @@ class TradingService {
 
   // Dashboard API
   async getDashboard() {
-    const response = await fetch(`${this.apiUrl}/trading/dashboard/overview`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch dashboard');
-    return response.json();
+    const response = await api.get('/trading/dashboard/overview');
+    return response.data;
   }
 
   async getMetrics() {
-    const response = await fetch(`${this.apiUrl}/trading/dashboard/metrics`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch metrics');
-    return response.json();
+    const response = await api.get('/trading/dashboard/metrics');
+    return response.data;
   }
 
   // Positions API
   async getPositions(status: 'open' | 'closed' | 'all' = 'open'): Promise<Position[]> {
-    const response = await fetch(`${this.apiUrl}/trading/positions?status=${status}`, {
-      credentials: 'include',
+    const response = await api.get('/trading/positions', {
+      params: { status }
     });
-    if (!response.ok) throw new Error('Failed to fetch positions');
-    return response.json();
+    return response.data;
   }
 
   async getPosition(id: string): Promise<Position> {
-    const response = await fetch(`${this.apiUrl}/trading/positions/${id}`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch position');
-    return response.json();
+    const response = await api.get(`/trading/positions/${id}`);
+    return response.data;
   }
 
   async closePosition(id: string, reason: string = 'manual_close') {
-    const response = await fetch(`${this.apiUrl}/trading/positions/close/${id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ reason, market: true }),
+    const response = await api.post(`/trading/positions/close/${id}`, {
+      reason,
+      market: true
     });
-    if (!response.ok) throw new Error('Failed to close position');
-    return response.json();
+    return response.data;
   }
 
   async updatePositionSLTP(id: string, stopLoss: number, takeProfit: number) {
-    const response = await fetch(`${this.apiUrl}/trading/positions/${id}/sl-tp`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ stopLoss, takeProfit }),
+    const response = await api.put(`/trading/positions/${id}/sl-tp`, {
+      stopLoss,
+      takeProfit
     });
-    if (!response.ok) throw new Error('Failed to update SL/TP');
-    return response.json();
+    return response.data;
   }
 
   // Strategies API
   async getStrategies(): Promise<Strategy[]> {
-    const response = await fetch(`${this.apiUrl}/trading/strategies`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch strategies');
-    return response.json();
+    const response = await api.get('/trading/strategies');
+    return response.data;
   }
 
   async getStrategy(id: string): Promise<Strategy> {
-    const response = await fetch(`${this.apiUrl}/trading/strategies/${id}`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch strategy');
-    return response.json();
+    const response = await api.get(`/trading/strategies/${id}`);
+    return response.data;
   }
 
   async startStrategy(id: string) {
-    const response = await fetch(`${this.apiUrl}/trading/strategies/${id}/start`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to start strategy');
-    return response.json();
+    const response = await api.post(`/trading/strategies/${id}/start`);
+    return response.data;
   }
 
   async stopStrategy(id: string) {
-    const response = await fetch(`${this.apiUrl}/trading/strategies/${id}/stop`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to stop strategy');
-    return response.json();
+    const response = await api.post(`/trading/strategies/${id}/stop`);
+    return response.data;
   }
 
   async pauseStrategy(id: string) {
-    const response = await fetch(`${this.apiUrl}/trading/strategies/${id}/pause`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to pause strategy');
-    return response.json();
+    const response = await api.post(`/trading/strategies/${id}/pause`);
+    return response.data;
   }
 
   async updateStrategyParams(id: string, params: StrategyParams) {
-    const response = await fetch(`${this.apiUrl}/trading/strategies/${id}/params`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(params),
-    });
-    if (!response.ok) throw new Error('Failed to update strategy parameters');
-    return response.json();
+    const response = await api.put(`/trading/strategies/${id}/params`, params);
+    return response.data;
   }
 
   async getStrategyPerformance(id: string) {
-    const response = await fetch(`${this.apiUrl}/trading/strategies/${id}/performance`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch strategy performance');
-    return response.json();
+    const response = await api.get(`/trading/strategies/${id}/performance`);
+    return response.data;
   }
 
   // Signals API
   async getSignals(limit: number = 50) {
-    const response = await fetch(`${this.apiUrl}/trading/signals?limit=${limit}`, {
-      credentials: 'include',
+    const response = await api.get('/trading/signals', {
+      params: { limit }
     });
-    if (!response.ok) throw new Error('Failed to fetch signals');
-    return response.json();
+    return response.data;
   }
 
   async createManualSignal(signal: {
@@ -283,42 +243,26 @@ class TradingService {
     strength: number;
     reason: string;
   }) {
-    const response = await fetch(`${this.apiUrl}/trading/signals/manual`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(signal),
-    });
-    if (!response.ok) throw new Error('Failed to create manual signal');
-    return response.json();
+    const response = await api.post('/trading/signals/manual', signal);
+    return response.data;
   }
 
   // Backtest API
   async runBacktest(request: BacktestRequest): Promise<{ taskId: string }> {
-    const response = await fetch(`${this.apiUrl}/trading/backtest/run`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(request),
-    });
-    if (!response.ok) throw new Error('Failed to start backtest');
-    return response.json();
+    const response = await api.post('/trading/backtest/run', request);
+    return response.data;
   }
 
   async getBacktestResults(limit: number = 10): Promise<BacktestResult[]> {
-    const response = await fetch(`${this.apiUrl}/trading/backtest/results?limit=${limit}`, {
-      credentials: 'include',
+    const response = await api.get('/trading/backtest/results', {
+      params: { limit }
     });
-    if (!response.ok) throw new Error('Failed to fetch backtest results');
-    return response.json();
+    return response.data;
   }
 
   async getBacktestResult(id: string): Promise<BacktestResult> {
-    const response = await fetch(`${this.apiUrl}/trading/backtest/results/${id}`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch backtest result');
-    return response.json();
+    const response = await api.get(`/trading/backtest/results/${id}`);
+    return response.data;
   }
 
   async optimizeStrategy(request: {
@@ -328,14 +272,8 @@ class TradingService {
     symbols: string[];
     parameterRanges: Record<string, { min: number; max: number; step: number }>;
   }) {
-    const response = await fetch(`${this.apiUrl}/trading/backtest/optimize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(request),
-    });
-    if (!response.ok) throw new Error('Failed to start optimization');
-    return response.json();
+    const response = await api.post('/trading/backtest/optimize', request);
+    return response.data;
   }
 
   // Trading Actions
@@ -348,14 +286,8 @@ class TradingService {
     price?: number;
     strategyId?: string;
   }) {
-    const response = await fetch(`${this.apiUrl}/trading/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(trade),
-    });
-    if (!response.ok) throw new Error('Failed to execute trade');
-    return response.json();
+    const response = await api.post('/trading/execute', trade);
+    return response.data;
   }
 
   async analyzeMarket(params: {
@@ -363,39 +295,26 @@ class TradingService {
     symbol: string;
     timeframe?: string;
   }) {
-    const response = await fetch(`${this.apiUrl}/trading/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(params),
-    });
-    if (!response.ok) throw new Error('Failed to analyze market');
-    return response.json();
+    const response = await api.post('/trading/analyze', params);
+    return response.data;
   }
 
   // Configuration
   async getExchanges() {
-    const response = await fetch(`${this.apiUrl}/trading/config/exchanges`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch exchanges');
-    return response.json();
+    const response = await api.get('/trading/config/exchanges');
+    return response.data;
   }
 
   async getSymbols(exchange: string) {
-    const response = await fetch(`${this.apiUrl}/trading/config/symbols?exchange=${exchange}`, {
-      credentials: 'include',
+    const response = await api.get('/trading/config/symbols', {
+      params: { exchange }
     });
-    if (!response.ok) throw new Error('Failed to fetch symbols');
-    return response.json();
+    return response.data;
   }
 
   async getPerformanceMetrics() {
-    const response = await fetch(`${this.apiUrl}/trading/performance/metrics`, {
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to fetch performance metrics');
-    return response.json();
+    const response = await api.get('/trading/performance/metrics');
+    return response.data;
   }
 
   async updateRiskParams(params: {
@@ -404,33 +323,19 @@ class TradingService {
     maxDrawdown: number;
     maxLeverage: number;
   }) {
-    const response = await fetch(`${this.apiUrl}/trading/config/risk-params`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(params),
-    });
-    if (!response.ok) throw new Error('Failed to update risk parameters');
-    return response.json();
+    const response = await api.put('/trading/config/risk-params', params);
+    return response.data;
   }
 
   // Emergency Controls
   async emergencyStop() {
-    const response = await fetch(`${this.apiUrl}/trading/emergency/stop-all`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to execute emergency stop');
-    return response.json();
+    const response = await api.post('/trading/config/emergency/stop-all');
+    return response.data;
   }
 
   async closeAllPositions() {
-    const response = await fetch(`${this.apiUrl}/trading/positions/close-all`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Failed to close all positions');
-    return response.json();
+    const response = await api.post('/trading/positions/close-all');
+    return response.data;
   }
 }
 

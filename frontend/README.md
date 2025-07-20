@@ -1,11 +1,27 @@
-# React + TypeScript + Vite
+# AI Service Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React + TypeScript + Vite frontend for the AI Service platform.
 
-Currently, two official plugins are available:
+## 🚨 Important: Service Development Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+**All API services MUST use the centralized `api` instance for authentication to work correctly.**
+
+See [Service Development Guide](./docs/SERVICE_DEVELOPMENT_GUIDE.md) for mandatory patterns and practices.
+
+### Quick Checklist for Services:
+- ✅ Import `api` from `'./api'`
+- ✅ Use `api.get()`, `api.post()`, etc. for ALL requests
+- ❌ NEVER use `fetch()` or `XMLHttpRequest`
+- ❌ NEVER manually add authentication headers
+- ❌ NEVER handle 401 errors (api instance handles them)
+
+## Stack
+
+- **React 18** with TypeScript
+- **Vite** for fast development and building
+- **Ant Design** for UI components
+- **React Query** for data fetching
+- **React Router** for navigation
 
 ## Expanding the ESLint configuration
 
