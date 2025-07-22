@@ -2,28 +2,30 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { z } from 'zod';
 
-export const validateRequest = (req: Request, res: Response, next: NextFunction) => {
+export const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
+    res.status(400).json({ 
       success: false, 
       errors: errors.array() 
     });
+    return;
   }
   next();
 };
 
 export const validateZod = (schema: z.ZodSchema) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       schema.parse(req.body);
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           errors: error.errors
         });
+        return;
       }
       next(error);
     }

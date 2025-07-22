@@ -1,5 +1,7 @@
 import { z } from 'zod';
+{{#if modelInfo}}
 import { Prisma } from '@prisma/client';
+{{/if}}
 
 // Base {{pascalCase model}} schema
 export const {{camelCase model}}Schema = z.object({
@@ -102,8 +104,8 @@ export type Update{{pascalCase model}} = z.infer<typeof update{{pascalCase model
 export type {{pascalCase model}}Query = z.infer<typeof {{camelCase model}}QuerySchema>;
 
 // Prisma types
+{{#if modelInfo}}
 export type {{pascalCase model}}WithRelations = Prisma.{{camelCase model}}GetPayload<{
-  {{#if modelInfo}}
   {{#if modelInfo.relations.length}}
   include: {
     {{#each modelInfo.relations}}
@@ -111,22 +113,25 @@ export type {{pascalCase model}}WithRelations = Prisma.{{camelCase model}}GetPay
     {{/each}}
   };
   {{/if}}
-  {{else if hasRelations}}
-  include: {
-    {{#if (eq model 'Client')}}
-    invoices: true;
-    user: true;
-    {{else if (eq model 'Invoice')}}
-    client: true;
-    items: true;
-    user: true;
-    {{else if (eq model 'Trade')}}
-    position: true;
-    strategy: true;
-    user: true;
-    {{else}}
-    // Add your relations here
-    {{/if}}
-  };
-  {{/if}}
 }>;
+{{else}}
+// WithRelations type will be generated when Prisma model is created
+export type {{pascalCase model}}WithRelations = {{pascalCase model}} & {
+  {{#if hasRelations}}
+  {{#if (eq model 'Client')}}
+  invoices?: any[];
+  user?: any;
+  {{else if (eq model 'Invoice')}}
+  client?: any;
+  items?: any[];
+  user?: any;
+  {{else if (eq model 'Trade')}}
+  position?: any;
+  strategy?: any;
+  user?: any;
+  {{else}}
+  // Add your relations here when Prisma model is created
+  {{/if}}
+  {{/if}}
+};
+{{/if}}

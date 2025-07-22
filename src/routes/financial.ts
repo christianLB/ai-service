@@ -1345,8 +1345,7 @@ router.get('/analytics/monthly-summary', async (req: Request, res: Response): Pr
     
     res.json({
       success: true,
-      data: summary,
-      count: summary.length
+      data: summary
     });
   } catch (error) {
     console.error('Get monthly summary failed:', error);

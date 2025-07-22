@@ -74,28 +74,62 @@ export interface ClientFormData {
 // Re-export Customer as Client for backwards compatibility
 export type { Customer as ClientType } from '../../services/financial/types';
 
-// Invoice form data interface
+// Invoice form data interface - comprehensive type matching Prisma schema
 export interface InvoiceFormData {
+  // Client information
   clientId?: string;
   clientName?: string;
+  clientTaxId?: string;
+  clientAddress?: any;
+  
+  // Invoice identification
   invoiceNumber?: string;
   title?: string;
   description?: string;
+  type?: 'invoice' | 'credit_note' | 'proforma' | 'receipt';
+  
+  // Items
   items?: Array<{
     description: string;
     quantity: number;
     unitPrice: number;
     totalPrice?: number;
   }>;
+  
+  // Financial details
   subtotal?: number;
   taxAmount?: number;
+  taxRate?: number;
+  taxType?: string;
+  discount?: number;
+  discountType?: 'percentage' | 'fixed';
   totalAmount?: number;
+  total?: number; // Alternative name for totalAmount
   currency?: string;
+  exchangeRate?: number;
+  
+  // Dates
   issueDate?: Date | string;
   dueDate?: Date | string;
+  paidDate?: Date | string;
+  serviceStartDate?: Date | string;
+  serviceEndDate?: Date | string;
+  
+  // Payment information
   status?: string;
+  paymentMethod?: string;
+  paymentTerms?: number;
+  bankAccount?: string;
+  paymentReference?: string;
+  
+  // Additional fields
   notes?: string;
   terms?: string;
+  termsAndConditions?: string;
   templateId?: string;
   metadata?: Record<string, any>;
+  customFields?: Record<string, any>;
+  tags?: string[];
+  relatedDocuments?: any[];
+  relatedTransactionIds?: string[];
 }

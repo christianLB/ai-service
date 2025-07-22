@@ -242,30 +242,8 @@ export class FinancialReportingPrismaService {
    * Get subcategories for a category
    */
   async getSubcategories(categoryId: string): Promise<Subcategory[]> {
-    try {
-      const subcategories = await prisma.subcategories.findMany({
-        where: {
-          category_id: categoryId,
-          is_active: true
-        },
-        orderBy: {
-          name: 'asc'
-        }
-      });
-
-      return subcategories.map(sub => ({
-        id: sub.id,
-        categoryId: sub.category_id,
-        name: sub.name,
-        description: sub.description,
-        isActive: sub.is_active,
-        createdAt: sub.created_at,
-        updatedAt: sub.updated_at
-      }));
-    } catch (error) {
-      logger.error('Failed to get subcategories:', error);
-      throw new AppError('Failed to get subcategories', 500);
-    }
+    // Subcategories not implemented in current schema
+    return [];
   }
 
   /**
@@ -339,7 +317,7 @@ export class FinancialReportingPrismaService {
       const data: Prisma.transaction_categorizationsCreateInput = {
         transactions: { connect: { id: transactionId } },
         ...(categoryId && { categories: { connect: { id: categoryId } } }),
-        ...(subcategoryId && { subcategories: { connect: { id: subcategoryId } } }),
+        // Subcategory relation not available
         method,
         confidence_score: confidenceScore,
         ...(aiTagId && { ai_tags: { connect: { id: aiTagId } } }),
@@ -352,7 +330,7 @@ export class FinancialReportingPrismaService {
           where: { transaction_id: transactionId },
           data: {
             category_id: categoryId,
-            subcategory_id: subcategoryId,
+            // subcategory_id not in schema
             method,
             confidence_score: confidenceScore,
             ai_tag_id: aiTagId,
@@ -457,7 +435,7 @@ export class FinancialReportingPrismaService {
 
       // Process results
       for (const tx of transactions) {
-        const categorization = tx.transaction_categorizations[0];
+        const categorization = tx.transaction_categorizations;
         if (!categorization || !categorization.categories) continue;
 
         const category = categorization.categories;
@@ -730,31 +708,34 @@ export class FinancialReportingPrismaService {
 
       const accounts = await prisma.accounts.findMany({
         include: {
-          currencies: true,
-          transactions: {
-            where: {
-              date: { gte: thirtyDaysAgo },
-              status: 'confirmed'
-            },
-            include: {
-              transaction_categorizations: {
-                include: {
-                  categories: true
-                }
-              }
-            }
-          }
+          currencies: true
         }
       });
 
-      return accounts.map(account => {
-        const transactions30d = account.transactions.length;
+      const accountResults = await Promise.all(accounts.map(async (account) => {
+        // Query transactions separately by account_id
+        const transactions = await prisma.transactions.findMany({
+          where: {
+            account_id: account.account_id,
+            date: { gte: thirtyDaysAgo },
+            status: 'confirmed'
+          },
+          include: {
+            transaction_categorizations: {
+              include: {
+                categories: true
+              }
+            }
+          }
+        });
+
+        const transactions30d = transactions.length;
         let income30d = 0;
         let expenses30d = 0;
 
-        account.transactions.forEach(tx => {
+        transactions.forEach(tx => {
           const amount = tx.amount.toNumber();
-          const categorization = tx.transaction_categorizations[0];
+          const categorization = tx.transaction_categorizations;
           if (categorization?.categories?.type === 'income') {
             income30d += amount;
           } else if (categorization?.categories?.type === 'expense') {
@@ -765,13 +746,15 @@ export class FinancialReportingPrismaService {
         return {
           id: account.id,
           name: account.name,
-          balance: account.balance.toFixed(2),
+          balance: account.balance?.toFixed(2) || '0.00',
           currencyCode: account.currencies?.code || 'EUR',
           transactions30d,
           income30d: income30d.toFixed(2),
           expenses30d: expenses30d.toFixed(2)
         };
-      });
+      }));
+
+      return accountResults;
     } catch (error) {
       logger.error('Failed to get account insights:', error);
       throw new AppError('Failed to get account insights', 500);
@@ -786,7 +769,7 @@ export class FinancialReportingPrismaService {
     const transactions = await prisma.transactions.findMany({
       where: {
         date: { gte: start, lte: end },
-        currencies_transactionsTocurrencies: { code: currency },
+        currencies_transactions_currency_idTocurrencies: { code: currency },
         status: 'confirmed'
       },
       include: {
@@ -804,7 +787,7 @@ export class FinancialReportingPrismaService {
 
     transactions.forEach(tx => {
       const amount = tx.amount.toNumber();
-      const categorization = tx.transaction_categorizations[0];
+      const categorization = tx.transaction_categorizations;
       if (categorization?.categories?.type === 'income') {
         totalIncome += amount;
       } else if (categorization?.categories?.type === 'expense') {
@@ -826,17 +809,16 @@ export class FinancialReportingPrismaService {
     const transactions = await prisma.transactions.findMany({
       where: {
         date: { gte: start, lte: end },
-        currencies_transactionsTocurrencies: { code: currency },
+        currencies_transactions_currency_idTocurrencies: { code: currency },
         status: 'confirmed',
         transaction_categorizations: {
-          some: {}
+          category_id: { not: null }
         }
       },
       include: {
         transaction_categorizations: {
           include: {
-            categories: true,
-            subcategories: true
+            categories: true
           }
         }
       }
@@ -852,7 +834,7 @@ export class FinancialReportingPrismaService {
 
     // First pass: calculate totals and collect subcategories
     transactions.forEach(tx => {
-      const categorization = tx.transaction_categorizations[0];
+      const categorization = tx.transaction_categorizations;
       if (!categorization || !categorization.categories) return;
 
       const category = categorization.categories;
@@ -867,33 +849,14 @@ export class FinancialReportingPrismaService {
       totals.amount += amount;
       totals.count += 1;
 
-      // Add subcategory if exists
-      if (categorization.subcategories) {
-        if (!categorySubcategories.has(categoryId)) {
-          categorySubcategories.set(categoryId, []);
-        }
-        const subcategories = categorySubcategories.get(categoryId)!;
-        const existingSub = subcategories.find(s => s.subcategoryId === categorization.subcategories!.id);
-        
-        if (existingSub) {
-          existingSub.amount = (parseFloat(existingSub.amount) + amount).toFixed(2);
-          existingSub.transactionCount += 1;
-        } else {
-          subcategories.push({
-            subcategoryId: categorization.subcategories.id,
-            subcategoryName: categorization.subcategories.name,
-            amount: amount.toFixed(2),
-            percentage: 0, // Will calculate after totals
-            transactionCount: 1
-          });
-        }
-      }
+      // No subcategories in current schema
+      // Subcategories not implemented in current schema
     });
 
     // Calculate type totals for percentages
     const typeTotals = new Map<string, number>();
     transactions.forEach(tx => {
-      const categorization = tx.transaction_categorizations[0];
+      const categorization = tx.transaction_categorizations;
       if (!categorization || !categorization.categories) return;
       
       const type = categorization.categories.type;
@@ -1028,7 +991,7 @@ export class FinancialReportingPrismaService {
     const categoryAmounts = new Map<string, { name: string; amount: number }>();
     
     transactions.forEach(tx => {
-      const categorization = tx.transaction_categorizations[0];
+      const categorization = tx.transaction_categorizations;
       if (!categorization || !categorization.categories) return;
       
       const category = categorization.categories;
@@ -1058,7 +1021,7 @@ export class FinancialReportingPrismaService {
     const transactions = await prisma.transactions.findMany({
       where: {
         date: { gte: start, lte: end },
-        currencies_transactionsTocurrencies: { code: currency },
+        currencies_transactions_currency_idTocurrencies: { code: currency },
         status: 'confirmed'
       },
       include: {
@@ -1076,7 +1039,7 @@ export class FinancialReportingPrismaService {
 
     transactions.forEach(tx => {
       const amount = tx.amount.toNumber();
-      const categorization = tx.transaction_categorizations[0];
+      const categorization = tx.transaction_categorizations;
       if (categorization?.categories?.type === 'income') {
         income += amount;
       } else if (categorization?.categories?.type === 'expense') {
@@ -1117,8 +1080,7 @@ export class FinancialReportingPrismaService {
         currencies_transactionsTocurrencies: true,
         transaction_categorizations: {
           include: {
-            categories: true,
-            subcategories: true
+            categories: true
           }
         }
       },

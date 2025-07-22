@@ -45,6 +45,7 @@ Este documento proporciona contexto esencial para Claude Code. Se carga automát
 - **Deployment**: Docker + Synology NAS
 - **Testing**: Jest, Supertest
 - **Trading**: Binance/Coinbase APIs, InfluxDB, Qdrant
+- **Code Generation**: Plop + Handlebars (automated CRUD with validation)
 
 ## 🎯 Core Features
 
@@ -86,21 +87,27 @@ make db-migrate          # Apply pending migrations
 make db-migrate-status   # Check migration status
 make db-migrate-create NAME=description  # Create new migration
 
-# Code Generation (Automated)
-make gen-crud-auto MODEL=ModelName       # Generate complete CRUD
-npm run generate:crud:auto ModelName     # Alternative command
+# Code Generation (Automated with Validation)
+npm run generate:crud:auto ModelName     # Generate complete CRUD
+npm run generate:crud:auto ModelName --schema trading  # With specific schema
+npm run generate:crud:auto ModelName --features list,api  # Specific features
+
+# IMPORTANT: Model must exist in prisma/schema.prisma first!
+# The generator now validates and provides helpful error messages
 ```
 
 ### 🚀 Adding New Features
 
-1. **For new database models**:
+1. **For new database models (Correct Order)**:
    ```bash
-   # 1. Add model to prisma/schema.prisma
-   # 2. Generate CRUD automatically
-   make gen-crud-auto MODEL=YourModel
-   # 3. Apply migration
+   # 1. FIRST: Add model to prisma/schema.prisma
+   # 2. Generate Prisma types
+   npm run db:generate
+   # 3. Create migration
    make db-migrate-create NAME=add_your_model
    make db-migrate
+   # 4. THEN: Generate CRUD (with validation)
+   npm run generate:crud:auto YourModel
    ```
 
 2. **For API endpoints**:
@@ -213,10 +220,27 @@ Claude Code is configured with advanced MCP (Model Context Protocol) servers:
 5. **Logs are gold**: Always check `make dev-logs` when debugging
 6. **MCP servers**: Auto-activate based on context (e.g., UI work → Magic)
 7. **Safety first**: Dangerous commands are blocked or require confirmation
+8. **CRUD Generation**: Models must exist in Prisma schema first - generator validates automatically
+
+## 🆕 Recent Improvements (Jan 2025)
+
+### Automated CRUD Generation System Enhanced
+The CRUD generator now includes:
+
+- **Pre-validation**: Checks model exists in Prisma before generating
+- **Auto-detection**: Detects schema and relations from Prisma model
+- **Rollback System**: Reverts files on error to keep codebase clean
+- **Clear Errors**: Shows available models and suggests fixes
+- **Template Fixes**: Proper Handlebars escape for JSX/TypeScript
+
+**Documentation**:
+- Complete guide: [AUTOMATED-DEVELOPMENT-STACK.md](docs/AUTOMATED-DEVELOPMENT-STACK.md)
+- Issues & solutions: [AUTOMATED-DEVELOPMENT-STACK-ISSUES.md](docs/AUTOMATED-DEVELOPMENT-STACK-ISSUES.md)
 
 ## 🔍 Development Reminders
 
 - recuerda siempre verificar make dev-refresh
+- CRUD generation: Model → Prisma generate → Migration → CRUD generate
 
 ---
 

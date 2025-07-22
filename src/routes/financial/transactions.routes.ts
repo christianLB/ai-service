@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { transactionMatchingPrismaService } from '../../services/financial/transaction-matching-prisma.service';
+import { transactionMatchingService as transactionMatchingPrismaService } from '../../services/financial/transaction-matching.service';
 import { logger } from '../../utils/log';
 
 const router = Router();

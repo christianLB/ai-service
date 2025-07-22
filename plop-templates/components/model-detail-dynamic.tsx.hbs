@@ -1,0 +1,150 @@
+import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Card,
+  Descriptions,
+  Button,
+  Space,
+  Spin,
+  Tag,
+  Empty,
+  Alert,
+} from 'antd';
+import {
+  ArrowLeftOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
+import { use{{pascalCase model}}, use{{pascalCase model}}Mutations } from '../../hooks/use-{{kebabCase model}}';
+import { formatDate, formatCurrency } from '../../utils/format';
+
+export const {{pascalCase model}}Detail: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { data, isLoading, error } = use{{pascalCase model}}(id);
+  const { delete: deleteItem, isDeleting } = use{{pascalCase model}}Mutations();
+
+  const handleDelete = async () => {
+    if (!id) return;
+    
+    try {
+      await deleteItem(id);
+      navigate('/{{kebabCase model}}s');
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <div style=\{{ textAlign: 'center', padding: '50px 0' }}>
+          <Spin size="large" />
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <Alert
+          message="Error"
+          description="Failed to load {{lowerCase model}} details"
+          type="error"
+          showIcon
+        />
+      </Card>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Card>
+        <Empty description="{{titleCase model}} not found" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card
+      title={
+        <Space>
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/{{kebabCase model}}s')}
+          >
+            Back
+          </Button>
+          <span>{{titleCase model}} Details</span>
+        </Space>
+      }
+      extra={
+        <Space>
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => navigate(`/{{kebabCase model}}s/${id}/edit`)}
+          >
+            Edit
+          </Button>
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            loading={isDeleting}
+            onClick={handleDelete}
+          >
+            Delete
+          </Button>
+        </Space>
+      }
+    >
+      <Descriptions bordered column=\{{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}>
+        {{#if modelInfo}}
+        {{#each modelInfo.fields}}
+        {{#unless (or (eq this.name 'id') (eq this.name 'userId'))}}
+        <Descriptions.Item label="{{titleCase this.name}}">
+          {{#if (eq this.type 'Boolean')}}
+          <Tag color={data.{{this.name}} ? 'green' : 'red'}>
+            {data.{{this.name}} ? 'Yes' : 'No'}
+          </Tag>
+          {{else if (eq this.type 'DateTime')}}
+          {data.{{this.name}} ? formatDate(data.{{this.name}}) : '-'}
+          {{else if (includes this.name 'Amount')}}
+          {formatCurrency(data.{{this.name}})}
+          {{else if (eq this.type 'Json')}}
+          <pre style=\{{ margin: 0 }}>{JSON.stringify(data.{{this.name}}, null, 2)}</pre>
+          {{else}}
+          {data.{{this.name}} || '-'}
+          {{/if}}
+        </Descriptions.Item>
+        {{/unless}}
+        {{/each}}
+        {{else}}
+        <Descriptions.Item label="Name">{data.name}</Descriptions.Item>
+        <Descriptions.Item label="Description">{data.description || '-'}</Descriptions.Item>
+        <Descriptions.Item label="Status">
+          <Tag color={data.isActive ? 'green' : 'red'}>
+            {data.isActive ? 'Active' : 'Inactive'}
+          </Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label="Created">{formatDate(data.createdAt)}</Descriptions.Item>
+        <Descriptions.Item label="Updated">{formatDate(data.updatedAt)}</Descriptions.Item>
+        {{/if}}
+      </Descriptions>
+
+      {/* Relations section - customize based on your model */}
+      {{#if modelInfo.relations}}
+      {{#each modelInfo.relations}}
+      {{#unless (eq this.name 'user')}}
+      {data.{{this.name}} && (
+        <Card style=\{{ marginTop: 24 }} title="{{titleCase this.name}}">
+          {/* Render related data here */}
+        </Card>
+      )}
+      {{/unless}}
+      {{/each}}
+      {{/if}}
+    </Card>
+  );
+};

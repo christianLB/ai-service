@@ -1,6 +1,13 @@
 // {{pascalCase model}} types for frontend
 export interface {{pascalCase model}} {
   id: string;
+  {{#if modelInfo}}
+  {{#each modelInfo.fields}}
+  {{#unless (or (eq this.name 'id') (eq this.name 'createdAt') (eq this.name 'updatedAt'))}}
+  {{this.name}}{{#if (or this.isOptional this.isNullable)}}?{{/if}}: {{#if (eq this.type 'String')}}string{{else if (eq this.type 'Int')}}number{{else if (eq this.type 'Float')}}number{{else if (eq this.type 'Boolean')}}boolean{{else if (eq this.type 'DateTime')}}Date | string{{else if (eq this.type 'Json')}}any{{else if (eq this.type 'Decimal')}}number{{else}}string{{/if}}{{#if this.isNullable}} | null{{/if}};
+  {{/unless}}
+  {{/each}}
+  {{else}}
   {{#if (eq model 'Client')}}
   name: string;
   email?: string | null;
@@ -47,18 +54,24 @@ export interface {{pascalCase model}} {
   name: string;
   description?: string | null;
   isActive: boolean;
-  {{#if hasRelations}}
-    {{#if (includes features 'api')}}
   userId?: string;
-    {{/if}}
-  {{/if}}
   metadata?: Record<string, any> | null;
+  {{/if}}
   {{/if}}
   createdAt: Date | string;
   updatedAt: Date | string;
 }
 
 export interface Create{{pascalCase model}} {
+  {{#if modelInfo}}
+  {{#each modelInfo.fields}}
+  {{#unless (or (eq this.name 'id') (eq this.name 'createdAt') (eq this.name 'updatedAt') (eq this.name 'userId'))}}
+  {{#unless this.isRelation}}
+  {{this.name}}{{#if (or this.isOptional this.isNullable this.hasDefault)}}?{{/if}}: {{#if (eq this.type 'String')}}string{{else if (eq this.type 'Int')}}number{{else if (eq this.type 'Float')}}number{{else if (eq this.type 'Boolean')}}boolean{{else if (eq this.type 'DateTime')}}Date | string{{else if (eq this.type 'Json')}}any{{else if (eq this.type 'Decimal')}}number{{else}}string{{/if}}{{#if this.isNullable}} | null{{/if}};
+  {{/unless}}
+  {{/unless}}
+  {{/each}}
+  {{else}}
   {{#if (eq model 'Client')}}
   name: string;
   email?: string | null;
@@ -103,6 +116,7 @@ export interface Create{{pascalCase model}} {
   isActive?: boolean;
   metadata?: Record<string, any> | null;
   {{/if}}
+  {{/if}}
 }
 
 export interface Update{{pascalCase model}} extends Partial<Create{{pascalCase model}}> {
@@ -115,6 +129,9 @@ export interface {{pascalCase model}}Query {
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  {{#if modelInfo}}
+  // Add model-specific query filters based on your needs
+  {{else}}
   {{#if (eq model 'Invoice')}}
   status?: string;
   clientId?: string;
@@ -122,5 +139,6 @@ export interface {{pascalCase model}}Query {
   symbol?: string;
   status?: string;
   strategyId?: string;
+  {{/if}}
   {{/if}}
 }

@@ -10,6 +10,7 @@ module.exports = function (plop) {
     return array?.includes(item);
   });
   plop.setHelper('capitalize', (str) => str.charAt(0).toUpperCase() + str.slice(1));
+  plop.setHelper('titleCase', (str) => str.split(/[\s-_]+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' '));
   plop.setHelper('or', (a, b) => a || b);
   plop.setHelper('and', (a, b) => a && b);
   plop.setHelper('not', (a) => !a);
@@ -181,7 +182,9 @@ import {
         actions.push({
           type: 'add',
           path: 'src/routes/{{kebabCase model}}.routes.ts',
-          templateFile: 'plop-templates/routes/model.routes.ts.hbs'
+          templateFile: data.modelInfo 
+            ? 'plop-templates/routes/model.routes.dynamic.ts.hbs'
+            : 'plop-templates/routes/model.routes.ts.hbs'
         });
       }
 
@@ -199,7 +202,9 @@ import {
         actions.push({
           type: 'add',
           path: 'frontend/src/components/{{kebabCase model}}/{{pascalCase model}}List.tsx',
-          templateFile: 'plop-templates/components/model-list.tsx.hbs'
+          templateFile: data.modelInfo 
+            ? 'plop-templates/components/model-list-dynamic.tsx.hbs'
+            : 'plop-templates/components/model-list.tsx.hbs'
         });
       }
 
@@ -207,7 +212,9 @@ import {
         actions.push({
           type: 'add',
           path: 'frontend/src/components/{{kebabCase model}}/{{pascalCase model}}Form.tsx',
-          templateFile: 'plop-templates/components/model-form.tsx.hbs'
+          templateFile: data.modelInfo 
+            ? 'plop-templates/components/model-form-simple.tsx.hbs'
+            : 'plop-templates/components/model-form.tsx.hbs'
         });
       }
 
@@ -215,7 +222,9 @@ import {
         actions.push({
           type: 'add',
           path: 'frontend/src/components/{{kebabCase model}}/{{pascalCase model}}Detail.tsx',
-          templateFile: 'plop-templates/components/model-detail.tsx.hbs'
+          templateFile: data.modelInfo 
+            ? 'plop-templates/components/model-detail-dynamic.tsx.hbs'
+            : 'plop-templates/components/model-detail.tsx.hbs'
         });
       }
 

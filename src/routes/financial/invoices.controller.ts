@@ -38,6 +38,71 @@ export class InvoicesController {
     this.invoiceStorageService = new InvoiceStorageService(db.pool);
   }
 
+  // Helper to transform Prisma invoice to expected Invoice type
+  private transformPrismaInvoice(prismaInvoice: any): Invoice {
+    return {
+      id: prismaInvoice.id,
+      invoiceNumber: prismaInvoice.invoiceNumber,
+      clientId: prismaInvoice.clientId || '',
+      clientName: prismaInvoice.clientName,
+      clientTaxId: prismaInvoice.clientTaxId,
+      clientAddress: prismaInvoice.clientAddress as any,
+      type: prismaInvoice.type as any,
+      status: prismaInvoice.status as any,
+      issueDate: prismaInvoice.issueDate,
+      dueDate: prismaInvoice.dueDate,
+      paidDate: prismaInvoice.paidDate || undefined,
+      serviceStartDate: prismaInvoice.serviceStartDate || undefined,
+      serviceEndDate: prismaInvoice.serviceEndDate || undefined,
+      currency: prismaInvoice.currency,
+      exchangeRate: prismaInvoice.exchangeRate ? Number(prismaInvoice.exchangeRate) : undefined,
+      items: Array.isArray(prismaInvoice.items) ? prismaInvoice.items : [],
+      subtotal: Number(prismaInvoice.subtotal),
+      taxAmount: Number(prismaInvoice.taxAmount),
+      taxRate: Number(prismaInvoice.taxRate),
+      taxType: prismaInvoice.taxType as any,
+      discount: prismaInvoice.discount ? Number(prismaInvoice.discount) : undefined,
+      discountType: prismaInvoice.discountType as any,
+      total: Number(prismaInvoice.total),
+      paymentMethod: prismaInvoice.paymentMethod as any,
+      paymentTerms: prismaInvoice.paymentTerms,
+      bankAccount: prismaInvoice.bankAccount || undefined,
+      paymentReference: prismaInvoice.paymentReference || undefined,
+      relatedDocuments: prismaInvoice.relatedDocuments || undefined,
+      relatedTransactionIds: prismaInvoice.relatedTransactionIds || undefined,
+      notes: prismaInvoice.notes || undefined,
+      termsAndConditions: prismaInvoice.termsAndConditions || undefined,
+      tags: prismaInvoice.tags || [],
+      userId: prismaInvoice.userId,
+      createdAt: prismaInvoice.createdAt,
+      updatedAt: prismaInvoice.updatedAt,
+      metadata: prismaInvoice.customFields || {}
+    };
+  }
+
+  // Helper to transform Prisma client to expected Client type
+  private transformPrismaClient(prismaClient: any): Client {
+    return {
+      id: prismaClient.id,
+      name: prismaClient.name,
+      taxId: prismaClient.taxId,
+      taxIdType: prismaClient.taxIdType,
+      email: prismaClient.email,
+      phone: prismaClient.phone || undefined,
+      address: prismaClient.address as any,
+      website: prismaClient.website || undefined,
+      language: prismaClient.language || 'en',
+      currency: prismaClient.currency || 'EUR',
+      paymentTerms: prismaClient.paymentTerms || 30,
+      isActive: prismaClient.isActive,
+      notes: prismaClient.notes || undefined,
+      customFields: prismaClient.customFields || {},
+      userId: prismaClient.userId,
+      createdAt: prismaClient.createdAt,
+      updatedAt: prismaClient.updatedAt
+    };
+  }
+
   private async ensureSchemasInitialized(): Promise<void> {
     // Avoid multiple initialization attempts
     if (this.schemasInitialized) return;
@@ -312,8 +377,7 @@ export class InvoicesController {
       const invoice = await this.invoiceService.updateInvoice(
         id,
         { 
-          status: 'paid',
-          paidAt: paidDate ? new Date(paidDate) : new Date()
+          status: 'paid'
         },
         userId
       );
@@ -361,8 +425,8 @@ export class InvoicesController {
       }
 
       // Get current invoice
-      const currentInvoice = await this.invoiceService.getInvoiceById(id, userId);
-      if (!currentInvoice) {
+      const currentInvoiceResult = await this.invoiceService.getInvoiceById(id, userId);
+      if (!currentInvoiceResult.success || !currentInvoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
           error: 'Invoice not found'
@@ -370,6 +434,7 @@ export class InvoicesController {
         return;
       }
 
+      const currentInvoice = currentInvoiceResult.data.invoice;
       // Add new item to existing items
       const updatedItems = [...(currentInvoice.items || []), item];
       
@@ -424,8 +489,8 @@ export class InvoicesController {
       const userId = (req.user as any)?.userId || req.user?.userId;
       
       // Update invoice metadata to include the attachment
-      const currentInvoice = await this.invoiceService.getInvoiceById(id, userId);
-      if (!currentInvoice) {
+      const currentInvoiceResult = await this.invoiceService.getInvoiceById(id, userId);
+      if (!currentInvoiceResult.success || !currentInvoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
           error: 'Invoice not found'
@@ -433,7 +498,9 @@ export class InvoicesController {
         return;
       }
 
-      const attachments = currentInvoice.metadata?.attachments || [];
+      const currentInvoice = currentInvoiceResult.data.invoice;
+      const customFields = currentInvoice.customFields as any || {};
+      const attachments = customFields.attachments || [];
       attachments.push({
         type,
         documentId,
@@ -444,7 +511,7 @@ export class InvoicesController {
 
       const invoice = await this.invoiceService.updateInvoice(
         id, 
-        { metadata: { ...currentInvoice.metadata, attachments } },
+        { customFields: { ...customFields, attachments } },
         userId
       );
 
@@ -584,9 +651,9 @@ export class InvoicesController {
     try {
       const { id } = req.params;
       const userId = (req.user as any)?.userId || req.user?.userId;
-      const originalInvoice = await this.invoiceService.getInvoiceById(id, userId);
+      const originalInvoiceResult = await this.invoiceService.getInvoiceById(id, userId);
 
-      if (!originalInvoice) {
+      if (!originalInvoiceResult.success || !originalInvoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
           error: 'Invoice not found'
@@ -594,24 +661,29 @@ export class InvoicesController {
         return;
       }
 
+      const originalInvoice = originalInvoiceResult.data.invoice;
       // Create new invoice based on original
       const duplicateData: InvoiceFormData = {
         clientId: originalInvoice.clientId || undefined,
         clientName: originalInvoice.clientName,
         currency: originalInvoice.currency,
-        taxAmount: originalInvoice.taxAmount,
-        subtotal: originalInvoice.subtotal,
-        totalAmount: originalInvoice.totalAmount,
+        taxAmount: Number(originalInvoice.taxAmount),
+        subtotal: Number(originalInvoice.subtotal),
+        totalAmount: Number(originalInvoice.total),
         notes: originalInvoice.notes || undefined,
-        terms: originalInvoice.terms || undefined,
-        templateId: originalInvoice.templateId || undefined
+        terms: originalInvoice.termsAndConditions || undefined,
+        templateId: originalInvoice.templateId || undefined,
+        issueDate: new Date(),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        items: Array.isArray(originalInvoice.items) ? originalInvoice.items : [],
+        taxRate: Number(originalInvoice.taxRate)
       };
 
-      const newInvoice = await this.invoiceService.createInvoice(duplicateData, userId);
+      const newInvoiceResult = await this.invoiceService.createInvoice(duplicateData, userId);
 
       res.status(201).json({
         success: true,
-        data: { invoice: newInvoice },
+        data: { invoice: newInvoiceResult.data.invoice },
         message: `Invoice duplicated from ${originalInvoice.invoiceNumber}`
       });
 
@@ -638,8 +710,8 @@ export class InvoicesController {
       const userId = (req.user as any)?.userId || req.user?.userId;
 
       // Get invoice and client
-      const invoice = await this.invoiceService.getInvoiceById(id, userId);
-      if (!invoice) {
+      const invoiceResult = await this.invoiceService.getInvoiceById(id, userId);
+      if (!invoiceResult.success || !invoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
           error: 'Invoice not found'
@@ -647,8 +719,9 @@ export class InvoicesController {
         return;
       }
 
-      const client = await this.clientService.getClientById(invoice.clientId, userId);
-      if (!client) {
+      const invoice = invoiceResult.data.invoice;
+      const clientResult = await this.clientService.getClientById(invoice.clientId, userId);
+      if (!clientResult.success || !clientResult.data.client) {
         res.status(404).json({
           success: false,
           error: 'Client not found'
@@ -656,12 +729,17 @@ export class InvoicesController {
         return;
       }
 
+      const client = clientResult.data.client;
+      // Transform to expected types
+      const transformedInvoice = this.transformPrismaInvoice(invoice);
+      const transformedClient = this.transformPrismaClient(client);
+      
       // Generate PDF
       const result = await this.invoiceGenerationService.generateInvoicePDF({
-        invoice,
-        client,
+        invoice: transformedInvoice,
+        client: transformedClient,
         company: DEFAULT_COMPANY_CONFIG,
-        language: language || client.language,
+        language: language || client.language || 'en',
         showStatus,
         generateQR
       });
@@ -675,10 +753,17 @@ export class InvoicesController {
         { generatePublicUrl: true }
       );
 
-      // Update invoice with PDF URL
-      await this.invoiceService.updateInvoice(id, {
-        pdfUrl: stored.url
-      }, userId);
+      // Store PDF URL in customFields
+      const currentInvoiceRes = await this.invoiceService.getInvoiceById(id, userId);
+      if (currentInvoiceRes.success && currentInvoiceRes.data.invoice) {
+        const customFields = currentInvoiceRes.data.invoice.customFields as any || {};
+        await this.invoiceService.updateInvoice(id, {
+          customFields: { 
+            ...customFields, 
+            pdfUrl: stored.url 
+          }
+        }, userId);
+      }
 
       res.json({
         success: true,
@@ -750,8 +835,8 @@ export class InvoicesController {
       const userId = (req.user as any)?.userId || req.user?.userId;
 
       // Get invoice and client
-      const invoice = await this.invoiceService.getInvoiceById(id, userId);
-      if (!invoice) {
+      const invoiceResult = await this.invoiceService.getInvoiceById(id, userId);
+      if (!invoiceResult.success || !invoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
           error: 'Invoice not found'
@@ -759,8 +844,9 @@ export class InvoicesController {
         return;
       }
 
-      const client = await this.clientService.getClientById(invoice.clientId, userId);
-      if (!client) {
+      const invoice = invoiceResult.data.invoice;
+      const clientResult = await this.clientService.getClientById(invoice.clientId, userId);
+      if (!clientResult.success || !clientResult.data.client) {
         res.status(404).json({
           success: false,
           error: 'Client not found'
@@ -768,12 +854,17 @@ export class InvoicesController {
         return;
       }
 
+      const client = clientResult.data.client;
+      // Transform to expected types
+      const transformedInvoice = this.transformPrismaInvoice(invoice);
+      const transformedClient = this.transformPrismaClient(client);
+      
       // Generate HTML preview
       const html = await this.invoiceGenerationService.previewInvoiceHTML({
-        invoice,
-        client,
+        invoice: transformedInvoice,
+        client: transformedClient,
         company: DEFAULT_COMPANY_CONFIG,
-        language: (language as string) || client.language,
+        language: (language as string) || client.language || 'en',
         showStatus: true,
         generateQR: true
       });
@@ -808,8 +899,8 @@ export class InvoicesController {
       const userId = (req.user as any)?.userId || req.user?.userId;
 
       // Get invoice and client
-      const invoice = await this.invoiceService.getInvoiceById(id, userId);
-      if (!invoice) {
+      const invoiceResult = await this.invoiceService.getInvoiceById(id, userId);
+      if (!invoiceResult.success || !invoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
           error: 'Invoice not found'
@@ -817,8 +908,9 @@ export class InvoicesController {
         return;
       }
 
-      const client = await this.clientService.getClientById(invoice.clientId, userId);
-      if (!client) {
+      const invoice = invoiceResult.data.invoice;
+      const clientResult = await this.clientService.getClientById(invoice.clientId, userId);
+      if (!clientResult.success || !clientResult.data.client) {
         res.status(404).json({
           success: false,
           error: 'Client not found'
@@ -826,6 +918,11 @@ export class InvoicesController {
         return;
       }
 
+      const client = clientResult.data.client;
+      // Transform to expected types
+      const transformedInvoice = this.transformPrismaInvoice(invoice);
+      const transformedClient = this.transformPrismaClient(client);
+      
       // Generate PDF if not already generated
       let pdfBuffer: Buffer;
       const existingPdf = await this.invoiceStorageService.retrieveInvoice(id);
@@ -834,10 +931,10 @@ export class InvoicesController {
         pdfBuffer = existingPdf.buffer;
       } else {
         const result = await this.invoiceGenerationService.generateInvoicePDF({
-          invoice,
-          client,
+          invoice: transformedInvoice,
+          client: transformedClient,
           company: DEFAULT_COMPANY_CONFIG,
-          language: language || client.language
+          language: language || client.language || 'en'
         });
         pdfBuffer = result.pdfBuffer;
         
@@ -852,11 +949,11 @@ export class InvoicesController {
 
       // Send email
       const sent = await this.invoiceEmailService.sendInvoiceEmail({
-        invoice,
-        client,
+        invoice: transformedInvoice,
+        client: transformedClient,
         company: DEFAULT_COMPANY_CONFIG,
         pdfBuffer,
-        language: language || client.language,
+        language: language || client.language || 'en',
         subject,
         message,
         cc,
@@ -866,8 +963,7 @@ export class InvoicesController {
       if (sent) {
         // Update invoice status
         await this.invoiceService.updateInvoice(id, {
-          status: 'sent',
-          sentAt: new Date()
+          status: 'sent'
         }, userId);
 
         res.json({

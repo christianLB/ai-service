@@ -2,23 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { 
-  Alert, 
-  CreateAlert,
-  AlertQuery 
-} from '../types/alert.types';
+  Position, 
+  CreatePosition, 
+  PositionQuery 
+} from '../types/position.types';
 
-const QUERY_KEY = 'alerts';
+const QUERY_KEY = 'positions';
 
-interface AlertResponse {
+interface PositionResponse {
   success: boolean;
-  data: Alert;
+  data: Position;
   message?: string;
 }
 
-interface AlertListResponse {
+interface PositionListResponse {
   success: boolean;
   data: {
-    items: Alert[];
+    items: Position[];
     total: number;
     page: number;
     limit: number;
@@ -27,27 +27,27 @@ interface AlertListResponse {
 }
 
 /**
- * Hook to fetch all alerts with pagination
+ * Hook to fetch all positions with pagination
  */
-export function useAlerts(params?: AlertQuery) {
+export function usePositions(params?: PositionQuery) {
   return useQuery({
     queryKey: [QUERY_KEY, params],
     queryFn: async () => {
-      const response = await api.get<AlertListResponse>('/alerts', { params });
+      const response = await api.get<PositionListResponse>('/positions', { params });
       return response.data.data;
     },
   });
 }
 
 /**
- * Hook to fetch a single alert by ID
+ * Hook to fetch a single position by ID
  */
-export function useAlert(id: string | undefined) {
+export function usePosition(id: string | undefined) {
   return useQuery({
     queryKey: [QUERY_KEY, id],
     queryFn: async () => {
       if (!id) throw new Error('ID is required');
-      const response = await api.get<AlertResponse>(`/alerts/${id}`);
+      const response = await api.get<PositionResponse>(`/positions/${id}`);
       return response.data.data;
     },
     enabled: !!id,
@@ -55,14 +55,14 @@ export function useAlert(id: string | undefined) {
 }
 
 /**
- * Hook to search alerts
+ * Hook to search positions
  */
-export function useAlertSearch(query: string) {
+export function usePositionSearch(query: string) {
   return useQuery({
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: Alert[] }>(
-        '/alerts/search',
+      const response = await api.get<{ success: boolean; data: Position[] }>(
+        '/positions/search',
         { params: { q: query } }
       );
       return response.data.data;
@@ -72,68 +72,68 @@ export function useAlertSearch(query: string) {
 }
 
 /**
- * Hook for alert mutations (create, update, delete)
+ * Hook for position mutations (create, update, delete)
  */
-export function useAlertMutations() {
+export function usePositionMutations() {
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
-    mutationFn: async (data: CreateAlert) => {
-      const response = await api.post<AlertResponse>('/alerts', data);
+    mutationFn: async (data: CreatePosition) => {
+      const response = await api.post<PositionResponse>('/positions', data);
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Alert created successfully');
+      message.success(response.message || 'Position created successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to create alert');
+      message.error(error.response?.data?.message || 'Failed to create position');
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Alert> }) => {
-      const response = await api.put<AlertResponse>(`/alerts/${id}`, data);
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Position> }) => {
+      const response = await api.put<PositionResponse>(`/positions/${id}`, data);
       return response.data;
     },
     onSuccess: (response, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
-      message.success(response.message || 'Alert updated successfully');
+      message.success(response.message || 'Position updated successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to update alert');
+      message.error(error.response?.data?.message || 'Failed to update position');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/alerts/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(`/positions/${id}`);
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Alert deleted successfully');
+      message.success(response.message || 'Position deleted successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete alert');
+      message.error(error.response?.data?.message || 'Failed to delete position');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/alerts/bulk',
+        '/positions/bulk',
         { data: { ids } }
       );
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Alerts deleted successfully');
+      message.success(response.message || 'Positions deleted successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete alerts');
+      message.error(error.response?.data?.message || 'Failed to delete positions');
     },
   });
 
@@ -150,33 +150,33 @@ export function useAlertMutations() {
 }
 
 /**
- * Hook to prefetch alert data
+ * Hook to prefetch position data
  */
-export function useAlertPrefetch() {
+export function usePositionPrefetch() {
   const queryClient = useQueryClient();
 
-  const prefetchAlert = async (id: string) => {
+  const prefetchPosition = async (id: string) => {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, id],
       queryFn: async () => {
-        const response = await api.get<AlertResponse>(`/alerts/${id}`);
+        const response = await api.get<PositionResponse>(`/positions/${id}`);
         return response.data.data;
       },
     });
   };
 
-  const prefetchAlerts = async (params?: AlertQuery) => {
+  const prefetchPositions = async (params?: PositionQuery) => {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, params],
       queryFn: async () => {
-        const response = await api.get<AlertListResponse>('/alerts', { params });
+        const response = await api.get<PositionListResponse>('/positions', { params });
         return response.data.data;
       },
     });
   };
 
   return {
-    prefetchAlert,
-    prefetchAlerts,
+    prefetchPosition,
+    prefetchPositions,
   };
 }

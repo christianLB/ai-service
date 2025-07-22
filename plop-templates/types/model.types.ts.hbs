@@ -3,8 +3,15 @@ import { Prisma } from '@prisma/client';
 
 // Base {{pascalCase model}} schema
 export const {{camelCase model}}Schema = z.object({
-  id: z.string().uuid().optional(),
+  {{#if modelInfo}}
+  {{#each modelInfo.fields}}
+  {{#unless (or (eq this.name 'createdAt') (eq this.name 'updatedAt'))}}
+  {{this.name}}: {{#if (eq this.type 'String')}}z.string(){{else if (eq this.type 'Int')}}z.number().int(){{else if (eq this.type 'Float')}}z.number(){{else if (eq this.type 'Boolean')}}z.boolean(){{else if (eq this.type 'DateTime')}}z.date(){{else if (eq this.type 'Json')}}z.any(){{else}}z.string(){{/if}}{{#if this.isOptional}}.optional(){{/if}}{{#if this.isNullable}}.nullable(){{/if}}{{#if this.hasDefault}}.default({{#if (eq this.type 'String')}}''{{else if (eq this.type 'Boolean')}}false{{else if (or (eq this.type 'Int') (eq this.type 'Float'))}}0{{else}}undefined{{/if}}){{/if}},
+  {{/unless}}
+  {{/each}}
+  {{else}}
   {{#if (eq model 'Client')}}
+  id: z.string().uuid().optional(),
   name: z.string().min(1, 'Name is required'),
   email: z.string().email().optional().nullable(),
   phone: z.string().optional().nullable(),
@@ -18,6 +25,7 @@ export const {{camelCase model}}Schema = z.object({
   notes: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
   {{else if (eq model 'Invoice')}}
+  id: z.string().uuid().optional(),
   clientId: z.string().uuid(),
   invoiceNumber: z.string().optional(),
   sequenceId: z.string().uuid().optional().nullable(),
@@ -31,6 +39,8 @@ export const {{camelCase model}}Schema = z.object({
   notes: z.string().optional().nullable(),
   terms: z.string().optional().nullable(),
   {{else if (eq model 'Trade')}}
+  id: z.string().uuid().optional(),
+  userId: z.string().uuid(),
   positionId: z.string().uuid().optional().nullable(),
   strategyId: z.string().uuid().optional().nullable(),
   symbol: z.string().min(1),
@@ -43,12 +53,15 @@ export const {{camelCase model}}Schema = z.object({
   status: z.enum(['pending', 'filled', 'cancelled']).default('pending'),
   executedAt: z.date().optional().nullable(),
   {{else}}
+  id: z.string().uuid().optional(),
   // Add your model-specific fields here
   name: z.string().min(1),
   description: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
+  userId: z.string().uuid().optional(),
   {{/if}}
   metadata: z.record(z.any()).optional().nullable(),
+  {{/if}}
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });

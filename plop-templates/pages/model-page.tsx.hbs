@@ -7,31 +7,7 @@ const {{pascalCase model}}Page: React.FC = () => {
     <div>
       <PageHeader
         title="{{titleCase model}}s"
-        subtitle="Manage your {{lowerCase model}}s"
-        {{#if (eq model 'Client')}}
-        breadcrumbs={[
-          { title: 'Home', path: '/' },
-          { title: 'Financial', path: '/financial' },
-          { title: 'Clients' },
-        ]}
-        {{else if (eq model 'Invoice')}}
-        breadcrumbs={[
-          { title: 'Home', path: '/' },
-          { title: 'Financial', path: '/financial' },
-          { title: 'Invoices' },
-        ]}
-        {{else if (eq model 'Trade')}}
-        breadcrumbs={[
-          { title: 'Home', path: '/' },
-          { title: 'Trading', path: '/trading' },
-          { title: 'Trades' },
-        ]}
-        {{else}}
-        breadcrumbs={[
-          { title: 'Home', path: '/' },
-          { title: '{{titleCase model}}s' },
-        ]}
-        {{/if}}
+        subTitle="Manage your {{lowerCase model}}s"
       />
       <{{pascalCase model}}List />
     </div>

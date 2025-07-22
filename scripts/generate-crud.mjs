@@ -66,16 +66,43 @@ Ejemplos:
 }
 
 // Parse Prisma schema and extract model fields
-async function parsePrismaModel(modelName) {
+export async function parsePrismaModel(modelName) {
   const schemaPath = join(__dirname, '..', 'prisma', 'schema.prisma');
   const schemaContent = await readFile(schemaPath, 'utf-8');
   
-  // Find the model definition
+  // Find the model definition - try exact match first
   const modelRegex = new RegExp(`model\\s+${modelName}\\s*{([^}]+)}`, 's');
   const modelMatch = schemaContent.match(modelRegex);
   
   if (!modelMatch) {
-    throw new Error(`Model ${modelName} not found in schema.prisma`);
+    // Try to find all models to give a helpful error message
+    const allModelsRegex = /model\s+(\w+)\s*{/g;
+    const allModels = [];
+    let match;
+    while ((match = allModelsRegex.exec(schemaContent)) !== null) {
+      allModels.push(match[1]);
+    }
+    
+    const errorMsg = `Model "${modelName}" not found in schema.prisma`;
+    console.error(`\n❌ ${errorMsg}`);
+    
+    if (allModels.length > 0) {
+      console.log('\n📋 Available models:');
+      allModels.forEach(m => console.log(`   - ${m}`));
+      
+      // Check for similar names
+      const similar = allModels.filter(m => 
+        m.toLowerCase() === modelName.toLowerCase() ||
+        m.toLowerCase().includes(modelName.toLowerCase()) ||
+        modelName.toLowerCase().includes(m.toLowerCase())
+      );
+      
+      if (similar.length > 0) {
+        console.log(`\n💡 Did you mean: ${similar.join(', ')}?`);
+      }
+    }
+    
+    throw new Error(errorMsg);
   }
   
   const modelContent = modelMatch[1];
@@ -157,6 +184,19 @@ async function parsePrismaModel(modelName) {
   };
 }
 
+// Validate model exists before generation
+export async function validateModelExists(modelName) {
+  try {
+    const modelInfo = await parsePrismaModel(modelName);
+    return { valid: true, modelInfo };
+  } catch (error) {
+    return { valid: false, error: error.message };
+  }
+}
+
+// Track generated files for rollback
+const generatedFiles = [];
+
 // Main function
 async function generateCrud() {
   const options = parseArgs();
@@ -185,8 +225,22 @@ async function generateCrud() {
         options.hasRelations = true;
       }
     } catch (e) {
-      console.warn(`   ⚠️  No se pudo leer el modelo desde Prisma: ${e.message}`);
-      console.log(`   ℹ️  Continuando con generación básica...\n`);
+      console.error(`\n❌ Error: ${e.message}`);
+      console.error('\n⚠️  El modelo debe existir en prisma/schema.prisma antes de generar el CRUD.\n');
+      console.log('📝 Pasos para solucionarlo:');
+      console.log(`   1. Agrega el modelo ${options.model} a prisma/schema.prisma`);
+      console.log('   2. Ejecuta: npm run db:generate');
+      console.log('   3. Vuelve a ejecutar este comando\n');
+      console.log('💡 Ejemplo de modelo en Prisma:');
+      console.log(`   model ${options.model} {`);
+      console.log('     id        String   @id @default(uuid())');
+      console.log('     name      String');
+      console.log('     createdAt DateTime @default(now())');
+      console.log('     updatedAt DateTime @updatedAt');
+      console.log('     ');
+      console.log(`     @@schema("${options.schema || 'public'}")`);
+      console.log('   }\n');
+      process.exit(1);
     }
     
     // Load plop
@@ -206,28 +260,67 @@ async function generateCrud() {
       modelInfo: modelInfo || null
     };
 
-    // Run the generator
+    // Run the generator with rollback support
     console.log('🔨 Generando archivos...\n');
-    const results = await crudGenerator.runActions(answers);
-    
-    // Show results
-    let successCount = 0;
     const createdFiles = [];
+    let results;
+    let successCount = 0;
     
-    results.changes.forEach(change => {
-      if (change.type === 'add') {
-        console.log(`   ✅ ${change.path}`);
-        createdFiles.push(change.path);
-        successCount++;
-      } else if (change.type === 'modify') {
-        console.log(`   📝 Actualizado: ${change.path}`);
-        successCount++;
+    try {
+      results = await crudGenerator.runActions(answers);
+      
+      // Show results
+      
+      results.changes.forEach(change => {
+        if (change.type === 'add') {
+          console.log(`   ✅ ${change.path}`);
+          createdFiles.push(change.path);
+          successCount++;
+        } else if (change.type === 'modify') {
+          console.log(`   📝 Actualizado: ${change.path}`);
+          successCount++;
+        }
+      });
+      
+      // Check for failures
+      if (results.failures && results.failures.length > 0) {
+        console.error('\n❌ Se encontraron errores durante la generación:');
+        results.failures.forEach(failure => {
+          console.error(`   ❌ ${failure.error || failure.path}`);
+        });
+        
+        // Rollback on failures
+        if (createdFiles.length > 0) {
+          console.log('\n🔄 Revirtiendo archivos generados...');
+          const { unlink } = await import('fs/promises');
+          for (const file of createdFiles) {
+            try {
+              await unlink(file);
+              console.log(`   🗑️  Eliminado: ${file}`);
+            } catch (err) {
+              // File might not exist, ignore
+            }
+          }
+        }
+        
+        throw new Error('La generación falló con errores. Revise los mensajes anteriores.');
       }
-    });
-    
-    results.failures.forEach(failure => {
-      console.error(`   ❌ Error: ${failure.error || failure.path}`);
-    });
+    } catch (genError) {
+      // Additional rollback for unexpected errors
+      if (createdFiles.length > 0) {
+        console.log('\n🔄 Revirtiendo archivos generados debido a error...');
+        const { unlink } = await import('fs/promises');
+        for (const file of createdFiles) {
+          try {
+            await unlink(file);
+            console.log(`   🗑️  Eliminado: ${file}`);
+          } catch (err) {
+            // File might not exist, ignore
+          }
+        }
+      }
+      throw genError;
+    }
 
     if (successCount > 0) {
       console.log(`\n🎉 ¡${successCount} archivos generados exitosamente!`);

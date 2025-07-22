@@ -1,19 +1,25 @@
 // Alert types for frontend
 export interface Alert {
   id: string;
-  name: string;
-  description?: string | null;
-  isActive: boolean;
-  metadata?: Record<string, any> | null;
+  userId: string;
+  strategyId?: string;
+  type: string;
+  severity: string;
+  title: string;
+  message: string;
+  data?: any;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
 
 export interface CreateAlert {
-  name: string;
-  description?: string | null;
-  isActive?: boolean;
-  metadata?: Record<string, any> | null;
+  userId: string;
+  strategyId?: string;
+  type: string;
+  severity: string;
+  title: string;
+  message: string;
+  data?: any;
 }
 
 export interface UpdateAlert extends Partial<CreateAlert> {
@@ -26,4 +32,5 @@ export interface AlertQuery {
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  // Add model-specific query filters based on your needs
 }

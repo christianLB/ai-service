@@ -388,16 +388,16 @@ export const {{pascalCase model}}List: React.FC = () => {
     <>
       <Card>
         {statistics && (
-          <Row gutter={16} style=\{{ marginBottom: 24 }}>
+          <Row gutter={16} style={{ marginBottom: 24 }}>
             <Col span={6}>
               <Statistic title="Total {{titleCase model}}s" value={statistics.total} />
             </Col>
             {{#if (eq model 'Invoice')}}
             <Col span={6}>
-              <Statistic title="Paid" value={statistics.paid} valueStyle=\{{ color: '#3f8600' }} />
+              <Statistic title="Paid" value={statistics.paid} valueStyle={{ color: '#3f8600' }} />
             </Col>
             <Col span={6}>
-              <Statistic title="Pending" value={statistics.pending} valueStyle=\{{ color: '#cf1322' }} />
+              <Statistic title="Pending" value={statistics.pending} valueStyle={{ color: '#cf1322' }} />
             </Col>
             <Col span={6}>
               <Statistic
@@ -405,15 +405,15 @@ export const {{pascalCase model}}List: React.FC = () => {
                 value={statistics.totalValue}
                 precision={2}
                 prefix="€"
-                valueStyle=\{{ color: '#3f8600' }}
+                valueStyle={{ color: '#3f8600' }}
               />
             </Col>
             {{else if (eq model 'Trade')}}
             <Col span={6}>
-              <Statistic title="Filled" value={statistics.filled} valueStyle=\{{ color: '#3f8600' }} />
+              <Statistic title="Filled" value={statistics.filled} valueStyle={{ color: '#3f8600' }} />
             </Col>
             <Col span={6}>
-              <Statistic title="Pending" value={statistics.pending} valueStyle=\{{ color: '#faad14' }} />
+              <Statistic title="Pending" value={statistics.pending} valueStyle={{ color: '#faad14' }} />
             </Col>
             <Col span={6}>
               <Statistic
@@ -421,21 +421,21 @@ export const {{pascalCase model}}List: React.FC = () => {
                 value={statistics.buyVolume}
                 precision={2}
                 prefix="$"
-                valueStyle=\{{ color: '#3f8600' }}
+                valueStyle={{ color: '#3f8600' }}
               />
             </Col>
             {{else}}
             <Col span={6}>
-              <Statistic title="Active" value={statistics.active} valueStyle=\{{ color: '#3f8600' }} />
+              <Statistic title="Active" value={statistics.active} valueStyle={{ color: '#3f8600' }} />
             </Col>
             <Col span={6}>
-              <Statistic title="Inactive" value={statistics.inactive} valueStyle=\{{ color: '#cf1322' }} />
+              <Statistic title="Inactive" value={statistics.inactive} valueStyle={{ color: '#cf1322' }} />
             </Col>
             {{/if}}
           </Row>
         )}
 
-        <div style=\{{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16 }}>
           <Row gutter={16}>
             <Col flex="auto">
               <Space>
@@ -444,7 +444,7 @@ export const {{pascalCase model}}List: React.FC = () => {
                   allowClear
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  style=\{{ width: 300 }}
+                  style={{ width: 300 }}
                   prefix={<SearchOutlined />}
                 />
                 {{#if (eq model 'Invoice')}}
@@ -453,7 +453,7 @@ export const {{pascalCase model}}List: React.FC = () => {
                   allowClear
                   value={statusFilter}
                   onChange={setStatusFilter}
-                  style=\{{ width: 150 }}
+                  style={{ width: 150 }}
                   options={[
                     { label: 'Draft', value: 'draft' },
                     { label: 'Sent', value: 'sent' },
@@ -467,7 +467,7 @@ export const {{pascalCase model}}List: React.FC = () => {
                   allowClear
                   value={statusFilter}
                   onChange={setStatusFilter}
-                  style=\{{ width: 150 }}
+                  style={{ width: 150 }}
                   options={[
                     { label: 'Pending', value: 'pending' },
                     { label: 'Filled', value: 'filled' },
@@ -479,7 +479,7 @@ export const {{pascalCase model}}List: React.FC = () => {
                   allowClear
                   value={symbolFilter}
                   onChange={(e) => setSymbolFilter(e.target.value)}
-                  style=\{{ width: 150 }}
+                  style={{ width: 150 }}
                 />
                 {{/if}}
                 <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
@@ -524,7 +524,7 @@ export const {{pascalCase model}}List: React.FC = () => {
           dataSource={data?.items || []}
           rowKey="id"
           loading={isLoading}
-          pagination=\{{
+          pagination={{
             current: page,
             pageSize: pageSize,
             total: data?.total || 0,
@@ -537,11 +537,11 @@ export const {{pascalCase model}}List: React.FC = () => {
               }
             },
           }}
-          rowSelection=\{{
+          rowSelection={{
             selectedRowKeys,
             onChange: setSelectedRowKeys,
           }}
-          scroll=\{{ x: 1200 }}
+          scroll={{ x: 1200 }}
         />
       </Card>
 

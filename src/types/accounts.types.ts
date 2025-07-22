@@ -4,27 +4,31 @@ import { Prisma } from '@prisma/client';
 // Base Accounts schema
 export const accountsSchema = z.object({
   id: z.string().uuid().optional(),
-  account_id: z.string().uuid(),
+  account_id: z.string(),
   name: z.string(),
   type: z.string(),
   currency_id: z.string().uuid().optional().nullable(),
   balance: z.number().optional().default(0),
   available_balance: z.number().optional().default(0),
   institution: z.string().optional().nullable(),
-  institution_id: z.string().uuid().optional().nullable(),
-  requisition_id: z.string().uuid().optional().nullable(),
+  institution_id: z.string().optional().nullable(),
+  requisition_id: z.string().optional().nullable(),
   iban: z.string().optional().nullable(),
   wallet_address: z.string().optional().nullable(),
-  chain_id: z.string().uuid().optional().nullable(),
+  chain_id: z.string().optional().nullable(),
   exchange_name: z.string().optional().nullable(),
   metadata: z.any().optional(),
+  is_active: z.boolean().optional().default(true),
+  last_sync: z.date().optional().nullable(),
+  created_at: z.date().optional(),
+  updated_at: z.date().optional(),
 });
 
 // Create schema (omit id and timestamps)
 export const createAccountsSchema = accountsSchema.omit({
   id: true,
-  createdAt: true,
-  updatedAt: true,
+  created_at: true,
+  updated_at: true,
 });
 
 // Update schema (all fields optional except id)

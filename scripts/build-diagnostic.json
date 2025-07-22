@@ -1,0 +1,364 @@
+{
+  "totalErrors": 132,
+  "errorsByFile": {
+    "src/routes/financial/invoices.controller.ts": 25,
+    "src/routes/financial/transactions.routes.ts": 1,
+    "src/services/financial/ai-categorization-prisma.service.ts": 12,
+    "src/services/financial/invoice-generation.service.ts": 3,
+    "src/services/financial/invoice-prisma.service.ts": 60,
+    "src/services/financial/reporting-prisma.service.ts": 31
+  },
+  "missingProperties": {
+    "{ success: boolean; data: { invoice: { client: { email: string; userId: string; id: string; name: string; timezone: string | null; createdAt: Date; updatedAt: Date; tags: string[]; status: string; ... 20 more ...; lastContactDate: Date | null; } | null; } & { ...; }; }; }::status": {
+      "property": "status",
+      "type": "{ success: boolean; data: { invoice: { client: { email: string; userId: string; id: string; name: string; timezone: string | null; createdAt: Date; updatedAt: Date; tags: string[]; status: string; ... 20 more ...; lastContactDate: Date | null; } | null; } & { ...; }; }; }",
+      "files": [
+        "src/routes/financial/invoices.controller.ts"
+      ]
+    },
+    "{ success: boolean; data: { invoice: { client: { email: string; userId: string; id: string; name: string; timezone: string | null; createdAt: Date; updatedAt: Date; tags: string[]; status: string; ... 20 more ...; lastContactDate: Date | null; } | null; } & { ...; }; }; }::clientId": {
+      "property": "clientId",
+      "type": "{ success: boolean; data: { invoice: { client: { email: string; userId: string; id: string; name: string; timezone: string | null; createdAt: Date; updatedAt: Date; tags: string[]; status: string; ... 20 more ...; lastContactDate: Date | null; } | null; } & { ...; }; }; }",
+      "files": [
+        "src/routes/financial/invoices.controller.ts"
+      ]
+    },
+    "{ success: boolean; data: { client: { totalRevenue: number; totalInvoices: number; totalPaid: number; totalPending: number; invoices: { userId: string; id: string; type: string; createdAt: Date; ... 40 more ...; templateId: string | null; }[]; ... 27 more ...; lastContactDate: Date | null; }; }; }::language": {
+      "property": "language",
+      "type": "{ success: boolean; data: { client: { totalRevenue: number; totalInvoices: number; totalPaid: number; totalPending: number; invoices: { userId: string; id: string; type: string; createdAt: Date; ... 40 more ...; templateId: string | null; }[]; ... 27 more ...; lastContactDate: Date | null; }; }; }",
+      "files": [
+        "src/routes/financial/invoices.controller.ts"
+      ]
+    },
+    "InvoiceGenerationService::getNextInvoiceNumber": {
+      "property": "getNextInvoiceNumber",
+      "type": "InvoiceGenerationService",
+      "files": [
+        "src/routes/financial/invoices.controller.ts"
+      ]
+    },
+    "{ id: string; created_at: Date | null; transaction_id: string | null; category_id: string | null; confidence: Decimal | null; method: string | null; }::user_confirmed": {
+      "property": "user_confirmed",
+      "type": "{ id: string; created_at: Date | null; transaction_id: string | null; category_id: string | null; confidence: Decimal | null; method: string | null; }",
+      "files": [
+        "src/services/financial/ai-categorization-prisma.service.ts"
+      ]
+    },
+    "PrismaClient<PrismaClientOptions, never, DefaultArgs>::ai_tags": {
+      "property": "ai_tags",
+      "type": "PrismaClient<PrismaClientOptions, never, DefaultArgs>",
+      "files": [
+        "src/services/financial/ai-categorization-prisma.service.ts",
+        "src/services/financial/ai-categorization-prisma.service.ts",
+        "src/services/financial/ai-categorization-prisma.service.ts",
+        "src/services/financial/ai-categorization-prisma.service.ts",
+        "src/services/financial/ai-categorization-prisma.service.ts",
+        "src/services/financial/ai-categorization-prisma.service.ts"
+      ]
+    },
+    "{ id: string; created_at: Date | null; transaction_id: string | null; category_id: string | null; confidence: Decimal | null; method: string | null; }::ai_tag_id": {
+      "property": "ai_tag_id",
+      "type": "{ id: string; created_at: Date | null; transaction_id: string | null; category_id: string | null; confidence: Decimal | null; method: string | null; }",
+      "files": [
+        "src/services/financial/ai-categorization-prisma.service.ts",
+        "src/services/financial/ai-categorization-prisma.service.ts"
+      ]
+    },
+    "Invoice::templateId": {
+      "property": "templateId",
+      "type": "Invoice",
+      "files": [
+        "src/services/financial/invoice-generation.service.ts",
+        "src/services/financial/invoice-generation.service.ts",
+        "src/services/financial/invoice-generation.service.ts"
+      ]
+    },
+    "InvoiceFormData::taxRate": {
+      "property": "taxRate",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::total": {
+      "property": "total",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::discount": {
+      "property": "discount",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::clientTaxId": {
+      "property": "clientTaxId",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::clientAddress": {
+      "property": "clientAddress",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::type": {
+      "property": "type",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::serviceStartDate": {
+      "property": "serviceStartDate",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::serviceEndDate": {
+      "property": "serviceEndDate",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::taxType": {
+      "property": "taxType",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::discountType": {
+      "property": "discountType",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::paymentMethod": {
+      "property": "paymentMethod",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::paymentTerms": {
+      "property": "paymentTerms",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::bankAccount": {
+      "property": "bankAccount",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::termsAndConditions": {
+      "property": "termsAndConditions",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::tags": {
+      "property": "tags",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "InvoiceFormData::customFields": {
+      "property": "customFields",
+      "type": "InvoiceFormData",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::total": {
+      "property": "total",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::taxRate": {
+      "property": "taxRate",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::discount": {
+      "property": "discount",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::clientTaxId": {
+      "property": "clientTaxId",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::clientAddress": {
+      "property": "clientAddress",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::type": {
+      "property": "type",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::serviceStartDate": {
+      "property": "serviceStartDate",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::serviceEndDate": {
+      "property": "serviceEndDate",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::taxType": {
+      "property": "taxType",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::discountType": {
+      "property": "discountType",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::paymentMethod": {
+      "property": "paymentMethod",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::paymentTerms": {
+      "property": "paymentTerms",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::bankAccount": {
+      "property": "bankAccount",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::termsAndConditions": {
+      "property": "termsAndConditions",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::tags": {
+      "property": "tags",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "Partial<InvoiceFormData>::customFields": {
+      "property": "customFields",
+      "type": "Partial<InvoiceFormData>",
+      "files": [
+        "src/services/financial/invoice-prisma.service.ts",
+        "src/services/financial/invoice-prisma.service.ts"
+      ]
+    },
+    "{ id: string; name: string; type: string | null; created_at: Date | null; updated_at: Date | null; is_active: boolean | null; parent_id: string | null; color: string | null; icon: string | null; }::description": {
+      "property": "description",
+      "type": "{ id: string; name: string; type: string | null; created_at: Date | null; updated_at: Date | null; is_active: boolean | null; parent_id: string | null; color: string | null; icon: string | null; }",
+      "files": [
+        "src/services/financial/reporting-prisma.service.ts"
+      ]
+    },
+    "PrismaClient<PrismaClientOptions, never, DefaultArgs>::subcategories": {
+      "property": "subcategories",
+      "type": "PrismaClient<PrismaClientOptions, never, DefaultArgs>",
+      "files": [
+        "src/services/financial/reporting-prisma.service.ts"
+      ]
+    },
+    "{ id: string; date: Date; type: string; gocardless_data: JsonValue; transaction_hash: string | null; block_number: number | null; gas_used: string | null; gas_price: string | null; ... 16 more ...; fee_currency_id: string | null; }::transaction_categorizations": {
+      "property": "transaction_categorizations",
+      "type": "{ id: string; date: Date; type: string; gocardless_data: JsonValue; transaction_hash: string | null; block_number: number | null; gas_used: string | null; gas_price: string | null; ... 16 more ...; fee_currency_id: string | null; }",
+      "files": [
+        "src/services/financial/reporting-prisma.service.ts",
+        "src/services/financial/reporting-prisma.service.ts",
+        "src/services/financial/reporting-prisma.service.ts",
+        "src/services/financial/reporting-prisma.service.ts",
+        "src/services/financial/reporting-prisma.service.ts"
+      ]
+    },
+    "{ id: string; name: string; type: string; created_at: Date | null; updated_at: Date | null; metadata: JsonValue; iban: string | null; balance: Decimal | null; ... 10 more ...; last_sync: Date | null; }::transactions": {
+      "property": "transactions",
+      "type": "{ id: string; name: string; type: string; created_at: Date | null; updated_at: Date | null; metadata: JsonValue; iban: string | null; balance: Decimal | null; ... 10 more ...; last_sync: Date | null; }",
+      "files": [
+        "src/services/financial/reporting-prisma.service.ts",
+        "src/services/financial/reporting-prisma.service.ts"
+      ]
+    },
+    "{ id: string; name: string; type: string; created_at: Date | null; updated_at: Date | null; metadata: JsonValue; iban: string | null; balance: Decimal | null; ... 10 more ...; last_sync: Date | null; }::currencies": {
+      "property": "currencies",
+      "type": "{ id: string; name: string; type: string; created_at: Date | null; updated_at: Date | null; metadata: JsonValue; iban: string | null; balance: Decimal | null; ... 10 more ...; last_sync: Date | null; }",
+      "files": [
+        "src/services/financial/reporting-prisma.service.ts"
+      ]
+    }
+  },
+  "recommendations": []
+}

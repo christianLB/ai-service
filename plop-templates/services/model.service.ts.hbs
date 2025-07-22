@@ -6,15 +6,25 @@ import {
   {{pascalCase model}}Query,
   {{pascalCase model}}WithRelations
 } from '../types/{{kebabCase model}}.types';
+{{#if modelInfo}}
 import { Prisma } from '@prisma/client';
+{{/if}}
 import { AppError } from '../utils/errors';
 import logger from '../utils/logger';
 
+{{#if modelInfo}}
 {{#if schema}}
 const MODEL_NAME = Prisma.ModelName.{{camelCase model}};
 const TABLE_NAME = '{{schema}}.{{snakeCase model}}s';
 {{else}}
 const MODEL_NAME = Prisma.ModelName.{{camelCase model}};
+{{/if}}
+{{else}}
+// Model name will be available when Prisma model is created
+const MODEL_NAME = '{{camelCase model}}';
+{{#if schema}}
+const TABLE_NAME = '{{schema}}.{{snakeCase model}}s';
+{{/if}}
 {{/if}}
 
 export class {{pascalCase model}}Service {
@@ -27,7 +37,7 @@ export class {{pascalCase model}}Service {
       const skip = (page - 1) * limit;
 
       // Build where clause
-      const where: Prisma.{{camelCase model}}WhereInput = {
+      const where{{#if modelInfo}}: Prisma.{{camelCase model}}WhereInput{{/if}} = {
         {{#if (or (eq model 'Client') (eq model 'Invoice') (eq model 'Trade'))}}
         ...(userId && { userId }),
         {{/if}}

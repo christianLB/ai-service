@@ -124,7 +124,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
       width={720}
       okText={isEdit ? 'Update' : 'Create'}
     >
-      <Form layout="vertical" form={form} style={{ marginTop: 24 }}>
+      <Form layout="vertical" form={form} style=\{{ marginTop: 24 }}>
         {{#if (eq model 'Client')}}
         <Row gutter={16}>
           <Col span={12}>
@@ -137,7 +137,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                 )}
               />
               {errors.name && (
-                <span style={{ color: 'red', fontSize: 12 }}>{errors.name.message}</span>
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.name.message}</span>
               )}
             </Form.Item>
           </Col>
@@ -151,7 +151,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                 )}
               />
               {errors.email && (
-                <span style={{ color: 'red', fontSize: 12 }}>{errors.email.message}</span>
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.email.message}</span>
               )}
             </Form.Item>
           </Col>
@@ -257,7 +257,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                 name="paymentTerms"
                 control={control}
                 render={({ field }) => (
-                  <InputNumber {...field} min={0} max={365} style={{ width: '100%' }} />
+                  <InputNumber {...field} min={0} max={365} style=\{{ width: '100%' }} />
                 )}
               />
             </Form.Item>
@@ -298,7 +298,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                 )}
               />
               {errors.clientId && (
-                <span style={{ color: 'red', fontSize: 12 }}>{errors.clientId.message}</span>
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.clientId.message}</span>
               )}
             </Form.Item>
           </Col>
@@ -331,7 +331,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                     {...field}
                     value={field.value ? dayjs(field.value) : null}
                     onChange={(date) => field.onChange(date?.toDate())}
-                    style={{ width: '100%' }}
+                    style=\{{ width: '100%' }}
                   />
                 )}
               />
@@ -347,7 +347,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                     {...field}
                     value={field.value ? dayjs(field.value) : null}
                     onChange={(date) => field.onChange(date?.toDate())}
-                    style={{ width: '100%' }}
+                    style=\{{ width: '100%' }}
                   />
                 )}
               />
@@ -401,7 +401,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                 )}
               />
               {errors.symbol && (
-                <span style={{ color: 'red', fontSize: 12 }}>{errors.symbol.message}</span>
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.symbol.message}</span>
               )}
             </Form.Item>
           </Col>
@@ -433,12 +433,12 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                     min={0}
                     step={0.0001}
                     precision={8}
-                    style={{ width: '100%' }}
+                    style=\{{ width: '100%' }}
                   />
                 )}
               />
               {errors.quantity && (
-                <span style={{ color: 'red', fontSize: 12 }}>{errors.quantity.message}</span>
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.quantity.message}</span>
               )}
             </Form.Item>
           </Col>
@@ -453,12 +453,12 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                     min={0}
                     step={0.01}
                     precision={8}
-                    style={{ width: '100%' }}
+                    style=\{{ width: '100%' }}
                   />
                 )}
               />
               {errors.price && (
-                <span style={{ color: 'red', fontSize: 12 }}>{errors.price.message}</span>
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.price.message}</span>
               )}
             </Form.Item>
           </Col>
@@ -479,7 +479,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
                 )}
               />
               {errors.exchange && (
-                <span style={{ color: 'red', fontSize: 12 }}>{errors.exchange.message}</span>
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.exchange.message}</span>
               )}
             </Form.Item>
           </Col>
@@ -510,7 +510,7 @@ export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> =
             )}
           />
           {errors.name && (
-            <span style={{ color: 'red', fontSize: 12 }}>{errors.name.message}</span>
+            <span style=\{{ color: 'red', fontSize: 12 }}>{errors.name.message}</span>
           )}
         </Form.Item>
 
