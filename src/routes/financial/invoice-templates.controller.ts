@@ -64,13 +64,15 @@ export class InvoiceTemplatesController {
    */
   async createInvoiceTemplate(req: Request, res: Response) {
     try {
-      const data = createInvoiceTemplateSchema.parse(req.body);
       const userId = (req as any).user?.id;
+      const bodyData = { ...req.body };
       
       // Ensure userId is set
-      if (!data.userId && userId) {
-        data.userId = userId;
+      if (!bodyData.userId && userId) {
+        bodyData.userId = userId;
       }
+      
+      const data = createInvoiceTemplateSchema.parse(bodyData);
       
       const template = await invoiceTemplateService.create(data);
       

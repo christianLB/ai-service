@@ -18,7 +18,6 @@ export const invoiceTemplateSchema = z.object({
 // Create schema (omit id and timestamps)
 export const createInvoiceTemplateSchema = invoiceTemplateSchema.omit({
   id: true,
-  createdAt: true,
   updatedAt: true,
 });
 
