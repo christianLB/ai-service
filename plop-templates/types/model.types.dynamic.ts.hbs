@@ -102,7 +102,7 @@ export type Update{{pascalCase model}} = z.infer<typeof update{{pascalCase model
 export type {{pascalCase model}}Query = z.infer<typeof {{camelCase model}}QuerySchema>;
 
 // Prisma types
-export type {{pascalCase model}}WithRelations = Prisma.{{pascalCase model}}GetPayload<{
+export type {{pascalCase model}}WithRelations = Prisma.{{camelCase model}}GetPayload<{
   {{#if modelInfo}}
   {{#if modelInfo.relations.length}}
   include: {

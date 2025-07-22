@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body, query, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authMiddleware } from '../middleware/auth.middleware';
 import { validateRequest } from '../middleware/validation';
 import { {{camelCase model}}Service } from '../services/{{kebabCase model}}.service';
 import { 
@@ -14,7 +14,7 @@ import logger from '../utils/logger';
 const router = Router();
 
 // All routes require authentication
-router.use(authenticate);
+router.use(authMiddleware);
 
 /**
  * GET /api/{{kebabCase model}}s
@@ -22,7 +22,7 @@ router.use(authenticate);
  */
 router.get(
   '/',
-  validateRequest([
+  [
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),
     query('search').optional().isString().trim(),
@@ -36,10 +36,11 @@ router.get(
     query('status').optional().isIn(['pending', 'filled', 'cancelled']),
     query('strategyId').optional().isUUID(),
     {{/if}}
-  ]),
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
     const queryParams = {{camelCase model}}QuerySchema.parse(req.query);
-    const result = await {{camelCase model}}Service.getAll(queryParams, req.user?.id);
+    const result = await {{camelCase model}}Service.getAll(queryParams, req.user?.userId);
     
     res.json({
       success: true,
@@ -54,11 +55,12 @@ router.get(
  */
 router.get(
   '/:id',
-  validateRequest([
+  [
     param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
-  ]),
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
-    const {{camelCase model}} = await {{camelCase model}}Service.getById(req.params.id, req.user?.id);
+    const {{camelCase model}} = await {{camelCase model}}Service.getById(req.params.id, req.user?.userId);
     
     res.json({
       success: true,
@@ -73,7 +75,7 @@ router.get(
  */
 router.post(
   '/',
-  validateRequest([
+  [
     {{#if (eq model 'Client')}}
     body('name').notEmpty().withMessage('Name is required'),
     body('email').optional({ nullable: true }).isEmail(),
@@ -101,10 +103,11 @@ router.post(
     body('name').notEmpty().withMessage('Name is required'),
     body('description').optional({ nullable: true }).isString(),
     {{/if}}
-  ]),
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
     const data = create{{pascalCase model}}Schema.parse(req.body);
-    const {{camelCase model}} = await {{camelCase model}}Service.create(data, req.user?.id);
+    const {{camelCase model}} = await {{camelCase model}}Service.create(data, req.user?.userId);
     
     logger.info(`{{pascalCase model}} created by user ${req.user?.email}`);
     
@@ -122,7 +125,7 @@ router.post(
  */
 router.put(
   '/:id',
-  validateRequest([
+  [
     param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
     {{#if (eq model 'Client')}}
     body('name').optional().notEmpty(),
@@ -145,10 +148,11 @@ router.put(
     body('description').optional({ nullable: true }).isString(),
     body('isActive').optional().isBoolean(),
     {{/if}}
-  ]),
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
     const data = update{{pascalCase model}}Schema.parse({ ...req.body, id: req.params.id });
-    const {{camelCase model}} = await {{camelCase model}}Service.update(req.params.id, data, req.user?.id);
+    const {{camelCase model}} = await {{camelCase model}}Service.update(req.params.id, data, req.user?.userId);
     
     logger.info(`{{pascalCase model}} ${req.params.id} updated by user ${req.user?.email}`);
     
@@ -166,11 +170,12 @@ router.put(
  */
 router.delete(
   '/:id',
-  validateRequest([
+  [
     param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
-  ]),
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
-    await {{camelCase model}}Service.delete(req.params.id, req.user?.id);
+    await {{camelCase model}}Service.delete(req.params.id, req.user?.userId);
     
     logger.info(`{{pascalCase model}} ${req.params.id} deleted by user ${req.user?.email}`);
     
@@ -188,11 +193,12 @@ router.delete(
  */
 router.get(
   '/search',
-  validateRequest([
+  [
     query('q').notEmpty().withMessage('Search query is required'),
-  ]),
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
-    const results = await {{camelCase model}}Service.search(req.query.q as string, req.user?.id);
+    const results = await {{camelCase model}}Service.search(req.query.q as string, req.user?.userId);
     
     res.json({
       success: true,
@@ -209,12 +215,13 @@ router.get(
  */
 router.post(
   '/bulk',
-  validateRequest([
+  [
     body('items').isArray({ min: 1, max: 100 }).withMessage('Items array is required (max 100)'),
-  ]),
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
     const items = req.body.items.map(item => create{{pascalCase model}}Schema.parse(item));
-    const count = await {{camelCase model}}Service.bulkCreate(items, req.user?.id);
+    const count = await {{camelCase model}}Service.bulkCreate(items, req.user?.userId);
     
     logger.info(`Bulk created ${count} {{lowerCase model}}s by user ${req.user?.email}`);
     
@@ -234,12 +241,13 @@ router.post(
  */
 router.delete(
   '/bulk',
-  validateRequest([
+  [
     body('ids').isArray({ min: 1, max: 100 }).withMessage('IDs array is required (max 100)'),
     body('ids.*').isUUID().withMessage('All IDs must be valid UUIDs'),
-  ]),
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
-    const count = await {{camelCase model}}Service.bulkDelete(req.body.ids, req.user?.id);
+    const count = await {{camelCase model}}Service.bulkDelete(req.body.ids, req.user?.userId);
     
     logger.info(`Bulk deleted ${count} {{lowerCase model}}s by user ${req.user?.email}`);
     

@@ -4,7 +4,7 @@ import { GoCardlessService } from '../services/financial/gocardless.service';
 import { FinancialDatabaseService } from '../services/financial/database.service';
 import { FinancialSchedulerService } from '../services/financial/scheduler.service';
 import { financialReportingPrismaService } from '../services/financial/reporting-prisma.service';
-import { transactionMatchingPrismaService } from '../services/financial/transaction-matching-prisma.service';
+// import { transactionMatchingPrismaService } from '../services/financial/transaction-matching-prisma.service';
 import { Account } from '../services/financial/types';
 import clientsRoutes from './financial/clients.routes';
 import invoicesRoutes from './financial/invoices.routes';
@@ -51,7 +51,7 @@ const initializeServices = () => {
     // Get client controller instance and set transaction matching service
     const ClientsController = require('./financial/clients.controller').ClientsController;
     const clientsController = new ClientsController();
-    clientsController.setTransactionMatchingService(transactionMatchingPrismaService);
+    // clientsController.setTransactionMatchingService(transactionMatchingPrismaService);
   }
 };
 

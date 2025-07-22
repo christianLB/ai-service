@@ -11,10 +11,10 @@ import { AppError } from '../utils/errors';
 import logger from '../utils/logger';
 
 {{#if schema}}
-const MODEL_NAME = Prisma.ModelName.{{pascalCase model}};
+const MODEL_NAME = Prisma.ModelName.{{camelCase model}};
 const TABLE_NAME = '{{schema}}.{{snakeCase model}}s';
 {{else}}
-const MODEL_NAME = Prisma.ModelName.{{pascalCase model}};
+const MODEL_NAME = Prisma.ModelName.{{camelCase model}};
 {{/if}}
 
 export class {{pascalCase model}}Service {
@@ -27,7 +27,7 @@ export class {{pascalCase model}}Service {
       const skip = (page - 1) * limit;
 
       // Build where clause
-      const where: Prisma.{{pascalCase model}}WhereInput = {
+      const where: Prisma.{{camelCase model}}WhereInput = {
         {{#if (or (eq model 'Client') (eq model 'Invoice') (eq model 'Trade'))}}
         ...(userId && { userId }),
         {{/if}}
