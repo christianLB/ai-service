@@ -1,0 +1,558 @@
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Table,
+  Button,
+  Card,
+  Space,
+  Input,
+  Select,
+  Tag,
+  Tooltip,
+  Popconfirm,
+  message,
+  Row,
+  Col,
+  Statistic,
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  ExportOutlined,
+} from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
+import { use{{pascalCase model}}s, use{{pascalCase model}}Mutations } from '../../hooks/use-{{kebabCase model}}';
+import { {{pascalCase model}}Form } from './{{pascalCase model}}Form';
+import type { {{pascalCase model}} } from '../../../../src/types/{{kebabCase model}}.types';
+import { formatDate, formatCurrency } from '../../utils/format';
+import { useDebounce } from '../../hooks/useDebounce';
+
+const { Search } = Input;
+
+export const {{pascalCase model}}List: React.FC = () => {
+  const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [search, setSearch] = useState('');
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [formVisible, setFormVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<{{pascalCase model}} | null>(null);
+  {{#if (eq model 'Invoice')}}
+  const [statusFilter, setStatusFilter] = useState<string>();
+  {{else if (eq model 'Trade')}}
+  const [statusFilter, setStatusFilter] = useState<string>();
+  const [symbolFilter, setSymbolFilter] = useState<string>();
+  {{/if}}
+
+  const debouncedSearch = useDebounce(search, 500);
+
+  // Fetch data
+  const { data, isLoading, refetch } = use{{pascalCase model}}s({
+    page,
+    limit: pageSize,
+    search: debouncedSearch,
+    {{#if (eq model 'Invoice')}}
+    ...(statusFilter && { status: statusFilter as any }),
+    {{else if (eq model 'Trade')}}
+    ...(statusFilter && { status: statusFilter as any }),
+    ...(symbolFilter && { symbol: symbolFilter }),
+    {{/if}}
+  });
+
+  // Mutations
+  const { delete: deleteItem, bulkDelete, isDeleting, isBulkDeleting } = use{{pascalCase model}}Mutations();
+
+  // Table columns
+  const columns: ColumnsType<{{pascalCase model}}> = [
+    {{#if (eq model 'Client')}}
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: true,
+      render: (text, record) => (
+        <a onClick={() => navigate(`/{{kebabCase model}}s/${record.id}`)}>
+          {text}
+        </a>
+      ),
+    },
+    {
+      title: 'Email',
+      dataIndex: 'email',
+      key: 'email',
+    },
+    {
+      title: 'Phone',
+      dataIndex: 'phone',
+      key: 'phone',
+    },
+    {
+      title: 'Tax ID',
+      dataIndex: 'taxId',
+      key: 'taxId',
+    },
+    {
+      title: 'Currency',
+      dataIndex: 'defaultCurrency',
+      key: 'defaultCurrency',
+      render: (currency) => <Tag>{currency}</Tag>,
+    },
+    {
+      title: 'Payment Terms',
+      dataIndex: 'paymentTerms',
+      key: 'paymentTerms',
+      render: (days) => `$\{days} days`,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive) => (
+        <Tag color={isActive ? 'green' : 'red'}>
+          {isActive ? 'Active' : 'Inactive'}
+        </Tag>
+      ),
+    },
+    {{else if (eq model 'Invoice')}}
+    {
+      title: 'Invoice Number',
+      dataIndex: 'invoiceNumber',
+      key: 'invoiceNumber',
+      sorter: true,
+      render: (text, record) => (
+        <a onClick={() => navigate(`/{{kebabCase model}}s/${record.id}`)}>
+          {text}
+        </a>
+      ),
+    },
+    {
+      title: 'Client',
+      dataIndex: ['client', 'name'],
+      key: 'client',
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        const colors = {
+          draft: 'default',
+          sent: 'blue',
+          paid: 'green',
+          cancelled: 'red',
+        };
+        return <Tag color={colors[status]}>{status.toUpperCase()}</Tag>;
+      },
+    },
+    {
+      title: 'Issue Date',
+      dataIndex: 'issueDate',
+      key: 'issueDate',
+      sorter: true,
+      render: (date) => formatDate(date),
+    },
+    {
+      title: 'Due Date',
+      dataIndex: 'dueDate',
+      key: 'dueDate',
+      sorter: true,
+      render: (date) => formatDate(date),
+    },
+    {
+      title: 'Total',
+      dataIndex: 'totalAmount',
+      key: 'totalAmount',
+      sorter: true,
+      align: 'right',
+      render: (amount, record) => formatCurrency(amount, record.currency),
+    },
+    {{else if (eq model 'Trade')}}
+    {
+      title: 'Symbol',
+      dataIndex: 'symbol',
+      key: 'symbol',
+      sorter: true,
+      render: (text) => <Tag color="blue">{text}</Tag>,
+    },
+    {
+      title: 'Side',
+      dataIndex: 'side',
+      key: 'side',
+      render: (side) => (
+        <Tag color={side === 'buy' ? 'green' : 'red'}>
+          {side.toUpperCase()}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Quantity',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      align: 'right',
+      render: (qty) => qty.toFixed(8),
+    },
+    {
+      title: 'Price',
+      dataIndex: 'price',
+      key: 'price',
+      align: 'right',
+      render: (price) => formatCurrency(price, 'USD'),
+    },
+    {
+      title: 'Exchange',
+      dataIndex: 'exchange',
+      key: 'exchange',
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        const colors = {
+          pending: 'default',
+          filled: 'green',
+          cancelled: 'red',
+        };
+        return <Tag color={colors[status]}>{status.toUpperCase()}</Tag>;
+      },
+    },
+    {
+      title: 'Executed At',
+      dataIndex: 'executedAt',
+      key: 'executedAt',
+      sorter: true,
+      render: (date) => date ? formatDate(date) : '-',
+    },
+    {{else}}
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: true,
+      render: (text, record) => (
+        <a onClick={() => navigate(`/{{kebabCase model}}s/${record.id}`)}>
+          {text}
+        </a>
+      ),
+    },
+    {
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive) => (
+        <Tag color={isActive ? 'green' : 'red'}>
+          {isActive ? 'Active' : 'Inactive'}
+        </Tag>
+      ),
+    },
+    {{/if}}
+    {
+      title: 'Created',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      sorter: true,
+      render: (date) => formatDate(date),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      fixed: 'right',
+      width: 120,
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="Edit">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Delete">
+            <Popconfirm
+              title="Are you sure you want to delete this {{lowerCase model}}?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps=\{{ danger: true }}
+            >
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                loading={isDeleting}
+              />
+            </Popconfirm>
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
+  // Handlers
+  const handleEdit = (item: {{pascalCase model}}) => {
+    setEditingItem(item);
+    setFormVisible(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteItem(id);
+      setSelectedRowKeys(selectedRowKeys.filter(key => key !== id));
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select items to delete');
+      return;
+    }
+
+    try {
+      await bulkDelete(selectedRowKeys);
+      setSelectedRowKeys([]);
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleFormClose = () => {
+    setFormVisible(false);
+    setEditingItem(null);
+  };
+
+  const handleFormSuccess = () => {
+    handleFormClose();
+    refetch();
+  };
+
+  // Statistics
+  const statistics = useMemo(() => {
+    if (!data) return null;
+
+    {{#if (eq model 'Invoice')}}
+    const paid = data.items.filter(i => i.status === 'paid').length;
+    const pending = data.items.filter(i => ['draft', 'sent'].includes(i.status)).length;
+    const totalValue = data.items
+      .filter(i => i.status === 'paid')
+      .reduce((sum, i) => sum + Number(i.totalAmount), 0);
+
+    return {
+      total: data.total,
+      paid,
+      pending,
+      totalValue,
+    };
+    {{else if (eq model 'Trade')}}
+    const filled = data.items.filter(i => i.status === 'filled').length;
+    const pending = data.items.filter(i => i.status === 'pending').length;
+    const buyVolume = data.items
+      .filter(i => i.side === 'buy' && i.status === 'filled')
+      .reduce((sum, i) => sum + Number(i.quantity) * Number(i.price), 0);
+    const sellVolume = data.items
+      .filter(i => i.side === 'sell' && i.status === 'filled')
+      .reduce((sum, i) => sum + Number(i.quantity) * Number(i.price), 0);
+
+    return {
+      total: data.total,
+      filled,
+      pending,
+      buyVolume,
+      sellVolume,
+    };
+    {{else}}
+    const active = data.items.filter(i => i.isActive).length;
+    const inactive = data.items.filter(i => !i.isActive).length;
+
+    return {
+      total: data.total,
+      active,
+      inactive,
+    };
+    {{/if}}
+  }, [data]);
+
+  return (
+    <>
+      <Card>
+        {statistics && (
+          <Row gutter={16} style=\{{ marginBottom: 24 }}>
+            <Col span={6}>
+              <Statistic title="Total {{titleCase model}}s" value={statistics.total} />
+            </Col>
+            {{#if (eq model 'Invoice')}}
+            <Col span={6}>
+              <Statistic title="Paid" value={statistics.paid} valueStyle=\{{ color: '#3f8600' }} />
+            </Col>
+            <Col span={6}>
+              <Statistic title="Pending" value={statistics.pending} valueStyle=\{{ color: '#cf1322' }} />
+            </Col>
+            <Col span={6}>
+              <Statistic
+                title="Total Value"
+                value={statistics.totalValue}
+                precision={2}
+                prefix="€"
+                valueStyle=\{{ color: '#3f8600' }}
+              />
+            </Col>
+            {{else if (eq model 'Trade')}}
+            <Col span={6}>
+              <Statistic title="Filled" value={statistics.filled} valueStyle=\{{ color: '#3f8600' }} />
+            </Col>
+            <Col span={6}>
+              <Statistic title="Pending" value={statistics.pending} valueStyle=\{{ color: '#faad14' }} />
+            </Col>
+            <Col span={6}>
+              <Statistic
+                title="Buy Volume"
+                value={statistics.buyVolume}
+                precision={2}
+                prefix="$"
+                valueStyle=\{{ color: '#3f8600' }}
+              />
+            </Col>
+            {{else}}
+            <Col span={6}>
+              <Statistic title="Active" value={statistics.active} valueStyle=\{{ color: '#3f8600' }} />
+            </Col>
+            <Col span={6}>
+              <Statistic title="Inactive" value={statistics.inactive} valueStyle=\{{ color: '#cf1322' }} />
+            </Col>
+            {{/if}}
+          </Row>
+        )}
+
+        <div style=\{{ marginBottom: 16 }}>
+          <Row gutter={16}>
+            <Col flex="auto">
+              <Space>
+                <Search
+                  placeholder="Search {{lowerCase model}}s..."
+                  allowClear
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style=\{{ width: 300 }}
+                  prefix={<SearchOutlined />}
+                />
+                {{#if (eq model 'Invoice')}}
+                <Select
+                  placeholder="Filter by status"
+                  allowClear
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  style=\{{ width: 150 }}
+                  options={[
+                    { label: 'Draft', value: 'draft' },
+                    { label: 'Sent', value: 'sent' },
+                    { label: 'Paid', value: 'paid' },
+                    { label: 'Cancelled', value: 'cancelled' },
+                  ]}
+                />
+                {{else if (eq model 'Trade')}}
+                <Select
+                  placeholder="Filter by status"
+                  allowClear
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  style=\{{ width: 150 }}
+                  options={[
+                    { label: 'Pending', value: 'pending' },
+                    { label: 'Filled', value: 'filled' },
+                    { label: 'Cancelled', value: 'cancelled' },
+                  ]}
+                />
+                <Input
+                  placeholder="Filter by symbol"
+                  allowClear
+                  value={symbolFilter}
+                  onChange={(e) => setSymbolFilter(e.target.value)}
+                  style=\{{ width: 150 }}
+                />
+                {{/if}}
+                <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
+                  Refresh
+                </Button>
+              </Space>
+            </Col>
+            <Col>
+              <Space>
+                {selectedRowKeys.length > 0 && (
+                  <Popconfirm
+                    title={`Are you sure you want to delete $\{selectedRowKeys.length} {{lowerCase model}}s?`}
+                    onConfirm={handleBulkDelete}
+                    okText="Yes"
+                    cancelText="No"
+                    okButtonProps=\{{ danger: true }}
+                  >
+                    <Button
+                      danger
+                      icon={<DeleteOutlined />}
+                      loading={isBulkDeleting}
+                    >
+                      Delete Selected ({selectedRowKeys.length})
+                    </Button>
+                  </Popconfirm>
+                )}
+                <Button icon={<ExportOutlined />}>Export</Button>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setFormVisible(true)}
+                >
+                  New {{titleCase model}}
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </div>
+
+        <Table
+          columns={columns}
+          dataSource={data?.items || []}
+          rowKey="id"
+          loading={isLoading}
+          pagination=\{{
+            current: page,
+            pageSize: pageSize,
+            total: data?.total || 0,
+            showSizeChanger: true,
+            showTotal: (total) => `Total $\{total} items`,
+            onChange: (newPage, newPageSize) => {
+              setPage(newPage);
+              if (newPageSize !== pageSize) {
+                setPageSize(newPageSize);
+              }
+            },
+          }}
+          rowSelection=\{{
+            selectedRowKeys,
+            onChange: setSelectedRowKeys,
+          }}
+          scroll=\{{ x: 1200 }}
+        />
+      </Card>
+
+      {formVisible && (
+        <{{pascalCase model}}Form
+          open={formVisible}
+          onClose={handleFormClose}
+          onSuccess={handleFormSuccess}
+          initialData={editingItem}
+        />
+      )}
+    </>
+  );
+};

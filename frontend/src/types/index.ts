@@ -100,6 +100,7 @@ export interface Invoice {
   isDeductible?: boolean;
   deductibleCategory?: string;
   deductiblePercentage?: number;
+  templateId?: string;
 }
 
 export interface InvoiceItem {
@@ -250,6 +251,7 @@ export interface InvoiceFormData {
   isDeductible?: boolean;
   deductibleCategory?: string;
   deductiblePercentage?: number;
+  templateId?: string;
 }
 
 // ============================================================================

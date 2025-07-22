@@ -1,0 +1,107 @@
+{
+  "name": "AI Service",
+  "description": "Multi-module AI service with financial, trading, and document intelligence",
+  "version": "1.0.0",
+  "settings": {
+    "language": "es-en",
+    "framework": "express-typescript",
+    "database": "postgresql-prisma",
+    "defaultPersona": "backend",
+    "autoFlags": {
+      "database": ["--validate", "--safe-mode"],
+      "financial": ["--persona-security", "--validate"],
+      "trading": ["--persona-performance", "--think"],
+      "frontend": ["--persona-frontend", "--magic"]
+    }
+  },
+  "performance": {
+    "tokenEfficiency": {
+      "enabled": true,
+      "autoCompress": true,
+      "threshold": 0.75
+    },
+    "caching": {
+      "enabled": true,
+      "ttl": 3600,
+      "maxSize": "100MB"
+    },
+    "resourceLimits": {
+      "maxTokensPerOperation": 30000,
+      "warningThreshold": 0.8,
+      "parallelOperations": 3
+    }
+  },
+  "mcp": {
+    "autoDetect": true,
+    "servers": {
+      "context7": {
+        "enabled": true,
+        "priority": "high",
+        "use": ["prisma", "react", "express", "typescript"]
+      },
+      "sequential": {
+        "enabled": true,
+        "priority": "medium",
+        "use": ["complex-analysis", "trading-strategies", "performance"]
+      },
+      "magic": {
+        "enabled": true,
+        "priority": "high",
+        "use": ["ui-components", "dashboard", "frontend"]
+      }
+    }
+  },
+  "customCommands": {
+    "/db-safe": {
+      "description": "Safe database operations with automatic backup",
+      "flags": ["--validate", "--safe-mode", "--persona-backend"],
+      "preCommand": "make db-backup"
+    },
+    "/financial-audit": {
+      "description": "Comprehensive financial module audit",
+      "flags": ["--persona-security", "--think-hard", "--validate"],
+      "focus": ["src/services/financial", "prisma/schema.prisma"]
+    },
+    "/trading-optimize": {
+      "description": "Optimize trading strategies and performance",
+      "flags": ["--persona-performance", "--think", "--seq"],
+      "focus": ["src/services/trading", "src/routes/trading.ts"]
+    },
+    "/frontend-enhance": {
+      "description": "Enhance frontend components and UX",
+      "flags": ["--persona-frontend", "--magic", "--c7"],
+      "focus": ["frontend/src"]
+    }
+  },
+  "workflows": {
+    "pre-commit": {
+      "autoRun": ["make db-migrate-status", "npm run lint", "npm run test"],
+      "required": true
+    },
+    "post-migration": {
+      "autoRun": ["make db-backup", "make dev-refresh"],
+      "required": true
+    }
+  },
+  "projectPaths": {
+    "services": "src/services",
+    "routes": "src/routes",
+    "types": "src/types",
+    "frontend": "frontend/src",
+    "database": "prisma",
+    "docs": "docs"
+  },
+  "safetyRules": {
+    "blockCommands": [
+      "docker-compose down -v",
+      "DROP SCHEMA",
+      "DROP TABLE",
+      "prisma db push --force-reset"
+    ],
+    "requireConfirmation": [
+      "prisma migrate reset",
+      "docker system prune",
+      "rm -rf"
+    ]
+  }
+}

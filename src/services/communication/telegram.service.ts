@@ -4,7 +4,7 @@ import { FinancialDatabaseService } from '../financial/database.service';
 import { TelegramDocumentService } from '../document-intelligence/telegram-document.service';
 import { InvoiceManagementService } from '../financial/invoice-management.service';
 import { ClientManagementService } from '../financial/client-management.service';
-import { FinancialReportingService } from '../financial/reporting.service';
+import { financialReportingPrismaService } from '../financial/reporting-prisma.service';
 import { logger } from '../../utils/log';
 import { auditCatch } from '../../utils/forensic-logger';
 import { integrationConfigService } from '../integrations';
@@ -16,7 +16,7 @@ export class TelegramService {
   private documentService: TelegramDocumentService | null = null;
   private invoiceService: InvoiceManagementService;
   private clientService: ClientManagementService;
-  private reportingService: FinancialReportingService;
+  // Prisma-based reporting service is used as singleton
   private isInitialized: boolean = false;
 
   constructor(config: TelegramConfig, financialService: FinancialDatabaseService) {
@@ -26,7 +26,7 @@ export class TelegramService {
     // Initialize additional services
     this.invoiceService = new InvoiceManagementService();
     this.clientService = new ClientManagementService();
-    this.reportingService = new FinancialReportingService(financialService.pool);
+    // Reporting service is now a Prisma-based singleton
     
     // Initialize bot asynchronously
     this.initializeBot();
@@ -1144,7 +1144,7 @@ Para ver los IDs usa: /invoice list
 
       const { startDate, endDate } = this.getPeriodDates(period);
       
-      const report = await this.reportingService.generateReport({
+      const report = await financialReportingPrismaService.generateReport({
         startDate,
         endDate,
         currency: 'EUR'

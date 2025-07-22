@@ -21,10 +21,12 @@ import {
   SaveOutlined,
   PlusOutlined,
   DeleteOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import invoiceService from '../../services/invoiceService';
 import clientService from '../../services/clientService';
+import { useInvoiceTemplates } from '../../hooks/use-invoice-template';
 import type { InvoiceFormData, InvoiceItem, Client } from '../../types';
 import dayjs from 'dayjs';
 
@@ -64,6 +66,13 @@ const InvoiceForm: React.FC = () => {
     subtotal: 0,
     taxAmount: 0,
     total: 0,
+  });
+  
+  // Invoice templates
+  const { data: templatesData, isLoading: loadingTemplates } = useInvoiceTemplates({
+    limit: 100,
+    sortBy: 'name',
+    sortOrder: 'asc',
   });
 
   useEffect(() => {
@@ -117,6 +126,7 @@ const InvoiceForm: React.FC = () => {
           taxType: invoice.taxType,
           notes: invoice.notes,
           termsAndConditions: invoice.termsAndConditions,
+          templateId: invoice.templateId,
         });
 
         // Set line items
@@ -267,6 +277,7 @@ const InvoiceForm: React.FC = () => {
         paymentTerms: values.paymentTerms,
         notes: values.notes,
         termsAndConditions: values.termsAndConditions,
+        templateId: values.templateId || undefined,
       };
 
       let response;
@@ -453,6 +464,39 @@ const InvoiceForm: React.FC = () => {
                   <Option value="receipt">Recibo</Option>
                 </Select>
               </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item 
+                label="Plantilla de Factura" 
+                name="templateId"
+                tooltip="Selecciona una plantilla personalizada para el formato de la factura"
+              >
+                <Select
+                  placeholder="Seleccionar plantilla (opcional)"
+                  allowClear
+                  loading={loadingTemplates}
+                  suffixIcon={<FileTextOutlined />}
+                >
+                  {templatesData?.items?.map(template => (
+                    <Option key={template.id} value={template.id}>
+                      {template.name}
+                      {template.isDefault && ' (Por defecto)'}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Button
+                type="link"
+                icon={<FileTextOutlined />}
+                onClick={() => window.open('/invoice-templates', '_blank')}
+              >
+                Gestionar Plantillas
+              </Button>
             </Col>
           </Row>
 

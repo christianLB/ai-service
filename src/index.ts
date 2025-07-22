@@ -34,6 +34,7 @@ import documentRoutes from './routes/documents';
 import realEstateRoutes from './routes/real-estate';
 import integrationRoutes from './routes/integrations';
 import { tradingRouter } from './api/trading';
+import positionRoutes from './routes/position.routes';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
@@ -248,6 +249,7 @@ app.use('/api/integrations', authMiddleware, integrationRoutes);
 
 // Trading routes
 app.use('/api/trading', authMiddleware, tradingRouter);
+app.use('/api/positions', authMiddleware, positionRoutes);
 
 // Servir archivos estáticos del frontend
 // En producción, el volumen se monta en /app/public según docker-compose.production.yml

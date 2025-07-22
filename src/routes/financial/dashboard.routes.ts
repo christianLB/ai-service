@@ -841,11 +841,10 @@ router.get('/yearly-report', async (req: Request, res: Response): Promise<void> 
     } = req.query;
 
     // Import reporting service
-    const { FinancialReportingService } = await import('../../services/financial/reporting.service');
-    const reportingService = new FinancialReportingService(databaseService.pool);
+    const { financialReportingPrismaService } = await import('../../services/financial/reporting-prisma.service');
     
     // Get yearly report
-    const yearlyReport = await reportingService.getYearlyFinancialReport(
+    const yearlyReport = await financialReportingPrismaService.getYearlyFinancialReport(
       parseInt(year as string), 
       currency as string
     );

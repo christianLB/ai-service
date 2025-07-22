@@ -542,7 +542,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Total Clientes"
-                          value={clientMetrics.summary.totalClients}
+                          value={clientMetrics?.summary?.totalClients || 0}
                           prefix={<TeamOutlined />}
                         />
                       </Card>
@@ -551,7 +551,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Clientes Activos"
-                          value={clientMetrics.summary.activeClients}
+                          value={clientMetrics?.summary?.activeClients || 0}
                           prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                           valueStyle={{ color: '#52c41a' }}
                         />
@@ -561,7 +561,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Ingresos Promedio"
-                          value={clientMetrics.summary.avgClientRevenue}
+                          value={clientMetrics?.summary?.avgClientRevenue || 0}
                           formatter={(value) => formatCurrency(value as string)}
                           prefix={<DollarOutlined />}
                         />
@@ -571,7 +571,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Balance Pendiente Total"
-                          value={clientMetrics.summary.totalOutstandingBalance}
+                          value={clientMetrics?.summary?.totalOutstandingBalance || 0}
                           formatter={(value) => formatCurrency(value as string)}
                           prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
                           valueStyle={{ color: '#faad14' }}
@@ -586,7 +586,7 @@ const Dashboard: React.FC = () => {
                   <Row gutter={16} style={{ marginBottom: 24 }}>
                     <Col xs={24} md={8}>
                       <Card title="Distribución de Riesgo">
-                        {clientMetrics.riskDistribution.map((riskLevel) => (
+                        {clientMetrics?.riskDistribution?.map((riskLevel) => (
                           <div key={riskLevel.riskScore} style={{ marginBottom: 16 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                               <span>
@@ -596,7 +596,7 @@ const Dashboard: React.FC = () => {
                               <span>{riskLevel.count} clientes</span>
                             </div>
                             <Progress 
-                              percent={(riskLevel.count / clientMetrics.summary.totalClients) * 100} 
+                              percent={(riskLevel.count / (clientMetrics?.summary?.totalClients || 1)) * 100} 
                               strokeColor={
                                 riskLevel.riskScore === 'low' ? '#52c41a' :
                                 riskLevel.riskScore === 'medium' ? '#faad14' : '#ff4d4f'
@@ -609,9 +609,9 @@ const Dashboard: React.FC = () => {
                     </Col>
                     <Col xs={24} md={16}>
                       <Card title="Mejores Clientes por Ingresos">
-                        {clientMetrics.topRevenueClients && (
+                        {clientMetrics?.topRevenueClients && (
                           <Table
-                            dataSource={clientMetrics.topRevenueClients}
+                            dataSource={clientMetrics?.topRevenueClients || []}
                             rowKey="id"
                             pagination={false}
                             size="small"

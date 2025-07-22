@@ -1,0 +1,210 @@
+import { Router } from 'express';
+import { body, query, param } from 'express-validator';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { validateRequest } from '../middleware/validation';
+import { {{camelCase model}}Service } from '../services/{{#if schema}}{{schema}}/{{/if}}{{kebabCase model}}.service';
+import { 
+  create{{pascalCase model}}Schema, 
+  update{{pascalCase model}}Schema,
+  {{camelCase model}}QuerySchema 
+} from '../types/{{#if schema}}{{schema}}/{{/if}}{{kebabCase model}}.types';
+import { asyncHandler } from '../utils/asyncHandler';
+import logger from '../utils/logger';
+
+const router = Router();
+
+// All routes require authentication
+router.use(authMiddleware);
+
+/**
+ * GET /api/{{kebabCase model}}s
+ * Get all {{lowerCase model}}s with pagination
+ */
+router.get(
+  '/',
+  [
+    query('page').optional().isInt({ min: 1 }),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('search').optional().isString().trim(),
+    query('sortBy').optional().isString(),
+    query('sortOrder').optional().isIn(['asc', 'desc']),
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    const queryParams = {{camelCase model}}QuerySchema.parse(req.query);
+    const result = await {{camelCase model}}Service.getAll(queryParams, req.user?.userId);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+/**
+ * GET /api/{{kebabCase model}}s/:id
+ * Get a single {{lowerCase model}} by ID
+ */
+router.get(
+  '/:id',
+  [
+    param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    const {{camelCase model}} = await {{camelCase model}}Service.getById(req.params.id, req.user?.userId);
+    
+    res.json({
+      success: true,
+      data: {{camelCase model}},
+    });
+  })
+);
+
+/**
+ * POST /api/{{kebabCase model}}s
+ * Create a new {{lowerCase model}}
+ */
+router.post(
+  '/',
+  [
+    {{#if modelInfo}}
+    {{#each modelInfo.fields}}
+    {{#unless (or this.isId (eq this.name 'createdAt') (eq this.name 'updatedAt') this.isRelation this.hasDefault)}}
+    {{#if (eq this.type 'String')}}
+    body('{{this.name}}'){{#unless this.isOptional}}.notEmpty().withMessage('{{titleCase this.name}} is required'){{else}}.optional({ nullable: true }).isString(){{/unless}},
+    {{else if (eq this.type 'Int')}}
+    body('{{this.name}}'){{#unless this.isOptional}}.isInt().withMessage('{{titleCase this.name}} must be an integer'){{else}}.optional({ nullable: true }).isInt(){{/unless}},
+    {{else if (eq this.type 'Float')}}
+    body('{{this.name}}'){{#unless this.isOptional}}.isFloat().withMessage('{{titleCase this.name}} must be a number'){{else}}.optional({ nullable: true }).isFloat(){{/unless}},
+    {{else if (eq this.type 'Boolean')}}
+    body('{{this.name}}'){{#unless this.isOptional}}.isBoolean().withMessage('{{titleCase this.name}} must be a boolean'){{else}}.optional({ nullable: true }).isBoolean(){{/unless}},
+    {{else if (eq this.type 'DateTime')}}
+    body('{{this.name}}'){{#unless this.isOptional}}.isISO8601().withMessage('{{titleCase this.name}} must be a valid date'){{else}}.optional({ nullable: true }).isISO8601(){{/unless}},
+    {{else if (eq this.type 'Json')}}
+    body('{{this.name}}'){{#unless this.isOptional}}.notEmpty().withMessage('{{titleCase this.name}} is required'){{else}}.optional({ nullable: true }){{/unless}},
+    {{else}}
+    body('{{this.name}}'){{#unless this.isOptional}}.notEmpty().withMessage('{{titleCase this.name}} is required'){{else}}.optional({ nullable: true }){{/unless}},
+    {{/if}}
+    {{/unless}}
+    {{/each}}
+    {{else}}
+    // Add validation based on your model fields
+    body('name').notEmpty().withMessage('Name is required'),
+    body('description').optional({ nullable: true }).isString(),
+    {{/if}}
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    const data = create{{pascalCase model}}Schema.parse(req.body);
+    const {{camelCase model}} = await {{camelCase model}}Service.create(data, req.user?.userId);
+    
+    logger.info(`{{pascalCase model}} created by user ${req.user?.email}`);
+    
+    res.status(201).json({
+      success: true,
+      data: {{camelCase model}},
+      message: '{{pascalCase model}} created successfully',
+    });
+  })
+);
+
+/**
+ * PUT /api/{{kebabCase model}}s/:id
+ * Update a {{lowerCase model}}
+ */
+router.put(
+  '/:id',
+  [
+    param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
+    {{#if modelInfo}}
+    {{#each modelInfo.fields}}
+    {{#unless (or this.isId (eq this.name 'createdAt') (eq this.name 'updatedAt') this.isRelation)}}
+    {{#if (eq this.type 'String')}}
+    body('{{this.name}}').optional({ nullable: true }).isString(),
+    {{else if (eq this.type 'Int')}}
+    body('{{this.name}}').optional({ nullable: true }).isInt(),
+    {{else if (eq this.type 'Float')}}
+    body('{{this.name}}').optional({ nullable: true }).isFloat(),
+    {{else if (eq this.type 'Boolean')}}
+    body('{{this.name}}').optional().isBoolean(),
+    {{else if (eq this.type 'DateTime')}}
+    body('{{this.name}}').optional({ nullable: true }).isISO8601(),
+    {{else if (eq this.type 'Json')}}
+    body('{{this.name}}').optional({ nullable: true }),
+    {{else}}
+    body('{{this.name}}').optional({ nullable: true }),
+    {{/if}}
+    {{/unless}}
+    {{/each}}
+    {{else}}
+    // Add validation based on your model fields
+    body('name').optional().notEmpty(),
+    body('description').optional({ nullable: true }).isString(),
+    body('isActive').optional().isBoolean(),
+    {{/if}}
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    const data = update{{pascalCase model}}Schema.parse({ ...req.body, id: req.params.id });
+    const {{camelCase model}} = await {{camelCase model}}Service.update(req.params.id, data, req.user?.userId);
+    
+    logger.info(`{{pascalCase model}} ${req.params.id} updated by user ${req.user?.email}`);
+    
+    res.json({
+      success: true,
+      data: {{camelCase model}},
+      message: '{{pascalCase model}} updated successfully',
+    });
+  })
+);
+
+/**
+ * DELETE /api/{{kebabCase model}}s/:id
+ * Delete a {{lowerCase model}}
+ */
+router.delete(
+  '/:id',
+  [
+    param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    await {{camelCase model}}Service.delete(req.params.id, req.user?.userId);
+    
+    logger.info(`{{pascalCase model}} ${req.params.id} deleted by user ${req.user?.email}`);
+    
+    res.json({
+      success: true,
+      message: '{{pascalCase model}} deleted successfully',
+    });
+  })
+);
+
+{{#if modelInfo.relations}}
+{{#each modelInfo.relations}}
+{{#if this.isArray}}
+/**
+ * GET /api/{{kebabCase ../model}}s/:id/{{kebabCase this.name}}
+ * Get {{lowerCase this.name}} for a {{lowerCase ../model}}
+ */
+router.get(
+  '/:id/{{kebabCase this.name}}',
+  [
+    param('id').isUUID().withMessage('Invalid {{lowerCase ../model}} ID'),
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    const {{camelCase this.name}} = await {{camelCase ../model}}Service.get{{pascalCase this.name}}(req.params.id, req.user?.userId);
+    
+    res.json({
+      success: true,
+      data: {{camelCase this.name}},
+    });
+  })
+);
+{{/if}}
+{{/each}}
+{{/if}}
+
+export default router;

@@ -137,7 +137,8 @@ export class ClientManagementService {
         'name', 'business_name', 'email', 'phone', 'address',
         'currency', 'language', 'timezone', 'payment_terms',
         'payment_method', 'bank_account', 'credit_limit',
-        'status', 'custom_fields', 'tags', 'notes'
+        'status', 'custom_fields', 'tags', 'notes',
+        'tax_id', 'tax_id_type', 'client_type'
       ];
 
       for (const field of allowedFields) {

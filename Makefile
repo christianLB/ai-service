@@ -1047,8 +1047,8 @@ dashboard-check: ## Verifica el dashboard financiero
 	fi
 
 # Targets de desarrollo
-.PHONY: dev-status
-dev-status: ## Estado del desarrollo local
+.PHONY: dev-status-old2
+dev-status-old2: ## Estado del desarrollo local
 	@curl -s http://localhost:3000/status | jq '.'
 
 .PHONY: dev-migrate
@@ -1521,3 +1521,130 @@ prod-logs-frontend: ## 📋 Ver logs del servicio Frontend
 	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "cd $(NAS_PATH) && \
 		echo '$(SUDO_PASS)' | sudo -S /usr/local/bin/docker logs ai-service-frontend --tail 30"
 -include Makefile.watchtower
+
+# =============================================================================
+# 🤖 AUTOMATED DEVELOPMENT STACK COMMANDS
+# =============================================================================
+
+.PHONY: db-generate
+db-generate: ## 🔄 Generate Prisma client and Zod schemas
+	@echo "$(BLUE)🔄 Generating Prisma client and schemas...$(NC)"
+	@npm run db:generate
+	@echo "$(GREEN)✓ Schemas generated$(NC)"
+
+.PHONY: db-push
+db-push: ## 📤 Push schema changes to database (dev only)
+	@echo "$(BLUE)📤 Pushing schema to database...$(NC)"
+	@npm run db:push
+	@echo "$(GREEN)✓ Schema pushed$(NC)"
+
+.PHONY: db-migrate
+db-migrate: ## 🗃️ Run Prisma migrations
+	@echo "$(BLUE)🗃️ Running database migrations...$(NC)"
+	@npm run db:migrate
+	@echo "$(GREEN)✓ Migrations complete$(NC)"
+
+.PHONY: db-migrate-deploy
+db-migrate-deploy: ## 📤 Deploy migrations to production (apply only)
+	@echo "$(BLUE)📤 Deploying migrations to production...$(NC)"
+	@npx prisma migrate deploy
+	@echo "$(GREEN)✓ Migrations deployed$(NC)"
+
+.PHONY: db-migrate-status
+db-migrate-status: ## 📊 Check migration status
+	@echo "$(BLUE)📊 Checking migration status...$(NC)"
+	@npx prisma migrate status
+
+.PHONY: db-migrate-create
+db-migrate-create: ## ✨ Create new migration (NAME required)
+	@if [ -z "$(NAME)" ]; then \
+		echo "$(RED)Error: NAME is required. Usage: make db-migrate-create NAME=add_new_table$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)✨ Creating new migration: $(NAME)...$(NC)"
+	@npx prisma migrate dev --create-only --name $(NAME)
+	@echo "$(GREEN)✓ Migration created$(NC)"
+
+.PHONY: db-studio
+db-studio: ## 🎨 Open Prisma Studio
+	@echo "$(BLUE)🎨 Opening Prisma Studio...$(NC)"
+	@npm run db:studio
+
+.PHONY: db-seed
+db-seed: ## 🌱 Seed the database with test data
+	@echo "$(BLUE)🌱 Seeding database...$(NC)"
+	@npm run db:seed
+	@echo "$(GREEN)✓ Database seeded$(NC)"
+
+.PHONY: db-backup
+db-backup: ## 📦 Create database backup
+	@echo "$(BLUE)📦 Creating database backup...$(NC)"
+	@mkdir -p backups
+	@docker exec ai-service-postgres pg_dump -U $(DB_USER) $(DB_NAME) > backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)✅ Backup created in backups/ directory$(NC)"
+
+.PHONY: db-restore
+db-restore: ## 📥 Restore database from backup (BACKUP_FILE required)
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "$(RED)Error: BACKUP_FILE is required. Usage: make db-restore BACKUP_FILE=backups/backup_20250121_120000.sql$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)⚠️  WARNING: This will restore the database from $(BACKUP_FILE)$(NC)"
+	@echo "$(YELLOW)Press Ctrl+C to cancel, or Enter to continue...$(NC)"
+	@read confirm
+	@echo "$(BLUE)📥 Restoring database...$(NC)"
+	@docker exec -i ai-service-postgres psql -U $(DB_USER) $(DB_NAME) < $(BACKUP_FILE)
+	@echo "$(GREEN)✅ Database restored from $(BACKUP_FILE)$(NC)"
+
+.PHONY: gen-crud
+gen-crud: ## 🏗️ Generate complete CRUD for a model
+	@echo "$(BLUE)🏗️ Generating CRUD...$(NC)"
+	@npm run generate:crud
+	@echo "$(GREEN)✓ CRUD generated$(NC)"
+
+.PHONY: gen-service
+gen-service: ## 🔧 Generate a service
+	@echo "$(BLUE)🔧 Generating service...$(NC)"
+	@npm run generate:service
+	@echo "$(GREEN)✓ Service generated$(NC)"
+
+.PHONY: gen-hook
+gen-hook: ## 🪝 Generate a React hook
+	@echo "$(BLUE)🪝 Generating hook...$(NC)"
+	@npm run generate:hook
+	@echo "$(GREEN)✓ Hook generated$(NC)"
+
+.PHONY: gen-component
+gen-component: ## 🧩 Generate a React component
+	@echo "$(BLUE)🧩 Generating component...$(NC)"
+	@npm run generate -- component
+	@echo "$(GREEN)✓ Component generated$(NC)"
+
+.PHONY: gen-module
+gen-module: ## 📦 Generate a complete module
+	@echo "$(BLUE)📦 Generating module...$(NC)"
+	@npm run generate -- module
+	@echo "$(GREEN)✓ Module generated$(NC)"
+
+.PHONY: crud
+crud: gen-crud db-generate ## 🚀 Generate CRUD and update schemas
+	@echo "$(GREEN)✓ CRUD and schemas updated$(NC)"
+
+.PHONY: setup-dev-stack
+setup-dev-stack: ## 🏗️ Complete setup of automated development stack
+	@echo "$(BLUE)🏗️ Setting up automated development stack...$(NC)"
+	@npm install
+	@npm run db:generate
+	@npm run db:push
+	@npm run db:seed
+	@echo "$(GREEN)✓ Development stack ready\!$(NC)"
+	@echo "$(YELLOW)Run 'make gen-crud' to generate your first CRUD$(NC)"
+
+.PHONY: validate-deploy
+validate-deploy: ## ✅ Validate code before deployment
+	@echo "$(BLUE)✅ Validating code...$(NC)"
+	@npm run lint || true
+	@npm run typecheck
+	@npm test
+	@echo "$(GREEN)✓ Validation complete$(NC)"
+

@@ -1,0 +1,140 @@
+import React, { useEffect } from 'react';
+import {
+  Modal,
+  Form,
+  Input,
+} from 'antd';
+import { useForm, Controller } from 'react-hook-form';
+import { use{{pascalCase model}}Mutations } from '../../hooks/use-{{kebabCase model}}';
+import type { {{pascalCase model}}, Create{{pascalCase model}} } from '../../types/{{kebabCase model}}.types';
+
+const { TextArea } = Input;
+
+interface {{pascalCase model}}FormProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  initialData?: {{pascalCase model}} | null;
+}
+
+export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> = ({
+  open,
+  onClose,
+  onSuccess,
+  initialData,
+}) => {
+  const [form] = Form.useForm();
+  const { create, update, isCreating, isUpdating } = use{{pascalCase model}}Mutations();
+  const isEdit = !!initialData;
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<Create{{pascalCase model}}>({
+    defaultValues: {
+      {{#if modelInfo}}
+      {{#each modelInfo.fields}}
+      {{#unless (or (eq this.name 'id') (eq this.name 'createdAt') (eq this.name 'updatedAt') (eq this.name 'userId'))}}
+      {{#unless this.isRelation}}
+      {{this.name}}: {{#if (eq this.type 'String')}}''{{else if (eq this.type 'Boolean')}}false{{else if (or (eq this.type 'Int') (eq this.type 'Float') (eq this.type 'Decimal'))}}0{{else if (eq this.type 'DateTime')}}undefined{{else if (eq this.type 'Json')}}{}{{else}}undefined{{/if}},
+      {{/unless}}
+      {{/unless}}
+      {{/each}}
+      {{/if}}
+    },
+  });
+
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        ...initialData,
+      } as any);
+    }
+  }, [initialData, reset]);
+
+  const onSubmit = async (data: Create{{pascalCase model}}) => {
+    try {
+      if (isEdit && initialData) {
+        await update({ id: initialData.id, data });
+      } else {
+        await create(data);
+      }
+      onSuccess();
+      reset();
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleCancel = () => {
+    reset();
+    onClose();
+  };
+
+  return (
+    <Modal
+      title={isEdit ? 'Edit {{titleCase model}}' : 'New {{titleCase model}}'}
+      open={open}
+      onCancel={handleCancel}
+      onOk={handleSubmit(onSubmit)}
+      confirmLoading={isCreating || isUpdating}
+      width={720}
+      okText={isEdit ? 'Update' : 'Create'}
+    >
+      <Form layout="vertical" form={form} style=\{{ marginTop: 24 }}>
+        {{#if modelInfo}}
+        {{#each modelInfo.fields}}
+        {{#unless (or (eq this.name 'id') (eq this.name 'createdAt') (eq this.name 'updatedAt') (eq this.name 'userId'))}}
+        {{#unless this.isRelation}}
+        <Form.Item label="{{titleCase this.name}}"{{#unless (or this.isOptional this.isNullable this.hasDefault)}} required{{/unless}}>
+          <Controller
+            name="{{this.name}}"
+            control={control}
+            {{#unless (or this.isOptional this.isNullable this.hasDefault)}}
+            rules=\{{ required: '{{titleCase this.name}} is required' }}
+            {{/unless}}
+            render={({ field }) => (
+              {{#if (eq this.type 'Json')}}
+              <TextArea {...field} rows={4} placeholder="Enter JSON data" />
+              {{else}}
+              <Input {...field} placeholder="Enter {{this.name}}" />
+              {{/if}}
+            )}
+          />
+          {errors.{{this.name}} && (
+            <span style=\{{ color: 'red', fontSize: 12 }}>{errors.{{this.name}}?.message}</span>
+          )}
+        </Form.Item>
+        {{/unless}}
+        {{/unless}}
+        {{/each}}
+        {{else}}
+        <Form.Item label="Name" required>
+          <Controller
+            name="name"
+            control={control}
+            render={({ field }) => (
+              <Input {...field} placeholder="{{pascalCase model}} name" />
+            )}
+          />
+          {errors.name && (
+            <span style=\{{ color: 'red', fontSize: 12 }}>{errors.name?.message}</span>
+          )}
+        </Form.Item>
+
+        <Form.Item label="Description">
+          <Controller
+            name="description"
+            control={control}
+            render={({ field }) => (
+              <TextArea {...field} rows={3} placeholder="Description..." />
+            )}
+          />
+        </Form.Item>
+        {{/if}}
+      </Form>
+    </Modal>
+  );
+};

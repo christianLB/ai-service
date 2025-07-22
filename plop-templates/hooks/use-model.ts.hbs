@@ -1,0 +1,182 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { message } from 'antd';
+import api from '../services/api';
+import type { 
+  {{pascalCase model}}, 
+  Create{{pascalCase model}}, 
+  {{pascalCase model}}Query 
+} from '../types/{{kebabCase model}}.types';
+
+const QUERY_KEY = '{{kebabCase model}}s';
+
+interface {{pascalCase model}}Response {
+  success: boolean;
+  data: {{pascalCase model}};
+  message?: string;
+}
+
+interface {{pascalCase model}}ListResponse {
+  success: boolean;
+  data: {
+    items: {{pascalCase model}}[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+/**
+ * Hook to fetch all {{lowerCase model}}s with pagination
+ */
+export function use{{pascalCase model}}s(params?: {{pascalCase model}}Query) {
+  return useQuery({
+    queryKey: [QUERY_KEY, params],
+    queryFn: async () => {
+      const response = await api.get<{{pascalCase model}}ListResponse>('/{{kebabCase model}}s', { params });
+      return response.data.data;
+    },
+  });
+}
+
+/**
+ * Hook to fetch a single {{lowerCase model}} by ID
+ */
+export function use{{pascalCase model}}(id: string | undefined) {
+  return useQuery({
+    queryKey: [QUERY_KEY, id],
+    queryFn: async () => {
+      if (!id) throw new Error('ID is required');
+      const response = await api.get<{{pascalCase model}}Response>(`/{{kebabCase model}}s/${id}`);
+      return response.data.data;
+    },
+    enabled: !!id,
+  });
+}
+
+/**
+ * Hook to search {{lowerCase model}}s
+ */
+export function use{{pascalCase model}}Search(query: string) {
+  return useQuery({
+    queryKey: [QUERY_KEY, 'search', query],
+    queryFn: async () => {
+      const response = await api.get<{ success: boolean; data: {{pascalCase model}}[] }>(
+        '/{{kebabCase model}}s/search',
+        { params: { q: query } }
+      );
+      return response.data.data;
+    },
+    enabled: query.length > 0,
+  });
+}
+
+/**
+ * Hook for {{lowerCase model}} mutations (create, update, delete)
+ */
+export function use{{pascalCase model}}Mutations() {
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: async (data: Create{{pascalCase model}}) => {
+      const response = await api.post<{{pascalCase model}}Response>('/{{kebabCase model}}s', data);
+      return response.data;
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      message.success(response.message || '{{pascalCase model}} created successfully');
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || 'Failed to create {{lowerCase model}}');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<{{pascalCase model}}> }) => {
+      const response = await api.put<{{pascalCase model}}Response>(`/{{kebabCase model}}s/${id}`, data);
+      return response.data;
+    },
+    onSuccess: (response, variables) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
+      message.success(response.message || '{{pascalCase model}} updated successfully');
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || 'Failed to update {{lowerCase model}}');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete<{ success: boolean; message: string }>(`/{{kebabCase model}}s/${id}`);
+      return response.data;
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      message.success(response.message || '{{pascalCase model}} deleted successfully');
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || 'Failed to delete {{lowerCase model}}');
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
+        '/{{kebabCase model}}s/bulk',
+        { data: { ids } }
+      );
+      return response.data;
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      message.success(response.message || '{{pascalCase model}}s deleted successfully');
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || 'Failed to delete {{lowerCase model}}s');
+    },
+  });
+
+  return {
+    create: createMutation.mutate,
+    update: updateMutation.mutate,
+    delete: deleteMutation.mutate,
+    bulkDelete: bulkDeleteMutation.mutate,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+    isBulkDeleting: bulkDeleteMutation.isPending,
+  };
+}
+
+/**
+ * Hook to prefetch {{lowerCase model}} data
+ */
+export function use{{pascalCase model}}Prefetch() {
+  const queryClient = useQueryClient();
+
+  const prefetch{{pascalCase model}} = async (id: string) => {
+    await queryClient.prefetchQuery({
+      queryKey: [QUERY_KEY, id],
+      queryFn: async () => {
+        const response = await api.get<{{pascalCase model}}Response>(`/{{kebabCase model}}s/${id}`);
+        return response.data.data;
+      },
+    });
+  };
+
+  const prefetch{{pascalCase model}}s = async (params?: {{pascalCase model}}Query) => {
+    await queryClient.prefetchQuery({
+      queryKey: [QUERY_KEY, params],
+      queryFn: async () => {
+        const response = await api.get<{{pascalCase model}}ListResponse>('/{{kebabCase model}}s', { params });
+        return response.data.data;
+      },
+    });
+  };
+
+  return {
+    prefetch{{pascalCase model}},
+    prefetch{{pascalCase model}}s,
+  };
+}

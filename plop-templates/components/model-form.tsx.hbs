@@ -1,0 +1,540 @@
+import React, { useEffect } from 'react';
+import {
+  Modal,
+  Form,
+  Input,
+  Select,
+  DatePicker,
+  InputNumber,
+  Switch,
+  Row,
+  Col,
+  message,
+} from 'antd';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import dayjs from 'dayjs';
+import { use{{pascalCase model}}Mutations } from '../../hooks/use-{{kebabCase model}}';
+import { create{{pascalCase model}}Schema } from '../../../../src/types/{{kebabCase model}}.types';
+import type { {{pascalCase model}}, Create{{pascalCase model}} } from '../../../../src/types/{{kebabCase model}}.types';
+
+const { TextArea } = Input;
+
+interface {{pascalCase model}}FormProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  initialData?: {{pascalCase model}} | null;
+}
+
+export const {{pascalCase model}}Form: React.FC<{{pascalCase model}}FormProps> = ({
+  open,
+  onClose,
+  onSuccess,
+  initialData,
+}) => {
+  const [form] = Form.useForm();
+  const { create, update, isCreating, isUpdating } = use{{pascalCase model}}Mutations();
+  const isEdit = !!initialData;
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<Create{{pascalCase model}}>({
+    resolver: zodResolver(create{{pascalCase model}}Schema),
+    defaultValues: {
+      {{#if (eq model 'Client')}}
+      name: '',
+      email: '',
+      phone: '',
+      taxId: '',
+      address: '',
+      city: '',
+      postalCode: '',
+      country: '',
+      defaultCurrency: 'EUR',
+      paymentTerms: 30,
+      notes: '',
+      isActive: true,
+      {{else if (eq model 'Invoice')}}
+      clientId: '',
+      status: 'draft',
+      issueDate: new Date(),
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      currency: 'EUR',
+      notes: '',
+      terms: '',
+      {{else if (eq model 'Trade')}}
+      symbol: '',
+      side: 'buy',
+      quantity: 0,
+      price: 0,
+      exchange: '',
+      status: 'pending',
+      {{else}}
+      name: '',
+      description: '',
+      isActive: true,
+      {{/if}}
+    },
+  });
+
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        ...initialData,
+        {{#if (eq model 'Invoice')}}
+        issueDate: initialData.issueDate ? new Date(initialData.issueDate) : new Date(),
+        dueDate: initialData.dueDate ? new Date(initialData.dueDate) : new Date(),
+        {{else if (eq model 'Trade')}}
+        executedAt: initialData.executedAt ? new Date(initialData.executedAt) : undefined,
+        {{/if}}
+      } as any);
+    }
+  }, [initialData, reset]);
+
+  const onSubmit = async (data: Create{{pascalCase model}}) => {
+    try {
+      if (isEdit) {
+        await update({ id: initialData.id, data });
+      } else {
+        await create(data);
+      }
+      onSuccess();
+      reset();
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleCancel = () => {
+    reset();
+    onClose();
+  };
+
+  return (
+    <Modal
+      title={isEdit ? 'Edit {{titleCase model}}' : 'New {{titleCase model}}'}
+      open={open}
+      onCancel={handleCancel}
+      onOk={handleSubmit(onSubmit)}
+      confirmLoading={isCreating || isUpdating}
+      width={720}
+      okText={isEdit ? 'Update' : 'Create'}
+    >
+      <Form layout="vertical" form={form} style=\{{ marginTop: 24 }}>
+        {{#if (eq model 'Client')}}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Name" required>
+              <Controller
+                name="name"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="Client name" />
+                )}
+              />
+              {errors.name && (
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.name.message}</span>
+              )}
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Email">
+              <Controller
+                name="email"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} type="email" placeholder="client@example.com" />
+                )}
+              />
+              {errors.email && (
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.email.message}</span>
+              )}
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Phone">
+              <Controller
+                name="phone"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="+1 234 567 8900" />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Tax ID">
+              <Controller
+                name="taxId"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="Tax identification number" />
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item label="Address">
+          <Controller
+            name="address"
+            control={control}
+            render={({ field }) => (
+              <Input {...field} placeholder="Street address" />
+            )}
+          />
+        </Form.Item>
+
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item label="City">
+              <Controller
+                name="city"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="City" />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Postal Code">
+              <Controller
+                name="postalCode"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="12345" />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Country">
+              <Controller
+                name="country"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field} placeholder="Select country">
+                    <Select.Option value="ES">Spain</Select.Option>
+                    <Select.Option value="FR">France</Select.Option>
+                    <Select.Option value="DE">Germany</Select.Option>
+                    <Select.Option value="IT">Italy</Select.Option>
+                    <Select.Option value="GB">United Kingdom</Select.Option>
+                    <Select.Option value="US">United States</Select.Option>
+                  </Select>
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Default Currency">
+              <Controller
+                name="defaultCurrency"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    <Select.Option value="EUR">EUR - Euro</Select.Option>
+                    <Select.Option value="USD">USD - US Dollar</Select.Option>
+                    <Select.Option value="GBP">GBP - British Pound</Select.Option>
+                  </Select>
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Payment Terms (days)">
+              <Controller
+                name="paymentTerms"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber {...field} min={0} max={365} style=\{{ width: '100%' }} />
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item label="Notes">
+          <Controller
+            name="notes"
+            control={control}
+            render={({ field }) => (
+              <TextArea {...field} rows={3} placeholder="Additional notes..." />
+            )}
+          />
+        </Form.Item>
+
+        <Form.Item label="Active">
+          <Controller
+            name="isActive"
+            control={control}
+            render={({ field: { value, onChange } }) => (
+              <Switch checked={value} onChange={onChange} />
+            )}
+          />
+        </Form.Item>
+
+        {{else if (eq model 'Invoice')}}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Client" required>
+              <Controller
+                name="clientId"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field} placeholder="Select client" showSearch>
+                    {/* Client options will be loaded dynamically */}
+                  </Select>
+                )}
+              />
+              {errors.clientId && (
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.clientId.message}</span>
+              )}
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Status">
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    <Select.Option value="draft">Draft</Select.Option>
+                    <Select.Option value="sent">Sent</Select.Option>
+                    <Select.Option value="paid">Paid</Select.Option>
+                    <Select.Option value="cancelled">Cancelled</Select.Option>
+                  </Select>
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Issue Date" required>
+              <Controller
+                name="issueDate"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    {...field}
+                    value={field.value ? dayjs(field.value) : null}
+                    onChange={(date) => field.onChange(date?.toDate())}
+                    style=\{{ width: '100%' }}
+                  />
+                )}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Due Date" required>
+              <Controller
+                name="dueDate"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    {...field}
+                    value={field.value ? dayjs(field.value) : null}
+                    onChange={(date) => field.onChange(date?.toDate())}
+                    style=\{{ width: '100%' }}
+                  />
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item label="Currency">
+          <Controller
+            name="currency"
+            control={control}
+            render={({ field }) => (
+              <Select {...field}>
+                <Select.Option value="EUR">EUR - Euro</Select.Option>
+                <Select.Option value="USD">USD - US Dollar</Select.Option>
+                <Select.Option value="GBP">GBP - British Pound</Select.Option>
+              </Select>
+            )}
+          />
+        </Form.Item>
+
+        <Form.Item label="Notes">
+          <Controller
+            name="notes"
+            control={control}
+            render={({ field }) => (
+              <TextArea {...field} rows={3} placeholder="Invoice notes..." />
+            )}
+          />
+        </Form.Item>
+
+        <Form.Item label="Terms & Conditions">
+          <Controller
+            name="terms"
+            control={control}
+            render={({ field }) => (
+              <TextArea {...field} rows={3} placeholder="Payment terms, conditions..." />
+            )}
+          />
+        </Form.Item>
+
+        {{else if (eq model 'Trade')}}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Symbol" required>
+              <Controller
+                name="symbol"
+                control={control}
+                render={({ field }) => (
+                  <Input {...field} placeholder="BTC/USD" />
+                )}
+              />
+              {errors.symbol && (
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.symbol.message}</span>
+              )}
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Side" required>
+              <Controller
+                name="side"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    <Select.Option value="buy">Buy</Select.Option>
+                    <Select.Option value="sell">Sell</Select.Option>
+                  </Select>
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Quantity" required>
+              <Controller
+                name="quantity"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    {...field}
+                    min={0}
+                    step={0.0001}
+                    precision={8}
+                    style=\{{ width: '100%' }}
+                  />
+                )}
+              />
+              {errors.quantity && (
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.quantity.message}</span>
+              )}
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Price" required>
+              <Controller
+                name="price"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    {...field}
+                    min={0}
+                    step={0.01}
+                    precision={8}
+                    style=\{{ width: '100%' }}
+                  />
+                )}
+              />
+              {errors.price && (
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.price.message}</span>
+              )}
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Exchange" required>
+              <Controller
+                name="exchange"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field} placeholder="Select exchange">
+                    <Select.Option value="binance">Binance</Select.Option>
+                    <Select.Option value="coinbase">Coinbase</Select.Option>
+                    <Select.Option value="kraken">Kraken</Select.Option>
+                  </Select>
+                )}
+              />
+              {errors.exchange && (
+                <span style=\{{ color: 'red', fontSize: 12 }}>{errors.exchange.message}</span>
+              )}
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Status">
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Select {...field}>
+                    <Select.Option value="pending">Pending</Select.Option>
+                    <Select.Option value="filled">Filled</Select.Option>
+                    <Select.Option value="cancelled">Cancelled</Select.Option>
+                  </Select>
+                )}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {{else}}
+        <Form.Item label="Name" required>
+          <Controller
+            name="name"
+            control={control}
+            render={({ field }) => (
+              <Input {...field} placeholder="{{titleCase model}} name" />
+            )}
+          />
+          {errors.name && (
+            <span style=\{{ color: 'red', fontSize: 12 }}>{errors.name.message}</span>
+          )}
+        </Form.Item>
+
+        <Form.Item label="Description">
+          <Controller
+            name="description"
+            control={control}
+            render={({ field }) => (
+              <TextArea {...field} rows={3} placeholder="Description..." />
+            )}
+          />
+        </Form.Item>
+
+        <Form.Item label="Active">
+          <Controller
+            name="isActive"
+            control={control}
+            render={({ field: { value, onChange } }) => (
+              <Switch checked={value} onChange={onChange} />
+            )}
+          />
+        </Form.Item>
+        {{/if}}
+      </Form>
+    </Modal>
+  );
+};
