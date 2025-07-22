@@ -151,15 +151,21 @@ export async function parsePrismaModel(modelName) {
       }
       
       // Extract default value
-      const defaultMatch = rest.match(/@default\(([^)]+)\)/);
+      const defaultMatch = rest.match(/@default\((.+?)\)(?:\s|$)/);
       if (defaultMatch) {
         let defaultValue = defaultMatch[1];
-        // Remove quotes if it's a string literal
-        if (defaultValue.startsWith('"') && defaultValue.endsWith('"')) {
-          defaultValue = defaultValue.slice(1, -1);
-          // Add back quotes for string defaults in the template
-          field.defaultValue = `"${defaultValue}"`;
+        // Handle different default value types
+        if (defaultValue.includes('(') && defaultValue.includes(')')) {
+          // Function call like uuid(), now(), etc.
+          field.defaultValue = defaultValue;
+        } else if (defaultValue.startsWith('"') && defaultValue.endsWith('"')) {
+          // String literal - keep quotes for template
+          field.defaultValue = defaultValue;
+        } else if (defaultValue === 'true' || defaultValue === 'false') {
+          // Boolean literal
+          field.defaultValue = defaultValue;
         } else {
+          // Other values (numbers, etc.)
           field.defaultValue = defaultValue;
         }
       }

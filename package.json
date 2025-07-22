@@ -7,6 +7,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:generator": "node tests/generator/parsePrismaModel.unit.test.mjs",
+    "test:generator:integration": "node tests/generator/generateCrud.integration.test.mjs",
+    "test:generator:templates": "node tests/generator/templateValidation.test.mjs",
+    "test:generator:regression": "node tests/generator/regression.test.mjs",
+    "test:generator:all": "npm run test:generator && npm run test:generator:templates && npm run test:generator:regression",
     "build": "npm run build:frontend && npm run build:backend",
     "build:backend": "tsc",
     "build:backend:nocheck": "tsc --noEmit false || echo 'TypeScript errors ignored'",
@@ -62,6 +67,7 @@
     "@binance/connector": "^3.4.0",
     "@influxdata/influxdb-client": "^1.35.0",
     "@open-policy-agent/opa-wasm": "^1.10.0",
+    "@prisma/client": "^6.12.0",
     "@qdrant/js-client-rest": "^1.12.0",
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.10",
@@ -106,10 +112,10 @@
     "superjson": "^2.2.2",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
-    "zod": "^3.23.8",
-    "@prisma/client": "^6.12.0"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.28.0",
     "@faker-js/faker": "^9.9.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",

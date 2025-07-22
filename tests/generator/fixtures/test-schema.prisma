@@ -1,0 +1,76 @@
+// Test schema for generator tests
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Simple model for basic tests
+model TestModel {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@schema("public")
+}
+
+// Model with relations
+model TestUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  posts     TestPost[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@schema("public")
+}
+
+model TestPost {
+  id        String   @id @default(uuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  userId    String
+  user      TestUser @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@schema("public")
+}
+
+// Model in different schema
+model TestTrade {
+  id       String   @id @default(uuid())
+  symbol   String
+  quantity Float
+  price    Float
+  side     String   // buy or sell
+  status   String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@schema("trading")
+}
+
+// Complex model like Alert
+model TestAlert {
+  id          String    @id @default(uuid())
+  userId      String
+  type        String
+  severity    String    @default("info")
+  title       String
+  message     String
+  data        Json?     @default("{}")
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@schema("public")
+}
