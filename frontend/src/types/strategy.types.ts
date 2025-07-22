@@ -1,36 +1,29 @@
-// Strategy types for frontend
-export interface Strategy {
-  id: string;
-  userId: string;
-  name: string;
-  description?: string;
-  type: string;
-  status: string;
-  config: any;
-  metadata?: any;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-}
+import { z } from 'zod';
 
-export interface CreateStrategy {
-  userId: string;
-  name: string;
-  description?: string;
-  type: string;
-  status: string;
-  config: any;
-  metadata?: any;
-}
+// Schema definitions
+export const strategySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  type: z.string(),
+  config: z.record(z.any()),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
 
-export interface UpdateStrategy extends Partial<CreateStrategy> {
-  id: string;
-}
+// Types
+export type Strategy = z.infer<typeof strategySchema>;
+export type CreateStrategy = Omit<Strategy, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
+export type UpdateStrategy = Partial<CreateStrategy>;
 
-export interface StrategyQuery {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  // Add model-specific query filters based on your needs
-}
+// Query types
+export const strategyQuerySchema = z.object({
+  page: z.coerce.number().default(1),
+  limit: z.coerce.number().default(10),
+  isActive: z.boolean().optional(),
+  type: z.string().optional()
+});
+
+export type StrategyQuery = z.infer<typeof strategyQuerySchema>;

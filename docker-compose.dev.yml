@@ -1,0 +1,63 @@
+# Development override for docker-compose.yml
+# This file provides development-specific configurations for hot reload
+
+services:
+  # API Service Development Override
+  ai-service-api:
+    # Use development Dockerfile with dev dependencies
+    build:
+      context: .
+      dockerfile: Dockerfile.api.dev
+    
+    # Add development dependencies volume mount
+    volumes:
+      # Mount source for hot reload (already exists in base)
+      - ./src:/app/src:ro
+      - ./migrations:/app/migrations:ro
+      - ./.env.local:/app/.env.local:ro
+      - ./data/documents:/app/documents:rw
+      - ./logs:/app/logs
+      
+      # Additional dev-specific mounts
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./prisma:/app/prisma:ro
+      
+    # Ensure ts-node-dev is available in development
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-development}
+      - VERSION=${VERSION:-dev}
+      - BUILD_DATE=${BUILD_DATE:-2025-07-14}
+      - COMMIT=${COMMIT:-4efbbd869a230b5e51dea7d4e8ed3cc9425c26ec}
+      - COMMIT_SHORT=${COMMIT_SHORT:-4efbbd8}
+      - DATABASE_URL=postgresql://ai_user:ultra_secure_password_2025@postgres:5432/ai_service?schema=public
+
+  # Frontend Service Development Override  
+  ai-service-frontend:
+    # Use development Dockerfile with Vite dev server
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.dev
+      
+    # Volume mounts for hot reload
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+      - ./frontend/index.html:/app/index.html:ro
+      - ./frontend/vite.config.dev.ts:/app/vite.config.ts:ro
+      
+    # Update port mapping for Vite dev server
+    ports:
+      - "3030:5173"
+      
+    # Override environment to proxy to API container
+    environment:
+      - VITE_API_URL=http://ai-service-api:3001/api
+      
+    # Ensure API is running before frontend
+    depends_on:
+      - ai-service-api

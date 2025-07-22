@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "ai-service-local": {
+      "command": "node",
+      "args": [
+        "/home/k2600x/dev/ai-service/mcp-local/dist/server.js"
+      ],
+      "env": {
+        "AI_SERVICE_URL": "http://localhost:3001",
+        "AI_SERVICE_AUTH_TOKEN": "",
+        "CACHE_ENABLED": "true",
+        "CACHE_TTL": "300",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

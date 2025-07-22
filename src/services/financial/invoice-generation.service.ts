@@ -173,13 +173,15 @@ export class InvoiceGenerationService {
       // Load template - check for custom template first
       let template: HandlebarsTemplateDelegate;
       
-      if (invoice.templateId) {
-        const customTemplate = await this.loadCustomTemplate(invoice.templateId);
+      // Check if invoice has templateId (may be added as custom field)
+      const templateId = (invoice as any).templateId;
+      if (templateId) {
+        const customTemplate = await this.loadCustomTemplate(templateId);
         if (customTemplate) {
           template = customTemplate;
         } else {
           // Fallback to default template if custom template not found
-          logger.warn(`Custom template ${invoice.templateId} not found, using default template`);
+          logger.warn(`Custom template ${templateId} not found, using default template`);
           template = await this.loadTemplate('invoice');
         }
       } else {

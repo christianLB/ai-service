@@ -1,0 +1,59 @@
+import { Router } from 'express';
+import { authenticate, AuthRequest } from '../middleware/auth';
+import { {{camelCase model}}Service } from '../services/{{camelCase model}}.service';
+import { validateQuery, validateBody } from '../middleware/validation';
+import { create{{pascalCase model}}Schema, update{{pascalCase model}}Schema, {{camelCase model}}QuerySchema } from '../types/{{camelCase model}}.types';
+
+const router = Router();
+
+// Get all {{lowerCase model}}s
+router.get('/', authenticate as any, validateQuery({{camelCase model}}QuerySchema) as any, async (req: AuthRequest, res, next) => {
+  try {
+    const result = await {{camelCase model}}Service.getAll(req.query as any, req.user?.id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get {{lowerCase model}} by ID
+router.get('/:id', authenticate as any, async (req: AuthRequest, res, next) => {
+  try {
+    const {{camelCase model}} = await {{camelCase model}}Service.getById(req.params.id, req.user?.id);
+    res.json({{camelCase model}});
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create {{lowerCase model}}
+router.post('/', authenticate as any, validateBody(create{{pascalCase model}}Schema) as any, async (req: AuthRequest, res, next) => {
+  try {
+    const {{camelCase model}} = await {{camelCase model}}Service.create(req.body, req.user?.id);
+    res.status(201).json({{camelCase model}});
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update {{lowerCase model}}
+router.put('/:id', authenticate as any, validateBody(update{{pascalCase model}}Schema) as any, async (req: AuthRequest, res, next) => {
+  try {
+    const {{camelCase model}} = await {{camelCase model}}Service.update(req.params.id, req.body, req.user?.id);
+    res.json({{camelCase model}});
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete {{lowerCase model}}
+router.delete('/:id', authenticate as any, async (req: AuthRequest, res, next) => {
+  try {
+    await {{camelCase model}}Service.delete(req.params.id, req.user?.id);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;

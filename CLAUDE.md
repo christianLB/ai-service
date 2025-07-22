@@ -242,6 +242,33 @@ The CRUD generator now includes:
 - recuerda siempre verificar make dev-refresh
 - CRUD generation: Model → Prisma generate → Migration → CRUD generate
 
+## 🔌 MCP Local Server
+
+Local MCP server for direct Claude Code integration:
+
+**Quick Start**:
+```bash
+cd mcp-local
+make quick-setup          # First time setup
+make start                # Start server
+make claude-config        # Install Claude Code config
+```
+
+**Usage in Claude Code**:
+- Financial queries: "Show me financial summary for last month"
+- Document search: "Search for invoices related to software"
+- System health: "Check system health status"
+
+**Features**:
+- 🚀 Zero latency (local execution)
+- 📦 25+ tools from production bridge
+- 🔄 Auto-caching (5 min TTL)
+- 🔐 Development token management
+- 📊 Comprehensive logging
+
+**Location**: `/mcp-local/` - Complete local MCP implementation
+**Docs**: See `mcp-local/README.md` for detailed setup
+
 ---
 
 **Remember**: This is a financial system handling real money. Security and data integrity are paramount. When in doubt, ask for clarification.

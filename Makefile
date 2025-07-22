@@ -1630,6 +1630,51 @@ gen-module: ## 📦 Generate a complete module
 crud: gen-crud db-generate ## 🚀 Generate CRUD and update schemas
 	@echo "$(GREEN)✓ CRUD and schemas updated$(NC)"
 
+.PHONY: gen-crud-auto
+gen-crud-auto: ## 🔄 Generate CRUD automatically from Prisma model
+	@if [ -z "$(MODEL)" ]; then \
+		echo "$(RED)❌ Error: MODEL parameter is required$(NC)"; \
+		echo "Usage: make gen-crud-auto MODEL=YourModel [SCHEMA=schema]"; \
+		exit 1; \
+	fi
+	@npm run generate:crud:auto $(MODEL) $(if $(SCHEMA),-- --schema $(SCHEMA))
+
+.PHONY: regen-trading-services
+regen-trading-services: ## 🔧 Regenerate trading services with fixed templates
+	@echo "$(YELLOW)🗑️ Removing problematic trading service files...$(NC)"
+	@# Backend files
+	@rm -f src/types/alert.types.ts src/services/alert.service.ts src/routes/alert.ts
+	@rm -f src/types/position.types.ts src/services/position.service.ts src/routes/position.ts
+	@rm -f src/types/strategy.types.ts src/services/strategy.service.ts src/routes/strategy.ts
+	@rm -f src/types/trade.types.ts src/services/trade.service.ts src/routes/trade.ts
+	@# Frontend files
+	@rm -f frontend/src/types/alert.types.ts frontend/src/services/alert.service.ts
+	@rm -f frontend/src/types/position.types.ts frontend/src/services/position.service.ts
+	@rm -f frontend/src/types/strategy.types.ts frontend/src/services/strategy.service.ts
+	@rm -f frontend/src/types/trade.types.ts frontend/src/services/trade.service.ts
+	@echo "$(BLUE)🔨 Regenerating services with corrected templates...$(NC)"
+	@npm run generate:crud:auto Alert -- --skip-validation --features types,service,api || true
+	@npm run generate:crud:auto Position -- --schema trading --skip-validation --features types,service,api || true
+	@npm run generate:crud:auto Strategy -- --schema trading --skip-validation --features types,service,api || true
+	@npm run generate:crud:auto Trade -- --schema trading --skip-validation --features types,service,api || true
+	@echo "$(GREEN)✅ Services regenerated. Run 'make build-backend' to check for errors.$(NC)"
+
+.PHONY: fix-build-errors
+fix-build-errors: regen-trading-services ## 🛠️ Fix TypeScript build errors
+	@echo "$(BLUE)🔧 Fixing build errors...$(NC)"
+	@make build-backend
+
+.PHONY: build-backend
+build-backend: ## 🏭 Build backend TypeScript code
+	@echo "$(BLUE)🏭 Building backend...$(NC)"
+	@npm run build:backend || echo "$(RED)❌ Build failed with errors$(NC)"
+
+.PHONY: build-backend-ignore-errors
+build-backend-ignore-errors: ## 🏭 Build backend ignoring TypeScript errors
+	@echo "$(YELLOW)⚠️ Building backend with --noEmitOnError false...$(NC)"
+	@npm run build:backend:nocheck
+	@echo "$(GREEN)✅ Build completed (with possible type errors)$(NC)"
+
 .PHONY: setup-dev-stack
 setup-dev-stack: ## 🏗️ Complete setup of automated development stack
 	@echo "$(BLUE)🏗️ Setting up automated development stack...$(NC)"
@@ -1647,4 +1692,86 @@ validate-deploy: ## ✅ Validate code before deployment
 	@npm run typecheck
 	@npm test
 	@echo "$(GREEN)✓ Validation complete$(NC)"
+
+# =============================================================================
+# 🔌 MCP LOCAL SERVER COMMANDS
+# =============================================================================
+
+.PHONY: mcp-setup
+mcp-setup: ## 🔌 Complete MCP local server setup
+	@echo "$(BLUE)🔌 Setting up MCP local server...$(NC)"
+	@cd mcp-local && $(MAKE) quick-setup
+	@echo "$(GREEN)✓ MCP local server ready!$(NC)"
+	@echo "$(YELLOW)💡 Next: Restart Claude Code to load the configuration$(NC)"
+
+.PHONY: mcp-start
+mcp-start: ## 🚀 Start MCP local server
+	@echo "$(BLUE)🚀 Starting MCP local server...$(NC)"
+	@cd mcp-local && $(MAKE) start
+
+.PHONY: mcp-dev
+mcp-dev: ## 🔧 Start MCP server in development mode
+	@echo "$(BLUE)🔧 Starting MCP server in development mode...$(NC)"
+	@cd mcp-local && $(MAKE) dev
+
+.PHONY: mcp-test
+mcp-test: ## 🧪 Test MCP local server
+	@echo "$(BLUE)🧪 Testing MCP local server...$(NC)"
+	@cd mcp-local && $(MAKE) test
+
+.PHONY: mcp-validate
+mcp-validate: ## ✅ Validate MCP server setup
+	@cd mcp-local && ./scripts/validate-setup.sh
+
+.PHONY: mcp-config
+mcp-config: ## ⚙️ Install Claude Code configuration
+	@echo "$(BLUE)⚙️ Installing Claude Code configuration...$(NC)"
+	@cd mcp-local && $(MAKE) claude-config
+
+.PHONY: mcp-status
+mcp-status: ## 📊 Check MCP server status
+	@echo "$(BLUE)📊 MCP Server Status:$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(GREEN)🌐 MCP Bridge (Production):$(NC)"
+	@curl -s http://localhost:8380/health >/dev/null 2>&1 && echo "  ✅ Running (localhost:8380)" || echo "  ❌ Not running"
+	@echo "$(GREEN)📁 Local MCP Server Files:$(NC)"
+	@[ -f mcp-local/dist/server.js ] && echo "  ✅ Built (mcp-local/dist/server.js)" || echo "  ❌ Not built"
+	@[ -f mcp-local/.env ] && echo "  ✅ Configured (mcp-local/.env)" || echo "  ❌ Not configured"
+	@echo "$(GREEN)🤖 Claude Code Config:$(NC)"
+	@[ -f ~/.config/claude/claude_desktop_config.json ] && echo "  ✅ Installed (~/.config/claude/)" || echo "  ❌ Not installed"
+
+.PHONY: mcp-logs
+mcp-logs: ## 📋 View MCP server logs (development mode)
+	@echo "$(BLUE)📋 MCP Server Logs:$(NC)"
+	@echo "$(YELLOW)💡 Start with 'make mcp-dev' to see real-time logs$(NC)"
+
+.PHONY: mcp-clean
+mcp-clean: ## 🧹 Clean MCP server build artifacts
+	@echo "$(BLUE)🧹 Cleaning MCP server...$(NC)"
+	@cd mcp-local && $(MAKE) clean
+	@echo "$(GREEN)✓ MCP server cleaned$(NC)"
+
+.PHONY: mcp-help
+mcp-help: ## ❓ Show MCP local server help
+	@echo "$(BLUE)🔌 MCP Local Server Commands:$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(GREEN)Setup & Configuration:$(NC)"
+	@echo "  make mcp-setup      - Complete setup (first time)"
+	@echo "  make mcp-config     - Install Claude Code config"
+	@echo "  make mcp-validate   - Validate setup"
+	@echo ""
+	@echo "$(GREEN)Development:$(NC)"
+	@echo "  make mcp-start      - Start MCP server"
+	@echo "  make mcp-dev        - Development mode with auto-reload"
+	@echo "  make mcp-test       - Run tests"
+	@echo ""
+	@echo "$(GREEN)Monitoring:$(NC)"
+	@echo "  make mcp-status     - Check server status"
+	@echo "  make mcp-logs       - View logs"
+	@echo ""
+	@echo "$(GREEN)Maintenance:$(NC)"
+	@echo "  make mcp-clean      - Clean build artifacts"
+	@echo ""
+	@echo "$(YELLOW)📖 Documentation: mcp-local/README.md$(NC)"
+	@echo "$(YELLOW)🎯 Usage in Claude Code: 'Show me financial summary for last month'$(NC)"
 

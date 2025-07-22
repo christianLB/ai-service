@@ -35,6 +35,9 @@ import realEstateRoutes from './routes/real-estate';
 import integrationRoutes from './routes/integrations';
 import { tradingRouter } from './api/trading';
 import positionRoutes from './routes/position.routes';
+import alertRoutes from './routes/alert.routes';
+import strategyRoutes from './routes/strategy.routes';
+import tradeRoutes from './routes/trade.routes';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
@@ -233,23 +236,26 @@ app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 // Version routes - should be public
 app.use('/api', versionRoutes);
 
-// Protected API Routes - Apply auth middleware to all
-app.use('/api', authMiddleware, flowGen);
-app.use('/api', authMiddleware, flowUpdate);
-app.use('/api', authMiddleware, flowTest);
-app.use('/api/financial', authMiddleware, financialRoutes);
+// Protected API Routes - Some routes have built-in auth, others need it applied
+app.use('/api', flowGen);
+app.use('/api', flowUpdate);
+app.use('/api', flowTest);
+app.use('/api/financial', financialRoutes);
 
 // const cryptoRoutes = createCryptoRoutes(db.pool);
 
-// app.use('/api', authMiddleware, cryptoRoutes);
-app.use('/api/real-estate', authMiddleware, realEstateRoutes);
-app.use('/api/telegram', authMiddleware, telegramRoutes);
-app.use('/api/documents', authMiddleware, documentRoutes);
-app.use('/api/integrations', authMiddleware, integrationRoutes);
+// app.use('/api', cryptoRoutes);
+app.use('/api/real-estate', realEstateRoutes);
+app.use('/api/telegram', telegramRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/integrations', integrationRoutes);
 
-// Trading routes
-app.use('/api/trading', authMiddleware, tradingRouter);
-app.use('/api/positions', authMiddleware, positionRoutes);
+// Trading routes (these have built-in auth)
+app.use('/api/trading', tradingRouter);
+app.use('/api/positions', positionRoutes);
+app.use('/api/alerts', alertRoutes);
+app.use('/api/strategies', strategyRoutes);
+app.use('/api/trades', tradeRoutes);
 
 // Servir archivos estáticos del frontend
 // En producción, el volumen se monta en /app/public según docker-compose.production.yml

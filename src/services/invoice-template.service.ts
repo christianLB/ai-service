@@ -21,6 +21,7 @@ export class InvoiceTemplateService {
 
       // Build where clause
       const where: Prisma.InvoiceTemplateWhereInput = {
+        ...(userId && { userId }),
         ...(search && {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
@@ -65,6 +66,7 @@ export class InvoiceTemplateService {
       const invoiceTemplate = await prisma.invoiceTemplate.findFirst({
         where: { 
           id,
+          ...(userId && { userId }),
         },
         include: {
           user: true,
@@ -93,6 +95,7 @@ export class InvoiceTemplateService {
       const invoiceTemplate = await prisma.invoiceTemplate.create({
         data: {
           ...data,
+          ...(userId && { userId }),
         },
       });
 

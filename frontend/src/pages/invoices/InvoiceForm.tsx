@@ -493,7 +493,7 @@ const InvoiceForm: React.FC = () => {
               <Button
                 type="link"
                 icon={<FileTextOutlined />}
-                onClick={() => window.open('/invoice-templates', '_blank')}
+                onClick={() => navigate('/invoice-templates')}
               >
                 Gestionar Plantillas
               </Button>

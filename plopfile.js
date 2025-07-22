@@ -183,7 +183,7 @@ import {
           type: 'add',
           path: 'src/routes/{{kebabCase model}}.routes.ts',
           templateFile: data.modelInfo 
-            ? 'plop-templates/routes/model.routes.dynamic.ts.hbs'
+            ? 'plop-templates/routes/model.routes.simple.ts.hbs'
             : 'plop-templates/routes/model.routes.ts.hbs'
         });
       }

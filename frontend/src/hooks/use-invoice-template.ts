@@ -34,7 +34,7 @@ export function useInvoiceTemplates(params?: InvoiceTemplateQuery) {
   return useQuery({
     queryKey: [QUERY_KEY, params],
     queryFn: async () => {
-      const response = await api.get<InvoiceTemplateListResponse>('/invoice-templates', { params });
+      const response = await api.get<InvoiceTemplateListResponse>('/financial/invoice-templates', { params });
       return response.data.data;
     },
   });
@@ -48,7 +48,7 @@ export function useInvoiceTemplate(id: string | undefined) {
     queryKey: [QUERY_KEY, id],
     queryFn: async () => {
       if (!id) throw new Error('ID is required');
-      const response = await api.get<InvoiceTemplateResponse>(`/invoice-templates/${id}`);
+      const response = await api.get<InvoiceTemplateResponse>(`/financial/invoice-templates/${id}`);
       return response.data.data;
     },
     enabled: !!id,
@@ -63,7 +63,7 @@ export function useInvoiceTemplateSearch(query: string) {
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
       const response = await api.get<{ success: boolean; data: InvoiceTemplate[] }>(
-        '/invoice-templates/search',
+        '/financial/invoice-templates/search',
         { params: { q: query } }
       );
       return response.data.data;
@@ -80,7 +80,7 @@ export function useInvoiceTemplateMutations() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateInvoiceTemplate) => {
-      const response = await api.post<InvoiceTemplateResponse>('/invoice-templates', data);
+      const response = await api.post<InvoiceTemplateResponse>('/financial/invoice-templates', data);
       return response.data;
     },
     onSuccess: (response) => {
@@ -94,7 +94,7 @@ export function useInvoiceTemplateMutations() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InvoiceTemplate> }) => {
-      const response = await api.put<InvoiceTemplateResponse>(`/invoice-templates/${id}`, data);
+      const response = await api.put<InvoiceTemplateResponse>(`/financial/invoice-templates/${id}`, data);
       return response.data;
     },
     onSuccess: (response, variables) => {
@@ -109,7 +109,7 @@ export function useInvoiceTemplateMutations() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/invoice-templates/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(`/financial/invoice-templates/${id}`);
       return response.data;
     },
     onSuccess: (response) => {
@@ -124,7 +124,7 @@ export function useInvoiceTemplateMutations() {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/invoice-templates/bulk',
+        '/financial/invoice-templates/bulk',
         { data: { ids } }
       );
       return response.data;
@@ -158,7 +158,7 @@ export function useCreateInvoiceTemplate() {
 
   return useMutation({
     mutationFn: async (data: CreateInvoiceTemplate) => {
-      const response = await api.post<InvoiceTemplateResponse>('/invoice-templates', data);
+      const response = await api.post<InvoiceTemplateResponse>('/financial/invoice-templates', data);
       return response.data;
     },
     onSuccess: (response) => {
@@ -176,7 +176,7 @@ export function useUpdateInvoiceTemplate() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: UpdateInvoiceTemplate) => {
-      const response = await api.put<InvoiceTemplateResponse>(`/invoice-templates/${id}`, data);
+      const response = await api.put<InvoiceTemplateResponse>(`/financial/invoice-templates/${id}`, data);
       return response.data;
     },
     onSuccess: (response, variables) => {
@@ -195,7 +195,7 @@ export function useDeleteInvoiceTemplate() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/invoice-templates/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(`/financial/invoice-templates/${id}`);
       return response.data;
     },
     onSuccess: (response) => {
@@ -218,7 +218,7 @@ export function useInvoiceTemplatePrefetch() {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, id],
       queryFn: async () => {
-        const response = await api.get<InvoiceTemplateResponse>(`/invoice-templates/${id}`);
+        const response = await api.get<InvoiceTemplateResponse>(`/financial/invoice-templates/${id}`);
         return response.data.data;
       },
     });
@@ -228,7 +228,7 @@ export function useInvoiceTemplatePrefetch() {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, params],
       queryFn: async () => {
-        const response = await api.get<InvoiceTemplateListResponse>('/invoice-templates', { params });
+        const response = await api.get<InvoiceTemplateListResponse>('/financial/invoice-templates', { params });
         return response.data.data;
       },
     });

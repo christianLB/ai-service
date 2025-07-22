@@ -172,8 +172,8 @@ export class InvoicePrismaService {
       }
 
       // Calculate totals if not provided
-      const subtotal = data.subtotal || data.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-      const taxAmount = data.taxAmount || (subtotal * (data.taxRate / 100));
+      const subtotal = data.subtotal || (data.items?.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0) || 0);
+      const taxAmount = data.taxAmount || (subtotal * ((data.taxRate || 0) / 100));
       const total = data.total || (subtotal + taxAmount - (data.discount || 0));
 
       const invoice = await prisma.invoice.create({
@@ -181,13 +181,13 @@ export class InvoicePrismaService {
           userId,
           invoiceNumber,
           clientId: data.clientId,
-          clientName: data.clientName,
-          clientTaxId: data.clientTaxId,
+          clientName: data.clientName || '',
+          clientTaxId: data.clientTaxId || '',
           clientAddress: data.clientAddress ? JSON.parse(JSON.stringify(data.clientAddress)) : null,
           type: data.type || 'invoice',
           status: 'draft',
-          issueDate: new Date(data.issueDate),
-          dueDate: new Date(data.dueDate),
+          issueDate: data.issueDate ? new Date(data.issueDate) : new Date(),
+          dueDate: data.dueDate ? new Date(data.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           serviceStartDate: data.serviceStartDate ? new Date(data.serviceStartDate) : null,
           serviceEndDate: data.serviceEndDate ? new Date(data.serviceEndDate) : null,
           currency: data.currency || 'EUR',
@@ -204,6 +204,7 @@ export class InvoicePrismaService {
           bankAccount: data.bankAccount || null,
           notes: data.notes || null,
           termsAndConditions: data.termsAndConditions || null,
+          templateId: data.templateId || null,
           tags: data.tags || [],
           customFields: data.customFields || {},
         },
@@ -222,7 +223,7 @@ export class InvoicePrismaService {
       };
     } catch (error) {
       logger.error('Error creating invoice:', error);
-      if (error.code === 'P2002') {
+      if ((error as any).code === 'P2002') {
         throw new AppError('Invoice with this number already exists', 409);
       }
       throw new AppError('Failed to create invoice', 500);
@@ -247,7 +248,8 @@ export class InvoicePrismaService {
 
       if (data.items) {
         subtotal = data.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-        taxAmount = subtotal * ((data.taxRate || existing.data.invoice.taxRate) / 100);
+        const taxRateNumber = data.taxRate || existing.data.invoice.taxRate.toNumber();
+        taxAmount = subtotal * (taxRateNumber / 100);
         total = subtotal + taxAmount - (data.discount || 0);
       }
 
@@ -278,6 +280,7 @@ export class InvoicePrismaService {
           ...(data.bankAccount && { bankAccount: data.bankAccount }),
           ...(data.notes !== undefined && { notes: data.notes }),
           ...(data.termsAndConditions !== undefined && { termsAndConditions: data.termsAndConditions }),
+          ...(data.templateId !== undefined && { templateId: data.templateId }),
           ...(data.tags && { tags: data.tags }),
           ...(data.customFields && { customFields: data.customFields }),
         },
@@ -433,7 +436,7 @@ export class InvoicePrismaService {
 
       // Transform total amounts to object
       const totalAmountMap = totalAmounts.reduce((acc, curr) => {
-        acc[`${curr.status}Total`] = curr._sum.total || 0;
+        acc[`${curr.status}Total`] = curr._sum.total ? curr._sum.total.toNumber() : 0;
         return acc;
       }, {} as Record<string, number>);
 

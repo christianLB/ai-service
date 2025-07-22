@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
   user?: {
+    id: string;      // Add id for compatibility with generated routes
     userId: string;
     email: string;
     role: string;
@@ -40,6 +41,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
 
     // Add user info to request
     req.user = {
+      id: decoded.userId,     // Use userId as id for compatibility
       userId: decoded.userId,
       email: decoded.email,
       role: decoded.role

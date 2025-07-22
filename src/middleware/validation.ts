@@ -31,3 +31,25 @@ export const validateZod = (schema: z.ZodSchema) => {
     }
   };
 };
+
+// Alias for validateZod to match generated route expectations
+export const validateBody = validateZod;
+
+// Validate query parameters
+export const validateQuery = (schema: z.ZodSchema) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      schema.parse(req.query);
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          errors: error.errors
+        });
+        return;
+      }
+      next(error);
+    }
+  };
+};

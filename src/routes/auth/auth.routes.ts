@@ -97,7 +97,7 @@ export function createAuthRoutes(pool: Pool): Router {
   );
 
   // Logout endpoint
-  router.post('/logout', authMiddleware, async (req: AuthRequest, res: Response) => {
+  router.post('/logout', authMiddleware as any, (async (req: AuthRequest, res: Response) => {
     try {
       const refreshToken = req.body.refreshToken;
       if (refreshToken && req.user) {
@@ -110,7 +110,7 @@ export function createAuthRoutes(pool: Pool): Router {
       res.status(500).json({ error: 'Logout failed' });
       return;
     }
-  });
+  }) as any);
 
   // Refresh token endpoint
   router.post(
@@ -142,7 +142,7 @@ export function createAuthRoutes(pool: Pool): Router {
   );
 
   // Get current user endpoint
-  router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
+  router.get('/me', authMiddleware as any, (async (req: AuthRequest, res: Response) => {
     try {
       if (!req.user) {
         res.status(401).json({ error: 'Unauthorized' });
@@ -165,7 +165,7 @@ export function createAuthRoutes(pool: Pool): Router {
       res.status(500).json({ error: 'Failed to get user information' });
       return;
     }
-  });
+  }) as any);
 
   // Register endpoint (optional, can be disabled in production)
   if (process.env.ALLOW_REGISTRATION === 'true') {

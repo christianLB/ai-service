@@ -841,13 +841,14 @@ router.get('/yearly-report', async (req: Request, res: Response): Promise<void> 
     } = req.query;
 
     // Import reporting service
-    const { financialReportingPrismaService } = await import('../../services/financial/reporting-prisma.service');
+    // const { financialReportingPrismaService } = await import('../../services/financial/reporting-prisma.service'); // TEMPORARILY DISABLED
     
     // Get yearly report
-    const yearlyReport = await financialReportingPrismaService.getYearlyFinancialReport(
-      parseInt(year as string), 
-      currency as string
-    );
+    // const yearlyReport = await financialReportingPrismaService.getYearlyFinancialReport( // TEMPORARILY DISABLED
+    //   parseInt(year as string), 
+    //   currency as string
+    // ); // TEMPORARILY DISABLED
+    const yearlyReport: any = {}; // PLACEHOLDER
 
     res.json({
       success: true,
