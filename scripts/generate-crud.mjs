@@ -29,6 +29,7 @@ Opciones:
   --features <lista>    Features separadas por coma (default: todas)
                        Opciones: list,form,detail,api,service,hooks,tests
   --no-relations       Sin relaciones (default: con relaciones)
+  --skip-validation    Omitir validación TypeScript al final
   
 Ejemplos:
   npm run generate:crud:auto Alert
@@ -42,7 +43,8 @@ Ejemplos:
     model: args[0],
     schema: '',
     features: ['list', 'form', 'api', 'service', 'hooks'],
-    hasRelations: true
+    hasRelations: true,
+    skipValidation: false
   };
 
   // Parse flags
@@ -55,6 +57,8 @@ Ejemplos:
       i++;
     } else if (args[i] === '--no-relations') {
       options.hasRelations = false;
+    } else if (args[i] === '--skip-validation') {
+      options.skipValidation = true;
     }
   }
 
@@ -122,7 +126,15 @@ async function parsePrismaModel(modelName) {
       // Extract default value
       const defaultMatch = rest.match(/@default\(([^)]+)\)/);
       if (defaultMatch) {
-        field.defaultValue = defaultMatch[1];
+        let defaultValue = defaultMatch[1];
+        // Remove quotes if it's a string literal
+        if (defaultValue.startsWith('"') && defaultValue.endsWith('"')) {
+          defaultValue = defaultValue.slice(1, -1);
+          // Add back quotes for string defaults in the template
+          field.defaultValue = `"${defaultValue}"`;
+        } else {
+          field.defaultValue = defaultValue;
+        }
       }
       
       if (isRelation) {
@@ -270,6 +282,29 @@ async function generateCrud() {
       console.log('   2. Ejecuta: npm run db:generate');
       console.log('   3. Personaliza el código generado');
       console.log('   4. ¡Listo para usar!');
+      
+      // Validate TypeScript compilation unless skipped
+      if (!options.skipValidation && createdFiles.some(f => f.endsWith('.ts'))) {
+        console.log('\n🔍 Validando compilación TypeScript...');
+        try {
+          const { execSync } = await import('child_process');
+          execSync('npm run build', { stdio: 'pipe' });
+          console.log('   ✅ Compilación exitosa');
+        } catch (error) {
+          console.error('   ⚠️  La compilación TypeScript falló. Revisa los errores:');
+          const output = error.stdout?.toString() || error.message;
+          // Show only first few errors
+          const lines = output.split('\n');
+          const errorLines = lines.filter(line => line.includes('error TS'));
+          if (errorLines.length > 0) {
+            console.error('   ' + errorLines.slice(0, 5).join('\n   '));
+            if (errorLines.length > 5) {
+              console.error(`   ... y ${errorLines.length - 5} errores más`);
+            }
+          }
+          console.log('\n   💡 Ejecuta "npm run build" para ver todos los detalles.');
+        }
+      }
     }
 
   } catch (error) {

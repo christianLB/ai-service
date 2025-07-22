@@ -10,10 +10,9 @@ export const invoiceTemplateSchema = z.object({
   isDefault: z.boolean().default(false),
   templateType: z.string().default("invoice"),
   htmlContent: z.string(),
-  variables: z.any().default([]),
+  variables: z.any().default("[]"),
   metadata: z.any().optional().nullable(),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
+  updatedAt: z.date(),
 });
 
 // Create schema (omit id and timestamps)

@@ -93,7 +93,15 @@ export type {{pascalCase model}}Query = z.infer<typeof {{camelCase model}}QueryS
 
 // Prisma types
 export type {{pascalCase model}}WithRelations = Prisma.{{pascalCase model}}GetPayload<{
-  {{#if hasRelations}}
+  {{#if modelInfo}}
+  {{#if modelInfo.relations.length}}
+  include: {
+    {{#each modelInfo.relations}}
+    {{this.name}}: true;
+    {{/each}}
+  };
+  {{/if}}
+  {{else if hasRelations}}
   include: {
     {{#if (eq model 'Client')}}
     invoices: true;

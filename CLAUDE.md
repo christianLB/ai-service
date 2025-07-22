@@ -168,13 +168,51 @@ make dev-status && make check-db
 - **React Query**: Data fetching with caching
 - **Error Handling**: Consistent error responses with status codes
 
+## 🤖 Claude Code Configuration
+
+### MCP Servers Configuration
+Claude Code is configured with advanced MCP (Model Context Protocol) servers:
+
+1. **Context7** (Documentation & Patterns)
+   - **Enabled**: ✅ Auto-detects when using Prisma, React, Express, TypeScript
+   - **Use cases**: Library docs, best practices, code patterns
+   - **Libraries**: prisma, react, express, typescript, tailwindcss, tanstack-query
+
+2. **Sequential** (Complex Analysis)
+   - **Enabled**: ✅ Auto-activates for complex problems
+   - **Use cases**: Trading strategies, performance analysis, debugging
+   - **Triggers**: `--think`, `--think-hard`, complex architecture
+
+3. **Magic** (UI Generation)
+   - **Enabled**: ✅ Auto-activates for frontend work
+   - **Use cases**: React components, Tailwind UI, dashboard elements
+   - **Frameworks**: React + Tailwind CSS
+
+4. **Playwright** (Testing)
+   - **Enabled**: ❌ (Can be enabled for E2E testing)
+   - **Use cases**: Automated testing, cross-browser validation
+
+### Custom Commands
+- `/db-safe` - Safe database operations with automatic backup
+- `/financial-audit` - Comprehensive financial module security audit
+- `/trading-optimize` - Optimize trading strategies and performance
+- `/frontend-enhance` - Enhance UI components with Magic
+
+### Performance Optimizations
+- **Token compression**: Auto-enabled at 75% usage
+- **Caching**: Session and MCP server results cached
+- **Parallel operations**: Up to 3 concurrent operations
+- **Wave mode**: Auto-activates for complex multi-file operations
+
 ## 💡 Pro Tips
 
 1. **Extended thinking**: Use "think" in prompts for complex problems
 2. **Update this file**: When patterns change, update CLAUDE.md
 3. **Use # shortcut**: Press # to add instructions to CLAUDE.md
-4. **Custom commands**: Check `.claude/commands/` for task templates
+4. **Custom commands**: Check `.clauderc` for project-specific commands
 5. **Logs are gold**: Always check `make dev-logs` when debugging
+6. **MCP servers**: Auto-activate based on context (e.g., UI work → Magic)
+7. **Safety first**: Dangerous commands are blocked or require confirmation
 
 ## 🔍 Development Reminders
 

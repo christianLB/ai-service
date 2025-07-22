@@ -7,7 +7,7 @@ export const {{camelCase model}}Schema = z.object({
   {{#if modelInfo}}
   {{#each modelInfo.fields}}
   {{#unless (or this.isId (eq this.name 'createdAt') (eq this.name 'updatedAt'))}}
-  {{this.name}}: {{prismaToZod this}},
+  {{this.name}}: {{{prismaToZod this}}},
   {{/unless}}
   {{/each}}
   {{else}}
@@ -57,8 +57,10 @@ export const {{camelCase model}}Schema = z.object({
   {{/if}}
   metadata: z.record(z.any()).optional().nullable(),
   {{/if}}
+  {{#unless modelInfo}}
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
+  {{/unless}}
 });
 
 // Create schema (omit id and timestamps)

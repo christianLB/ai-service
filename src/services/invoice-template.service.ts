@@ -1,25 +1,22 @@
 import { prisma } from '../lib/prisma';
-import { 
-  InvoiceTemplate, 
-  CreateInvoiceTemplate, 
+import type { Prisma } from '../lib/prisma';
+import type { 
+  InvoiceTemplate,
+  InvoiceTemplateWithRelations,
+  CreateInvoiceTemplate,
   UpdateInvoiceTemplate,
-  InvoiceTemplateQuery,
-  InvoiceTemplateWithRelations
+  InvoiceTemplateQuery
 } from '../types/invoice-template.types';
-import { Prisma } from '@prisma/client';
 import { AppError } from '../utils/errors';
 import logger from '../utils/logger';
 
-// InvoiceTemplate is in the financial schema
-const TABLE_NAME = 'financial.invoice_templates';
-
 export class InvoiceTemplateService {
   /**
-   * Get all invoicetemplates with pagination and filtering
+   * Get all invoicetemplates with pagination
    */
   async getAll(query: InvoiceTemplateQuery, userId?: string) {
     try {
-      const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+      const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
       const skip = (page - 1) * limit;
 
       // Build where clause
@@ -27,7 +24,8 @@ export class InvoiceTemplateService {
         ...(search && {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
-                      ],
+            { description: { contains: search, mode: 'insensitive' } },
+          ],
         }),
       };
 
@@ -39,6 +37,8 @@ export class InvoiceTemplateService {
           take: limit,
           orderBy: { [sortBy]: sortOrder },
           include: {
+            user: true,
+            invoices: true,
           },
         }),
         prisma.invoiceTemplate.count({ where }),
@@ -67,6 +67,8 @@ export class InvoiceTemplateService {
           id,
         },
         include: {
+          user: true,
+          invoices: true,
         },
       });
 
@@ -98,7 +100,7 @@ export class InvoiceTemplateService {
       return invoiceTemplate;
     } catch (error) {
       logger.error('Error in InvoiceTemplateService.create:', error);
-      if (error.code === 'P2002') {
+      if ((error as any).code === 'P2002') {
         throw new AppError('InvoiceTemplate with this data already exists', 409);
       }
       throw new AppError('Failed to create invoicetemplate', 500);
@@ -110,7 +112,7 @@ export class InvoiceTemplateService {
    */
   async update(id: string, data: UpdateInvoiceTemplate, userId?: string): Promise<InvoiceTemplate> {
     try {
-      // Check if exists and user has permission
+      // Check if exists
       const existing = await this.getById(id, userId);
       if (!existing) {
         throw new AppError('InvoiceTemplate not found', 404);
@@ -118,10 +120,7 @@ export class InvoiceTemplateService {
 
       const invoiceTemplate = await prisma.invoiceTemplate.update({
         where: { id },
-        data: {
-          ...data,
-          id: undefined, // Remove id from data
-        },
+        data,
       });
 
       logger.info(`InvoiceTemplate updated: ${id}`);
@@ -138,12 +137,11 @@ export class InvoiceTemplateService {
    */
   async delete(id: string, userId?: string): Promise<void> {
     try {
-      // Check if exists and user has permission
+      // Check if exists
       const existing = await this.getById(id, userId);
       if (!existing) {
         throw new AppError('InvoiceTemplate not found', 404);
       }
-
 
       await prisma.invoiceTemplate.delete({
         where: { id },
@@ -156,9 +154,6 @@ export class InvoiceTemplateService {
       throw new AppError('Failed to delete invoicetemplate', 500);
     }
   }
-
-
-
 }
 
 // Export singleton instance

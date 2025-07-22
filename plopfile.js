@@ -68,7 +68,11 @@ module.exports = function (plop) {
     if (field.hasDefault) {
       if (field.defaultValue === 'false' || field.defaultValue === 'true') {
         zodType += `.default(${field.defaultValue})`;
+      } else if (field.defaultValue && field.defaultValue.match(/^['"].*['"]$/)) {
+        // String default - already has quotes
+        zodType += `.default(${field.defaultValue})`;
       } else if (field.defaultValue && !field.defaultValue.includes('(')) {
+        // Other defaults like numbers
         zodType += `.default(${field.defaultValue})`;
       }
     }

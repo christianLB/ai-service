@@ -73,3 +73,29 @@ export interface ClientFormData {
 
 // Re-export Customer as Client for backwards compatibility
 export type { Customer as ClientType } from '../../services/financial/types';
+
+// Invoice form data interface
+export interface InvoiceFormData {
+  clientId?: string;
+  clientName?: string;
+  invoiceNumber?: string;
+  title?: string;
+  description?: string;
+  items?: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice?: number;
+  }>;
+  subtotal?: number;
+  taxAmount?: number;
+  totalAmount?: number;
+  currency?: string;
+  issueDate?: Date | string;
+  dueDate?: Date | string;
+  status?: string;
+  notes?: string;
+  terms?: string;
+  templateId?: string;
+  metadata?: Record<string, any>;
+}
