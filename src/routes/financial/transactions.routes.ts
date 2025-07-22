@@ -1,25 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { TransactionMatchingService } from '../../services/financial/transaction-matching.service';
-import { FinancialDatabaseService } from '../../services/financial/database.service';
+import { transactionMatchingPrismaService } from '../../services/financial/transaction-matching-prisma.service';
 import { logger } from '../../utils/log';
 
 const router = Router();
 
-let transactionMatchingService: TransactionMatchingService;
-let databaseService: FinancialDatabaseService;
-
-// Initialize services
-const initializeServices = () => {
-  if (!transactionMatchingService && databaseService?.pool) {
-    transactionMatchingService = new TransactionMatchingService(databaseService.pool);
-  }
-};
-
-// Set database service (called from parent router)
-export const setDatabaseService = (dbService: FinancialDatabaseService) => {
-  databaseService = dbService;
-  initializeServices();
-};
+// Using Prisma service directly
+const transactionMatchingService = transactionMatchingPrismaService;
 
 /**
  * GET /api/financial/transactions/unlinked
@@ -27,8 +13,6 @@ export const setDatabaseService = (dbService: FinancialDatabaseService) => {
  */
 router.get('/unlinked', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
-    
     const { page = '1', limit = '50' } = req.query;
     const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
     
@@ -66,10 +50,11 @@ router.get('/unlinked', async (req: Request, res: Response): Promise<void> => {
  */
 router.post('/:id/link', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
-    
     const { id } = req.params;
-    const { clientId, notes, userId } = req.body;
+    const { clientId, notes } = req.body;
+    
+    // Extract userId from auth context
+    const userId = (req as any).user?.userId || (req as any).userId;
     
     if (!clientId) {
       res.status(400).json({
@@ -107,8 +92,6 @@ router.post('/:id/link', async (req: Request, res: Response): Promise<void> => {
  */
 router.post('/auto-match', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
-    
     const { transactionIds } = req.body;
     
     const result = await transactionMatchingService.runAutoMatching(transactionIds);
@@ -134,36 +117,21 @@ router.post('/auto-match', async (req: Request, res: Response): Promise<void> =>
  */
 router.get('/:id/link', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
-    
     const { id } = req.params;
     
-    const query = `
-      SELECT 
-        ctl.*,
-        c.name as client_name,
-        c.business_name as client_business_name,
-        c.tax_id as client_tax_id
-      FROM financial.client_transaction_links ctl
-      JOIN clients c ON ctl.client_id = c.id
-      WHERE ctl.transaction_id = $1
-      ORDER BY ctl.created_at DESC
-      LIMIT 1
-    `;
+    const link = await transactionMatchingService.getTransactionLink(id);
     
-    const result = await databaseService.pool.query(query, [id]);
-    
-    if (result.rows.length === 0) {
+    if (!link) {
       res.status(404).json({
         success: false,
-        error: 'No link found for this transaction'
+        error: 'Transaction link not found'
       });
       return;
     }
     
     res.json({
       success: true,
-      data: result.rows[0]
+      data: link
     });
   } catch (error) {
     logger.error('Failed to get transaction link:', error);
@@ -181,25 +149,25 @@ router.get('/:id/link', async (req: Request, res: Response): Promise<void> => {
  */
 router.delete('/:id/link', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
-    
     const { id } = req.params;
+    const { reason } = req.body;
     
-    const query = `
-      DELETE FROM financial.client_transaction_links
-      WHERE transaction_id = $1
-      RETURNING id
-    `;
+    // Extract userId from auth context
+    const userId = (req as any).user?.userId || (req as any).userId;
     
-    const result = await databaseService.pool.query(query, [id]);
+    // Get the link first
+    const link = await transactionMatchingService.getTransactionLink(id);
     
-    if (result.rows.length === 0) {
+    if (!link) {
       res.status(404).json({
         success: false,
-        error: 'No link found to delete'
+        error: 'Transaction link not found'
       });
       return;
     }
+    
+    // Remove the link
+    const removed = await transactionMatchingService.removeTransactionLink(link.id, userId, reason);
     
     res.json({
       success: true,
@@ -221,8 +189,6 @@ router.delete('/:id/link', async (req: Request, res: Response): Promise<void> =>
  */
 router.get('/patterns/:clientId', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
-    
     const { clientId } = req.params;
     
     const patterns = await transactionMatchingService.getClientMatchingPatterns(clientId);
@@ -248,9 +214,20 @@ router.get('/patterns/:clientId', async (req: Request, res: Response): Promise<v
  */
 router.post('/patterns', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
+    const patternData = req.body;
     
-    const pattern = await transactionMatchingService.createMatchingPattern(req.body);
+    // Extract required fields and convert to Prisma service format
+    const pattern = await transactionMatchingService.saveMatchingPattern(
+      patternData.clientId,
+      {
+        patternType: patternData.patternType,
+        pattern: patternData.pattern,
+        amountMin: patternData.amountMin,
+        amountMax: patternData.amountMax,
+        confidence: patternData.confidence,
+        isActive: patternData.isActive
+      }
+    );
     
     res.json({
       success: true,
@@ -273,45 +250,15 @@ router.post('/patterns', async (req: Request, res: Response): Promise<void> => {
  */
 router.put('/patterns/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
-    
     const { id } = req.params;
     const updates = req.body;
     
-    const query = `
-      UPDATE financial.transaction_matching_patterns
-      SET 
-        pattern = COALESCE($2, pattern),
-        confidence = COALESCE($3, confidence),
-        amount_min = COALESCE($4, amount_min),
-        amount_max = COALESCE($5, amount_max),
-        is_active = COALESCE($6, is_active),
-        updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-    `;
-    
-    const result = await databaseService.pool.query(query, [
-      id,
-      updates.pattern,
-      updates.confidence,
-      updates.amountMin,
-      updates.amountMax,
-      updates.isActive
-    ]);
-    
-    if (result.rows.length === 0) {
-      res.status(404).json({
-        success: false,
-        error: 'Pattern not found'
-      });
-      return;
-    }
+    const pattern = await transactionMatchingService.updateMatchingPattern(id, updates);
     
     res.json({
       success: true,
-      data: result.rows[0],
-      message: 'Pattern updated successfully'
+      data: pattern,
+      message: 'Matching pattern updated successfully'
     });
   } catch (error) {
     logger.error('Failed to update pattern:', error);
@@ -329,29 +276,13 @@ router.put('/patterns/:id', async (req: Request, res: Response): Promise<void> =
  */
 router.delete('/patterns/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    initializeServices();
-    
     const { id } = req.params;
     
-    const query = `
-      DELETE FROM financial.transaction_matching_patterns
-      WHERE id = $1
-      RETURNING id
-    `;
-    
-    const result = await databaseService.pool.query(query, [id]);
-    
-    if (result.rows.length === 0) {
-      res.status(404).json({
-        success: false,
-        error: 'Pattern not found'
-      });
-      return;
-    }
+    const deleted = await transactionMatchingService.deleteMatchingPattern(id);
     
     res.json({
       success: true,
-      message: 'Pattern deleted successfully'
+      message: 'Matching pattern deleted successfully'
     });
   } catch (error) {
     logger.error('Failed to delete pattern:', error);

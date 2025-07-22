@@ -1,0 +1,255 @@
+import { Router } from 'express';
+import { body, query, param } from 'express-validator';
+import { authenticate } from '../middleware/auth';
+import { validateRequest } from '../middleware/validation';
+import { {{camelCase model}}Service } from '../services/{{kebabCase model}}.service';
+import { 
+  create{{pascalCase model}}Schema, 
+  update{{pascalCase model}}Schema,
+  {{camelCase model}}QuerySchema 
+} from '../types/{{kebabCase model}}.types';
+import { asyncHandler } from '../utils/asyncHandler';
+import logger from '../utils/logger';
+
+const router = Router();
+
+// All routes require authentication
+router.use(authenticate);
+
+/**
+ * GET /api/{{kebabCase model}}s
+ * Get all {{lowerCase model}}s with pagination
+ */
+router.get(
+  '/',
+  validateRequest([
+    query('page').optional().isInt({ min: 1 }),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('search').optional().isString().trim(),
+    query('sortBy').optional().isString(),
+    query('sortOrder').optional().isIn(['asc', 'desc']),
+    {{#if (eq model 'Invoice')}}
+    query('status').optional().isIn(['draft', 'sent', 'paid', 'cancelled']),
+    query('clientId').optional().isUUID(),
+    {{else if (eq model 'Trade')}}
+    query('symbol').optional().isString(),
+    query('status').optional().isIn(['pending', 'filled', 'cancelled']),
+    query('strategyId').optional().isUUID(),
+    {{/if}}
+  ]),
+  asyncHandler(async (req, res) => {
+    const queryParams = {{camelCase model}}QuerySchema.parse(req.query);
+    const result = await {{camelCase model}}Service.getAll(queryParams, req.user?.id);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+/**
+ * GET /api/{{kebabCase model}}s/:id
+ * Get a single {{lowerCase model}} by ID
+ */
+router.get(
+  '/:id',
+  validateRequest([
+    param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
+  ]),
+  asyncHandler(async (req, res) => {
+    const {{camelCase model}} = await {{camelCase model}}Service.getById(req.params.id, req.user?.id);
+    
+    res.json({
+      success: true,
+      data: {{camelCase model}},
+    });
+  })
+);
+
+/**
+ * POST /api/{{kebabCase model}}s
+ * Create a new {{lowerCase model}}
+ */
+router.post(
+  '/',
+  validateRequest([
+    {{#if (eq model 'Client')}}
+    body('name').notEmpty().withMessage('Name is required'),
+    body('email').optional({ nullable: true }).isEmail(),
+    body('phone').optional({ nullable: true }).isString(),
+    body('taxId').optional({ nullable: true }).isString(),
+    body('defaultCurrency').optional().isString().default('EUR'),
+    body('paymentTerms').optional().isInt({ min: 0 }).default(30),
+    {{else if (eq model 'Invoice')}}
+    body('clientId').isUUID().withMessage('Valid client ID is required'),
+    body('issueDate').isISO8601().toDate(),
+    body('dueDate').isISO8601().toDate(),
+    body('currency').optional().isString().default('EUR'),
+    body('items').optional().isArray(),
+    body('items.*.description').notEmpty(),
+    body('items.*.quantity').isFloat({ min: 0 }),
+    body('items.*.unitPrice').isFloat({ min: 0 }),
+    body('items.*.taxRate').isFloat({ min: 0, max: 100 }),
+    {{else if (eq model 'Trade')}}
+    body('symbol').notEmpty().withMessage('Symbol is required'),
+    body('side').isIn(['buy', 'sell']).withMessage('Side must be buy or sell'),
+    body('quantity').isFloat({ gt: 0 }).withMessage('Quantity must be positive'),
+    body('price').isFloat({ gt: 0 }).withMessage('Price must be positive'),
+    body('exchange').notEmpty().withMessage('Exchange is required'),
+    {{else}}
+    body('name').notEmpty().withMessage('Name is required'),
+    body('description').optional({ nullable: true }).isString(),
+    {{/if}}
+  ]),
+  asyncHandler(async (req, res) => {
+    const data = create{{pascalCase model}}Schema.parse(req.body);
+    const {{camelCase model}} = await {{camelCase model}}Service.create(data, req.user?.id);
+    
+    logger.info(`{{pascalCase model}} created by user ${req.user?.email}`);
+    
+    res.status(201).json({
+      success: true,
+      data: {{camelCase model}},
+      message: '{{pascalCase model}} created successfully',
+    });
+  })
+);
+
+/**
+ * PUT /api/{{kebabCase model}}s/:id
+ * Update a {{lowerCase model}}
+ */
+router.put(
+  '/:id',
+  validateRequest([
+    param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
+    {{#if (eq model 'Client')}}
+    body('name').optional().notEmpty(),
+    body('email').optional({ nullable: true }).isEmail(),
+    body('phone').optional({ nullable: true }).isString(),
+    body('taxId').optional({ nullable: true }).isString(),
+    body('defaultCurrency').optional().isString(),
+    body('paymentTerms').optional().isInt({ min: 0 }),
+    {{else if (eq model 'Invoice')}}
+    body('status').optional().isIn(['draft', 'sent', 'paid', 'cancelled']),
+    body('issueDate').optional().isISO8601().toDate(),
+    body('dueDate').optional().isISO8601().toDate(),
+    body('notes').optional({ nullable: true }).isString(),
+    {{else if (eq model 'Trade')}}
+    body('status').optional().isIn(['pending', 'filled', 'cancelled']),
+    body('executedAt').optional({ nullable: true }).isISO8601().toDate(),
+    body('fees').optional({ nullable: true }).isFloat({ min: 0 }),
+    {{else}}
+    body('name').optional().notEmpty(),
+    body('description').optional({ nullable: true }).isString(),
+    body('isActive').optional().isBoolean(),
+    {{/if}}
+  ]),
+  asyncHandler(async (req, res) => {
+    const data = update{{pascalCase model}}Schema.parse({ ...req.body, id: req.params.id });
+    const {{camelCase model}} = await {{camelCase model}}Service.update(req.params.id, data, req.user?.id);
+    
+    logger.info(`{{pascalCase model}} ${req.params.id} updated by user ${req.user?.email}`);
+    
+    res.json({
+      success: true,
+      data: {{camelCase model}},
+      message: '{{pascalCase model}} updated successfully',
+    });
+  })
+);
+
+/**
+ * DELETE /api/{{kebabCase model}}s/:id
+ * Delete a {{lowerCase model}}
+ */
+router.delete(
+  '/:id',
+  validateRequest([
+    param('id').isUUID().withMessage('Invalid {{lowerCase model}} ID'),
+  ]),
+  asyncHandler(async (req, res) => {
+    await {{camelCase model}}Service.delete(req.params.id, req.user?.id);
+    
+    logger.info(`{{pascalCase model}} ${req.params.id} deleted by user ${req.user?.email}`);
+    
+    res.json({
+      success: true,
+      message: '{{pascalCase model}} deleted successfully',
+    });
+  })
+);
+
+{{#if (includes features 'search')}}
+/**
+ * GET /api/{{kebabCase model}}s/search
+ * Search {{lowerCase model}}s
+ */
+router.get(
+  '/search',
+  validateRequest([
+    query('q').notEmpty().withMessage('Search query is required'),
+  ]),
+  asyncHandler(async (req, res) => {
+    const results = await {{camelCase model}}Service.search(req.query.q as string, req.user?.id);
+    
+    res.json({
+      success: true,
+      data: results,
+    });
+  })
+);
+{{/if}}
+
+{{#if (includes features 'bulkCreate')}}
+/**
+ * POST /api/{{kebabCase model}}s/bulk
+ * Bulk create {{lowerCase model}}s
+ */
+router.post(
+  '/bulk',
+  validateRequest([
+    body('items').isArray({ min: 1, max: 100 }).withMessage('Items array is required (max 100)'),
+  ]),
+  asyncHandler(async (req, res) => {
+    const items = req.body.items.map(item => create{{pascalCase model}}Schema.parse(item));
+    const count = await {{camelCase model}}Service.bulkCreate(items, req.user?.id);
+    
+    logger.info(`Bulk created ${count} {{lowerCase model}}s by user ${req.user?.email}`);
+    
+    res.status(201).json({
+      success: true,
+      data: { count },
+      message: `${count} {{lowerCase model}}s created successfully`,
+    });
+  })
+);
+{{/if}}
+
+{{#if (includes features 'bulkDelete')}}
+/**
+ * DELETE /api/{{kebabCase model}}s/bulk
+ * Bulk delete {{lowerCase model}}s
+ */
+router.delete(
+  '/bulk',
+  validateRequest([
+    body('ids').isArray({ min: 1, max: 100 }).withMessage('IDs array is required (max 100)'),
+    body('ids.*').isUUID().withMessage('All IDs must be valid UUIDs'),
+  ]),
+  asyncHandler(async (req, res) => {
+    const count = await {{camelCase model}}Service.bulkDelete(req.body.ids, req.user?.id);
+    
+    logger.info(`Bulk deleted ${count} {{lowerCase model}}s by user ${req.user?.email}`);
+    
+    res.json({
+      success: true,
+      data: { count },
+      message: `${count} {{lowerCase model}}s deleted successfully`,
+    });
+  })
+);
+{{/if}}
+
+export default router;

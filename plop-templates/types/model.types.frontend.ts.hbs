@@ -1,0 +1,126 @@
+// {{pascalCase model}} types for frontend
+export interface {{pascalCase model}} {
+  id: string;
+  {{#if (eq model 'Client')}}
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  taxId?: string | null;
+  company?: string | null;
+  isActive: boolean;
+  userId: string;
+  {{else if (eq model 'Invoice')}}
+  invoiceNumber: string;
+  clientId: string;
+  sequenceId?: string | null;
+  dueDate?: Date | string | null;
+  subtotal: number;
+  tax: number;
+  discount: number;
+  total: number;
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  notes?: string | null;
+  terms?: string | null;
+  currency: string;
+  taxRate: number;
+  discountType: 'percentage' | 'fixed';
+  userId: string;
+  {{else if (eq model 'Trade')}}
+  symbol: string;
+  side: 'buy' | 'sell';
+  quantity: number;
+  price: number;
+  total: number;
+  status: 'pending' | 'filled' | 'cancelled' | 'failed';
+  orderId?: string | null;
+  exchange: string;
+  strategyId?: string | null;
+  positionId?: string | null;
+  fees: number;
+  slippage: number;
+  notes?: string | null;
+  executedAt?: Date | string | null;
+  userId: string;
+  {{else}}
+  // Add your model-specific fields here
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  {{#if hasRelations}}
+    {{#if (includes features 'api')}}
+  userId?: string;
+    {{/if}}
+  {{/if}}
+  metadata?: Record<string, any> | null;
+  {{/if}}
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface Create{{pascalCase model}} {
+  {{#if (eq model 'Client')}}
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  taxId?: string | null;
+  company?: string | null;
+  isActive?: boolean;
+  {{else if (eq model 'Invoice')}}
+  invoiceNumber?: string;
+  clientId: string;
+  sequenceId?: string | null;
+  dueDate?: Date | string | null;
+  subtotal: number;
+  tax: number;
+  discount: number;
+  total: number;
+  status?: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  notes?: string | null;
+  terms?: string | null;
+  currency?: string;
+  taxRate?: number;
+  discountType?: 'percentage' | 'fixed';
+  {{else if (eq model 'Trade')}}
+  symbol: string;
+  side: 'buy' | 'sell';
+  quantity: number;
+  price: number;
+  total?: number;
+  status?: 'pending' | 'filled' | 'cancelled' | 'failed';
+  orderId?: string | null;
+  exchange: string;
+  strategyId?: string | null;
+  positionId?: string | null;
+  fees?: number;
+  slippage?: number;
+  notes?: string | null;
+  executedAt?: Date | string | null;
+  {{else}}
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+  metadata?: Record<string, any> | null;
+  {{/if}}
+}
+
+export interface Update{{pascalCase model}} extends Partial<Create{{pascalCase model}}> {
+  id: string;
+}
+
+export interface {{pascalCase model}}Query {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  {{#if (eq model 'Invoice')}}
+  status?: string;
+  clientId?: string;
+  {{else if (eq model 'Trade')}}
+  symbol?: string;
+  status?: string;
+  strategyId?: string;
+  {{/if}}
+}

@@ -22,6 +22,25 @@ class InvoiceService {
 
   async getInvoices(params?: InvoiceListParams): Promise<PaginatedResponse<Invoice>> {
     const response = await api.get('/financial/invoices', { params });
+    
+    // Adapter: Transform backend response to match frontend PaginatedResponse interface
+    if (response.data.success && response.data.data) {
+      const { invoices, total, limit, offset } = response.data.data;
+      return {
+        success: true,
+        data: {
+          invoices,
+          pagination: {
+            total,
+            limit,
+            offset,
+            hasMore: offset + limit < total
+          }
+        }
+      };
+    }
+    
+    // Return error response as-is
     return response.data;
   }
 

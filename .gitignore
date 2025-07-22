@@ -48,6 +48,10 @@ temp/
 
 # Logs
 *.log
+
+# Database backups
+backups/
+*.sql
 logs/
 
 # Archive directory

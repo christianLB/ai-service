@@ -1,35 +1,24 @@
 import { Request, Response } from 'express';
-import { InvoiceManagementService } from '../../services/financial/invoice-management.service';
+import { invoicePrismaService } from '../../services/financial/invoice-prisma.service';
 import { InvoiceGenerationService } from '../../services/financial/invoice-generation.service';
-import { InvoiceNumberingService } from '../../services/financial/invoice-numbering.service';
 import { InvoiceStorageService } from '../../services/financial/invoice-storage.service';
 import { getInvoiceEmailService } from '../../services/financial/invoice-email.service';
-import { ClientManagementService } from '../../services/financial/client-management.service';
 import { logger } from '../../utils/log';
-import { Invoice, InvoiceItem } from '../../models/financial/invoice.model';
-import { DEFAULT_COMPANY_CONFIG } from '../../models/financial/company.model';
 import { db } from '../../services/database';
+import type { InvoiceFormData } from '../../types/financial/index';
 
 export class InvoicesController {
-  private invoiceService: InvoiceManagementService;
+  private invoiceService = invoicePrismaService;
   private invoiceGenerationService: InvoiceGenerationService;
-  private invoiceNumberingService: InvoiceNumberingService;
   private invoiceStorageService: InvoiceStorageService;
   private invoiceEmailService: ReturnType<typeof getInvoiceEmailService>;
-  private clientService: ClientManagementService;
-  private schemasInitialized = false;
 
   constructor() {
-    this.invoiceService = new InvoiceManagementService();
     this.invoiceGenerationService = new InvoiceGenerationService();
-    this.clientService = new ClientManagementService();
     this.invoiceEmailService = getInvoiceEmailService();
     
     // Use the existing database pool instead of creating a new one
-    this.invoiceNumberingService = new InvoiceNumberingService(db.pool);
     this.invoiceStorageService = new InvoiceStorageService(db.pool);
-    
-    // Schema initialization will be done lazily when needed
   }
 
   private async initializeSchemasAsync(): Promise<void> {
@@ -66,10 +55,7 @@ export class InvoicesController {
    */
   async createInvoice(req: Request, res: Response): Promise<void> {
     try {
-      // Ensure schemas are initialized
-      await this.ensureSchemasInitialized();
-      
-      const invoiceData: Partial<Invoice> = req.body;
+      const invoiceData: InvoiceFormData = req.body;
 
       // Validate required fields
       if (!invoiceData.clientId || !invoiceData.items || invoiceData.items.length === 0) {
@@ -80,13 +66,19 @@ export class InvoicesController {
         return;
       }
 
-      const invoice = await this.invoiceService.createInvoice(invoiceData);
+      // Extract userId from auth context
+      const userId = (req as any).user?.userId || (req as any).userId;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: 'User authentication required'
+        });
+        return;
+      }
 
-      res.status(201).json({
-        success: true,
-        data: { invoice },
-        message: 'Invoice created successfully'
-      });
+      const result = await this.invoiceService.createInvoice(invoiceData, userId);
+
+      res.status(201).json(result);
 
     } catch (error: any) {
       logger.error('Error creating invoice:', error);
@@ -112,27 +104,33 @@ export class InvoicesController {
   async getInvoice(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const invoice = await this.invoiceService.getInvoice(id);
-
-      if (!invoice) {
-        res.status(404).json({
+      
+      // Extract userId from auth context
+      const userId = (req as any).user?.userId || (req as any).userId;
+      if (!userId) {
+        res.status(401).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'User authentication required'
         });
         return;
       }
 
-      res.json({
-        success: true,
-        data: { invoice }
-      });
+      const result = await this.invoiceService.getInvoiceById(id, userId);
+      res.json(result);
 
     } catch (error: any) {
       logger.error('Error getting invoice:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get invoice'
-      });
+      if (error.status === 404) {
+        res.status(404).json({
+          success: false,
+          error: 'Invoice not found'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Failed to get invoice'
+        });
+      }
     }
   }
 
@@ -174,23 +172,21 @@ export class InvoicesController {
   async updateInvoice(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const updates: Partial<Invoice> = req.body;
+      const updates: Partial<InvoiceFormData> = req.body;
 
-      // Remove fields that shouldn't be updated directly
-      delete updates.id;
-      delete updates.invoiceNumber;
-      delete updates.clientName;
-      delete updates.clientTaxId;
-      delete updates.createdAt;
-      delete updates.updatedAt;
+      // Extract userId from auth context
+      const userId = (req as any).user?.userId || (req as any).userId;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: 'User authentication required'
+        });
+        return;
+      }
 
-      const invoice = await this.invoiceService.updateInvoice(id, updates);
+      const result = await this.invoiceService.updateInvoice(id, updates, userId);
 
-      res.json({
-        success: true,
-        data: { invoice },
-        message: 'Invoice updated successfully'
-      });
+      res.json(result);
 
     } catch (error: any) {
       logger.error('Error updating invoice:', error);
@@ -233,10 +229,20 @@ export class InvoicesController {
         sortOrder = 'DESC'
       } = req.query;
 
-      const options = {
+      // Extract userId from auth context
+      const userId = (req as any).user?.userId || (req as any).userId;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: 'User authentication required'
+        });
+        return;
+      }
+
+      const result = await this.invoiceService.getInvoices({
+        userId,
         clientId: clientId as string,
         status: status as string,
-        type: type as string,
         startDate: startDate ? new Date(startDate as string) : undefined,
         endDate: endDate ? new Date(endDate as string) : undefined,
         search: search as string,
@@ -244,22 +250,9 @@ export class InvoicesController {
         offset: parseInt(offset as string),
         sortBy: sortBy as string,
         sortOrder: sortOrder as 'ASC' | 'DESC'
-      };
-
-      const result = await this.invoiceService.listInvoices(options);
-
-      res.json({
-        success: true,
-        data: {
-          invoices: result.invoices,
-          pagination: {
-            total: result.total,
-            limit: options.limit,
-            offset: options.offset,
-            hasMore: result.total > (options.offset + options.limit)
-          }
-        }
       });
+
+      res.json(result);
 
     } catch (error: any) {
       logger.error('Error listing invoices:', error);
@@ -276,15 +269,18 @@ export class InvoicesController {
    */
   async getOverdueInvoices(req: Request, res: Response): Promise<void> {
     try {
-      const overdueInvoices = await this.invoiceService.getOverdueInvoices();
+      // Extract userId from auth context
+      const userId = (req as any).user?.userId || (req as any).userId;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: 'User authentication required'
+        });
+        return;
+      }
 
-      res.json({
-        success: true,
-        data: {
-          invoices: overdueInvoices,
-          count: overdueInvoices.length
-        }
-      });
+      const result = await this.invoiceService.getOverdueInvoices(userId);
+      res.json(result);
 
     } catch (error: any) {
       logger.error('Error getting overdue invoices:', error);

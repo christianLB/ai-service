@@ -3,12 +3,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { GoCardlessService } from '../services/financial/gocardless.service';
 import { FinancialDatabaseService } from '../services/financial/database.service';
 import { FinancialSchedulerService } from '../services/financial/scheduler.service';
-import { FinancialReportingService } from '../services/financial/reporting.service';
-import { TransactionMatchingService } from '../services/financial/transaction-matching.service';
+import { financialReportingPrismaService } from '../services/financial/reporting-prisma.service';
+import { transactionMatchingPrismaService } from '../services/financial/transaction-matching-prisma.service';
 import { Account } from '../services/financial/types';
 import clientsRoutes from './financial/clients.routes';
 import invoicesRoutes from './financial/invoices.routes';
-import transactionsRoutes, { setDatabaseService as setTransactionDbService } from './financial/transactions.routes';
+import invoiceTemplatesRoutes from './financial/invoice-templates.routes';
+import transactionsRoutes from './financial/transactions.routes';
 import dashboardRoutes from './financial/dashboard.routes';
 
 const router = Router();
@@ -17,8 +18,8 @@ const router = Router();
 let goCardlessService: GoCardlessService;
 let databaseService: FinancialDatabaseService;
 let schedulerService: FinancialSchedulerService;
-let reportingService: FinancialReportingService;
-let transactionMatchingService: TransactionMatchingService;
+// Reporting service is now using Prisma singleton
+// Transaction matching service is imported as singleton
 
 // Initialize services with config
 const initializeServices = () => {
@@ -42,16 +43,15 @@ const initializeServices = () => {
     databaseService = new FinancialDatabaseService(dbConfig);
     goCardlessService = new GoCardlessService(databaseService);
     schedulerService = new FinancialSchedulerService(goCardlessService, databaseService);
-    reportingService = new FinancialReportingService(databaseService.pool);
-    transactionMatchingService = new TransactionMatchingService(databaseService.pool);
+    // Reporting service is now a Prisma-based singleton
+    // Transaction matching service is now a Prisma-based singleton
     
-    // Set transaction matching service in controllers
-    setTransactionDbService(databaseService);
+    // Transaction matching service uses Prisma singleton
     
     // Get client controller instance and set transaction matching service
     const ClientsController = require('./financial/clients.controller').ClientsController;
     const clientsController = new ClientsController();
-    clientsController.setTransactionMatchingService(transactionMatchingService);
+    clientsController.setTransactionMatchingService(transactionMatchingPrismaService);
   }
 };
 
@@ -1068,7 +1068,7 @@ router.get('/categories', async (req: Request, res: Response): Promise<void> => 
     initializeServices();
     
     const { type } = req.query;
-    const categories = await reportingService.getCategories(type as any);
+    const categories = await financialReportingPrismaService.getCategories(type as any);
     
     res.json({
       success: true,
@@ -1094,7 +1094,7 @@ router.get('/categories/:id/subcategories', async (req: Request, res: Response):
     initializeServices();
     
     const { id } = req.params;
-    const subcategories = await reportingService.getSubcategories(id);
+    const subcategories = await financialReportingPrismaService.getSubcategories(id);
     
     res.json({
       success: true,
@@ -1120,7 +1120,7 @@ router.post('/categorize/auto', async (req: Request, res: Response): Promise<voi
     initializeServices();
     
     const { transactionIds } = req.body;
-    const categorizedCount = await reportingService.autoCategorizeTransactions(transactionIds);
+    const categorizedCount = await financialReportingPrismaService.autoCategorizeTransactions(transactionIds);
     
     res.json({
       success: true,
@@ -1150,7 +1150,7 @@ router.post('/transactions/:id/categorize', async (req: Request, res: Response):
     const { id } = req.params;
     const { categoryId, subcategoryId, notes } = req.body;
     
-    const categorization = await reportingService.categorizeTransaction(
+    const categorization = await financialReportingPrismaService.categorizeTransaction(
       id,
       categoryId,
       subcategoryId,
@@ -1205,7 +1205,7 @@ router.get('/transactions/categorized', async (req: Request, res: Response): Pro
       offset: (parseInt(page as string) - 1) * parseInt(limit as string)
     };
 
-    const result = await reportingService.getCategorizedTransactions(params);
+    const result = await financialReportingPrismaService.getCategorizedTransactions(params);
     
     res.json({
       success: true,
@@ -1260,7 +1260,7 @@ router.get('/reports/comprehensive', async (req: Request, res: Response): Promis
       accountId: accountId as string
     };
 
-    const report = await reportingService.generateReport(params);
+    const report = await financialReportingPrismaService.generateReport(params);
     
     res.json({
       success: true,
@@ -1298,7 +1298,7 @@ router.get('/metrics/realtime', async (req: Request, res: Response): Promise<voi
       includeTrends: includeTrends === 'true'
     };
 
-    const metrics = await reportingService.getRealtimeMetrics(params);
+    const metrics = await financialReportingPrismaService.getRealtimeMetrics(params);
     
     res.json({
       success: true,
@@ -1336,11 +1336,12 @@ router.get('/analytics/monthly-summary', async (req: Request, res: Response): Pr
       return;
     }
 
-    const summary = await reportingService.getMonthlyCategorySummary(
-      new Date(startDate as string),
-      new Date(endDate as string),
-      currency as string
-    );
+    // Use existing generateReport method instead
+    const summary = await financialReportingPrismaService.generateReport({
+      startDate: new Date(startDate as string),
+      endDate: new Date(endDate as string),
+      currency: currency as string
+    });
     
     res.json({
       success: true,
@@ -1365,7 +1366,7 @@ router.get('/insights/accounts', async (req: Request, res: Response): Promise<vo
   try {
     initializeServices();
     
-    const insights = await reportingService.getAccountInsights();
+    const insights = await financialReportingPrismaService.getAccountInsights();
     
     res.json({
       success: true,
@@ -1397,15 +1398,15 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
     const { currency = 'EUR' } = req.query;
     
     // Get current month metrics
-    const metrics = await reportingService.getRealtimeMetrics({ 
+    const metrics = await financialReportingPrismaService.getRealtimeMetrics({ 
       currency: currency as string 
     });
     
     // Get account insights
-    const accountInsights = await reportingService.getAccountInsights();
+    const accountInsights = await financialReportingPrismaService.getAccountInsights();
     
     // Get categories for quick access
-    const categories = await reportingService.getCategories();
+    const categories = await financialReportingPrismaService.getCategories();
     
     res.json({
       success: true,
@@ -1460,12 +1461,12 @@ router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promis
     
     // Get current and previous period for comparison
     const [currentReport, previousReport] = await Promise.all([
-      reportingService.generateReport({
+      financialReportingPrismaService.generateReport({
         startDate: currentStart,
         endDate: currentEnd,
         currency: currency as string
       }),
-      reportingService.generateReport({
+      financialReportingPrismaService.generateReport({
         startDate: previousStart,
         endDate: previousEnd,
         currency: currency as string
@@ -1678,6 +1679,9 @@ router.use('/clients', clientsRoutes);
 
 // Mount invoice management routes
 router.use('/invoices', invoicesRoutes);
+
+// Mount invoice template routes
+router.use('/invoice-templates', invoiceTemplatesRoutes);
 
 // Mount transaction management routes
 router.use('/transactions', transactionsRoutes);

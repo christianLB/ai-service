@@ -1,0 +1,114 @@
+import { z } from 'zod';
+import { Prisma } from '@prisma/client';
+
+// Base {{pascalCase model}} schema
+export const {{camelCase model}}Schema = z.object({
+  id: z.string().uuid().optional(),
+  {{#if (eq model 'Client')}}
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  taxId: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  postalCode: z.string().optional().nullable(),
+  country: z.string().optional().nullable(),
+  defaultCurrency: z.string().default('EUR'),
+  paymentTerms: z.number().int().min(0).default(30),
+  notes: z.string().optional().nullable(),
+  isActive: z.boolean().default(true),
+  {{else if (eq model 'Invoice')}}
+  clientId: z.string().uuid(),
+  invoiceNumber: z.string().optional(),
+  sequenceId: z.string().uuid().optional().nullable(),
+  status: z.enum(['draft', 'sent', 'paid', 'cancelled']).default('draft'),
+  issueDate: z.date(),
+  dueDate: z.date(),
+  currency: z.string().default('EUR'),
+  subtotal: z.number().min(0),
+  taxAmount: z.number().min(0),
+  totalAmount: z.number().min(0),
+  notes: z.string().optional().nullable(),
+  terms: z.string().optional().nullable(),
+  {{else if (eq model 'Trade')}}
+  positionId: z.string().uuid().optional().nullable(),
+  strategyId: z.string().uuid().optional().nullable(),
+  symbol: z.string().min(1),
+  side: z.enum(['buy', 'sell']),
+  quantity: z.number().positive(),
+  price: z.number().positive(),
+  fees: z.number().min(0).optional().nullable(),
+  exchange: z.string().min(1),
+  orderId: z.string().optional().nullable(),
+  status: z.enum(['pending', 'filled', 'cancelled']).default('pending'),
+  executedAt: z.date().optional().nullable(),
+  {{else}}
+  // Add your model-specific fields here
+  name: z.string().min(1),
+  description: z.string().optional().nullable(),
+  isActive: z.boolean().default(true),
+  {{/if}}
+  metadata: z.record(z.any()).optional().nullable(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+});
+
+// Create schema (omit id and timestamps)
+export const create{{pascalCase model}}Schema = {{camelCase model}}Schema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Update schema (all fields optional except id)
+export const update{{pascalCase model}}Schema = {{camelCase model}}Schema.partial().extend({
+  id: z.string().uuid(),
+});
+
+// Query params schema
+export const {{camelCase model}}QuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  search: z.string().optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  {{#if (eq model 'Invoice')}}
+  status: z.enum(['draft', 'sent', 'paid', 'cancelled']).optional(),
+  clientId: z.string().uuid().optional(),
+  {{else if (eq model 'Trade')}}
+  symbol: z.string().optional(),
+  status: z.enum(['pending', 'filled', 'cancelled']).optional(),
+  strategyId: z.string().uuid().optional(),
+  {{/if}}
+  {{#unless (eq schema '')}}
+  // Add model-specific query filters here
+  {{/unless}}
+});
+
+// Types
+export type {{pascalCase model}} = z.infer<typeof {{camelCase model}}Schema>;
+export type Create{{pascalCase model}} = z.infer<typeof create{{pascalCase model}}Schema>;
+export type Update{{pascalCase model}} = z.infer<typeof update{{pascalCase model}}Schema>;
+export type {{pascalCase model}}Query = z.infer<typeof {{camelCase model}}QuerySchema>;
+
+// Prisma types
+export type {{pascalCase model}}WithRelations = Prisma.{{pascalCase model}}GetPayload<{
+  {{#if hasRelations}}
+  include: {
+    {{#if (eq model 'Client')}}
+    invoices: true;
+    user: true;
+    {{else if (eq model 'Invoice')}}
+    client: true;
+    items: true;
+    user: true;
+    {{else if (eq model 'Trade')}}
+    position: true;
+    strategy: true;
+    user: true;
+    {{else}}
+    // Add your relations here
+    {{/if}}
+  };
+  {{/if}}
+}>;

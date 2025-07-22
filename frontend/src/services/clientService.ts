@@ -33,6 +33,25 @@ class ClientService {
 
   async getClients(params?: ClientListParams): Promise<PaginatedResponse<Client>> {
     const response = await api.get('/financial/clients', { params });
+    
+    // Adapter: Transform backend response to match frontend PaginatedResponse interface
+    if (response.data.success && response.data.data) {
+      const { clients, total, limit, offset } = response.data.data;
+      return {
+        success: true,
+        data: {
+          clients,
+          pagination: {
+            total,
+            limit,
+            offset,
+            hasMore: offset + limit < total
+          }
+        }
+      };
+    }
+    
+    // Return error response as-is
     return response.data;
   }
 
@@ -79,6 +98,25 @@ class ClientService {
 
   async searchClients(params: ClientSearchParams): Promise<PaginatedResponse<Client>> {
     const response = await api.post('/financial/clients/search', params);
+    
+    // Adapter: Transform backend response to match frontend PaginatedResponse interface
+    if (response.data.success && response.data.data) {
+      const { clients, total, limit, offset } = response.data.data;
+      return {
+        success: true,
+        data: {
+          clients,
+          pagination: {
+            total,
+            limit,
+            offset,
+            hasMore: offset + limit < total
+          }
+        }
+      };
+    }
+    
+    // Return error response as-is
     return response.data;
   }
 

@@ -9,6 +9,7 @@ import { Client } from '../../models/financial/client.model';
 import { CompanyInfo, BankAccount, DEFAULT_COMPANY_CONFIG } from '../../models/financial/company.model';
 import { getInvoiceLabels, getInvoiceTypeLabel } from '../../templates/invoice/labels';
 import { logger } from '../../utils/log';
+import { prisma } from '../../lib/prisma';
 
 export interface InvoiceGenerationOptions {
   invoice: Invoice;
@@ -83,6 +84,35 @@ export class InvoiceGenerationService {
     return template;
   }
 
+  private async loadCustomTemplate(templateId: string): Promise<HandlebarsTemplateDelegate | null> {
+    try {
+      const customTemplate = await prisma.invoiceTemplate.findUnique({
+        where: { id: templateId }
+      });
+
+      if (!customTemplate) {
+        return null;
+      }
+
+      // Cache key for custom templates
+      const cacheKey = `custom_${templateId}`;
+      
+      // Check cache first
+      if (this.templateCache.has(cacheKey)) {
+        return this.templateCache.get(cacheKey)!;
+      }
+
+      // Compile the custom template
+      const template = Handlebars.compile(customTemplate.htmlContent);
+      this.templateCache.set(cacheKey, template);
+      
+      return template;
+    } catch (error) {
+      logger.error('Error loading custom template:', error);
+      return null;
+    }
+  }
+
   private async generateQRCode(data: string): Promise<string> {
     try {
       return await QRCode.toDataURL(data, {
@@ -140,8 +170,22 @@ export class InvoiceGenerationService {
     } = options;
 
     try {
-      // Load template
-      const template = await this.loadTemplate('invoice');
+      // Load template - check for custom template first
+      let template: HandlebarsTemplateDelegate;
+      
+      if (invoice.templateId) {
+        const customTemplate = await this.loadCustomTemplate(invoice.templateId);
+        if (customTemplate) {
+          template = customTemplate;
+        } else {
+          // Fallback to default template if custom template not found
+          logger.warn(`Custom template ${invoice.templateId} not found, using default template`);
+          template = await this.loadTemplate('invoice');
+        }
+      } else {
+        // Use default template
+        template = await this.loadTemplate('invoice');
+      }
 
       // Get language labels
       const labels = getInvoiceLabels(language);

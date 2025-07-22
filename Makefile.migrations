@@ -13,7 +13,7 @@ NAS_USER ?= k2600x
 NAS_PATH := /volume1/docker/ai-service
 
 # Database URLs
-DEV_DATABASE_URL := postgres://postgres:postgres123@localhost:5432/ai_service
+DEV_DATABASE_URL := postgres://ai_user:ultra_secure_password_2025@localhost:5434/ai_service
 PROD_DATABASE_URL := postgres://ai_user:$(DB_PASSWORD)@$(NAS_HOST):5433/ai_service
 
 # SSH commands

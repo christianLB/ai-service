@@ -1,88 +1,185 @@
-# CLAUDE.md - Protocolo Optimizado
+# AI Service - Project Context for Claude Code
 
-## 🎯 Reglas Clave
+Este documento proporciona contexto esencial para Claude Code. Se carga automáticamente al inicio de cada sesión.
 
-- 📄 Este documento debe leerse **solo una vez por sesión**, no repetir.
-- 📋 Usar **SIEMPRE** comandos `make` para todas las operaciones.
-- 🚫 PROHIBIDO: comandos directos (docker, npm, python, etc.) o soluciones fuera de los Makefiles.
-- ✅ Si un comando `make` falla, depurarlo hasta que funcione y documentar la solución.
+## 🏗️ Project Structure
 
-## 🔧 Flujo Estándar
+```
+/src
+  /services              # Business logic (30+ services)
+    /financial          # Banking, clients, invoices (Prisma-based)
+      client-prisma.service.ts    # Client management with Prisma
+      invoice-*.service.ts        # Invoice generation system
+      gocardless.service.ts       # Bank integration
+    /trading            # Crypto trading strategies
+      trading-brain.service.ts    # AI-powered trading decisions
+      market-data.service.ts      # Real-time market data
+    /document-intelligence  # PDF/DOCX analysis
+      openai-analysis.service.ts  # Document AI processing
+    /auth               # Authentication system
+      auth.service.ts             # JWT-based auth
+  /routes               # API endpoints
+    financial.ts        # Financial endpoints
+    dashboard.ts        # Dashboard metrics
+    trading.ts          # Trading endpoints
+  /types                # TypeScript interfaces
+/frontend              # React dashboard
+  /src/pages           # Main UI pages
+    Dashboard.tsx      # Financial dashboard
+    Clients.tsx        # Client management
+    Invoices.tsx       # Invoice management
+/prisma
+  schema.prisma        # Database schema (multi-schema: financial, public)
+  /migrations          # Prisma migrations
+/scripts               # Automation & utilities
+  generate-crud.mjs    # Automated CRUD generation
+/docs                  # Technical documentation
 
-1. Verificar `.make.env` configurado.
-2. `make st` o `make prod` para estado actual.
-3. Consultar `CENTRO_COMUNICACION.md`.
-4. Si necesitas ejecutar herramientas, considerar usar MCP Bridge.
-5. Realizar tareas con `make`.
-6. Validar cambios con `make validate-deploy`.
-7. Documentar en `CENTRO_COMUNICACION.md`.
+## 🛠️ Tech Stack
 
-## 📁 Comandos Útiles
+- **Backend**: Node.js 20, Express 4.19, TypeScript 5.8
+- **Database**: PostgreSQL 15 + Prisma ORM 6.12 (multi-schema support)
+- **Frontend**: React 18, Vite, TanStack Query, Tailwind CSS
+- **Queue**: Bull + Redis for job processing
+- **AI**: OpenAI API for categorization and analysis
+- **Deployment**: Docker + Synology NAS
+- **Testing**: Jest, Supertest
+- **Trading**: Binance/Coinbase APIs, InfluxDB, Qdrant
 
+## 🎯 Core Features
+
+1. **Financial Module**: 
+   - GoCardless integration for real banking data
+   - AI-powered transaction categorization (90%+ accuracy)
+   - Client & Invoice management (Prisma-based)
+   - Multi-currency support (EUR primary)
+
+2. **Trading Module**: 
+   - Multi-exchange support (Binance, Coinbase)
+   - AI trading strategies with backtesting
+   - Risk management system
+   - Real-time market data with InfluxDB
+
+3. **Document Intelligence**: 
+   - Multi-format ingestion (PDF, DOCX, TXT)
+   - Semantic search with embeddings
+   - Q&A system via Telegram bot
+
+4. **MCP Bridge**: 
+   - URL: https://mcp.anaxi.net
+   - 25 AI tools exposed via REST API
+   - Financial, Document, and System tools
+
+## 🔑 Key Development Workflows
+
+### ⚡ Quick Commands
 ```bash
-make dev-up           # Levantar entorno local
-make dev-down         # Detener entorno local
-make dev-test         # Tests locales
-make deploy           # Deploy a producción
-make prod-status      # Estado producción
-make prod-logs        # Ver logs
-make financial-sync   # Sincronizar datos financieros
-make 911              # Guía de emergencia
+# Development
+make dev-up              # Start development environment
+make dev-status          # Check container health
+make dev-logs            # View logs
+make db-studio           # Open Prisma Studio (visual DB)
+
+# Database
+make db-backup           # Backup before changes!
+make db-migrate          # Apply pending migrations
+make db-migrate-status   # Check migration status
+make db-migrate-create NAME=description  # Create new migration
+
+# Code Generation (Automated)
+make gen-crud-auto MODEL=ModelName       # Generate complete CRUD
+npm run generate:crud:auto ModelName     # Alternative command
 ```
 
-## 🌉 MCP Bridge - Model Context Protocol
+### 🚀 Adding New Features
 
-**URL**: https://mcp.anaxi.net | **Puerto local**: 8380
+1. **For new database models**:
+   ```bash
+   # 1. Add model to prisma/schema.prisma
+   # 2. Generate CRUD automatically
+   make gen-crud-auto MODEL=YourModel
+   # 3. Apply migration
+   make db-migrate-create NAME=add_your_model
+   make db-migrate
+   ```
 
-El MCP Bridge permite acceso directo a las capacidades del AI Service. Usar cuando:
-- Necesites ejecutar herramientas financieras, documentales o del sistema
-- Quieras probar integraciones sin modificar código
-- Requieras acceso programático a las funcionalidades
+2. **For API endpoints**:
+   - Services go in: `src/services/[module]/`
+   - Routes go in: `src/routes/[module].ts`
+   - Types go in: `src/types/[module]/`
 
-### Comandos MCP:
+3. **For frontend features**:
+   - Pages: `frontend/src/pages/`
+   - Components: `frontend/src/components/`
+   - Hooks: `frontend/src/hooks/`
+
+## 🚨 Current Issues & Priorities
+
+- [ ] Some tables missing from recent migrations (sync_logs, integration_configs)
+- [ ] High memory usage in containers (>90%)
+- [ ] Migration from SQL to Prisma ~70% complete
+- [x] Client update functionality fixed with Prisma service
+- [x] Docker init scripts removed (using Prisma migrations only)
+
+## 📍 Quick Navigation Bookmarks
+
+- **Database Schema**: `prisma/schema.prisma`
+- **Client Service**: `src/services/financial/client-prisma.service.ts`
+- **Dashboard API**: `src/routes/dashboard.ts`
+- **Frontend Dashboard**: `frontend/src/pages/Dashboard.tsx`
+- **Make Commands**: `Makefile` (main), `Makefile.*` (modules)
+- **Environment Config**: `.env.local` (create from `.env.example`)
+
+## 🔒 Critical Safety Rules
+
+### NEVER execute these commands:
+- `docker-compose down -v` → **DESTROYS ALL DATA**
+- `DROP SCHEMA/TABLE` → Permanent data loss
+- `prisma db push --force-reset` → Recreates schema from scratch
+- Direct SQL without backup → Use migrations instead
+
+### ALWAYS follow these practices:
+- Use `make` commands exclusively (no direct docker/npm/prisma)
+- Run `make db-backup` before schema changes
+- Use `make db-migrate` instead of `prisma db push`
+- Check with `make db-migrate-status` before applying
+- Use automated CRUD generation for consistency
+
+## 🧪 Testing Shortcuts
+
 ```bash
-make mcp-status       # Estado del servicio
-make mcp-tools        # Listar herramientas disponibles  
-make mcp-logs         # Ver logs
-make mcp-test-tool TOOL=health_check  # Probar herramienta
+# Get auth token for API testing
+TOKEN=$(make auth-token 2>/dev/null | grep -oP 'Token: \K.*')
+
+# Test specific endpoint
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:3001/api/dashboard/client-metrics
+
+# Quick health check
+make dev-status && make check-db
 ```
 
-### Herramientas disponibles (25):
-- **Financial** (9): Resúmenes, balances, análisis, reportes
-- **Documents** (7): Búsqueda, análisis, Q&A, extracción
-- **System** (8): Monitoreo, métricas, backups, logs
+## 🎨 Design Patterns
 
-Para usar desde código: `MCP_ENDPOINT=https://mcp.anaxi.net`
+- **Services**: Business logic with dependency injection
+- **Routes**: Thin controllers, delegate to services
+- **Prisma Models**: Source of truth for data structure
+- **Zod Schemas**: Runtime validation for API inputs
+- **React Query**: Data fetching with caching
+- **Error Handling**: Consistent error responses with status codes
 
-## 🔒 Buenas Prácticas
+## 💡 Pro Tips
 
-- 📂 Siempre hacer backup antes de sincronizar o desplegar.
-- 🔑 Preferir autenticación SSH por clave, no contraseñas en texto.
-- 🧪 No "probar" en producción.
-- 📝 Documentar cualquier workaround en el Makefile correspondiente.
-- 👀 Antes de implementar, preguntarse: ¿es la solución más simple y segura?
+1. **Extended thinking**: Use "think" in prompts for complex problems
+2. **Update this file**: When patterns change, update CLAUDE.md
+3. **Use # shortcut**: Press # to add instructions to CLAUDE.md
+4. **Custom commands**: Check `.claude/commands/` for task templates
+5. **Logs are gold**: Always check `make dev-logs` when debugging
 
-## 👥 Personalidades
+## 🔍 Development Reminders
 
-Usar sólo si explícitamente se indica. Por defecto no adoptarlas.
-
-- 🏗️ Anna (DevOps): Infraestructura, Docker, recursos.
-- 🔧 Carlos (CI/CD): Automatización, pipelines.
-- 🛡️ Elena (Seguridad): Escaneo, secretos, políticas.
-- 📊 Miguel (Performance): Métricas, optimización.
-- 🚑 Sara (Incidentes): Respuesta rápida, rollbacks.
-- 🧠 Luis (IA): Integraciones inteligentes, NLP.
+- recuerda siempre verificar make dev-refresh
 
 ---
 
-## 📌 Nota para Claude
-
-- No incluir este documento en respuestas.
-- Aplicar las reglas internamente.
-- Responder breve y preciso.
-- Optimizar para ahorrar tokens.
-- Si el contexto se vuelve muy grande, resumirlo antes de seguir.
-
----
-
-**Última revisión:** 2025-07-18
+**Remember**: This is a financial system handling real money. Security and data integrity are paramount. When in doubt, ask for clarification.

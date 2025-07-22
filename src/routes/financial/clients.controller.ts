@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
-import { ClientManagementService } from '../../services/financial/client-management.service';
+import { clientPrismaService } from '../../services/financial/client-prisma.service';
 import { TransactionMatchingService } from '../../services/financial/transaction-matching.service';
 import { logger } from '../../utils/log';
-import { Client } from '../../models/financial/client.model';
+import type { Client, ClientFormData } from '../../types/financial';
 
 export class ClientsController {
-  private clientService: ClientManagementService;
+  private clientService = clientPrismaService;
   private transactionMatchingService: TransactionMatchingService | null = null;
 
   constructor() {
-    this.clientService = new ClientManagementService();
+    // Using Prisma service now
   }
 
   setTransactionMatchingService(service: TransactionMatchingService) {
@@ -22,24 +22,21 @@ export class ClientsController {
    */
   async createClient(req: Request, res: Response): Promise<void> {
     try {
-      const clientData: Partial<Client> = req.body;
+      const clientData: ClientFormData = req.body;
 
       // Validate required fields
-      if (!clientData.name || !clientData.email || !clientData.taxId) {
+      if (!clientData.name) {
         res.status(400).json({
           success: false,
-          error: 'Missing required fields: name, email, taxId'
+          error: 'Missing required field: name'
         });
         return;
       }
 
-      const client = await this.clientService.createClient(clientData);
+      const userId = (req as any).user?.userId || (req as any).userId;
+      const result = await this.clientService.createClient(clientData, userId);
 
-      res.status(201).json({
-        success: true,
-        data: { client },
-        message: 'Client created successfully'
-      });
+      res.status(201).json(result);
 
     } catch (error: any) {
       logger.error('Error creating client:', error);
@@ -65,20 +62,10 @@ export class ClientsController {
   async getClient(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const client = await this.clientService.getClient(id);
+      const userId = (req as any).user?.userId || (req as any).userId;
+      const result = await this.clientService.getClientById(id, userId);
 
-      if (!client) {
-        res.status(404).json({
-          success: false,
-          error: 'Client not found'
-        });
-        return;
-      }
-
-      res.json({
-        success: true,
-        data: { client }
-      });
+      res.json(result);
 
     } catch (error: any) {
       logger.error('Error getting client:', error);
@@ -132,23 +119,17 @@ export class ClientsController {
   async updateClient(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const updates: Partial<Client> = req.body;
+      const userId = (req as any).user?.userId || (req as any).userId;
+      const updates: Partial<ClientFormData> = req.body;
 
       // Remove fields that shouldn't be updated directly
-      delete updates.id;
-      delete updates.totalRevenue;
-      delete updates.totalInvoices;
-      delete updates.outstandingBalance;
-      delete updates.createdAt;
-      delete updates.updatedAt;
+      delete (updates as any).id;
+      delete (updates as any).createdAt;
+      delete (updates as any).updatedAt;
 
-      const client = await this.clientService.updateClient(id, updates);
+      const result = await this.clientService.updateClient(id, updates, userId);
 
-      res.json({
-        success: true,
-        data: { client },
-        message: 'Client updated successfully'
-      });
+      res.json(result);
 
     } catch (error: any) {
       logger.error('Error updating client:', error);
@@ -197,7 +178,9 @@ export class ClientsController {
         }
       }
 
+      const userId = (req as any).user?.userId || (req as any).userId;
       const options = {
+        userId,
         status: status as string,
         search: search as string,
         tags: parsedTags,
@@ -207,20 +190,9 @@ export class ClientsController {
         sortOrder: sortOrder as 'ASC' | 'DESC'
       };
 
-      const result = await this.clientService.listClients(options);
+      const result = await this.clientService.getClients(options);
 
-      res.json({
-        success: true,
-        data: {
-          clients: result.clients,
-          pagination: {
-            total: result.total,
-            limit: options.limit,
-            offset: options.offset,
-            hasMore: result.total > (options.offset + options.limit)
-          }
-        }
-      });
+      res.json(result);
 
     } catch (error: any) {
       logger.error('Error listing clients:', error);
@@ -314,12 +286,10 @@ export class ClientsController {
   async deleteClient(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      await this.clientService.deleteClient(id);
+      const userId = (req as any).user?.userId || (req as any).userId;
+      const result = await this.clientService.deleteClient(id, userId);
 
-      res.json({
-        success: true,
-        message: 'Client deleted successfully'
-      });
+      res.json(result);
 
     } catch (error: any) {
       logger.error('Error deleting client:', error);
@@ -337,6 +307,7 @@ export class ClientsController {
   async bulkOperations(req: Request, res: Response): Promise<void> {
     try {
       const { operation, clientIds, data } = req.body;
+      const userId = (req as any).user?.userId || (req as any).userId;
 
       if (!operation || !clientIds || !Array.isArray(clientIds)) {
         res.status(400).json({
@@ -360,10 +331,10 @@ export class ClientsController {
 
           for (const clientId of clientIds) {
             try {
-              const client = await this.clientService.updateClient(clientId, {
+              const result = await this.clientService.updateClient(clientId, {
                 status: data.status
-              });
-              results.push({ clientId, success: true, client });
+              }, userId);
+              results.push({ clientId, success: true, client: result.data?.client });
             } catch (error: any) {
               results.push({ clientId, success: false, error: error.message });
             }
@@ -383,13 +354,16 @@ export class ClientsController {
             try {
               const currentClient = await this.clientService.getClient(clientId);
               if (currentClient) {
-                const updatedTags = [...(currentClient.tags || []), ...data.tags];
+                // Get existing tags from metadata
+                const customFields = currentClient.customFields as any || {};
+                const currentTags = currentClient.tags || [];
+                const updatedTags = [...currentTags, ...data.tags];
                 const uniqueTags = [...new Set(updatedTags)];
                 
-                const client = await this.clientService.updateClient(clientId, {
+                const result = await this.clientService.updateClient(clientId, {
                   tags: uniqueTags
-                });
-                results.push({ clientId, success: true, client });
+                }, userId);
+                results.push({ clientId, success: true, client: result.data?.client });
               } else {
                 results.push({ clientId, success: false, error: 'Client not found' });
               }
@@ -454,14 +428,14 @@ export class ClientsController {
       res.json({
         success: true,
         data: {
-          clients: result.clients,
+          clients: result.data.clients,
           query,
           filters,
           pagination: {
-            total: result.total,
+            total: result.data.total,
             limit,
             offset,
-            hasMore: result.total > (offset + limit)
+            hasMore: result.data.total > (offset + limit)
           }
         }
       });
