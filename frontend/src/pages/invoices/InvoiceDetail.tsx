@@ -115,13 +115,44 @@ const InvoiceDetail: React.FC = () => {
   };
 
   const handleSendInvoice = async () => {
-    // TODO: Implement email sending
-    message.info('Funcionalidad de envío por email en desarrollo');
+    try {
+      message.loading('Enviando factura por email...');
+      
+      const response = await invoiceService.sendInvoice(id!, {
+        sendMethod: 'email'
+      });
+      
+      if (response.success) {
+        message.success('Factura enviada correctamente por email');
+        // Reload invoice to update status
+        loadInvoice();
+      } else {
+        message.error('Error al enviar la factura');
+      }
+    } catch (error: any) {
+      console.error('Error sending invoice:', error);
+      message.error('No se pudo enviar la factura por email');
+    }
   };
 
   const handleDownloadPDF = async () => {
-    // TODO: Implement PDF generation
-    message.info('Funcionalidad de descarga PDF en desarrollo');
+    try {
+      message.loading('Generando PDF...');
+      
+      // First generate the PDF
+      const generateResponse = await invoiceService.generatePDF(id!);
+      
+      if (generateResponse.success) {
+        // Then download it
+        await invoiceService.downloadPDF(id!);
+        message.success('PDF descargado correctamente');
+      } else {
+        message.error('Error al generar el PDF');
+      }
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      message.error('No se pudo descargar el PDF');
+    }
   };
 
   const getStatusColor = (status: string) => {

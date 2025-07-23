@@ -132,6 +132,48 @@ class InvoiceService {
     const response = await api.get('/financial/invoices/health');
     return response.data;
   }
+
+  async generatePDF(id: string): Promise<ApiResponse<{
+    fileName: string;
+    fileSize: number;
+    storedAt: string;
+  }>> {
+    const response = await api.post(`/financial/invoices/${id}/generate-pdf`);
+    return response.data;
+  }
+
+  async downloadPDF(id: string): Promise<void> {
+    try {
+      const response = await api.get(`/financial/invoices/${id}/download-pdf`, {
+        responseType: 'blob'
+      });
+      
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `invoice-${id}.pdf`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      // Create blob and download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      throw error;
+    }
+  }
 }
 
 export default new InvoiceService();
