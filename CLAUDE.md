@@ -145,6 +145,13 @@ npm run generate:crud:auto ModelName --features list,api  # Specific features
 - `prisma db push --force-reset` → Recreates schema from scratch
 - Direct SQL without backup → Use migrations instead
 
+### NEVER change these configurations:
+- **Frontend proxy targets** → Different for Docker vs local development:
+  - `vite.config.dev.ts` (Docker): MUST be `http://ai-service-api:3001`
+  - `vite.config.ts` (local): MUST be `http://localhost:3001`
+  - Mixing these up breaks EVERYTHING - understand Docker networking!
+  - The proxy runs INSIDE containers, not in your browser
+
 ### ALWAYS follow these practices:
 - Use `make` commands exclusively (no direct docker/npm/prisma)
 - Run `make db-backup` before schema changes

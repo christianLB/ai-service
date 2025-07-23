@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../../middleware/auth.middleware';
 import { invoicePrismaService } from '../../services/financial/invoice-prisma.service';
 import { clientPrismaService } from '../../services/financial/client-prisma.service';
 import { InvoiceGenerationService } from '../../services/financial/invoice-generation.service';
@@ -66,7 +67,7 @@ export class InvoicesController {
    * Create a new invoice
    * POST /api/financial/invoices
    */
-  async createInvoice(req: Request, res: Response): Promise<void> {
+  async createInvoice(req: AuthRequest, res: Response): Promise<void> {
     try {
       const invoiceData: InvoiceFormData = req.body;
 
@@ -114,7 +115,7 @@ export class InvoicesController {
    * Get invoice by ID
    * GET /api/financial/invoices/:id
    */
-  async getInvoice(req: Request, res: Response): Promise<void> {
+  async getInvoice(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       
@@ -151,7 +152,7 @@ export class InvoicesController {
    * Get invoice by invoice number
    * GET /api/financial/invoices/number/:invoiceNumber
    */
-  async getInvoiceByNumber(req: Request, res: Response): Promise<void> {
+  async getInvoiceByNumber(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { invoiceNumber } = req.params;
       const userId = (req.user as any)?.userId || req.user?.userId;
@@ -183,7 +184,7 @@ export class InvoicesController {
    * Update invoice
    * PUT /api/financial/invoices/:id
    */
-  async updateInvoice(req: Request, res: Response): Promise<void> {
+  async updateInvoice(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const updates: Partial<InvoiceFormData> = req.body;
@@ -228,7 +229,7 @@ export class InvoicesController {
    * List invoices with filters
    * GET /api/financial/invoices
    */
-  async listInvoices(req: Request, res: Response): Promise<void> {
+  async listInvoices(req: AuthRequest, res: Response): Promise<void> {
     try {
       const {
         clientId,
@@ -281,7 +282,7 @@ export class InvoicesController {
    * Get overdue invoices
    * GET /api/financial/invoices/overdue
    */
-  async getOverdueInvoices(req: Request, res: Response): Promise<void> {
+  async getOverdueInvoices(req: AuthRequest, res: Response): Promise<void> {
     try {
       // Extract userId from auth context
       const userId = (req as any).user?.userId || (req as any).userId;
@@ -309,7 +310,7 @@ export class InvoicesController {
    * Mark invoice as paid
    * POST /api/financial/invoices/:id/mark-paid
    */
-  async markAsPaid(req: Request, res: Response): Promise<void> {
+  async markAsPaid(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { paidDate, paymentReference } = req.body;
@@ -350,7 +351,7 @@ export class InvoicesController {
    * Add item to invoice
    * POST /api/financial/invoices/:id/items
    */
-  async addItem(req: Request, res: Response): Promise<void> {
+  async addItem(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req.user as any)?.userId || req.user?.userId;
@@ -415,7 +416,7 @@ export class InvoicesController {
    * Attach document to invoice
    * POST /api/financial/invoices/:id/attachments
    */
-  async attachDocument(req: Request, res: Response): Promise<void> {
+  async attachDocument(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { type, documentId, fileName, description } = req.body;
@@ -484,7 +485,7 @@ export class InvoicesController {
    * Get client invoice statistics
    * GET /api/financial/invoices/stats/client/:clientId
    */
-  async getClientInvoiceStats(req: Request, res: Response): Promise<void> {
+  async getClientInvoiceStats(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { clientId } = req.params;
       const stats = await this.invoiceService.getInvoiceStats(clientId);
@@ -507,7 +508,7 @@ export class InvoicesController {
    * Delete invoice (cancel)
    * DELETE /api/financial/invoices/:id
    */
-  async deleteInvoice(req: Request, res: Response): Promise<void> {
+  async deleteInvoice(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req.user as any)?.userId || req.user?.userId;
@@ -544,7 +545,7 @@ export class InvoicesController {
    * Send invoice (mark as sent and update sent_at)
    * POST /api/financial/invoices/:id/send
    */
-  async sendInvoice(req: Request, res: Response): Promise<void> {
+  async sendInvoice(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { sendMethod = 'email', recipients } = req.body;
@@ -589,7 +590,7 @@ export class InvoicesController {
    * Duplicate invoice (create copy with new number)
    * POST /api/financial/invoices/:id/duplicate
    */
-  async duplicateInvoice(req: Request, res: Response): Promise<void> {
+  async duplicateInvoice(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req.user as any)?.userId || req.user?.userId;
@@ -642,7 +643,7 @@ export class InvoicesController {
    * Generate PDF for invoice
    * POST /api/financial/invoices/:id/generate-pdf
    */
-  async generatePDF(req: Request, res: Response): Promise<void> {
+  async generatePDF(req: AuthRequest, res: Response): Promise<void> {
     try {
       // Ensure schemas are initialized for storage
       await this.ensureSchemasInitialized();
@@ -767,7 +768,7 @@ export class InvoicesController {
    * Download invoice PDF
    * GET /api/financial/invoices/:id/download-pdf
    */
-  async downloadPDF(req: Request, res: Response): Promise<void> {
+  async downloadPDF(req: AuthRequest, res: Response): Promise<void> {
     try {
       // Ensure schemas are initialized for storage
       await this.ensureSchemasInitialized();
@@ -806,7 +807,7 @@ export class InvoicesController {
    * Preview invoice HTML
    * GET /api/financial/invoices/:id/preview
    */
-  async previewInvoice(req: Request, res: Response): Promise<void> {
+  async previewInvoice(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { language } = req.query;
@@ -900,7 +901,7 @@ export class InvoicesController {
    * Send invoice by email
    * POST /api/financial/invoices/:id/send-email
    */
-  async sendInvoiceEmail(req: Request, res: Response): Promise<void> {
+  async sendInvoiceEmail(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const {
@@ -1040,7 +1041,7 @@ export class InvoicesController {
    * Send payment reminder
    * POST /api/financial/invoices/:id/send-reminder
    */
-  async sendPaymentReminder(req: Request, res: Response): Promise<void> {
+  async sendPaymentReminder(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { language } = req.body;
@@ -1145,7 +1146,7 @@ export class InvoicesController {
    * Get next invoice number
    * GET /api/financial/invoices/numbering/next
    */
-  async getNextInvoiceNumber(req: Request, res: Response): Promise<void> {
+  async getNextInvoiceNumber(req: AuthRequest, res: Response): Promise<void> {
     try {
       // Ensure schemas are initialized
       await this.ensureSchemasInitialized();
@@ -1182,7 +1183,7 @@ export class InvoicesController {
    * Get numbering sequences
    * GET /api/financial/invoices/numbering/sequences
    */
-  async getNumberingSequences(req: Request, res: Response): Promise<void> {
+  async getNumberingSequences(req: AuthRequest, res: Response): Promise<void> {
     try {
       // Ensure schemas are initialized
       await this.ensureSchemasInitialized();

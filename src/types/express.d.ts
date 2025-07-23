@@ -4,6 +4,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: {
+        id: string;      // Add id for compatibility with generated routes
         userId: string;
         email: string;
         role: string;

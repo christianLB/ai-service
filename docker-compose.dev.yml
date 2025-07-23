@@ -54,9 +54,7 @@ services:
     ports:
       - "3030:5173"
       
-    # Override environment to proxy to API container
-    environment:
-      - VITE_API_URL=http://ai-service-api:3001/api
+    # Environment variables (removed VITE_API_URL - let frontend use relative /api path)
       
     # Ensure API is running before frontend
     depends_on:
