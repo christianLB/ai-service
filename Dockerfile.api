@@ -42,7 +42,14 @@ ARG COMMIT_SHORT=unknown
 RUN apk add --no-cache \
     postgresql-client \
     curl \
-    tini
+    tini \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
 
 WORKDIR /app
 
@@ -67,6 +74,10 @@ ENV COMMIT=${COMMIT}
 ENV COMMIT_SHORT=${COMMIT_SHORT}
 
 USER nodejs
+
+# Tell Puppeteer to use installed Chromium instead of downloading
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
