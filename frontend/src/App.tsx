@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App } from 'antd';
 import esES from 'antd/locale/es_ES';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
@@ -26,6 +26,7 @@ import IntegrationSettings from './pages/IntegrationSettings';
 import NotificationSettings from './pages/NotificationSettings';
 import BankAccounts from './pages/BankAccounts';
 import Transactions from './pages/Transactions';
+import InvoiceTemplatePage from './pages/invoice-template';
 
 // Trading routes
 import TradingDashboard from './pages/trading/TradingDashboard';
@@ -51,7 +52,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const App: React.FC = () => {
+const AppComponent: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ConfigProvider 
@@ -63,10 +64,11 @@ const App: React.FC = () => {
           },
         }}
       >
-        <AuthProvider>
-          <WebSocketProvider>
-            <Router>
-              <Routes>
+        <App>
+          <AuthProvider>
+            <WebSocketProvider>
+              <Router>
+                <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
               
@@ -85,6 +87,7 @@ const App: React.FC = () => {
               <Route path="invoices/new" element={<InvoiceForm />} />
               <Route path="invoices/:id" element={<InvoiceDetail />} />
               <Route path="invoices/:id/edit" element={<InvoiceForm />} />
+              <Route path="invoice-templates" element={<InvoiceTemplatePage />} />
               
               {/* Document Routes */}
               <Route path="documents" element={<DocumentList />} />
@@ -116,9 +119,10 @@ const App: React.FC = () => {
         </Router>
       </WebSocketProvider>
     </AuthProvider>
+    </App>
     </ConfigProvider>
   </QueryClientProvider>
   );
 };
 
-export default App;
+export default AppComponent;

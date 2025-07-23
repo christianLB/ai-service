@@ -85,7 +85,7 @@ const AppLayout: React.FC = () => {
       label: 'Trading',
       children: [
         {
-          key: '/trading',
+          key: '/trading/dashboard',
           icon: <FundOutlined />,
           label: 'Dashboard',
         },

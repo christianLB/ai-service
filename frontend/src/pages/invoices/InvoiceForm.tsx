@@ -8,13 +8,13 @@ import {
   Select,
   DatePicker,
   InputNumber,
-  notification,
   Spin,
   Row,
   Col,
   Table,
   Divider,
   Typography,
+  App,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -38,12 +38,21 @@ interface LineItem extends InvoiceItem {
   key?: string;
 }
 
+interface LineItemErrors {
+  [key: string]: {
+    description?: boolean;
+    quantity?: boolean;
+    unitPrice?: boolean;
+  };
+}
+
 const InvoiceForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const preselectedClientId = searchParams.get('clientId');
   const isEdit = !!id;
+  const { message } = App.useApp();
   
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -67,6 +76,7 @@ const InvoiceForm: React.FC = () => {
     taxAmount: 0,
     total: 0,
   });
+  const [lineItemErrors, setLineItemErrors] = useState<LineItemErrors>({});
   
   // Invoice templates
   const { data: templatesData, isLoading: loadingTemplates } = useInvoiceTemplates({
@@ -98,10 +108,7 @@ const InvoiceForm: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading clients:', error);
-      notification.error({
-        message: 'Error',
-        description: 'No se pudieron cargar los clientes',
-      });
+      message.error('No se pudieron cargar los clientes');
     } finally {
       setLoadingClients(false);
     }
@@ -140,10 +147,7 @@ const InvoiceForm: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading invoice:', error);
-      notification.error({
-        message: 'Error',
-        description: 'No se pudo cargar la factura',
-      });
+      message.error('No se pudo cargar la factura');
       navigate('/invoices');
     } finally {
       setLoading(false);
@@ -161,7 +165,8 @@ const InvoiceForm: React.FC = () => {
       // Calculate due date based on payment terms
       const issueDate = form.getFieldValue('issueDate') || dayjs();
       const dueDate = issueDate.add(client.paymentTerms, 'days');
-      form.setFieldValue('dueDate', dueDate);
+      // Clone the dayjs object to avoid circular references
+      form.setFieldValue('dueDate', dueDate.clone());
     }
   };
 
@@ -221,30 +226,59 @@ const InvoiceForm: React.FC = () => {
     setTotals({ subtotal, taxAmount, total });
   };
 
+  const validateLineItem = (item: LineItem) => {
+    const errors: { description?: boolean; quantity?: boolean; unitPrice?: boolean } = {};
+    
+    if (!item.description || item.description.trim() === '') {
+      errors.description = true;
+    }
+    if (!item.quantity || item.quantity <= 0) {
+      errors.quantity = true;
+    }
+    if (!item.unitPrice || item.unitPrice <= 0) {
+      errors.unitPrice = true;
+    }
+    
+    return errors;
+  };
+
+  const validateAllLineItems = () => {
+    const errors: LineItemErrors = {};
+    let hasErrors = false;
+    
+    lineItems.forEach(item => {
+      const itemErrors = validateLineItem(item);
+      if (Object.keys(itemErrors).length > 0) {
+        errors[item.key!] = itemErrors;
+        hasErrors = true;
+      }
+    });
+    
+    setLineItemErrors(errors);
+    return !hasErrors;
+  };
+
   const onFinish = async (values: any) => {
+    // Validate all line items first
+    const isValid = validateAllLineItems();
+    
+    if (!isValid) {
+      message.error('Por favor complete todos los campos obligatorios marcados en rojo');
+      // Scroll to the table
+      const tableElement = document.querySelector('.ant-table');
+      if (tableElement) {
+        tableElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    
     try {
       setSubmitting(true);
-
-      // Validate line items
-      const validItems = lineItems.filter(item => 
-        item.description && item.quantity > 0 && item.unitPrice > 0
-      );
-
-      if (validItems.length === 0) {
-        notification.error({
-          message: 'Error',
-          description: 'Debe agregar al menos un ítem a la factura',
-        });
-        return;
-      }
 
       // Get client info
       const client = clients.find(c => c.id === values.clientId);
       if (!client) {
-        notification.error({
-          message: 'Error',
-          description: 'Cliente no encontrado',
-        });
+        message.error('Cliente no encontrado');
         return;
       }
 
@@ -268,7 +302,7 @@ const InvoiceForm: React.FC = () => {
         issueDate: values.issueDate.format('YYYY-MM-DD'),
         dueDate: values.dueDate.format('YYYY-MM-DD'),
         currency: values.currency,
-        items: validItems.map(({ key, ...item }) => item),
+        items: lineItems.map(({ key, ...item }) => item),
         subtotal: totals.subtotal,
         taxAmount: totals.taxAmount,
         taxRate: values.taxRate,
@@ -288,18 +322,12 @@ const InvoiceForm: React.FC = () => {
       }
 
       if (response.success) {
-        notification.success({
-          message: 'Éxito',
-          description: `Factura ${isEdit ? 'actualizada' : 'creada'} correctamente`,
-        });
+        message.success(`Factura ${isEdit ? 'actualizada' : 'creada'} correctamente`);
         navigate('/invoices');
       }
     } catch (error: any) {
       console.error('Error saving invoice:', error);
-      notification.error({
-        message: 'Error',
-        description: error.response?.data?.error || `No se pudo ${isEdit ? 'actualizar' : 'crear'} la factura`,
-      });
+      message.error(error.response?.data?.error || `No se pudo ${isEdit ? 'actualizar' : 'crear'} la factura`);
     } finally {
       setSubmitting(false);
     }
@@ -307,7 +335,7 @@ const InvoiceForm: React.FC = () => {
 
   const columns = [
     {
-      title: 'Descripción',
+      title: <span>Descripción <span style={{ color: 'red' }}>*</span></span>,
       dataIndex: 'description',
       key: 'description',
       width: '40%',
@@ -315,13 +343,34 @@ const InvoiceForm: React.FC = () => {
         <Input.TextArea
           value={record.description}
           onChange={(e) => handleLineItemChange(record.key!, 'description', e.target.value)}
-          placeholder="Descripción del servicio o producto"
+          placeholder="Descripción del servicio o producto (obligatorio)"
           autoSize={{ minRows: 1, maxRows: 3 }}
+          status={lineItemErrors[record.key!]?.description ? 'error' : ''}
+          onBlur={() => {
+            const errors = validateLineItem(record);
+            if (errors.description) {
+              setLineItemErrors(prev => ({
+                ...prev,
+                [record.key!]: { ...prev[record.key!], description: true }
+              }));
+            } else {
+              setLineItemErrors(prev => {
+                const newErrors = { ...prev };
+                if (newErrors[record.key!]) {
+                  delete newErrors[record.key!].description;
+                  if (Object.keys(newErrors[record.key!]).length === 0) {
+                    delete newErrors[record.key!];
+                  }
+                }
+                return newErrors;
+              });
+            }
+          }}
         />
       ),
     },
     {
-      title: 'Cantidad',
+      title: <span>Cantidad <span style={{ color: 'red' }}>*</span></span>,
       dataIndex: 'quantity',
       key: 'quantity',
       width: '10%',
@@ -329,13 +378,35 @@ const InvoiceForm: React.FC = () => {
         <InputNumber
           value={record.quantity}
           onChange={(value) => handleLineItemChange(record.key!, 'quantity', value || 0)}
-          min={0}
+          min={0.01}
           style={{ width: '100%' }}
+          status={lineItemErrors[record.key!]?.quantity ? 'error' : ''}
+          placeholder="Obligatorio"
+          onBlur={() => {
+            const errors = validateLineItem(record);
+            if (errors.quantity) {
+              setLineItemErrors(prev => ({
+                ...prev,
+                [record.key!]: { ...prev[record.key!], quantity: true }
+              }));
+            } else {
+              setLineItemErrors(prev => {
+                const newErrors = { ...prev };
+                if (newErrors[record.key!]) {
+                  delete newErrors[record.key!].quantity;
+                  if (Object.keys(newErrors[record.key!]).length === 0) {
+                    delete newErrors[record.key!];
+                  }
+                }
+                return newErrors;
+              });
+            }
+          }}
         />
       ),
     },
     {
-      title: 'Precio Unit.',
+      title: <span>Precio Unit. <span style={{ color: 'red' }}>*</span></span>,
       dataIndex: 'unitPrice',
       key: 'unitPrice',
       width: '15%',
@@ -343,13 +414,35 @@ const InvoiceForm: React.FC = () => {
         <InputNumber
           value={record.unitPrice}
           onChange={(value) => handleLineItemChange(record.key!, 'unitPrice', value || 0)}
-          min={0}
+          min={0.01}
           formatter={value => `€ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
           parser={(value) => {
             const num = value!.replace(/\€\s?|(,*)/g, '');
             return parseFloat(num) || 0;
           }}
           style={{ width: '100%' }}
+          status={lineItemErrors[record.key!]?.unitPrice ? 'error' : ''}
+          placeholder="€ 0.00"
+          onBlur={() => {
+            const errors = validateLineItem(record);
+            if (errors.unitPrice) {
+              setLineItemErrors(prev => ({
+                ...prev,
+                [record.key!]: { ...prev[record.key!], unitPrice: true }
+              }));
+            } else {
+              setLineItemErrors(prev => {
+                const newErrors = { ...prev };
+                if (newErrors[record.key!]) {
+                  delete newErrors[record.key!].unitPrice;
+                  if (Object.keys(newErrors[record.key!]).length === 0) {
+                    delete newErrors[record.key!];
+                  }
+                }
+                return newErrors;
+              });
+            }
+          }}
         />
       ),
     },
@@ -563,6 +656,12 @@ const InvoiceForm: React.FC = () => {
           </Row>
 
           <Divider>Líneas de Factura</Divider>
+
+          <div style={{ marginBottom: 8 }}>
+            <Text type="secondary">
+              Los campos marcados con <span style={{ color: 'red' }}>*</span> son obligatorios
+            </Text>
+          </div>
 
           <Table
             dataSource={lineItems}

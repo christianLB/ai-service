@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Table, Tag, Space, notification, Row, Col, Input, Select, DatePicker, Statistic } from 'antd';
+import { Card, Button, Table, Tag, Space, Row, Col, Input, Select, DatePicker, Statistic, App } from 'antd';
 import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, FileTextOutlined, DollarOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import invoiceService from '../../services/invoiceService';
@@ -12,6 +12,7 @@ const { RangePicker } = DatePicker;
 
 const InvoiceList: React.FC = () => {
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -50,21 +51,29 @@ const InvoiceList: React.FC = () => {
           total: response.data?.pagination.total || 0,
         }));
         
-        // Calculate stats
+        // Calculate stats - ensure numeric values
         const invoiceList = response.data.invoices || [];
+        const totalRevenue = invoiceList.reduce((sum, inv) => {
+          // Convert to number if it's a Decimal object or string
+          let total = 0;
+          if (typeof inv.total === 'object' && inv.total && 'toString' in inv.total) {
+            total = parseFloat((inv.total as any).toString());
+          } else if (typeof inv.total === 'string' || typeof inv.total === 'number') {
+            total = parseFloat(String(inv.total));
+          }
+          return sum + (isNaN(total) ? 0 : total);
+        }, 0);
+        
         setStats({
           totalInvoices: response.data.pagination.total || 0,
-          totalRevenue: invoiceList.reduce((sum, inv) => sum + (inv.total || 0), 0),
+          totalRevenue: totalRevenue,
           paidInvoices: invoiceList.filter(inv => inv.status === 'paid').length,
           overdueInvoices: invoiceList.filter(inv => inv.status === 'overdue').length,
         });
       }
     } catch (error) {
       console.error('Error fetching invoices:', error);
-      notification.error({
-        message: 'Error',
-        description: 'No se pudieron cargar las facturas',
-      });
+      message.error('No se pudieron cargar las facturas');
     } finally {
       setLoading(false);
     }
@@ -74,17 +83,11 @@ const InvoiceList: React.FC = () => {
     try {
       const response = await invoiceService.deleteInvoice(id);
       if (response.success) {
-        notification.success({
-          message: 'Factura eliminada',
-          description: 'La factura se ha eliminado correctamente',
-        });
+        message.success('La factura se ha eliminado correctamente');
         fetchInvoices();
       }
     } catch (error) {
-      notification.error({
-        message: 'Error',
-        description: 'No se pudo eliminar la factura',
-      });
+      message.error('No se pudo eliminar la factura');
     }
   };
 
@@ -153,7 +156,13 @@ const InvoiceList: React.FC = () => {
       title: 'Total',
       dataIndex: 'total',
       key: 'total',
-      render: (value: number, record: Invoice) => `${value != null && !isNaN(value) ? value.toFixed(2) : '0.00'} ${record.currency || 'EUR'}`,
+      render: (value: any, record: Invoice) => {
+        // Convert to number if it's a Decimal object or string
+        const numValue = typeof value === 'object' && value ? 
+          parseFloat(value.toString()) : 
+          parseFloat(value || 0);
+        return `${!isNaN(numValue) ? numValue.toFixed(2) : '0.00'} ${record.currency || 'EUR'}`;
+      },
       align: 'right' as const,
     },
     {

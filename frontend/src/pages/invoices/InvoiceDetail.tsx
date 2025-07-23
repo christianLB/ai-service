@@ -7,7 +7,6 @@ import {
   Tag,
   Table,
   Spin,
-  notification,
   Empty,
   Row,
   Col,
@@ -15,9 +14,9 @@ import {
   Typography,
   Timeline,
   Popconfirm,
-  message,
   Dropdown,
   Menu,
+  App,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -46,6 +45,15 @@ const InvoiceDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const { message } = App.useApp();
+
+  // Helper function to safely convert values to numbers
+  const toNumber = (value: any): number => {
+    if (typeof value === 'object' && value) {
+      return parseFloat(value.toString());
+    }
+    return parseFloat(value || 0);
+  };
 
   useEffect(() => {
     if (id) {
@@ -62,10 +70,7 @@ const InvoiceDetail: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading invoice:', error);
-      notification.error({
-        message: 'Error',
-        description: 'No se pudo cargar la factura',
-      });
+      message.error('No se pudo cargar la factura');
       navigate('/invoices');
     } finally {
       setLoading(false);
@@ -77,17 +82,11 @@ const InvoiceDetail: React.FC = () => {
       setDeleting(true);
       const response = await invoiceService.deleteInvoice(id!);
       if (response.success) {
-        notification.success({
-          message: 'Factura eliminada',
-          description: 'La factura se ha eliminado correctamente',
-        });
+        message.success('La factura se ha eliminado correctamente');
         navigate('/invoices');
       }
     } catch (error) {
-      notification.error({
-        message: 'Error',
-        description: 'No se pudo eliminar la factura',
-      });
+      message.error('No se pudo eliminar la factura');
     } finally {
       setDeleting(false);
     }
@@ -98,17 +97,11 @@ const InvoiceDetail: React.FC = () => {
       setUpdating(true);
       const response = await invoiceService.updateInvoiceStatus(id!, newStatus);
       if (response.success) {
-        notification.success({
-          message: 'Estado actualizado',
-          description: `La factura se ha marcado como ${getStatusLabel(newStatus)}`,
-        });
+        message.success(`La factura se ha marcado como ${getStatusLabel(newStatus)}`);
         loadInvoice();
       }
     } catch (error) {
-      notification.error({
-        message: 'Error',
-        description: 'No se pudo actualizar el estado',
-      });
+      message.error('No se pudo actualizar el estado');
     } finally {
       setUpdating(false);
     }
@@ -187,7 +180,7 @@ const InvoiceDetail: React.FC = () => {
       key: 'unitPrice',
       width: '15%',
       align: 'right' as const,
-      render: (value: number) => `€ ${value?.toFixed(2) || '0.00'}`,
+      render: (value: any) => `€ ${toNumber(value).toFixed(2)}`,
     },
     {
       title: 'Importe',
@@ -195,7 +188,7 @@ const InvoiceDetail: React.FC = () => {
       key: 'amount',
       width: '15%',
       align: 'right' as const,
-      render: (value: number) => `€ ${value?.toFixed(2) || '0.00'}`,
+      render: (value: any) => `€ ${toNumber(value).toFixed(2)}`,
     },
     {
       title: `IVA (${invoice?.taxRate || 0}%)`,
@@ -203,7 +196,7 @@ const InvoiceDetail: React.FC = () => {
       key: 'taxAmount',
       width: '10%',
       align: 'right' as const,
-      render: (value: number) => `€ ${value?.toFixed(2) || '0.00'}`,
+      render: (value: any) => `€ ${toNumber(value).toFixed(2)}`,
     },
     {
       title: 'Total',
@@ -211,7 +204,7 @@ const InvoiceDetail: React.FC = () => {
       key: 'total',
       width: '10%',
       align: 'right' as const,
-      render: (value: number) => <Text strong>€ {value?.toFixed(2) || '0.00'}</Text>,
+      render: (value: any) => <Text strong>€ {toNumber(value).toFixed(2)}</Text>,
     },
   ];
 
@@ -313,7 +306,7 @@ const InvoiceDetail: React.FC = () => {
               <Col span={12} style={{ textAlign: 'right' }}>
                 <Space direction="vertical" align="end">
                   <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
-                    € {invoice.total?.toFixed(2) || '0.00'}
+                    € {toNumber(invoice.total).toFixed(2)}
                   </Title>
                   <Text type="secondary">{invoice.currency}</Text>
                 </Space>
@@ -389,13 +382,13 @@ const InvoiceDetail: React.FC = () => {
                       <Row style={{ width: '100%' }}>
                         <Col span={20}>Subtotal:</Col>
                         <Col span={4} style={{ textAlign: 'right' }}>
-                          <Text>€ {invoice.subtotal?.toFixed(2) || '0.00'}</Text>
+                          <Text>€ {toNumber(invoice.subtotal).toFixed(2)}</Text>
                         </Col>
                       </Row>
                       <Row style={{ width: '100%' }}>
                         <Col span={20}>{invoice.taxType} ({invoice.taxRate}%):</Col>
                         <Col span={4} style={{ textAlign: 'right' }}>
-                          <Text>€ {invoice.taxAmount?.toFixed(2) || '0.00'}</Text>
+                          <Text>€ {toNumber(invoice.taxAmount).toFixed(2)}</Text>
                         </Col>
                       </Row>
                       <Divider style={{ margin: '8px 0' }} />
@@ -405,7 +398,7 @@ const InvoiceDetail: React.FC = () => {
                         </Col>
                         <Col span={4} style={{ textAlign: 'right' }}>
                           <Title level={4} style={{ margin: 0 }}>
-                            € {invoice.total?.toFixed(2) || '0.00'}
+                            € {toNumber(invoice.total).toFixed(2)}
                           </Title>
                         </Col>
                       </Row>
