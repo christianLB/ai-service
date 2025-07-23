@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Pool } from 'pg';
 import { TransactionMatchingService } from '../../services/financial/transaction-matching.service';
 import { logger } from '../../utils/log';
+import { authMiddleware } from '../../middleware/auth.middleware';
 
 export function createTransactionRoutes(pool: Pool): Router {
   const router = Router();
@@ -11,7 +12,7 @@ export function createTransactionRoutes(pool: Pool): Router {
  * GET /api/financial/transactions/unlinked
  * Get transactions without client links
  */
-router.get('/unlinked', async (req: Request, res: Response): Promise<void> => {
+router.get('/unlinked', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '50' } = req.query;
     const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -48,7 +49,7 @@ router.get('/unlinked', async (req: Request, res: Response): Promise<void> => {
  * POST /api/financial/transactions/:id/link
  * Manually link a transaction to a client
  */
-router.post('/:id/link', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/link', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { clientId, notes } = req.body;
@@ -90,7 +91,7 @@ router.post('/:id/link', async (req: Request, res: Response): Promise<void> => {
  * POST /api/financial/transactions/auto-match
  * Run automatic matching on transactions
  */
-router.post('/auto-match', async (req: Request, res: Response): Promise<void> => {
+router.post('/auto-match', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { transactionIds } = req.body;
     
@@ -115,7 +116,7 @@ router.post('/auto-match', async (req: Request, res: Response): Promise<void> =>
  * GET /api/financial/transactions/:id/link
  * Get link information for a transaction
  */
-router.get('/:id/link', async (req: Request, res: Response): Promise<void> => {
+router.get('/:id/link', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     
@@ -148,7 +149,7 @@ router.get('/:id/link', async (req: Request, res: Response): Promise<void> => {
  * DELETE /api/financial/transactions/:id/link
  * Remove a transaction link
  */
-router.delete('/:id/link', async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id/link', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -190,7 +191,7 @@ router.delete('/:id/link', async (req: Request, res: Response): Promise<void> =>
  * GET /api/financial/transactions/patterns/:clientId
  * Get matching patterns for a client
  */
-router.get('/patterns/:clientId', async (req: Request, res: Response): Promise<void> => {
+router.get('/patterns/:clientId', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { clientId } = req.params;
     
@@ -215,7 +216,7 @@ router.get('/patterns/:clientId', async (req: Request, res: Response): Promise<v
  * POST /api/financial/transactions/patterns
  * Create a new matching pattern
  */
-router.post('/patterns', async (req: Request, res: Response): Promise<void> => {
+router.post('/patterns', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const patternData = req.body;
     
@@ -249,7 +250,7 @@ router.post('/patterns', async (req: Request, res: Response): Promise<void> => {
  * PUT /api/financial/transactions/patterns/:id
  * Update a matching pattern
  */
-router.put('/patterns/:id', async (req: Request, res: Response): Promise<void> => {
+router.put('/patterns/:id', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -276,7 +277,7 @@ router.put('/patterns/:id', async (req: Request, res: Response): Promise<void> =
  * DELETE /api/financial/transactions/patterns/:id
  * Delete a matching pattern
  */
-router.delete('/patterns/:id', async (req: Request, res: Response): Promise<void> => {
+router.delete('/patterns/:id', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     

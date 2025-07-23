@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { FinancialDatabaseService } from '../../services/financial/database.service';
+import { authMiddleware } from '../../middleware/auth.middleware';
 
 const router = Router();
 
@@ -28,7 +29,7 @@ const initializeService = () => {
  * GET /api/financial/dashboard/revenue-metrics
  * Get comprehensive revenue metrics with trends and comparisons
  */
-router.get('/revenue-metrics', async (req: Request, res: Response): Promise<void> => {
+router.get('/revenue-metrics', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeService();
     
@@ -222,7 +223,7 @@ router.get('/revenue-metrics', async (req: Request, res: Response): Promise<void
  * GET /api/financial/dashboard/invoice-stats
  * Get detailed invoice statistics with status breakdown and aging analysis
  */
-router.get('/invoice-stats', async (req: Request, res: Response): Promise<void> => {
+router.get('/invoice-stats', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeService();
     
@@ -396,7 +397,7 @@ router.get('/invoice-stats', async (req: Request, res: Response): Promise<void> 
  * GET /api/financial/dashboard/client-metrics
  * Get client performance metrics including payment behavior and revenue analysis
  */
-router.get('/client-metrics', async (req: Request, res: Response): Promise<void> => {
+router.get('/client-metrics', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeService();
     
@@ -608,7 +609,7 @@ router.get('/client-metrics', async (req: Request, res: Response): Promise<void>
  * GET /api/financial/dashboard/cash-flow
  * Get cash flow projections based on outstanding invoices and payment history
  */
-router.get('/cash-flow', async (req: Request, res: Response): Promise<void> => {
+router.get('/cash-flow', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeService();
     
@@ -831,7 +832,7 @@ router.get('/cash-flow', async (req: Request, res: Response): Promise<void> => {
  * GET /api/financial/dashboard/yearly-report
  * Get yearly financial report with income/expense matrix by category and month
  */
-router.get('/yearly-report', async (req: Request, res: Response): Promise<void> => {
+router.get('/yearly-report', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeService();
     
