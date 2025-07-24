@@ -5,7 +5,7 @@ const path = require('path');
 const pdfjsLib = require('pdfjs-dist');
 
 // Configuration
-const PDF_PASSWORD = '72298830D';
+const PDF_PASSWORD = process.env.PDF_PASSWORD || process.env.BANK_PDF_PASSWORD;
 
 /**
  * Extract text from PDF using pdfjs-dist

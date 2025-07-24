@@ -18,7 +18,16 @@ async function seedAdminUser() {
     }
     
     // Generate secure password hash
-    const defaultPassword = 'admin123'; // CHANGE THIS IN PRODUCTION!
+    const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+    if (!defaultPassword) {
+      console.error('❌ Error: DEFAULT_ADMIN_PASSWORD environment variable is required');
+      console.error('   Please set it in your .env file or environment');
+      process.exit(1);
+    }
+    if (process.env.NODE_ENV === 'production' && defaultPassword.length < 12) {
+      console.error('❌ Error: Password must be at least 12 characters in production');
+      process.exit(1);
+    }
     const passwordHash = await bcrypt.hash(defaultPassword, 10);
     
     // Insert admin user
@@ -38,9 +47,11 @@ async function seedAdminUser() {
     
     console.log('✅ Admin user created successfully:');
     console.log('   Email:', result.rows[0].email);
-    console.log('   Password:', defaultPassword);
     console.log('   Role:', result.rows[0].role);
-    console.log('\n⚠️  IMPORTANT: Change the default password on first login!');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('   Password:', defaultPassword);
+    }
+    console.log('\n⚠️  IMPORTANT: Change the password on first login!');
     
   } catch (error) {
     console.error('❌ Error seeding admin user:', error);

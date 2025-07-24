@@ -5,7 +5,7 @@ const path = require('path');
 const pdfParse = require('pdf-parse');
 
 // Configuration
-const PDF_PASSWORD = '72298830D';
+const PDF_PASSWORD = process.env.PDF_PASSWORD || process.env.BANK_PDF_PASSWORD;
 
 /**
  * Extract transactions from bank statement PDF
@@ -32,7 +32,8 @@ async function extractTransactionsFromPDF(pdfPath) {
           password: PDF_PASSWORD
         });
       } catch (passwordError) {
-        console.log('❌ PDF parsing failed. Consider decrypting with: qpdf --decrypt --password=' + PDF_PASSWORD + ' input.pdf output.pdf');
+        console.log('❌ PDF parsing failed. Consider decrypting with: qpdf --decrypt --password=<PDF_PASSWORD> input.pdf output.pdf');
+        console.log('   Set PDF_PASSWORD environment variable to provide the password.');
         throw passwordError;
       }
     }
