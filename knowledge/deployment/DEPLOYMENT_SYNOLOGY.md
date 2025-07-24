@@ -156,7 +156,7 @@ curl -X POST https://domain.com/api/financial/sync
 
 ```bash
 # Configurar webhook
-curl -X POST https://api.telegram.org/bot7675285244:AAHcM733tpyttgRPWITfeQOAGnrtbrWThpE/setWebhook \
+curl -X POST https://api.telegram.org/botYOUR_TELEGRAM_BOT_TOKEN/setWebhook \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://ai-service.anaxi.net/api/telegram/webhook"

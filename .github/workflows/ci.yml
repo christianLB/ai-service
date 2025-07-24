@@ -89,9 +89,26 @@ jobs:
       
       - name: Setup test environment
         run: |
-          cp .env.example .env.test || echo "DATABASE_URL=postgresql://ai_user:testpass@localhost:5432/ai_service_test" > .env.test
-          echo "DATABASE_URL=postgresql://ai_user:testpass@localhost:5432/ai_service_test" >> .env.test
-          echo "REDIS_URL=redis://localhost:6379" >> .env.test
+          # Create comprehensive .env.test file
+          cat > .env.test << EOF
+          NODE_ENV=test
+          DATABASE_URL=postgresql://ai_user:testpass@localhost:5432/ai_service_test
+          POSTGRES_HOST=localhost
+          POSTGRES_PORT=5432
+          POSTGRES_DB=ai_service_test
+          POSTGRES_USER=ai_user
+          POSTGRES_PASSWORD=testpass
+          REDIS_URL=redis://localhost:6379
+          REDIS_HOST=localhost
+          REDIS_PORT=6379
+          USE_MOCK_SERVICES=true
+          OPENAI_API_KEY=test-key
+          N8N_API_URL=http://localhost:5678
+          N8N_API_KEY=test-n8n-key
+          TELEGRAM_BOT_TOKEN=test-bot-token
+          TELEGRAM_CHAT_ID=123456789
+          JWT_SECRET=test-secret-key-for-testing-only
+          EOF
       
       - name: Run Prisma migrations
         env:
@@ -101,7 +118,7 @@ jobs:
           npx prisma migrate deploy
       
       - name: Run unit tests
-        run: npm test -- --coverage --passWithNoTests --maxWorkers=2
+        run: npm run test:ci
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test

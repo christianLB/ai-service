@@ -1,6 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  maxWorkers: 2,
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/__tests__/**/*.(ts|js|mjs)', '**/?(*.)+(spec|test).(ts|js|mjs)'],
   transform: {
@@ -24,5 +25,14 @@ module.exports = {
     'html'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  testTimeout: 30000
+  testTimeout: 30000,
+  globals: {
+    'ts-jest': {
+      isolatedModules: true,
+      tsconfig: {
+        esModuleInterop: true,
+        allowJs: true
+      }
+    }
+  }
 };
