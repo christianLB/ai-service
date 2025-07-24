@@ -34,5 +34,12 @@ module.exports = {
         allowJs: true
       }
     }
-  }
+  },
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/build/',
+    '/coverage/',
+    'mcp-local'
+  ]
 };

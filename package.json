@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "test:ci": "NODE_OPTIONS='--max-old-space-size=2048' jest --passWithNoTests --maxWorkers=1 --forceExit --detectOpenHandles",
+    "test:ci": "jest --passWithNoTests --maxWorkers=1 --forceExit",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:integration": "jest --testMatch='**/*.integration.test.ts' --passWithNoTests",

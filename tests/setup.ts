@@ -17,6 +17,7 @@ process.env.POSTGRES_PASSWORD = process.env.POSTGRES_PASSWORD || 'postgres';
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-key';
 process.env.N8N_API_URL = process.env.N8N_API_URL || 'http://localhost:5678';
 process.env.N8N_API_KEY = process.env.N8N_API_KEY || 'test-n8n-key';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-testing-only';
 process.env.USE_MOCK_SERVICES = 'true';
 
 // Global test utilities
