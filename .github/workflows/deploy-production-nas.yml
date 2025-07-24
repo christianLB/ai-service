@@ -44,6 +44,9 @@ jobs:
         npm ci
         cd frontend && npm ci --legacy-peer-deps
       
+    - name: Generate Prisma Client
+      run: npx prisma generate
+      
     - name: Run pre-deploy validations
       run: |
         echo "🔍 Running pre-deploy validations..."

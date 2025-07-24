@@ -17,6 +17,13 @@ ENV COMMIT_SHORT=${COMMIT_SHORT}
 RUN apk add --no-cache \
     curl \
     dumb-init \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /app
@@ -70,6 +77,10 @@ RUN mkdir -p logs/forensic workflows data/documents/storage data/documents/temp 
 
 # Configurar usuario
 USER nodejs
+
+# Tell Puppeteer to use installed Chromium instead of downloading
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Exponer puerto
 EXPOSE 3000
