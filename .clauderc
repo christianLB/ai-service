@@ -1,17 +1,73 @@
 {
   "name": "AI Service",
   "description": "Multi-module AI service with financial, trading, and document intelligence",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "settings": {
     "language": "es-en",
     "framework": "express-typescript",
     "database": "postgresql-prisma",
     "defaultPersona": "backend",
+    "workflowType": "github-first",
     "autoFlags": {
       "database": ["--validate", "--safe-mode"],
       "financial": ["--persona-security", "--validate"],
       "trading": ["--persona-performance", "--think"],
       "frontend": ["--persona-frontend", "--magic"]
+    },
+    "qualityGates": {
+      "tests": "required",
+      "types": "strict",
+      "build": "required",
+      "health": "required"
+    }
+  },
+  "github": {
+    "repository": "christianlb/ai-service",
+    "branch": "main",
+    "workflows": {
+      "ci": ".github/workflows/ci.yml",
+      "deploy": ".github/workflows/deploy-production.yml",
+      "deployNas": ".github/workflows/deploy-production-nas.yml",
+      "dockerPublish": ".github/workflows/docker-publish.yml"
+    },
+    "qualityChecks": {
+      "required": ["tests", "types", "build", "lint"],
+      "blocking": true
+    }
+  },
+  "development": {
+    "methodology": "test-driven",
+    "workflow": [
+      "analyze-requirements",
+      "write-tests-first",
+      "implement-solution",
+      "validate-types",
+      "ensure-build",
+      "health-check",
+      "commit-and-push"
+    ],
+    "commands": {
+      "dev": "make dev-up && make dev-status",
+      "test": "npm test && npm run test:integration",
+      "build": "npm run build && npm run typecheck",
+      "health": "make health && make check-db",
+      "deploy": "make deploy-safe"
+    }
+  },
+  "quality": {
+    "coverage": {
+      "minimum": 80,
+      "target": 90
+    },
+    "typeScript": {
+      "strict": true,
+      "noImplicitAny": true,
+      "exactOptionalPropertyTypes": true
+    },
+    "performance": {
+      "responseTime": "< 200ms",
+      "memoryUsage": "< 512MB",
+      "errorRate": "< 1%"
     }
   },
   "performance": {
@@ -32,17 +88,20 @@
     }
   },
   "mcp": {
+    "enabled": true,
     "autoDetect": true,
     "servers": {
       "context7": {
         "enabled": true,
         "priority": "high",
-        "use": ["prisma", "react", "express", "typescript"]
+        "use": ["prisma", "react", "express", "typescript"],
+        "libraries": ["prisma", "react", "express", "typescript", "tailwindcss", "tanstack-query"]
       },
       "sequential": {
         "enabled": true,
         "priority": "medium",
-        "use": ["complex-analysis", "trading-strategies", "performance"]
+        "use": ["complex-analysis", "trading-strategies", "performance"],
+        "triggers": ["complex-analysis", "multi-step", "--think", "--think-hard"]
       },
       "magic": {
         "enabled": true,
@@ -71,6 +130,44 @@
       "description": "Enhance frontend components and UX",
       "flags": ["--persona-frontend", "--magic", "--c7"],
       "focus": ["frontend/src"]
+    },
+    "/tdd": {
+      "description": "Test-driven development workflow",
+      "workflow": [
+        "analyze-requirements",
+        "write-failing-test",
+        "implement-minimal-solution",
+        "refactor-and-improve",
+        "validate-all-checks"
+      ],
+      "flags": ["--validate", "--think"]
+    },
+    "/github-flow": {
+      "description": "Complete GitHub workflow",
+      "workflow": [
+        "create-feature-branch",
+        "implement-with-tests",
+        "run-quality-checks",
+        "create-pull-request",
+        "merge-after-approval"
+      ]
+    },
+    "/health-check": {
+      "description": "Complete health validation",
+      "checks": [
+        "tests-passing",
+        "types-valid",
+        "build-successful",
+        "services-healthy",
+        "dependencies-updated"
+      ],
+      "commands": [
+        "npm test",
+        "npm run typecheck",
+        "npm run build",
+        "make health",
+        "npm outdated"
+      ]
     }
   },
   "workflows": {
@@ -81,6 +178,23 @@
     "post-migration": {
       "autoRun": ["make db-backup", "make dev-refresh"],
       "required": true
+    }
+  },
+  "projectStructure": {
+    "src": {
+      "services": "Business logic with tests",
+      "routes": "API endpoints with integration tests",
+      "types": "TypeScript definitions",
+      "utils": "Utility functions with unit tests"
+    },
+    "tests": {
+      "unit": "__tests__/unit",
+      "integration": "__tests__/integration",
+      "e2e": "__tests__/e2e"
+    },
+    "frontend": {
+      "src": "React components with tests",
+      "tests": "Component and hook tests"
     }
   },
   "projectPaths": {
@@ -102,6 +216,18 @@
       "prisma migrate reset",
       "docker system prune",
       "rm -rf"
+    ],
+    "preDeploy": [
+      "tests-must-pass",
+      "types-must-validate",
+      "build-must-succeed",
+      "health-checks-must-pass"
+    ],
+    "forbidden": [
+      "skip-tests",
+      "ignore-types",
+      "force-push-main",
+      "deploy-without-checks"
     ]
   }
 }

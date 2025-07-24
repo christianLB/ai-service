@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "generate:service": "node scripts/generate-service.cjs",
     "validate:services": "node scripts/validate-services.cjs",

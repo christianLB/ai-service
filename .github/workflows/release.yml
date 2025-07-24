@@ -1,0 +1,234 @@
+name: Release Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      version-type:
+        description: 'Version type to release'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+    
+    - name: Determine version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          # Get current version from package.json
+          current_version=$(node -p "require('./package.json').version")
+          echo "Current version: $current_version"
+          
+          # Calculate new version
+          case "${{ github.event.inputs.version-type }}" in
+            major)
+              new_version=$(echo $current_version | awk -F. '{print $1+1".0.0"}')
+              ;;
+            minor)
+              new_version=$(echo $current_version | awk -F. '{print $1"."$2+1".0"}')
+              ;;
+            patch)
+              new_version=$(echo $current_version | awk -F. '{print $1"."$2"."$3+1}')
+              ;;
+          esac
+          
+          echo "New version: $new_version"
+          echo "version=$new_version" >> $GITHUB_OUTPUT
+          echo "tag=v$new_version" >> $GITHUB_OUTPUT
+          
+          # Update package.json
+          npm version $new_version --no-git-tag-version
+          cd frontend && npm version $new_version --no-git-tag-version
+          cd ..
+          
+          # Commit version bump
+          git add package.json frontend/package.json
+          git commit -m "chore: bump version to $new_version [skip ci]"
+          git push
+          
+          # Create and push tag
+          git tag -a "v$new_version" -m "Release v$new_version"
+          git push origin "v$new_version"
+        else
+          # Extract version from tag
+          tag="${GITHUB_REF#refs/tags/}"
+          version="${tag#v}"
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Get the previous tag
+        previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        current_tag="${{ steps.version.outputs.tag }}"
+        
+        echo "Generating changelog from $previous_tag to $current_tag"
+        
+        # Generate changelog
+        if [ -z "$previous_tag" ]; then
+          commits=$(git log --pretty=format:"* %s (%h)" --no-merges)
+        else
+          commits=$(git log $previous_tag..$current_tag --pretty=format:"* %s (%h)" --no-merges)
+        fi
+        
+        # Categorize commits
+        features=$(echo "$commits" | grep -E "^* feat(\(.*\))?:" || true)
+        fixes=$(echo "$commits" | grep -E "^* fix(\(.*\))?:" || true)
+        docs=$(echo "$commits" | grep -E "^* docs(\(.*\))?:" || true)
+        refactors=$(echo "$commits" | grep -E "^* refactor(\(.*\))?:" || true)
+        tests=$(echo "$commits" | grep -E "^* test(\(.*\))?:" || true)
+        chores=$(echo "$commits" | grep -E "^* chore(\(.*\))?:" || true)
+        others=$(echo "$commits" | grep -vE "^* (feat|fix|docs|refactor|test|chore)(\(.*\))?:" || true)
+        
+        # Build changelog
+        {
+          echo "# Release ${{ steps.version.outputs.version }}"
+          echo ""
+          echo "## 🚀 What's Changed"
+          echo ""
+          
+          if [ -n "$features" ]; then
+            echo "### ✨ Features"
+            echo "$features"
+            echo ""
+          fi
+          
+          if [ -n "$fixes" ]; then
+            echo "### 🐛 Bug Fixes"
+            echo "$fixes"
+            echo ""
+          fi
+          
+          if [ -n "$docs" ]; then
+            echo "### 📚 Documentation"
+            echo "$docs"
+            echo ""
+          fi
+          
+          if [ -n "$refactors" ]; then
+            echo "### ♻️ Refactoring"
+            echo "$refactors"
+            echo ""
+          fi
+          
+          if [ -n "$tests" ]; then
+            echo "### 🧪 Tests"
+            echo "$tests"
+            echo ""
+          fi
+          
+          if [ -n "$chores" ]; then
+            echo "### 🔧 Chores"
+            echo "$chores"
+            echo ""
+          fi
+          
+          if [ -n "$others" ]; then
+            echo "### 📦 Other Changes"
+            echo "$others"
+            echo ""
+          fi
+          
+          echo "## 🐳 Docker Image"
+          echo ""
+          echo "\`\`\`bash"
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}"
+          echo "\`\`\`"
+          echo ""
+          
+          if [ -n "$previous_tag" ]; then
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$previous_tag...${{ steps.version.outputs.tag }}"
+          fi
+        } > CHANGELOG.md
+        
+        # Save to output
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat CHANGELOG.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        labels: |
+          org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+        target: production
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        name: Release ${{ steps.version.outputs.version }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: false
+        generate_release_notes: false
+    
+    - name: Update CHANGELOG.md
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        # Prepend new changelog to existing file
+        if [ -f "CHANGELOG.md" ]; then
+          echo "" >> CHANGELOG_NEW.md
+          echo "---" >> CHANGELOG_NEW.md
+          echo "" >> CHANGELOG_NEW.md
+          cat CHANGELOG.md CHANGELOG_NEW.md > CHANGELOG_TEMP.md
+          mv CHANGELOG_TEMP.md CHANGELOG.md
+        fi
+        
+        git add CHANGELOG.md
+        git commit -m "docs: update CHANGELOG.md for v${{ steps.version.outputs.version }} [skip ci]"
+        git push
+    
+    - name: Notify success
+      if: success()
+      run: |
+        echo "🎉 Release ${{ steps.version.outputs.version }} created successfully!"
+        echo "📦 Docker image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}"
+        echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}"

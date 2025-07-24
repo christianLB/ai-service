@@ -579,6 +579,123 @@ dev-shell: ## 💻 Abrir shell en contenedor de desarrollo
 	@$(MAKE) -f Makefile.development dev-shell
 
 # =============================================================================
+# 🚀 GITHUB-FIRST WORKFLOW COMMANDS
+# =============================================================================
+
+.PHONY: github-flow
+github-flow: ## 🔄 Complete GitHub workflow (tests, quality, build)
+	@echo "$(BLUE)🔄 Starting GitHub-First workflow...$(NC)"
+	@$(MAKE) pre-commit
+	@$(MAKE) quality-gates
+	@echo "$(GREEN)✅ Ready for GitHub push!$(NC)"
+	@echo "$(YELLOW)💡 Tip: Create a PR and let CI/CD handle the rest$(NC)"
+
+.PHONY: pre-commit
+pre-commit: ## 🔍 Pre-commit validation (types, lint, tests)
+	@echo "$(BLUE)🔍 Running pre-commit checks...$(NC)"
+	@echo "$(YELLOW)→ Type checking...$(NC)"
+	@npm run typecheck || (echo "$(RED)❌ Type errors found$(NC)" && exit 1)
+	@cd frontend && npm run typecheck || (echo "$(RED)❌ Frontend type errors$(NC)" && exit 1)
+	@echo "$(YELLOW)→ Linting...$(NC)"
+	@npm run lint || (echo "$(RED)❌ Linting errors found$(NC)" && exit 1)
+	@cd frontend && npm run lint || (echo "$(RED)❌ Frontend linting errors$(NC)" && exit 1)
+	@echo "$(YELLOW)→ Running tests...$(NC)"
+	@npm test -- --passWithNoTests || (echo "$(RED)❌ Tests failed$(NC)" && exit 1)
+	@echo "$(GREEN)✅ Pre-commit checks passed!$(NC)"
+
+.PHONY: quality-gates
+quality-gates: ## ✅ Run all quality gates (security, tests, build)
+	@echo "$(BLUE)🎯 Running quality gates...$(NC)"
+	@echo "$(YELLOW)→ Security audit...$(NC)"
+	@npm audit --audit-level=moderate || echo "$(YELLOW)⚠️  Security warnings (non-blocking)$(NC)"
+	@echo "$(YELLOW)→ Building application...$(NC)"
+	@npm run build || (echo "$(RED)❌ Build failed$(NC)" && exit 1)
+	@cd frontend && npm run build || (echo "$(RED)❌ Frontend build failed$(NC)" && exit 1)
+	@echo "$(GREEN)✅ All quality gates passed!$(NC)"
+
+.PHONY: ci-test
+ci-test: ## 🧪 Run CI tests locally (with database)
+	@echo "$(BLUE)🧪 Running CI tests locally...$(NC)"
+	@docker-compose -f docker-compose.test.yml up -d
+	@sleep 5
+	@DATABASE_URL=postgresql://ai_user:testpass@localhost:5432/ai_service_test npm test
+	@docker-compose -f docker-compose.test.yml down
+	@echo "$(GREEN)✅ CI tests completed!$(NC)"
+
+.PHONY: pr-ready
+pr-ready: ## 📋 Check if ready for PR (all validations)
+	@echo "$(BLUE)📋 Checking PR readiness...$(NC)"
+	@$(MAKE) pre-commit
+	@$(MAKE) quality-gates
+	@echo ""
+	@echo "$(GREEN)✅ Your code is ready for a Pull Request!$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "  1. Commit your changes: git add . && git commit -m 'feat: your message'"
+	@echo "  2. Push to your branch: git push origin your-branch"
+	@echo "  3. Create a PR on GitHub"
+	@echo "  4. CI/CD will handle testing and deployment automatically"
+
+.PHONY: dev-setup
+dev-setup: ## 🏗️ Complete development environment setup
+	@echo "$(BLUE)🏗️ Setting up development environment...$(NC)"
+	@echo "$(YELLOW)→ Installing dependencies...$(NC)"
+	@npm ci
+	@cd frontend && npm ci --legacy-peer-deps
+	@echo "$(YELLOW)→ Setting up environment...$(NC)"
+	@test -f .env.local || cp .env.example .env.local
+	@echo "$(YELLOW)→ Starting services...$(NC)"
+	@$(MAKE) dev-up
+	@echo "$(YELLOW)→ Running migrations...$(NC)"
+	@$(MAKE) db-migrate
+	@echo "$(YELLOW)→ Seeding database...$(NC)"
+	@$(MAKE) dev-seed || echo "$(YELLOW)⚠️  Seeding skipped$(NC)"
+	@echo ""
+	@echo "$(GREEN)✅ Development environment ready!$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Quick start:$(NC)"
+	@echo "  - API: http://localhost:3001"
+	@echo "  - Frontend: http://localhost:5173"
+	@echo "  - Database: localhost:5432"
+	@echo "  - Redis: localhost:6379"
+
+.PHONY: onboard
+onboard: ## 👋 New developer onboarding
+	@echo "$(BLUE)👋 Welcome to AI Service!$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Let's get you started...$(NC)"
+	@$(MAKE) dev-setup
+	@echo ""
+	@echo "$(GREEN)🎉 You're all set!$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Useful commands:$(NC)"
+	@echo "  make dev         - Check development status"
+	@echo "  make logs        - View logs"
+	@echo "  make test        - Run tests"
+	@echo "  make pr-ready    - Check if ready for PR"
+	@echo "  make help        - See all commands"
+	@echo ""
+	@echo "$(YELLOW)Documentation:$(NC)"
+	@echo "  - README.md"
+	@echo "  - docs/"
+	@echo "  - CLAUDE.md (AI assistant context)"
+
+.PHONY: tdd
+tdd: ## 🧪 Test-driven development mode
+	@echo "$(BLUE)🧪 Starting TDD mode...$(NC)"
+	@echo "$(YELLOW)Watching for test changes...$(NC)"
+	@npm run test:watch
+
+.PHONY: validate-all
+validate-all: ## ✔️ Run all possible validations
+	@echo "$(BLUE)✔️ Running comprehensive validation...$(NC)"
+	@$(MAKE) pre-commit
+	@$(MAKE) quality-gates
+	@$(MAKE) security-scan
+	@$(MAKE) performance-check
+	@echo "$(GREEN)✅ All validations passed!$(NC)"
+
+# =============================================================================
 # 🔐 COMANDOS DE SEGURIDAD (adicionales)
 # =============================================================================
 
