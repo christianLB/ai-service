@@ -17,7 +17,9 @@ app.post('/api/auth/login', (req, res) => {
   
   console.log('Login attempt:', { email, password });
   
-  if (email === 'admin@ai-service.local' && password === 'admin123') {
+  // For test server only - use environment variable
+  const testPassword = process.env.TEST_ADMIN_PASSWORD || 'test-' + Math.random().toString(36).substring(7);
+  if (email === 'admin@ai-service.local' && password === testPassword) {
     // Generate simple tokens for testing
     const accessToken = 'test-access-token-' + Date.now();
     const refreshToken = 'test-refresh-token-' + Date.now();

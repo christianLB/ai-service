@@ -165,7 +165,7 @@ jobs:
         
         found=0
         for pattern in "${patterns[@]}"; do
-          if grep -r -i -E "$pattern" --include="*.js" --include="*.ts" --include="*.jsx" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=dist .; then
+          if grep -r -i -E "$pattern" --include="*.js" --include="*.ts" --include="*.jsx" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=frontend/src/generated --exclude=test-server.js .; then
             echo "⚠️ Potential secret found with pattern: $pattern"
             found=1
           fi

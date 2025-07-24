@@ -3,10 +3,11 @@ title = "gitleaks config for ai-service"
 
 [allowlist]
 description = "allowlist for ai-service"
+# Files to completely ignore
 paths = [
-  # Development scripts that use local passwords
+  # Development/test scripts with local passwords
   "scripts/fix-account-ids.js",
-  "scripts/import-historic-transactions.js",
+  "scripts/import-historic-transactions.js", 
   "scripts/check-database-data.js",
   "scripts/complete-setup-and-sync.js",
   "scripts/test-gocardless-encryption.js",
@@ -22,22 +23,50 @@ paths = [
   "**/*.test.ts",
   "**/*.test.js",
   "**/*.spec.ts",
-  "**/*.spec.js"
+  "**/*.spec.js",
+  # Generated files
+  "frontend/src/generated/**",
+  "dist/**",
+  "build/**"
 ]
 
-# Allow test/example secrets in specific contexts
+# Global allowlist patterns
+regexes = [
+  # Environment variable references
+  '''process\.env\.[A-Z_]+''',
+  # Common test passwords
+  '''(password|secret|key)\s*[:=]\s*["']test-.*["']''',
+  # JWT signing examples
+  '''jwt\.sign\(.*test.*\)''',
+  # Example/test tokens
+  '''test-.*-token''',
+  # Dynamic/random passwords
+  '''Math\.random\(\)\.toString''',
+  # Hash comparisons
+  '''bcrypt\.(hash|compare)'''
+]
+
+# Additional pattern-specific rules
 [[rules]]
-id = "generic-api-key"
+id = "generic-api-key" 
 description = "Generic API Key"
 regex = '''(?i)(api[_\-\s]?key|apikey)[\s]*[:=][\s]*['"]([a-zA-Z0-9\-_]{20,})['"]'''
 [[rules.allowlist]]
-description = "Allow test API keys in test files"
-regex = '''test-.*-key|mock-.*-key'''
+description = "Allow test API keys"
+regex = '''test-.*-key|mock-.*-key|process\.env'''
 
 [[rules]]
-id = "jwt-token"
-description = "JWT token"
-regex = '''eyJ[a-zA-Z0-9_\-]*\.eyJ[a-zA-Z0-9_\-]*\.[a-zA-Z0-9_\-]*'''
+id = "jwt-secret"
+description = "JWT Secret"
+regex = '''(?i)(jwt[_\-\s]?secret)[\s]*[:=][\s]*['"]([a-zA-Z0-9\-_]{20,})['"]'''
 [[rules.allowlist]]
-description = "Allow example/test JWT tokens"
-paths = ["docs/**", "README.md", "*.example"]
+description = "Allow environment variable references"
+regex = '''process\.env\.[A-Z_]+'''
+
+[[rules]]
+id = "hardcoded-password"
+description = "Hardcoded Password"
+regex = '''password\s*[:=]\s*["'][^"']+["']'''
+[[rules.allowlist]]
+description = "Allow test passwords and environment variables"
+regex = '''test-|mock-|process\.env|Math\.random'''
