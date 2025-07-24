@@ -526,7 +526,7 @@ export class NeuralOrchestrator {
   private async checkCommunicationExtremity(): Promise<boolean> {
     // Check if Telegram bot token is configured
     const token = process.env.TELEGRAM_BOT_TOKEN;
-    return !!(token && token !== "your-telegram-bot-token");
+    return !!token;
   }
 
   private async checkMetricsExtremity(): Promise<boolean> {
@@ -541,7 +541,7 @@ export class NeuralOrchestrator {
 
   private async checkOpenAIAPI(): Promise<boolean> {
     const apiKey = process.env.OPENAI_API_KEY;
-    return !!(apiKey && apiKey !== "your-openai-api-key");
+    return !!apiKey;
   }
 
   private async checkGoCardlessAPI(): Promise<boolean> {

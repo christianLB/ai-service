@@ -65,27 +65,6 @@ const migrationConfigs = [
     description: 'GoCardless Secret Key',
     encrypt: true
   },
-  {
-    envKey: 'GO_SANDBOX_MODE',
-    integrationType: 'gocardless',
-    configKey: 'sandbox_mode',
-    description: 'Enable GoCardless Sandbox Mode',
-    encrypt: false
-  },
-  {
-    envKey: 'GO_SANDBOX_TOKEN',
-    integrationType: 'gocardless',
-    configKey: 'sandbox_token',
-    description: 'GoCardless Sandbox Institution Token',
-    encrypt: false
-  },
-  {
-    envKey: 'GO_SANDBOX_ACCESS_TOKEN',
-    integrationType: 'gocardless',
-    configKey: 'sandbox_access_token',
-    description: 'GoCardless Sandbox Access Token',
-    encrypt: false
-  },
 
   // OpenAI
   {

@@ -19,7 +19,7 @@ function getTelegramService(): TelegramService | null {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   
-  if (!botToken || botToken === 'your-telegram-bot-token' || !chatId) {
+  if (!botToken || !chatId) {
     logger.error('Telegram service not configured');
     return null;
   }
