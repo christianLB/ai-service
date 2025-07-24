@@ -62,7 +62,7 @@ return {
 NODE_ENV=production
 NEURAL_MONITORING_ENABLED=true
 DOCUMENT_STORAGE_PATH=/home/k2600x/dev/ai-service/data/documents/storage
-TELEGRAM_BOT_TOKEN=7675285244:AAHcM733tpyttgRPWITfeQOAGnrtbrWThpE
+TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 # + 32 variables adicionales
 ```
 

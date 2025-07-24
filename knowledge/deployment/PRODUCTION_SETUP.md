@@ -26,7 +26,7 @@ POSTGRES_PASSWORD=ultra_secure_password_2025
 REDIS_PASSWORD=redis_secure_password_2025
 
 # Telegram Bot Configuration
-TELEGRAM_BOT_TOKEN=7675285244:AAHcM733tpyttgRPWITfeQOAGnrtbrWThpE
+TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 TELEGRAM_CHAT_ID=5015255679
 TELEGRAM_WEBHOOK_URL=https://ai-service.anaxi.net/api/telegram/webhook
 

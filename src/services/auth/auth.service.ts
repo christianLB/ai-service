@@ -30,7 +30,11 @@ export class AuthService {
 
   constructor(pool: Pool) {
     this.pool = pool;
-    this.jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET environment variable is required');
+    }
+    this.jwtSecret = jwtSecret;
     this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '15m';
     this.refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
   }

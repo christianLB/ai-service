@@ -292,12 +292,7 @@ router.get('/types', async (req: Request, res: Response) => {
           
           // Production Configuration
           { key: 'secret_id', required: false, encrypted: true, description: 'Production Secret ID (for live mode)' },
-          { key: 'secret_key', required: false, encrypted: true, description: 'Production Secret Key (for live mode)' },
-          
-          // Sandbox Configuration
-          { key: 'sandbox_mode', required: false, encrypted: false, description: 'Enable sandbox mode' },
-          { key: 'sandbox_access_token', required: false, encrypted: true, description: 'Sandbox Access Token (from GoCardless sandbox portal)' },
-          { key: 'sandbox_institution_id', required: false, encrypted: false, description: 'Sandbox test bank ID (default: SANDBOXFINANCE_SFIN0000)' }
+          { key: 'secret_key', required: false, encrypted: true, description: 'Production Secret Key (for live mode)' }
         ]
       },
       {

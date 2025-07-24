@@ -44,6 +44,7 @@ cat docs/SANDBOX_TESTING.md
 | **[INFRASTRUCTURE.md](./INFRASTRUCTURE.md)** | 🏗️ Infraestructura Synology + Cloudflare |
 | **[.env.example](./.env.example)** | ⚙️ Variables de entorno requeridas |
 | **[INSTALLATION_GUIDE.md](./docs/INSTALLATION_GUIDE.md)** | 🚀 Guía rápida de instalación |
+| **[SECURITY_BEST_PRACTICES.md](./docs/SECURITY_BEST_PRACTICES.md)** | 🔒 Mejores prácticas de seguridad |
 
 ---
 
@@ -325,7 +326,8 @@ ALPHA_VANTAGE_API_KEY=your-alpha-vantage-key
 YAHOO_FINANCE_API_KEY=your-yahoo-finance-key
 
 # === SECURITY ===
-JWT_SECRET=ultra_secure_jwt_secret_key_2025
+# See docs/SECURITY_BEST_PRACTICES.md for security guidelines
+JWT_SECRET=CHANGE_THIS_USE_OPENSSL_RAND_BASE64_32
 API_RATE_LIMIT_PER_HOUR=1000
 ALLOWED_ORIGINS=http://localhost:3000,https://your-domain.com
 ```

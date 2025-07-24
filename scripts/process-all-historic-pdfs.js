@@ -4,8 +4,15 @@ const fs = require('fs').promises;
 const path = require('path');
 const { spawn } = require('child_process');
 
-const PASSWORD = '72298830D';
+const PASSWORD = process.env.PDF_PASSWORD || process.env.BANK_PDF_PASSWORD;
 const HISTORIC_DIR = path.join(__dirname, '../historic_transactions');
+
+// Check for password
+if (!PASSWORD) {
+  console.error('❌ Error: PDF_PASSWORD environment variable not set.');
+  console.error('   Set it with: export PDF_PASSWORD=your_password');
+  process.exit(1);
+}
 
 /**
  * Execute a command and return a promise

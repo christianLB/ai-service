@@ -8,7 +8,8 @@ async function main() {
   console.log('🌱 Starting seed...');
 
   // Create test user
-  const passwordHash = await bcrypt.hash('test123', 10);
+  const testPassword = process.env.TEST_USER_PASSWORD || 'test123';
+  const passwordHash = await bcrypt.hash(testPassword, 10);
   const user = await prisma.user.upsert({
     where: { email: 'test@example.com' },
     update: {},
@@ -20,6 +21,9 @@ async function main() {
   });
 
   console.log('✓ User created:', user.email);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('  Password: [REDACTED - check TEST_USER_PASSWORD env var]');
+  }
 
   // Create test clients
   const clients = [];

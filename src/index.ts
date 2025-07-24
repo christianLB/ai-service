@@ -371,7 +371,7 @@ async function initializeTelegramBot() {
     const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
     
     // Verificar si está configurado
-    if (!botToken || botToken === 'your-telegram-bot-token' || !chatId || chatId === 'your-telegram-chat-id') {
+    if (!botToken || !chatId) {
       logger.warn('⚠️  Telegram bot not configured properly - skipping initialization');
       return;
     }

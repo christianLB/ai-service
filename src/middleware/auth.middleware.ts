@@ -23,7 +23,11 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   }
 
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  const jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    res.status(500).json({ error: 'Server configuration error' });
+    return;
+  }
 
   try {
     // Verify token

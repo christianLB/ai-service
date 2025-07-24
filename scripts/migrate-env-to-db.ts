@@ -75,38 +75,10 @@ const migrationConfigs: MigrationConfig[] = [
     encrypt: true
   },
   {
-    envKey: 'GO_SANDBOX_MODE',
-    integrationType: 'gocardless',
-    configKey: 'sandbox_mode',
-    description: 'Enable GoCardless Sandbox Mode',
-    encrypt: false
-  },
-  {
-    envKey: 'GO_SANDBOX_ACCESS_TOKEN',
-    integrationType: 'gocardless',
-    configKey: 'sandbox_access_token',
-    description: 'GoCardless Sandbox API Key (Bearer token)',
-    encrypt: true
-  },
-  {
     envKey: 'GO_BASE_URL',
     integrationType: 'gocardless',
     configKey: 'production_base_url',
     description: 'GoCardless Production API URL',
-    encrypt: false
-  },
-  {
-    envKey: 'GO_SANDBOX_BASE_URL',
-    integrationType: 'gocardless',
-    configKey: 'sandbox_base_url',
-    description: 'GoCardless Sandbox API URL',
-    encrypt: false
-  },
-  {
-    envKey: 'GO_SANDBOX_INSTITUTION_ID',
-    integrationType: 'gocardless',
-    configKey: 'sandbox_institution_id',
-    description: 'GoCardless Sandbox Institution ID',
     encrypt: false
   },
   
