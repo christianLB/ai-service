@@ -51,22 +51,30 @@ regexes = [
 id = "generic-api-key" 
 description = "Generic API Key"
 regex = '''(?i)(api[_\-\s]?key|apikey)[\s]*[:=][\s]*['"]([a-zA-Z0-9\-_]{20,})['"]'''
-[[rules.allowlist]]
-description = "Allow test API keys"
-regex = '''test-.*-key|mock-.*-key|process\.env'''
+[rules.allowlist]
+regexes = [
+  '''test-.*-key''',
+  '''mock-.*-key''',
+  '''process\.env'''
+]
 
 [[rules]]
 id = "jwt-secret"
 description = "JWT Secret"
 regex = '''(?i)(jwt[_\-\s]?secret)[\s]*[:=][\s]*['"]([a-zA-Z0-9\-_]{20,})['"]'''
-[[rules.allowlist]]
-description = "Allow environment variable references"
-regex = '''process\.env\.[A-Z_]+'''
+[rules.allowlist]
+regexes = [
+  '''process\.env\.[A-Z_]+'''
+]
 
 [[rules]]
 id = "hardcoded-password"
 description = "Hardcoded Password"
 regex = '''password\s*[:=]\s*["'][^"']+["']'''
-[[rules.allowlist]]
-description = "Allow test passwords and environment variables"
-regex = '''test-|mock-|process\.env|Math\.random'''
+[rules.allowlist]
+regexes = [
+  '''test-''',
+  '''mock-''',
+  '''process\.env''',
+  '''Math\.random'''
+]
