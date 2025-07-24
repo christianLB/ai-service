@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 
@@ -18,11 +19,15 @@ app.post('/api/auth/login', (req, res) => {
   console.log('Login attempt:', { email, password });
   
   // For test server only - use environment variable
-  const testPassword = process.env.TEST_ADMIN_PASSWORD || 'test-' + Math.random().toString(36).substring(7);
+  const testPassword = process.env.TEST_ADMIN_PASSWORD;
+  if (!testPassword) {
+    return res.status(500).json({ error: 'TEST_ADMIN_PASSWORD not configured' });
+  }
+  
   if (email === 'admin@ai-service.local' && password === testPassword) {
-    // Generate simple tokens for testing
-    const accessToken = 'test-access-token-' + Date.now();
-    const refreshToken = 'test-refresh-token-' + Date.now();
+    // Generate simple tokens for testing with crypto-secure random
+    const accessToken = 'test-access-token-' + crypto.randomBytes(16).toString('hex');
+    const refreshToken = 'test-refresh-token-' + crypto.randomBytes(16).toString('hex');
     
     res.json({
       accessToken,

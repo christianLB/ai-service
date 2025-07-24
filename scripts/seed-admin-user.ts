@@ -49,7 +49,7 @@ async function seedAdminUser() {
     console.log('   Email:', result.rows[0].email);
     console.log('   Role:', result.rows[0].role);
     if (process.env.NODE_ENV !== 'production') {
-      console.log('   Password:', defaultPassword);
+      console.log('   Password: [REDACTED - check DEFAULT_ADMIN_PASSWORD env var]');
     }
     console.log('\n⚠️  IMPORTANT: Change the password on first login!');
     

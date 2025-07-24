@@ -22,7 +22,7 @@ async function main() {
 
   console.log('✓ User created:', user.email);
   if (process.env.NODE_ENV !== 'production') {
-    console.log('  Password:', testPassword);
+    console.log('  Password: [REDACTED - check TEST_USER_PASSWORD env var]');
   }
 
   // Create test clients
