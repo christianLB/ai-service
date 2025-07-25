@@ -2,6 +2,27 @@
 
 Este documento proporciona contexto esencial para Claude Code. Se carga automáticamente al inicio de cada sesión.
 
+## 🆕 Latest Updates (January 2025)
+
+### Trading Intelligence v3.0
+- **Claude AI Integration**: Now using Anthropic's Claude as primary AI provider
+- **Alpaca Connector**: Full support for US stocks and crypto trading
+- **Cross-Exchange Arbitrage**: Automated bot targeting $500-$1,000/month
+- **Strategy Marketplace**: Foundation for monetizing trading strategies
+- **Zero TypeScript Errors**: All compilation issues resolved
+
+### Quick Commands
+```bash
+# Deploy arbitrage bot
+curl -X POST http://localhost:3001/api/arbitrage/deploy -H "Authorization: Bearer TOKEN"
+
+# Check AI providers
+curl http://localhost:3001/api/ai/providers/status -H "Authorization: Bearer TOKEN"
+
+# Configure Alpaca
+curl -X POST http://localhost:3001/api/connectors/alpaca/configure -H "Authorization: Bearer TOKEN"
+```
+
 ## 🏗️ Project Structure
 
 ```

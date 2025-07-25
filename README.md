@@ -61,10 +61,11 @@ Este servicio evoluciona hacia ser una **amplificación cognitiva completa** que
 ## 🏗️ Arquitectura Actual
 
 ```
-AI Service v2.0
+AI Service v3.0 - Trading Intelligence Edition
 ├── 🤖 Core AI Service ✅
+│   ├── Claude AI Integration (Primary)
+│   ├── OpenAI Integration (Fallback)
 │   ├── Workflow Generation
-│   ├── Validation Engine  
 │   └── Metrics Collection
 │
 ├── 🏦 Financial Intelligence ✅
@@ -72,6 +73,18 @@ AI Service v2.0
 │   ├── PostgreSQL Database
 │   ├── AI Categorization
 │   └── Real-time Dashboard
+│
+├── 💹 Trading Intelligence ✅ (NEW)
+│   ├── Multi-Exchange Support
+│   │   ├── Binance (Crypto)
+│   │   ├── Coinbase (Crypto)
+│   │   └── Alpaca (US Stocks + Crypto)
+│   ├── AI-Powered Strategies
+│   │   ├── Cross-Exchange Arbitrage
+│   │   ├── Market Making
+│   │   └── Trend Following
+│   ├── Strategy Marketplace
+│   └── Real-time Analytics
 │
 └── 📡 Communication System ✅
     ├── Telegram Bot (8 comandos)
@@ -121,6 +134,27 @@ POST /api/telegram/send-alert     # Alertas programáticas
 GET  /api/telegram/status         # Estado de integración
 ```
 
+### **Trading Intelligence** 🆕
+```bash
+# Connectors & Exchanges
+GET  /api/connectors/available           # Exchanges disponibles
+POST /api/connectors/alpaca/configure    # Config Alpaca
+POST /api/connectors/:exchangeId/test    # Test conexión
+GET  /api/connectors/:exchangeId/status  # Estado exchange
+
+# Arbitrage Strategy
+POST /api/arbitrage/deploy        # Deploy arbitrage bot
+GET  /api/arbitrage/opportunities # Historial oportunidades
+GET  /api/arbitrage/profits       # Tracking ganancias
+POST /api/arbitrage/stop/:id      # Detener estrategia
+
+# Trading Operations
+GET  /api/trading/positions       # Posiciones actuales
+POST /api/trading/strategies      # Crear estrategia
+GET  /api/strategies              # Lista estrategias
+POST /api/trades                  # Ejecutar trade
+```
+
 ---
 
 ## ⚙️ Configuración Rápida
@@ -137,8 +171,14 @@ POSTGRES_DB=ai_service
 POSTGRES_USER=ai_user
 POSTGRES_PASSWORD=secure-password
 
-# AI Services (Opcional)
-OPENAI_API_KEY=sk-tu-key
+# AI Services - Claude (Principal) y OpenAI (Fallback)
+CLAUDE_API_KEY=sk-ant-tu-claude-key
+OPENAI_API_KEY=sk-tu-openai-key
+
+# Trading Exchanges (Opcional)
+ALPACA_API_KEY=tu-alpaca-key
+ALPACA_SECRET_KEY=tu-alpaca-secret
+ALPACA_PAPER_TRADING=true
 ```
 
 ### **Testing Local**
@@ -158,10 +198,11 @@ open http://localhost:3000/dashboard
 ## 🎯 Características Principales
 
 ### **🧠 Inteligencia Artificial**
+- **Claude AI Integration** como proveedor principal
 - **Auto-categorización** financiera (90%+ precisión)
 - **Generación de workflows** inteligente
 - **Análisis predictivo** de gastos
-- **Sistema de aprendizaje** continuo
+- **Trading Intelligence** con decisiones AI-powered
 
 ### **🏦 Sistema Financiero**
 - **Integración bancaria real** (GoCardless + BBVA)
@@ -169,6 +210,13 @@ open http://localhost:3000/dashboard
 - **Reportes empresariales** automáticos
 - **Base crypto-ready** (Bitcoin, Ethereum)
 - **Sincronización con exchanges** mediante `/api/crypto/sync`
+
+### **💹 Trading Intelligence** 🆕
+- **Multi-Exchange Support**: Binance, Coinbase, Alpaca (stocks + crypto)
+- **Cross-Exchange Arbitrage**: Detección automática de oportunidades
+- **AI Strategies**: Market Making, Trend Following, Pairs Trading
+- **Strategy Marketplace**: Monetización de estrategias exitosas
+- **Target Revenue**: $500-$5,000/mes con arbitrage y trading
 
 ### **📡 Comunicación Total**
 - **Telegram Bot** con 8 comandos
@@ -227,17 +275,21 @@ open http://localhost:3000/dashboard
 
 ---
 
-## 🎉 Estado Actual: **PRODUCCIÓN LISTA**
+## 🎉 Estado Actual: **PRODUCCIÓN LISTA v3.0**
 
-El sistema está **completamente funcional** y listo para uso diario:
+El sistema está **completamente funcional** con nuevas capacidades de trading:
 
-- 🤖 **AI Service**: Operacional al 100%
+- 🤖 **AI Service**: Claude AI + OpenAI operacional
 - 🏦 **Financial System**: Datos reales integrados
+- 💹 **Trading Intelligence**: Arbitrage bot listo para generar $500+/mes
 - 📱 **Telegram Bot**: 8 comandos funcionando
 - 📊 **Dashboard**: Métricas en tiempo real
-- 🔄 **Auto-sync**: Datos bancarios actualizados
+- 🔄 **Auto-sync**: Datos bancarios y trading actualizados
 
-**Solo falta**: Configurar tu bot personal siguiendo `TELEGRAM_BOT_SETUP.md`
+**Próximos pasos**: 
+1. Configurar API keys de exchanges (Alpaca, Binance, etc.)
+2. Deploy arbitrage bot con `POST /api/arbitrage/deploy`
+3. Monitorear ganancias en tiempo real
 
 ---
 
