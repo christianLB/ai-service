@@ -464,6 +464,10 @@ model User {
   strategies          Strategy[]
   positions           Position[]
   alerts              Alert[]
+  marketplaceListings StrategyMarketplace[]
+  subscriptions       StrategySubscription[]
+  reviews             StrategyReview[]
+  payments            Payment[]
 
   @@index([email], map: "idx_users_email")
   @@map("users")
@@ -502,6 +506,7 @@ model Trade {
   price        Decimal   @db.Decimal(20, 8)
   avgFillPrice Decimal?  @map("avg_fill_price") @db.Decimal(20, 8)
   fees         Decimal?  @default(0) @db.Decimal(20, 8)
+  pnl          Decimal?  @db.Decimal(20, 8) // profit and loss
   status       String    @default("pending") @db.VarChar(20) // pending, filled, cancelled, rejected
   exchange     String    @db.VarChar(50)
   exchangeOrderId String? @map("exchange_order_id") @db.VarChar(255)
@@ -535,10 +540,11 @@ model Strategy {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   
-  user      User       @relation(fields: [userId], references: [id])
-  trades    Trade[]
-  positions Position[]
-  alerts    Alert[]
+  user        User                  @relation(fields: [userId], references: [id])
+  trades      Trade[]
+  positions   Position[]
+  alerts      Alert[]
+  marketplace StrategyMarketplace[]
   
   @@index([userId])
   @@index([status])
@@ -598,5 +604,137 @@ model Alert {
   @@index([type])
   @@index([severity])
   @@map("alerts")
+  @@schema("trading")
+}
+
+// Strategy Marketplace Models
+model StrategyMarketplace {
+  id               String   @id @default(uuid())
+  strategyId       String   @map("strategy_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  name             String   @db.VarChar(255)
+  description      String?
+  price            Decimal  @db.Decimal(10, 2)
+  subscriptionType String   @map("subscription_type") @db.VarChar(20) // one-time, monthly, yearly
+  performanceData  Json     @map("performance_data") @default("{}") // Historical performance metrics
+  isVerified       Boolean  @default(false) @map("is_verified")
+  rating           Decimal? @db.Decimal(3, 2)
+  totalSubscribers Int      @default(0) @map("total_subscribers")
+  totalRevenue     Decimal  @default(0) @map("total_revenue") @db.Decimal(20, 2)
+  status           String   @default("active") @db.VarChar(20) // active, paused, archived
+  tags             String[] @default([])
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  strategy      Strategy                 @relation(fields: [strategyId], references: [id])
+  user          User                     @relation(fields: [userId], references: [id])
+  subscriptions StrategySubscription[]
+  reviews       StrategyReview[]
+  performance   StrategyPerformance[]
+  
+  @@index([status, rating])
+  @@index([userId])
+  @@index([tags])
+  @@map("strategy_marketplace")
+  @@schema("trading")
+}
+
+model StrategySubscription {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id") @db.Uuid
+  marketplaceId   String   @map("marketplace_id") @db.Uuid
+  tier            String   @db.VarChar(20) // basic, pro, institutional
+  status          String   @default("active") @db.VarChar(20) // active, cancelled, expired
+  startDate       DateTime @default(now()) @map("start_date") @db.Timestamptz(6)
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(6)
+  autoRenew       Boolean  @default(true) @map("auto_renew")
+  paymentMethod   String?  @map("payment_method") @db.VarChar(50)
+  amount          Decimal  @db.Decimal(10, 2)
+  currency        String   @default("USD") @db.VarChar(3)
+  lastPaymentDate DateTime? @map("last_payment_date") @db.Timestamptz(6)
+  nextPaymentDate DateTime? @map("next_payment_date") @db.Timestamptz(6)
+  metadata        Json?    @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  user        User                @relation(fields: [userId], references: [id])
+  marketplace StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+  payments    Payment[]
+  
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@index([marketplaceId])
+  @@map("strategy_subscriptions")
+  @@schema("trading")
+}
+
+model StrategyPerformance {
+  id             String   @id @default(uuid())
+  marketplaceId  String   @map("marketplace_id") @db.Uuid
+  period         String   @db.VarChar(20) // daily, weekly, monthly
+  startDate      DateTime @map("start_date") @db.Timestamptz(6)
+  endDate        DateTime @map("end_date") @db.Timestamptz(6)
+  totalTrades    Int      @default(0) @map("total_trades")
+  winRate        Decimal  @default(0) @map("win_rate") @db.Decimal(5, 2)
+  totalPnl       Decimal  @default(0) @map("total_pnl") @db.Decimal(20, 2)
+  sharpeRatio    Decimal? @map("sharpe_ratio") @db.Decimal(10, 4)
+  maxDrawdown    Decimal? @map("max_drawdown") @db.Decimal(10, 4)
+  avgTradeReturn Decimal? @map("avg_trade_return") @db.Decimal(10, 4)
+  metadata       Json?    @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  marketplace StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+  
+  @@index([marketplaceId, period])
+  @@index([startDate, endDate])
+  @@map("strategy_performance")
+  @@schema("trading")
+}
+
+model StrategyReview {
+  id             String   @id @default(uuid())
+  marketplaceId  String   @map("marketplace_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  rating         Int      // 1-5 stars
+  title          String?  @db.VarChar(255)
+  comment        String?
+  isVerified     Boolean  @default(false) @map("is_verified") // Verified purchase
+  helpful        Int      @default(0) // Helpful votes
+  unhelpful      Int      @default(0) // Unhelpful votes
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  marketplace StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+  user        User                @relation(fields: [userId], references: [id])
+  
+  @@unique([marketplaceId, userId])
+  @@index([marketplaceId, rating])
+  @@map("strategy_reviews")
+  @@schema("trading")
+}
+
+model Payment {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id") @db.Uuid
+  subscriptionId   String?  @map("subscription_id") @db.Uuid
+  amount           Decimal  @db.Decimal(10, 2)
+  currency         String   @default("USD") @db.VarChar(3)
+  status           String   @db.VarChar(20) // pending, completed, failed, refunded
+  paymentMethod    String   @map("payment_method") @db.VarChar(50) // stripe, crypto, etc
+  transactionId    String?  @map("transaction_id") @db.VarChar(255)
+  paymentProvider  String?  @map("payment_provider") @db.VarChar(50)
+  description      String?
+  metadata         Json?    @default("{}")
+  processedAt      DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  user         User                  @relation(fields: [userId], references: [id])
+  subscription StrategySubscription? @relation(fields: [subscriptionId], references: [id])
+  
+  @@index([userId, status])
+  @@index([subscriptionId])
+  @@index([transactionId])
+  @@map("payments")
   @@schema("trading")
 }

@@ -1713,6 +1713,64 @@ db-restore: ## 📥 Restore database from backup (BACKUP_FILE required)
 	@docker exec -i ai-service-postgres psql -U $(DB_USER) $(DB_NAME) < $(BACKUP_FILE)
 	@echo "$(GREEN)✅ Database restored from $(BACKUP_FILE)$(NC)"
 
+.PHONY: config-set
+config-set: ## 🔐 Set encrypted configuration key (TYPE, KEY, VALUE required)
+	@if [ -z "$(TYPE)" ] || [ -z "$(KEY)" ] || [ -z "$(VALUE)" ]; then \
+		echo "$(RED)Error: TYPE, KEY, and VALUE are required$(NC)"; \
+		echo "Usage: make config-set TYPE=claude KEY=api_key VALUE=sk-ant-xxx [GLOBAL=true] [DESC='description']"; \
+		echo ""; \
+		echo "Examples:"; \
+		echo "  # Set Claude API key (global)"; \
+		echo "  make config-set TYPE=claude KEY=api_key VALUE=sk-ant-api03-xxx GLOBAL=true"; \
+		echo ""; \
+		echo "  # Set OpenAI API key (global)"; \
+		echo "  make config-set TYPE=openai KEY=api_key VALUE=sk-xxx GLOBAL=true"; \
+		echo ""; \
+		echo "  # Set Alpaca credentials"; \
+		echo "  make config-set TYPE=alpaca KEY=api_key VALUE=PKXXX GLOBAL=true"; \
+		echo "  make config-set TYPE=alpaca KEY=api_secret VALUE=xxx GLOBAL=true"; \
+		echo ""; \
+		echo "  # Set user-specific config"; \
+		echo "  make config-set TYPE=trading KEY=max_risk VALUE=0.02 USER_ID=123e4567-e89b-12d3-a456-426614174000"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)🔐 Setting configuration key...$(NC)"
+	@node scripts/set-config-key.js "$(TYPE)" "$(KEY)" "$(VALUE)" \
+		$(if $(GLOBAL),--global,) \
+		$(if $(USER_ID),--user-id $(USER_ID),) \
+		$(if $(DESC),--description "$(DESC)",) \
+		$(if $(NO_ENCRYPT),--no-encrypt,)
+	@echo "$(GREEN)✅ Configuration key set successfully$(NC)"
+
+.PHONY: config-get
+config-get: ## 🔍 Get configuration value (TYPE and KEY required)
+	@if [ -z "$(TYPE)" ] || [ -z "$(KEY)" ]; then \
+		echo "$(RED)Error: TYPE and KEY are required$(NC)"; \
+		echo "Usage: make config-get TYPE=claude KEY=api_key [USER_ID=xxx]"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)🔍 Getting configuration value...$(NC)"
+	@docker exec ai-service-postgres psql -U $(DB_USER) -d $(DB_NAME) -t -c \
+		"SELECT CASE WHEN is_encrypted THEN '***encrypted***' ELSE config_value END \
+		FROM financial.integration_configs \
+		WHERE integration_type = '$(TYPE)' AND config_key = '$(KEY)' \
+		$(if $(USER_ID),AND user_id = '$(USER_ID)',AND user_id IS NULL AND is_global = true)"
+
+.PHONY: config-list
+config-list: ## 📋 List all configuration keys
+	@echo "$(BLUE)📋 Configuration keys:$(NC)"
+	@docker exec ai-service-postgres psql -U $(DB_USER) -d $(DB_NAME) -c \
+		"SELECT integration_type, config_key, \
+		CASE WHEN user_id IS NULL THEN 'global' ELSE 'user-specific' END as scope, \
+		is_encrypted, description, created_at \
+		FROM financial.integration_configs \
+		ORDER BY integration_type, config_key"
+
+.PHONY: test-claude
+test-claude: ## 🧪 Test Claude AI integration
+	@echo "$(BLUE)🧪 Testing Claude AI integration...$(NC)"
+	@npx ts-node scripts/test-claude-integration.ts
+
 .PHONY: gen-crud
 gen-crud: ## 🏗️ Generate complete CRUD for a model
 	@echo "$(BLUE)🏗️ Generating CRUD...$(NC)"

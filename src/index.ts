@@ -38,6 +38,8 @@ import positionRoutes from './routes/position.routes';
 import alertRoutes from './routes/alert.routes';
 import strategyRoutes from './routes/strategy.routes';
 import tradeRoutes from './routes/trade.routes';
+// Temporarily disabled while fixing compilation
+// import strategyMarketplaceRoutes from './routes/api/strategy-marketplace';
 import { logger } from './utils/log';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
@@ -256,6 +258,8 @@ app.use('/api/positions', positionRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/strategies', strategyRoutes);
 app.use('/api/trades', tradeRoutes);
+// Temporarily disabled while fixing compilation
+// app.use('/api/marketplace', strategyMarketplaceRoutes);
 
 // Servir archivos estáticos del frontend
 // En producción, el volumen se monta en /app/public según docker-compose.production.yml

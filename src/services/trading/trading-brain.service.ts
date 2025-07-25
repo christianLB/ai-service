@@ -4,6 +4,7 @@ import { integrationConfigService } from '../integrations/integration-config.ser
 import { marketDataService } from './market-data.service';
 import { riskManagerService } from './risk-manager.service';
 import { strategyEngineService, TradingSignal } from './strategy-engine.service';
+import { claudeAIService, TradingContext, TradingDecision as ClaudeTradingDecision } from '../ai/claude.service';
 import OpenAI from 'openai';
 import { config } from '../../config';
 
@@ -54,6 +55,7 @@ interface PortfolioAnalysis {
 export class TradingBrainService {
   private static instance: TradingBrainService;
   private openaiClient?: OpenAI;
+  private useClaudeAI: boolean = true; // Prefer Claude over OpenAI
   private decisionHistory: Map<string, TradingDecision[]> = new Map();
   private learningData: Map<string, any> = new Map();
 
@@ -68,18 +70,33 @@ export class TradingBrainService {
 
   async initialize(): Promise<void> {
     try {
-      // Get OpenAI API key from secure storage
-      const apiKey = await integrationConfigService.getConfig({
-        integrationType: 'openai',
-        configKey: 'api_key',
-        decrypt: true,
-      });
+      // Initialize Claude AI (preferred)
+      try {
+        await claudeAIService.initialize();
+        if (claudeAIService.isReady()) {
+          logger.info('Trading Brain initialized with Claude AI (primary)');
+        } else {
+          this.useClaudeAI = false;
+        }
+      } catch (claudeError) {
+        logger.warn('Claude AI initialization failed, falling back to OpenAI', claudeError);
+        this.useClaudeAI = false;
+      }
 
-      if (apiKey) {
-        this.openaiClient = new OpenAI({ apiKey });
-        logger.info('Trading Brain initialized with OpenAI');
-      } else {
-        logger.warn('No OpenAI API key configured, running in limited mode');
+      // Initialize OpenAI as fallback
+      if (!this.useClaudeAI) {
+        const apiKey = await integrationConfigService.getConfig({
+          integrationType: 'openai',
+          configKey: 'api_key',
+          decrypt: true,
+        });
+
+        if (apiKey) {
+          this.openaiClient = new OpenAI({ apiKey });
+          logger.info('Trading Brain initialized with OpenAI (fallback)');
+        } else {
+          logger.warn('No OpenAI API key configured, running in limited mode');
+        }
       }
 
       // Load historical learning data
@@ -111,7 +128,9 @@ export class TradingBrainService {
       );
 
       // Use AI to analyze if available
-      if (this.openaiClient) {
+      if (this.useClaudeAI && claudeAIService.isReady()) {
+        return await this.claudeAIAnalysis(signal, context, portfolio, recentPerformance);
+      } else if (this.openaiClient) {
         return await this.aiAnalysis(signal, context, portfolio, recentPerformance);
       } else {
         return await this.ruleBasedAnalysis(signal, context, portfolio);
@@ -375,6 +394,64 @@ export class TradingBrainService {
     }
   }
 
+  private async claudeAIAnalysis(
+    signal: TradingSignal,
+    context: MarketContext,
+    portfolio: PortfolioAnalysis,
+    performance: any
+  ): Promise<TradingDecision> {
+    try {
+      // Convert to Claude's TradingContext format
+      const claudeContext: TradingContext = {
+        symbol: context.symbol,
+        exchange: context.exchange,
+        currentPrice: context.currentPrice,
+        priceChange24h: context.priceChange24h,
+        volume24h: context.volume24h,
+        volatility: context.volatility,
+        technicalIndicators: context.technicalIndicators,
+        orderBook: context.orderBook,
+        sentiment: context.sentiment,
+        portfolio,
+        recentPerformance: performance
+      };
+
+      // Get Claude's decision
+      const claudeDecision = await claudeAIService.analyzeTradingOpportunity(claudeContext, signal);
+      
+      if (!claudeDecision) {
+        logger.warn('Claude AI returned no decision, falling back to OpenAI');
+        return this.aiAnalysis(signal, context, portfolio, performance);
+      }
+
+      // Convert Claude's decision to our format (they're compatible)
+      const decision: TradingDecision = {
+        action: claudeDecision.action,
+        confidence: claudeDecision.confidence,
+        reasoning: claudeDecision.reasoning,
+        suggestedSize: claudeDecision.suggestedSize,
+        stopLoss: claudeDecision.stopLoss,
+        takeProfit: claudeDecision.takeProfit,
+        timeHorizon: claudeDecision.timeHorizon,
+        riskAssessment: claudeDecision.riskAssessment
+      };
+
+      // Store decision for learning
+      this.recordDecision(signal.symbol, decision);
+      
+      logger.info(`Claude AI decision for ${signal.symbol}: ${decision.action} with ${(decision.confidence * 100).toFixed(1)}% confidence`);
+      
+      return decision;
+      
+    } catch (error) {
+      logger.error('Claude AI analysis failed, falling back to OpenAI', error);
+      if (this.openaiClient) {
+        return this.aiAnalysis(signal, context, portfolio, performance);
+      }
+      return this.ruleBasedAnalysis(signal, context, portfolio);
+    }
+  }
+
   private async aiAnalysis(
     signal: TradingSignal,
     context: MarketContext,
@@ -622,6 +699,30 @@ Format your response as JSON.`;
       
     } catch (error) {
       logger.error('Failed to load learning data', error);
+    }
+  }
+
+  // Method to switch AI provider
+  setAIProvider(provider: 'claude' | 'openai'): void {
+    if (provider === 'claude' && claudeAIService.isReady()) {
+      this.useClaudeAI = true;
+      logger.info('Switched to Claude AI for trading analysis');
+    } else if (provider === 'openai' && this.openaiClient) {
+      this.useClaudeAI = false;
+      logger.info('Switched to OpenAI for trading analysis');
+    } else {
+      logger.warn(`Cannot switch to ${provider} - provider not initialized`);
+    }
+  }
+
+  // Get current AI provider
+  getCurrentAIProvider(): string {
+    if (this.useClaudeAI && claudeAIService.isReady()) {
+      return `Claude (${claudeAIService.getCurrentModel()})`;
+    } else if (this.openaiClient) {
+      return 'OpenAI (gpt-4)';
+    } else {
+      return 'Rule-based (no AI)';
     }
   }
 
