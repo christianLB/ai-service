@@ -26,6 +26,7 @@ export interface StrategyConfig {
   riskParameters: any;
   isActive: boolean;
   isPaperTrading: boolean;
+  userId?: string;
 }
 
 export interface StrategyPerformance {
@@ -227,6 +228,11 @@ export class StrategyEngineService {
         case 'arbitrage':
           const { TriangularArbitrageStrategy } = await import('./strategies/arbitrage/triangular-arbitrage.strategy');
           StrategyClass = TriangularArbitrageStrategy;
+          break;
+          
+        case 'cross_exchange_arbitrage':
+          const { CrossExchangeArbitrageStrategy } = await import('./strategies/arbitrage/cross-exchange-arbitrage.strategy');
+          StrategyClass = CrossExchangeArbitrageStrategy;
           break;
           
         case 'market_making':

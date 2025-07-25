@@ -23,7 +23,7 @@ interface TriangularArbitrageParams {
 
 export class TriangularArbitrageStrategy extends BaseStrategy {
   private params: TriangularArbitrageParams;
-  private marketCache: Map<string, Ticker> = new Map();
+  private marketCache: Map<string, Partial<Ticker>> = new Map();
   private scanInterval?: NodeJS.Timeout;
 
   constructor(config: StrategyConfig) {
@@ -128,8 +128,36 @@ export class TriangularArbitrageStrategy extends BaseStrategy {
       // Fetch tickers for all symbols
       for (const symbol of this.params.symbols) {
         try {
-          const ticker = await connector.exchange.fetchTicker(symbol);
-          this.marketCache.set(`${exchange}:${symbol}`, ticker);
+          if ('fetchTicker' in connector.exchange) {
+            const ticker = await connector.exchange.fetchTicker(symbol);
+            this.marketCache.set(`${exchange}:${symbol}`, ticker);
+          } else {
+            // Custom connector - use getMarketData
+            const marketData = await connector.exchange.getMarketData(symbol);
+            const ticker: Partial<Ticker> = {
+              symbol,
+              bid: marketData.bid,
+              ask: marketData.ask,
+              bidVolume: marketData.volume,
+              askVolume: marketData.volume,
+              datetime: marketData.timestamp.toISOString(),
+              timestamp: marketData.timestamp.getTime(),
+              high: 0,
+              low: 0,
+              vwap: 0,
+              open: 0,
+              close: marketData.price,
+              last: marketData.price,
+              previousClose: 0,
+              change: 0,
+              percentage: 0,
+              average: marketData.price,
+              baseVolume: marketData.volume,
+              quoteVolume: 0,
+              info: {}
+            };
+            this.marketCache.set(`${exchange}:${symbol}`, ticker);
+          }
         } catch (error) {
           this.logger.debug(`Failed to fetch ${symbol} on ${exchange}`, error);
         }

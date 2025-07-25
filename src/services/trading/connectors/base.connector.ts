@@ -43,7 +43,12 @@ export abstract class BaseExchangeConnector {
         this.exchangeId,
         this.userId
       );
-      this.exchange = tradingExchange.exchange;
+      // Only assign if it's a CCXT Exchange
+      if ('fetchTicker' in tradingExchange.exchange) {
+        this.exchange = tradingExchange.exchange as Exchange;
+      } else {
+        throw new Error(`BaseExchangeConnector only supports CCXT exchanges, not custom connectors`);
+      }
       
       await this.onConnect();
       this.logger.info(`Connected to ${this.exchangeId}`);

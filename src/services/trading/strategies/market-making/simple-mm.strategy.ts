@@ -1,6 +1,6 @@
 import { BaseStrategy, TradingSignal, StrategyConfig } from '../../strategy-engine.service';
 import { marketDataService } from '../../market-data.service';
-import { tradingConnectorService } from '../../trading-connector.service';
+import { tradingConnectorService, ExchangeConnector } from '../../trading-connector.service';
 import * as ccxt from 'ccxt';
 import type { Order, Ticker } from 'ccxt';
 
@@ -81,8 +81,26 @@ export class SimpleMarketMakingStrategy extends BaseStrategy {
         throw new Error(`Exchange not connected: ${exchange}`);
       }
 
-      const ticker = await connector.exchange.fetchTicker(symbol);
-      const orderBook = await connector.exchange.fetchOrderBook(symbol, 20);
+      let ticker: any;
+      let orderBook: any;
+      
+      if ('fetchTicker' in connector.exchange) {
+        ticker = await connector.exchange.fetchTicker(symbol);
+        orderBook = await connector.exchange.fetchOrderBook(symbol, 20);
+      } else {
+        // Custom connector
+        const marketData = await connector.exchange.getMarketData(symbol);
+        ticker = {
+          bid: marketData.bid || marketData.price,
+          ask: marketData.ask || marketData.price,
+          last: marketData.price,
+        };
+        // For custom connectors, we'll use a simplified orderbook
+        orderBook = {
+          bids: [[marketData.bid || marketData.price, marketData.volume || 0]],
+          asks: [[marketData.ask || marketData.price, marketData.volume || 0]],
+        };
+      }
       
       // Calculate market metrics
       const bid = ticker.bid || 0;
@@ -300,28 +318,68 @@ export class SimpleMarketMakingStrategy extends BaseStrategy {
 
       // Place buy order if size is significant
       if (buySize > 0.001) {
-        buyOrder = await connector.exchange.createLimitOrder(
-          symbol,
-          'buy',
-          buySize,
-          buyPrice
-        );
+        if ('createLimitOrder' in connector.exchange) {
+          buyOrder = await connector.exchange.createLimitOrder(
+            symbol,
+            'buy',
+            buySize,
+            buyPrice
+          );
+        } else {
+          // Custom connector
+          const orderResponse = await connector.exchange.createOrder({
+            symbol,
+            side: 'buy',
+            type: 'limit',
+            amount: buySize,
+            price: buyPrice,
+          });
+          buyOrder = {
+            id: orderResponse.orderId,
+            symbol: orderResponse.symbol,
+            type: 'limit',
+            side: 'buy',
+            price: buyPrice,
+            amount: buySize,
+            status: orderResponse.status,
+          };
+        }
       }
 
       // Place sell order if size is significant
       if (sellSize > 0.001) {
-        sellOrder = await connector.exchange.createLimitOrder(
-          symbol,
-          'sell',
-          sellSize,
-          sellPrice
-        );
+        if ('createLimitOrder' in connector.exchange) {
+          sellOrder = await connector.exchange.createLimitOrder(
+            symbol,
+            'sell',
+            sellSize,
+            sellPrice
+          );
+        } else {
+          // Custom connector
+          const orderResponse = await connector.exchange.createOrder({
+            symbol,
+            side: 'sell',
+            type: 'limit',
+            amount: sellSize,
+            price: sellPrice,
+          });
+          sellOrder = {
+            id: orderResponse.orderId,
+            symbol: orderResponse.symbol,
+            type: 'limit',
+            side: 'sell',
+            price: sellPrice,
+            amount: sellSize,
+            status: orderResponse.status,
+          };
+        }
       }
 
       // Store active orders
       this.activeOrders.set(key, {
-        buyOrder,
-        sellOrder,
+        buyOrder: buyOrder as Order | undefined,
+        sellOrder: sellOrder as Order | undefined,
         symbol,
         midPrice,
         spread,
@@ -354,7 +412,12 @@ export class SimpleMarketMakingStrategy extends BaseStrategy {
 
     try {
       if (orderPair.buyOrder && orderPair.buyOrder.status === 'open') {
-        await connector.exchange.cancelOrder(orderPair.buyOrder.id, symbol);
+        if ('cancelOrder' in connector.exchange) {
+          await connector.exchange.cancelOrder(orderPair.buyOrder.id, symbol);
+        } else {
+          const customConnector = connector.exchange as ExchangeConnector;
+          await customConnector.cancelOrder(orderPair.buyOrder.id, symbol);
+        }
       }
     } catch (error) {
       this.logger.error('Failed to cancel buy order', error);
@@ -362,7 +425,12 @@ export class SimpleMarketMakingStrategy extends BaseStrategy {
 
     try {
       if (orderPair.sellOrder && orderPair.sellOrder.status === 'open') {
-        await connector.exchange.cancelOrder(orderPair.sellOrder.id, symbol);
+        if ('cancelOrder' in connector.exchange) {
+          await connector.exchange.cancelOrder(orderPair.sellOrder.id, symbol);
+        } else {
+          const customConnector = connector.exchange as ExchangeConnector;
+          await customConnector.cancelOrder(orderPair.sellOrder.id, symbol);
+        }
       }
     } catch (error) {
       this.logger.error('Failed to cancel sell order', error);

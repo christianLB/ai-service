@@ -3,6 +3,7 @@ import type { Exchange } from 'ccxt';
 import { Logger } from '../../utils/logger';
 import { integrationConfigService } from '../integrations/integration-config.service';
 import { db } from '../database';
+import { AlpacaConnector, AlpacaConfig } from './connectors/alpaca.connector';
 
 const logger = new Logger('TradingConnectorService');
 
@@ -14,10 +15,100 @@ export interface ExchangeConfig {
   enableRateLimit?: boolean;
 }
 
+export interface ExchangeConnector {
+  exchangeId: string;
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  getBalance(): Promise<Balance[]>;
+  getPositions(): Promise<Position[]>;
+  createOrder(request: OrderRequest): Promise<OrderResponse>;
+  cancelOrder(orderId: string, symbol?: string): Promise<void>;
+  getOrder(orderId: string, symbol?: string): Promise<OrderResponse>;
+  getOpenOrders(symbol?: string): Promise<OrderResponse[]>;
+  getMarketData(symbol: string): Promise<MarketData>;
+  subscribeToOrderbook(symbol: string, callback: (data: any) => void): Promise<void>;
+  unsubscribeFromOrderbook(symbol: string): Promise<void>;
+  subscribeToTrades(symbol: string, callback: (data: any) => void): Promise<void>;
+  unsubscribeFromTrades(symbol: string): Promise<void>;
+  getHistoricalData(symbol: string, timeframe: string, since?: number, limit?: number): Promise<any[]>;
+  isConnected(): boolean;
+  getName(): string;
+  getSupportedSymbols(): string[];
+  getMinOrderSize(symbol: string): number;
+  getTradingFee(): number;
+}
+
+export interface Balance {
+  asset: string;
+  free: number;
+  locked: number;
+  total: number;
+}
+
+export interface Position {
+  symbol: string;
+  side: 'long' | 'short';
+  contracts: number;
+  notional: number;
+  entryPrice: number;
+  markPrice: number;
+  pnl: number;
+  pnlPercent: number;
+  margin: number;
+  marginRatio: number;
+  liquidationPrice: number;
+  timestamp: Date;
+}
+
+export interface OrderRequest {
+  symbol: string;
+  side: OrderSide;
+  type: OrderType;
+  amount: number;
+  price?: number;
+  stopPrice?: number;
+  timeInForce?: TimeInForce;
+  reduceOnly?: boolean;
+  postOnly?: boolean;
+  clientOrderId?: string;
+}
+
+export interface OrderResponse {
+  orderId: string;
+  clientOrderId?: string;
+  symbol: string;
+  side: OrderSide;
+  type: OrderType;
+  status: OrderStatus;
+  price?: number;
+  stopPrice?: number;
+  amount: number;
+  filled: number;
+  remaining: number;
+  cost: number;
+  fee?: number;
+  timestamp: Date;
+  exchange: string;
+}
+
+export interface MarketData {
+  symbol: string;
+  price: number;
+  bid?: number;
+  ask?: number;
+  volume?: number;
+  timestamp: Date;
+}
+
+export type OrderType = 'market' | 'limit' | 'stop' | 'stop_limit';
+export type OrderSide = 'buy' | 'sell';
+export type OrderStatus = 'open' | 'partial' | 'closed' | 'canceled' | 'rejected' | 'unknown';
+export type TimeInForce = 'GTC' | 'IOC' | 'FOK' | 'DAY';
+
 export interface TradingExchange {
   id: string;
   name: string;
-  exchange: Exchange;
+  exchange: Exchange | ExchangeConnector;
   connected: boolean;
   lastSync?: Date;
 }
@@ -48,7 +139,7 @@ export class TradingConnectorService {
       }
 
       // Create exchange instance based on ID
-      let exchange: Exchange;
+      let exchange: Exchange | ExchangeConnector;
       
       switch (exchangeId.toLowerCase()) {
         case 'binance':
@@ -80,16 +171,31 @@ export class TradingConnectorService {
           });
           break;
           
+        case 'alpaca':
+          const alpacaConfig: AlpacaConfig = {
+            apiKey: config.apiKey,
+            apiSecret: config.secret,
+            paper: config.testnet ?? true, // Default to paper trading for safety
+          };
+          exchange = new AlpacaConnector(alpacaConfig);
+          break;
+          
         default:
           throw new Error(`Unsupported exchange: ${exchangeId}`);
       }
 
       // Test connection
-      await exchange.loadMarkets();
+      if ('loadMarkets' in exchange) {
+        // CCXT exchange
+        await exchange.loadMarkets();
+      } else {
+        // Custom connector
+        await exchange.connect();
+      }
       
       const tradingExchange: TradingExchange = {
         id: exchangeId,
-        name: exchange.name || exchangeId,
+        name: 'getName' in exchange ? exchange.getName() : exchange.name || exchangeId,
         exchange,
         connected: true,
         lastSync: new Date(),
@@ -248,8 +354,13 @@ export class TradingConnectorService {
       }
 
       // Test by fetching ticker
-      const ticker = await exchange.exchange.fetchTicker('BTC/USDT');
-      return ticker !== null && ticker !== undefined;
+      if ('fetchTicker' in exchange.exchange) {
+        const ticker = await exchange.exchange.fetchTicker('BTC/USDT');
+        return ticker !== null && ticker !== undefined;
+      } else {
+        // Custom connector - test connection
+        return exchange.exchange.isConnected();
+      }
       
     } catch (error) {
       logger.error(`Connection test failed for ${exchangeId}`, error);
@@ -264,8 +375,22 @@ export class TradingConnectorService {
         throw new Error(`Exchange not initialized: ${exchangeId}`);
       }
 
-      const balance = await exchange.exchange.fetchBalance();
-      return balance;
+      if ('fetchBalance' in exchange.exchange) {
+        // CCXT exchange
+        const balance = await exchange.exchange.fetchBalance();
+        return balance;
+      } else {
+        // Custom connector
+        const balances = await exchange.exchange.getBalance();
+        // Convert to CCXT format
+        const result: any = { info: balances, free: {}, used: {}, total: {} };
+        for (const balance of balances) {
+          result.free[balance.asset] = balance.free;
+          result.used[balance.asset] = balance.locked;
+          result.total[balance.asset] = balance.total;
+        }
+        return result;
+      }
       
     } catch (error) {
       logger.error(`Failed to fetch balance from ${exchangeId}`, error);
@@ -280,7 +405,23 @@ export class TradingConnectorService {
         throw new Error(`Exchange not initialized: ${exchangeId}`);
       }
 
-      return exchange.exchange.markets;
+      if ('markets' in exchange.exchange) {
+        return exchange.exchange.markets;
+      } else {
+        // Custom connector - return supported symbols
+        const symbols = exchange.exchange.getSupportedSymbols();
+        const markets: any = {};
+        for (const symbol of symbols) {
+          markets[symbol] = {
+            id: symbol,
+            symbol: symbol,
+            base: symbol.split('/')[0],
+            quote: symbol.split('/')[1] || 'USD',
+            active: true,
+          };
+        }
+        return markets;
+      }
       
     } catch (error) {
       logger.error(`Failed to fetch markets from ${exchangeId}`, error);
@@ -332,14 +473,52 @@ export class TradingConnectorService {
       }
 
       // Create real order
-      const order = await exchange.exchange.createOrder(
-        symbol,
-        type,
-        side,
-        amount,
-        price,
-        params
-      );
+      let order;
+      
+      if ('createOrder' in exchange.exchange && typeof exchange.exchange.createOrder === 'function') {
+        // CCXT exchange
+        const ccxtExchange = exchange.exchange as Exchange;
+        order = await ccxtExchange.createOrder(
+          symbol,
+          type,
+          side,
+          amount,
+          price,
+          params
+        );
+      } else {
+        // Custom connector
+        const connector = exchange.exchange as ExchangeConnector;
+        const orderRequest: OrderRequest = {
+          symbol,
+          side: side as OrderSide,
+          type: type as OrderType,
+          amount,
+          price,
+          timeInForce: params?.timeInForce || 'GTC',
+        };
+        
+        const orderResponse = await connector.createOrder(orderRequest);
+        
+        // Convert to CCXT format
+        order = {
+          id: orderResponse.orderId,
+          clientOrderId: orderResponse.clientOrderId,
+          symbol: orderResponse.symbol,
+          type: orderResponse.type,
+          side: orderResponse.side,
+          amount: orderResponse.amount,
+          price: orderResponse.price,
+          status: orderResponse.status,
+          filled: orderResponse.filled,
+          remaining: orderResponse.remaining,
+          cost: orderResponse.cost,
+          fee: orderResponse.fee ? { cost: orderResponse.fee } : undefined,
+          timestamp: orderResponse.timestamp.getTime(),
+          datetime: orderResponse.timestamp.toISOString(),
+          info: {},
+        };
+      }
 
       // Log order in database
       await this.logOrder(exchangeId, order, userId);
@@ -394,8 +573,10 @@ export class TradingConnectorService {
   async disconnectAll(): Promise<void> {
     for (const [key, exchange] of this.exchanges) {
       try {
-        if (exchange.exchange && typeof exchange.exchange.close === 'function') {
+        if ('close' in exchange.exchange && typeof exchange.exchange.close === 'function') {
           await exchange.exchange.close();
+        } else if ('disconnect' in exchange.exchange) {
+          await exchange.exchange.disconnect();
         }
         exchange.connected = false;
       } catch (error) {
