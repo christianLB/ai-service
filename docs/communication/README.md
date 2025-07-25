@@ -1,4 +1,25 @@
-# Centro de Comunicación AI Service
+# Communication Documentation
+
+This section contains all documentation related to communication systems in the AI Service, including Telegram bot integration, MCP Bridge, and other messaging interfaces.
+
+## 📁 Structure
+
+### [Telegram Bot](./telegram/)
+- **[Setup Guide](./telegram/setup.md)** - Initial Telegram bot configuration
+- **[Bot Setup](./telegram/bot-setup.md)** - Detailed bot implementation
+- **[Test Commands](./telegram/test-commands.md)** - Testing Telegram commands
+- **[Revenue Commands](./telegram/revenue-commands.md)** - Financial bot commands
+
+### [MCP Bridge](./mcp-bridge/)
+- **[Proposal](./mcp-bridge/proposal.md)** - MCP Bridge architecture proposal
+- **[Future Plans](./mcp-bridge/future.md)** - Roadmap and future enhancements
+
+### [Integrations](./integrations/)
+- **[Telegram-Slack](./integrations/telegram-slack.md)** - Cross-platform messaging
+
+---
+
+# Centro de Comunicación AI Service (Original)
 
 ## Manual de Usuario Evolutivo & Guía de Desarrollo
 

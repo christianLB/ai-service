@@ -1,6 +1,40 @@
-# 🚀 AI Service - Deployment Strategy
+# 🚀 AI Service - Deployment Documentation
 
-## **Automated Production Deployment Pipeline**
+This section contains all documentation related to deploying the AI Service, including CI/CD pipelines, infrastructure configuration, and platform-specific guides.
+
+## 📁 Structure
+
+### [CI/CD](./cicd/)
+- **[GitHub Actions](./cicd/github-actions.md)** - Automated deployment workflows
+- **[Security](./cicd/security.md)** - CI/CD security best practices
+- **[Setup Guide](./cicd/setup-guide.md)** - Setting up continuous deployment
+
+### [Synology NAS](./synology/)
+- **[Manual Switch](./synology/manual-switch.md)** - Manual deployment procedures
+- **[Production Setup](./synology/PRODUCTION_SETUP.md)** - Production environment configuration
+- **[Deployment Guide](./synology/SYNOLOGY_DEPLOYMENT.md)** - Complete Synology deployment guide
+- **[Portainer Setup](./synology/PORTAINER_SETUP.md)** - Container management with Portainer
+
+### [Docker](./docker/)
+- **[Compose Cleanup](./docker/compose-cleanup.md)** - Docker Compose best practices
+
+### [Infrastructure](./infrastructure/)
+- **[Architecture](./infrastructure/architecture.md)** - Infrastructure design and architecture
+
+### [Guides](./guides/)
+- **[Deployment Procedure](./guides/deployment-procedure.md)** - Step-by-step deployment process
+- **[Lessons Learned](./guides/lessons-learned.md)** - Historical deployment insights
+- **[MCP Deployment](./guides/mcp-deployment.md)** - MCP Bridge deployment
+- **[Production Sprint](./guides/production-sprint.md)** - Production deployment sprint guide
+- **[Production Validation](./guides/production-validation.md)** - Validation procedures
+
+### [Scripts](./scripts/)
+- **[NAS Scripts](./scripts/nas-scripts.md)** - Deployment automation scripts
+
+### [Archive](./archive/)
+- **[Battle Report](./archive/battle-report.md)** - Historical deployment challenges
+
+## **🔄 Automated Production Deployment Pipeline**
 
 ### **🔄 How it Works:**
 
