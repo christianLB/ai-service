@@ -141,7 +141,7 @@ const BankAccounts: FC = () => {
   const toggleAutoSync = async () => {
     setToggleLoading(true);
     try {
-      const endpoint = autoSyncEnabled ? "/scheduler/stop" : "/scheduler/start";
+      const endpoint = autoSyncEnabled ? "/financial/scheduler/stop" : "/financial/scheduler/start";
       await api.post(endpoint);
       setAutoSyncEnabled(!autoSyncEnabled);
       message.success(

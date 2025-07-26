@@ -21,6 +21,8 @@ import {
   FundOutlined,
   StockOutlined,
   BarChartOutlined,
+  BulbOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -113,6 +115,24 @@ const AppLayout: React.FC = () => {
           key: '/trading/settings',
           icon: <SettingOutlined />,
           label: 'Configuración',
+        },
+      ],
+    },
+    // Intelligence menu
+    {
+      key: '/intelligence',
+      icon: <BulbOutlined />,
+      label: 'Inteligencia',
+      children: [
+        {
+          key: '/document-intelligence',
+          icon: <FolderOutlined />,
+          label: 'Document Intelligence',
+        },
+        {
+          key: '/trading-intelligence',
+          icon: <ThunderboltOutlined />,
+          label: 'Trading Intelligence',
         },
       ],
     },

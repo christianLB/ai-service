@@ -272,13 +272,13 @@ export class FinancialDatabaseService {
   async createTransaction(transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
     const query = `
       INSERT INTO financial.transactions (
-        account_id, type, status, amount, currency_id, description, reference, date,
+        transaction_id, account_id, type, status, amount, currency_id, description, reference, date,
         gocardless_data, transaction_hash, block_number, gas_used, gas_price,
         from_address, to_address, counterparty_name, counterparty_account,
         fee_amount, fee_currency_id, metadata
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-      RETURNING id, account_id as "accountId", type, status, amount, currency_id as "currencyId",
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+      RETURNING id, transaction_id as "transactionId", account_id as "accountId", type, status, amount, currency_id as "currencyId",
                 description, reference, date, gocardless_data as "gocardlessData",
                 transaction_hash as "transactionHash", block_number as "blockNumber",
                 gas_used as "gasUsed", gas_price as "gasPrice", from_address as "fromAddress",
@@ -288,7 +288,7 @@ export class FinancialDatabaseService {
                 created_at as "createdAt", updated_at as "updatedAt"
     `;
     const values = [
-      transaction.accountId, transaction.type, transaction.status, transaction.amount,
+      transaction.transactionId, transaction.accountId, transaction.type, transaction.status, transaction.amount,
       transaction.currencyId, transaction.description, transaction.reference, transaction.date,
       transaction.gocardlessData, transaction.transactionHash, transaction.blockNumber,
       transaction.gasUsed, transaction.gasPrice, transaction.fromAddress, transaction.toAddress,

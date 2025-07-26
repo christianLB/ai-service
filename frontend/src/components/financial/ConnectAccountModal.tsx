@@ -99,12 +99,23 @@ const ConnectAccountModal: React.FC<ConnectAccountModalProps> = ({
 
       const data = await response.json();
       
-      if (data.requisition?.status === 'LN') {
+      // Log the full response for debugging
+      console.log('[ConnectAccountModal] Requisition status response:', data);
+      
+      // Fix: The API returns data.data.status, not data.requisition.status
+      if (data.data?.status === 'LN' || data.data?.status === 'LINKED') {
+        console.log('[ConnectAccountModal] Requisition is linked, proceeding to complete setup');
         setCurrentStep(2);
         setTimeout(() => completeSetup(), 1000);
+      } else {
+        // Show helpful error message if status is not as expected
+        const statusMessage = data.message || `Estado actual: ${data.data?.status || 'desconocido'}`;
+        console.log('[ConnectAccountModal] Requisition not yet linked:', statusMessage);
+        setError(`La autorización aún no se ha completado. ${statusMessage}. Por favor, completa la autorización en BBVA y vuelve a intentarlo.`);
       }
     } catch (error) {
       console.error('Error checking status:', error);
+      setError('Error al verificar el estado de la autorización. Por favor, inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -264,7 +275,7 @@ const ConnectAccountModal: React.FC<ConnectAccountModalProps> = ({
   return (
     <Modal
       title={null}
-      visible={visible}
+      open={visible}
       onCancel={handleClose}
       footer={null}
       width={600}

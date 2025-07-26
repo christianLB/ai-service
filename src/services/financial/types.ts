@@ -74,6 +74,7 @@ export type TransactionStatus =
 
 export interface Transaction {
   id: string;
+  transactionId: string;   // Unique transaction identifier (required in DB)
   accountId: string;
   type: TransactionType;
   status: TransactionStatus;

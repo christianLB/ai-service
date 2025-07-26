@@ -36,6 +36,10 @@ import Backtest from './pages/trading/Backtest';
 import Performance from './pages/trading/Performance';
 import TradingSettings from './pages/trading/Settings';
 
+// Intelligence routes
+import DocumentIntelligence from './pages/DocumentIntelligence';
+import TradingIntelligence from './pages/TradingIntelligence';
+
 import './App.css';
 
 // Configure dayjs
@@ -111,6 +115,10 @@ const AppComponent: React.FC = () => {
               <Route path="health" element={<SystemHealth />} />
               <Route path="integrations" element={<IntegrationSettings />} />
               <Route path="notifications" element={<NotificationSettings />} />
+              
+              {/* Intelligence Routes */}
+              <Route path="document-intelligence" element={<DocumentIntelligence />} />
+              <Route path="trading-intelligence" element={<TradingIntelligence />} />
               
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

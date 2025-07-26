@@ -538,7 +538,7 @@ export class GoCardlessService {
 
           // Check if transaction already exists
           const existingTransaction = await this.db.query(
-            'SELECT id FROM financial.transactions WHERE reference = $1',
+            'SELECT id FROM financial.transactions WHERE transaction_id = $1',
             [gcTransaction.transactionId]
           );
 
@@ -548,13 +548,14 @@ export class GoCardlessService {
 
           // Create transaction in database
           const transaction = await this.db.createTransaction({
+            transactionId: gcTransaction.transactionId,  // Required field for unique identifier
             accountId: dbAccountId,
             type: 'bank_transfer',
             status: gcTransaction.bookingDate ? 'confirmed' : 'pending',
             amount: gcTransaction.transactionAmount.amount,
             currencyId: eurCurrency.id,
             description: gcTransaction.remittanceInformationUnstructured || 'Bank transaction',
-            reference: gcTransaction.transactionId,
+            reference: gcTransaction.transactionId,  // Also store in reference for backwards compatibility
             date: new Date(gcTransaction.bookingDate || gcTransaction.valueDate),
             gocardlessData: gcTransaction,
             counterpartyName: gcTransaction.creditorName || gcTransaction.debtorName,

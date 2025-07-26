@@ -1,0 +1,259 @@
+.trading-intelligence-page {
+  min-height: 100vh;
+  background: #fff;
+}
+
+.hero-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+  color: white;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: rotate 40s linear infinite reverse;
+}
+
+.hero-section .ant-typography {
+  color: white;
+}
+
+.metric-card {
+  background: rgba(255,255,255,0.9);
+  border: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Card animations */
+.ant-card {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.ant-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* Timeline styling */
+.ant-timeline-item-content .ant-card {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.ant-timeline-item-content .ant-card:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* Tab styling */
+.ant-tabs-tab {
+  font-size: 16px;
+  padding: 12px 16px;
+}
+
+.ant-tabs-tab-active {
+  font-weight: 600;
+}
+
+/* Progress bar styling */
+.ant-progress-inner {
+  background: #f0f2f5;
+}
+
+/* Strategy cards */
+.ant-card-actions {
+  background: #fafafa;
+  border-top: 1px solid #f0f0f0;
+}
+
+.ant-card-meta-avatar {
+  margin-right: 16px;
+}
+
+/* Table styling */
+.ant-table-small .ant-table-cell {
+  padding: 8px 12px;
+}
+
+/* Alert styling */
+.ant-alert {
+  border-radius: 8px;
+}
+
+/* Modal styling */
+.ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Responsive charts */
+.recharts-wrapper {
+  margin: 0 auto;
+}
+
+/* Pre code blocks */
+pre {
+  margin: 0;
+  font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Statistic value animation */
+.ant-statistic-content-value {
+  font-weight: 600;
+}
+
+/* Badge ribbon */
+.ant-ribbon-wrapper {
+  position: relative;
+}
+
+/* Dark section cards */
+section[style*="background: #001529"] .ant-card {
+  transition: all 0.3s ease;
+}
+
+section[style*="background: #001529"] .ant-card:hover {
+  background: rgba(255,255,255,0.15) !important;
+  transform: translateY(-4px);
+}
+
+/* Tag styling */
+.ant-tag {
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+/* List item hover */
+.ant-list-item {
+  transition: all 0.2s ease;
+}
+
+.ant-list-item:hover {
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.6s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pulse animation for live indicators */
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-section h1.ant-typography {
+    font-size: 28px;
+  }
+  
+  .hero-section h2.ant-typography {
+    font-size: 18px;
+  }
+  
+  .metric-card .ant-statistic-title {
+    font-size: 12px;
+  }
+  
+  .metric-card .ant-statistic-content {
+    font-size: 20px;
+  }
+  
+  pre {
+    font-size: 12px;
+  }
+  
+  .ant-timeline-item-content {
+    padding: 0;
+  }
+  
+  .ant-card-meta-avatar {
+    display: none;
+  }
+}
+
+/* CTA Section styling */
+section[style*="background: linear-gradient"] {
+  position: relative;
+  overflow: hidden;
+}
+
+section[style*="background: linear-gradient"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Chart tooltips */
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+.recharts-default-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #e8e8e8 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}

@@ -166,7 +166,7 @@ const YearlyFinancialReport: React.FC = () => {
     
     // Income totals
     const incomeTotals = months.map((_, i) => 
-      reportData.monthlyTotals.income[(i + 1).toString()] || '0'
+      reportData.monthlyTotals?.income?.[(i + 1).toString()] || '0'
     );
     rows.push(['Total Ingresos', ...incomeTotals, reportData.yearTotals.income, '100%']);
     
@@ -187,14 +187,14 @@ const YearlyFinancialReport: React.FC = () => {
     
     // Expense totals
     const expenseTotals = months.map((_, i) => 
-      reportData.monthlyTotals.expense[(i + 1).toString()] || '0'
+      reportData.monthlyTotals?.expense?.[(i + 1).toString()] || '0'
     );
     rows.push(['Total Egresos', ...expenseTotals, reportData.yearTotals.expense, '100%']);
     
     // Balance
     rows.push([]);
     const balanceValues = months.map((_, i) => 
-      reportData.monthlyTotals.balance[(i + 1).toString()] || '0'
+      reportData.monthlyTotals?.balance?.[(i + 1).toString()] || '0'
     );
     rows.push(['BALANCE', ...balanceValues, reportData.yearTotals.balance, '']);
     
@@ -210,9 +210,10 @@ const YearlyFinancialReport: React.FC = () => {
   };
 
   const prepareTableData = (): TableRow[] => {
-    if (!reportData) return [];
+    if (!reportData || !reportData.categories) return [];
 
     const data: TableRow[] = [];
+    const months = Array.from({ length: 12 }, (_, i) => i);
     
     // Income header
     data.push({
@@ -223,7 +224,8 @@ const YearlyFinancialReport: React.FC = () => {
     });
     
     // Income categories
-    reportData.categories.income.forEach((category) => {
+    if (reportData.categories.income && Array.isArray(reportData.categories.income)) {
+      reportData.categories.income.forEach((category) => {
       const row: TableRow = {
         key: `income-${category.categoryId}`,
         category: category.categoryName,
@@ -238,7 +240,8 @@ const YearlyFinancialReport: React.FC = () => {
       });
       
       data.push(row);
-    });
+      });
+    }
     
     // Income total
     const incomeTotal: TableRow = {
@@ -250,7 +253,7 @@ const YearlyFinancialReport: React.FC = () => {
       percentage: 100,
     };
     months.forEach((_, index) => {
-      incomeTotal[`month_${index + 1}`] = reportData.monthlyTotals.income[(index + 1).toString()] || '0';
+      incomeTotal[`month_${index + 1}`] = reportData.monthlyTotals?.income?.[(index + 1).toString()] || '0';
     });
     data.push(incomeTotal);
     
@@ -270,7 +273,8 @@ const YearlyFinancialReport: React.FC = () => {
     });
     
     // Expense categories
-    reportData.categories.expense.forEach((category) => {
+    if (reportData.categories.expense && Array.isArray(reportData.categories.expense)) {
+      reportData.categories.expense.forEach((category) => {
       const row: TableRow = {
         key: `expense-${category.categoryId}`,
         category: category.categoryName,
@@ -285,7 +289,8 @@ const YearlyFinancialReport: React.FC = () => {
       });
       
       data.push(row);
-    });
+      });
+    }
     
     // Expense total
     const expenseTotal: TableRow = {
@@ -297,7 +302,7 @@ const YearlyFinancialReport: React.FC = () => {
       percentage: 100,
     };
     months.forEach((_, index) => {
-      expenseTotal[`month_${index + 1}`] = reportData.monthlyTotals.expense[(index + 1).toString()] || '0';
+      expenseTotal[`month_${index + 1}`] = reportData.monthlyTotals?.expense?.[(index + 1).toString()] || '0';
     });
     data.push(expenseTotal);
     
@@ -310,7 +315,7 @@ const YearlyFinancialReport: React.FC = () => {
       total: reportData.yearTotals.balance,
     };
     months.forEach((_, index) => {
-      balance[`month_${index + 1}`] = reportData.monthlyTotals.balance[(index + 1).toString()] || '0';
+      balance[`month_${index + 1}`] = reportData.monthlyTotals?.balance?.[(index + 1).toString()] || '0';
     });
     data.push(balance);
     
