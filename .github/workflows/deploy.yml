@@ -1,8 +1,9 @@
 name: Deploy to Production
 
 on:
-  push:
-    branches: [main]
+  # Disabled automatic deployment - use deploy-production-nas.yml instead
+  # push:
+  #   branches: [main]
   workflow_dispatch:
     inputs:
       skip-tests:
@@ -152,13 +153,9 @@ jobs:
       run: |
         echo "🏥 Checking production health..."
         # Replace with your actual production URL
-        response=$(curl -s -o /dev/null -w "%{http_code}" https://your-production-url/health || echo "000")
-        if [ "$response" = "200" ]; then
-          echo "✅ Production is healthy!"
-        else
-          echo "❌ Production health check failed with status: $response"
-          exit 1
-        fi
+        # Health check disabled - Watchtower handles deployment verification
+        echo "⏭️ Skipping health check - deployment handled by Watchtower"
+        echo "✅ Check Telegram notifications for deployment status"
     
     - name: Run smoke tests
       run: |

@@ -1,13 +1,15 @@
 name: Security Scanning
 
 on:
+  # Only run on PRs and develop branch to avoid redundant scans on main
   push:
-    branches: [ main, develop ]
+    branches: [ develop ]
   pull_request:
     branches: [ main ]
   schedule:
     # Run every Monday at 9am UTC
     - cron: '0 9 * * 1'
+  workflow_dispatch:
 
 jobs:
   # CodeQL analysis for code vulnerabilities

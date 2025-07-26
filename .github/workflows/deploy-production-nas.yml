@@ -1,5 +1,9 @@
 name: Build and Push Docker Image
 
+# This is the PRIMARY deployment workflow
+# It builds and pushes Docker images on push to main
+# Watchtower automatically detects and deploys the new images
+
 on:
   push:
     branches: [main]
