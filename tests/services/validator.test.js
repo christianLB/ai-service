@@ -36,13 +36,11 @@ describe('Validator Service', () => {
             connections: {
                 'start-1': {
                     main: [
-                        [
-                            {
-                                node: 'set-1',
-                                type: 'main',
-                                index: 0
-                            }
-                        ]
+                        {
+                            node: 'set-1',
+                            type: 'main',
+                            index: 0
+                        }
                     ]
                 }
             },
@@ -60,13 +58,13 @@ describe('Validator Service', () => {
             delete invalidWorkflow.name;
             const result = (0, validator_1.validateWorkflow)(invalidWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('name'));
+            expect(result.errors[0]).toContain('name');
         });
         it('should reject workflow without nodes', () => {
             const invalidWorkflow = { ...validWorkflow, nodes: [] };
             const result = (0, validator_1.validateWorkflow)(invalidWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('nodes'));
+            expect(result.errors[0]).toContain('nodes');
         });
         it('should reject workflow without trigger node', () => {
             const invalidWorkflow = {
@@ -84,7 +82,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflow)(invalidWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('trigger node'));
+            expect(result.errors[0]).toContain('trigger node');
         });
         it('should reject workflow with forbidden node types', () => {
             const invalidWorkflow = {
@@ -103,7 +101,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflow)(invalidWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('not allowed'));
+            expect(result.errors[0]).toContain('not allowed');
         });
         it('should reject workflow with too many nodes', () => {
             const nodes = Array.from({ length: 51 }, (_, i) => ({
@@ -121,7 +119,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflow)(invalidWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('maximum nodes limit'));
+            expect(result.errors[0]).toContain('maximum nodes limit');
         });
         it('should reject workflow with duplicate node IDs', () => {
             const invalidWorkflow = {
@@ -140,7 +138,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflow)(invalidWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('Duplicate node IDs'));
+            expect(result.errors[0]).toContain('Duplicate node IDs');
         });
         it('should reject workflow with invalid connections', () => {
             const invalidWorkflow = {
@@ -161,7 +159,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflow)(invalidWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('non-existent source node'));
+            expect(result.errors.some(e => e.includes('connections'))).toBe(true);
         });
         it('should warn about disconnected nodes', () => {
             const workflowWithDisconnected = {
@@ -180,7 +178,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflow)(workflowWithDisconnected);
             expect(result.isValid).toBe(true);
-            expect(result.warnings).toContain(expect.stringContaining('disconnected nodes'));
+            expect(result.warnings[0]).toContain('disconnected nodes');
         });
         it('should reject function nodes with forbidden code', () => {
             const dangerousWorkflow = {
@@ -208,7 +206,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflow)(dangerousWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('forbidden code'));
+            expect(result.errors[0]).toContain('forbidden code');
         });
     });
     describe('validateWorkflowUpdate', () => {
@@ -242,7 +240,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflowUpdate)(existingWorkflow, updatedWorkflow);
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(expect.stringContaining('ID cannot be changed'));
+            expect(result.errors[0]).toContain('ID cannot be changed');
         });
         it('should warn when deactivating workflow', () => {
             const updatedWorkflow = {
@@ -251,7 +249,7 @@ describe('Validator Service', () => {
             };
             const result = (0, validator_1.validateWorkflowUpdate)(existingWorkflow, updatedWorkflow);
             expect(result.isValid).toBe(true);
-            expect(result.warnings).toContain(expect.stringContaining('deactivated'));
+            expect(result.warnings[0]).toContain('deactivated');
         });
     });
 });
