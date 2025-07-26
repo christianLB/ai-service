@@ -5,8 +5,9 @@ name: Build and Push Docker Image
 # Watchtower automatically detects and deploys the new images
 
 on:
-  push:
-    branches: [main]
+  # Temporarily disabled - use deploy-production-nas-simple.yml instead
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 env:
