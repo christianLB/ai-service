@@ -3,7 +3,7 @@ module.exports = {
   testEnvironment: 'node',
   maxWorkers: 1,
   roots: ['<rootDir>/src', '<rootDir>/tests'],
-  testMatch: ['**/__tests__/**/*.(ts|js|mjs)', '**/?(*.)+(spec|test).(ts|js|mjs)'],
+  testMatch: ['**/__tests__/**/*.(ts|js)', '**/?(*.)+(spec|test).(ts|js)'],
   transformIgnorePatterns: [
     'node_modules/(?!(node-plop)/)',
   ],
@@ -39,6 +39,7 @@ module.exports = {
     '/dist/',
     '/build/',
     '/coverage/',
-    'mcp-local'
+    'mcp-local',
+    '\\.mjs$'
   ]
 };

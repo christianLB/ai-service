@@ -68,11 +68,12 @@ describe('GoCardless Integration Tests', () => {
 
       // Act - Directly test the transaction creation logic
       const transaction = await db.createTransaction({
+        transactionId: mockTransaction.transactionId,
         accountId: testAccount.id,
         type: 'bank_transfer',
         status: 'confirmed',
         amount: mockTransaction.transactionAmount.amount,
-        currencyId: testAccount.currency_id,
+        currencyId: testAccount.currencyId,
         description: mockTransaction.remittanceInformationUnstructured,
         reference: mockTransaction.transactionId,
         date: new Date(mockTransaction.bookingDate),
@@ -158,11 +159,12 @@ describe('GoCardless Integration Tests', () => {
       
       // Create first transaction
       const firstTransaction = await db.createTransaction({
+        transactionId: duplicateReference,
         accountId: testAccount.id,
         type: 'bank_transfer',
         status: 'confirmed',
         amount: '100.00',
-        currencyId: testAccount.currency_id,
+        currencyId: testAccount.currencyId,
         description: 'First transaction',
         reference: duplicateReference,
         date: new Date(),
@@ -174,11 +176,12 @@ describe('GoCardless Integration Tests', () => {
       // This test verifies the database constraint works
       try {
         await db.createTransaction({
+          transactionId: 'trans-' + Date.now(),
           accountId: testAccount.id,
           type: 'bank_transfer',
           status: 'confirmed',
           amount: '100.00',
-          currencyId: testAccount.currency_id,
+          currencyId: testAccount.currencyId,
           description: 'Duplicate transaction',
           reference: duplicateReference,
           date: new Date(),
@@ -193,7 +196,7 @@ describe('GoCardless Integration Tests', () => {
         
         // Should only have one transaction with this reference
         expect(parseInt(result.rows[0].count)).toBe(1);
-      } catch (error) {
+      } catch (error: any) {
         // Expected: duplicate key violation
         expect(error.message).toContain('duplicate');
       }
@@ -231,7 +234,7 @@ describe('GoCardless Integration Tests', () => {
 
     const accountData = {
       name: 'TEST Account ' + Date.now(),
-      type: 'bank_account',
+      type: 'bank_account' as const,
       currencyId: eurCurrency.id,
       accountId: 'test-acc-' + Date.now(),
       institutionId: 'TEST_BANK',

@@ -1,9 +1,9 @@
 import request from 'supertest';
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { financialRouter } from '../../src/routes/financial';
+import financialRouter from '../../src/routes/financial';
 import { GoCardlessService } from '../../src/services/financial/gocardless.service';
-import { SchedulerService } from '../../src/services/financial/scheduler.service';
+import { FinancialSchedulerService } from '../../src/services/financial/scheduler.service';
 
 // Mock services
 jest.mock('../../src/services/financial/gocardless.service');
@@ -13,7 +13,7 @@ jest.mock('../../src/services/financial/database.service');
 describe('Financial Routes', () => {
   let app: express.Application;
   let mockGoCardlessService: jest.Mocked<GoCardlessService>;
-  let mockSchedulerService: jest.Mocked<SchedulerService>;
+  let mockSchedulerService: jest.Mocked<FinancialSchedulerService>;
   let authToken: string;
 
   beforeAll(() => {
@@ -47,7 +47,7 @@ describe('Financial Routes', () => {
 
     // Setup mocks
     mockGoCardlessService = GoCardlessService.prototype as jest.Mocked<GoCardlessService>;
-    mockSchedulerService = SchedulerService.prototype as jest.Mocked<SchedulerService>;
+    mockSchedulerService = FinancialSchedulerService.prototype as jest.Mocked<FinancialSchedulerService>;
   });
 
   beforeEach(() => {
@@ -64,7 +64,7 @@ describe('Financial Routes', () => {
         errors: []
       };
 
-      mockGoCardlessService.syncAllAccounts = jest.fn().mockResolvedValue(mockSyncResult);
+      (mockGoCardlessService as any).performPeriodicSync = jest.fn().mockResolvedValue(mockSyncResult);
 
       // Act
       const response = await request(app)
@@ -79,7 +79,7 @@ describe('Financial Routes', () => {
         data: mockSyncResult,
         message: expect.stringContaining('Manual sync completed')
       });
-      expect(mockGoCardlessService.syncAllAccounts).toHaveBeenCalled();
+      expect((mockGoCardlessService as any).performPeriodicSync).toHaveBeenCalled();
     });
 
     it('should handle rate limit errors gracefully', async () => {
@@ -93,7 +93,7 @@ describe('Financial Routes', () => {
         ]
       };
 
-      mockGoCardlessService.syncAllAccounts = jest.fn().mockResolvedValue(mockSyncResult);
+      (mockGoCardlessService as any).performPeriodicSync = jest.fn().mockResolvedValue(mockSyncResult);
 
       // Act
       const response = await request(app)
@@ -115,12 +115,12 @@ describe('Financial Routes', () => {
 
       // Assert
       expect(response.status).toBe(401);
-      expect(mockGoCardlessService.syncAllAccounts).not.toHaveBeenCalled();
+      expect((mockGoCardlessService as any).performPeriodicSync).not.toHaveBeenCalled();
     });
 
     it('should handle service errors', async () => {
       // Arrange
-      mockGoCardlessService.syncAllAccounts = jest.fn()
+      (mockGoCardlessService as any).performPeriodicSync = jest.fn()
         .mockRejectedValue(new Error('Database connection failed'));
 
       // Act
