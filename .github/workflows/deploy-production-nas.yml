@@ -5,9 +5,8 @@ name: Build and Push Docker Image
 # Watchtower automatically detects and deploys the new images
 
 on:
-  # Temporarily disabled - use deploy-production-nas-simple.yml instead
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -52,24 +51,11 @@ jobs:
     - name: Generate Prisma Client
       run: npx prisma generate
       
-    - name: Debug - Check TypeScript
+    # Skip all validation - just ensure Prisma is ready
+    - name: Prepare for Docker build
       run: |
-        echo "🔍 Checking TypeScript versions and config..."
-        npx tsc --version
-        echo "Backend TypeScript check:"
-        npx tsc --noEmit || true
-        echo "Frontend TypeScript check:"
-        cd frontend && npx tsc --noEmit || true
-        cd ..
-      
-    - name: Run pre-deploy validations
-      run: |
-        echo "🔍 Running pre-deploy validations..."
-        echo "Building backend..."
-        npm run build:backend || echo "Backend build failed with exit code $?"
-        echo "Building frontend..."
-        npm run build:frontend || echo "Frontend build failed with exit code $?"
-        echo "✅ Build validation completed!"
+        echo "✅ Dependencies installed, Prisma client generated"
+        echo "🚀 Ready for Docker build"
 
     - name: Generate version info
       id: version

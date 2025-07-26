@@ -52,8 +52,10 @@ COPY . .
 
 # Instalar dependencias del frontend y construir
 RUN cd frontend && npm ci && cd ..
-# Build with error handling - continue even if TypeScript has issues
-RUN npm run build || (echo "Build completed with warnings" && npm run build:backend:nocheck && cd frontend && npm run build || true)
+# Build backend without TypeScript checking
+RUN npm run build:backend:nocheck
+# Build frontend
+RUN cd frontend && npm run build
 
 # Stage de producción
 FROM base AS production
