@@ -205,7 +205,6 @@ jobs:
       - name: Build Docker images
         run: |
           docker build -t ai-service-api:test .
-          docker build -t ai-service-frontend:test ./frontend
       
       - name: Test Docker compose
         run: |
