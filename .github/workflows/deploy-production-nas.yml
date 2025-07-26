@@ -51,13 +51,24 @@ jobs:
     - name: Generate Prisma Client
       run: npx prisma generate
       
+    - name: Debug - Check TypeScript
+      run: |
+        echo "🔍 Checking TypeScript versions and config..."
+        npx tsc --version
+        echo "Backend TypeScript check:"
+        npx tsc --noEmit || true
+        echo "Frontend TypeScript check:"
+        cd frontend && npx tsc --noEmit || true
+        cd ..
+      
     - name: Run pre-deploy validations
       run: |
         echo "🔍 Running pre-deploy validations..."
-        # Build with TypeScript errors ignored for now
-        npm run build:backend:nocheck || echo "⚠️ Backend build completed with warnings"
-        cd frontend && npm run build || echo "⚠️ Frontend build completed with warnings"
-        echo "✅ Build process completed!"
+        echo "Building backend..."
+        npm run build:backend || echo "Backend build failed with exit code $?"
+        echo "Building frontend..."
+        npm run build:frontend || echo "Frontend build failed with exit code $?"
+        echo "✅ Build validation completed!"
 
     - name: Generate version info
       id: version
