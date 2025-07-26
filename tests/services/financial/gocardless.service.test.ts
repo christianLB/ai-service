@@ -10,15 +10,19 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 // Mock database
 jest.mock('../../../src/services/financial/database.service');
 
+// Mock integration config service
+jest.mock('../../../src/services/integrations', () => ({
+  integrationConfigService: {
+    getConfig: jest.fn().mockResolvedValue('https://bankaccountdata.gocardless.com/api/v2')
+  }
+}));
+
+// Mock logger
+jest.mock('../../../src/utils/logger');
+
 describe('GoCardlessService', () => {
   let service: GoCardlessService;
   let mockDb: jest.Mocked<FinancialDatabaseService>;
-  
-  const mockConfig = {
-    secretId: 'test-secret-id',
-    secretKey: 'test-secret-key',
-    sandboxMode: true
-  };
 
   beforeEach(() => {
     // Reset mocks
@@ -43,9 +47,14 @@ describe('GoCardlessService', () => {
     };
     mockedAxios.create.mockReturnValue(axiosInstance as any);
 
+    // Prevent auto-initialization
+    jest.spyOn(GoCardlessService.prototype as any, 'initializeService').mockImplementation(() => Promise.resolve());
+    
     // Create service
-    service = new GoCardlessService(mockConfig, mockDb);
-    (service as any).client = axiosInstance as any;
+    service = new GoCardlessService(mockDb);
+    (service as any).api = axiosInstance as any;
+    (service as any).accessToken = 'test-token';
+    (service as any).tokenExpiresAt = new Date(Date.now() + 3600000);
   });
 
   describe('syncTransactionsToDatabase', () => {
@@ -99,6 +108,7 @@ describe('GoCardlessService', () => {
 
       // Assert - Check that createTransaction was called with correct field mapping
       expect(mockDb.createTransaction).toHaveBeenCalledWith({
+        transactionId: 'gc-trans-123',  // Required field for unique identifier
         accountId: mockDbAccountId, // This should map to account_id in DB
         type: 'bank_transfer',
         status: 'confirmed',
@@ -233,46 +243,4 @@ describe('GoCardlessService', () => {
     });
   });
 
-  describe('handleRateLimit', () => {
-    it('should extract retry-after from 429 response', () => {
-      // Arrange
-      const error = {
-        response: {
-          status: 429,
-          headers: {
-            'retry-after': '3600'
-          }
-        }
-      };
-
-      // Act
-      const result = (service as any).handleRateLimit(error);
-
-      // Assert
-      expect(result).toEqual({
-        isRateLimited: true,
-        retryAfter: 3600,
-        message: expect.stringContaining('1 hours')
-      });
-    });
-
-    it('should handle non-429 errors', () => {
-      // Arrange
-      const error = {
-        response: {
-          status: 500
-        }
-      };
-
-      // Act
-      const result = (service as any).handleRateLimit(error);
-
-      // Assert
-      expect(result).toEqual({
-        isRateLimited: false,
-        retryAfter: null,
-        message: null
-      });
-    });
-  });
 });

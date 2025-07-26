@@ -4,10 +4,6 @@ module.exports = {
   maxWorkers: 1,
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/__tests__/**/*.(ts|js|mjs)', '**/?(*.)+(spec|test).(ts|js|mjs)'],
-  transform: {
-    '^.+\\.ts$': 'ts-jest',
-    '^.+\\.mjs$': 'babel-jest',
-  },
   transformIgnorePatterns: [
     'node_modules/(?!(node-plop)/)',
   ],
@@ -26,14 +22,17 @@ module.exports = {
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   testTimeout: 30000,
-  globals: {
-    'ts-jest': {
-      isolatedModules: true,
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
+      isolatedModules: false,
       tsconfig: {
         esModuleInterop: true,
-        allowJs: true
+        allowJs: true,
+        allowSyntheticDefaultImports: true,
+        moduleResolution: 'node'
       }
-    }
+    }],
+    '^.+\\.mjs$': 'babel-jest',
   },
   testPathIgnorePatterns: [
     '/node_modules/',
