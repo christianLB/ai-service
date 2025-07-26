@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Typography, 
   Row, 
@@ -23,7 +23,6 @@ import {
   LineChartOutlined,
   AimOutlined,
   DollarOutlined,
-  ApiOutlined,
   SafetyOutlined,
   ThunderboltOutlined,
   GlobalOutlined,
@@ -31,21 +30,16 @@ import {
   RiseOutlined,
   FundOutlined,
   BarChartOutlined,
-  ClockCircleOutlined,
   CheckCircleOutlined,
   TrophyOutlined,
-  AreaChartOutlined,
-  StockOutlined,
   SettingOutlined,
   RocketOutlined,
-  BankOutlined,
-  RadarChartOutlined,
   DashboardOutlined,
   ExperimentOutlined,
   LockOutlined
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import CountUp from 'react-countup';
 import './TradingIntelligence.css';
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // Simple test to verify the critical fix without Ant Design complexity
 describe('ConnectAccountModal - Critical Fix Verification', () => {
@@ -18,8 +18,8 @@ describe('ConnectAccountModal - Critical Fix Verification', () => {
     }
     
     // The old broken code would try to access data.requisition?.status
-    const oldBrokenAccess = mockApiResponse.requisition?.status
-    expect(oldBrokenAccess).toBeUndefined() // This would fail
+    // TypeScript correctly identifies this as an error
+    // const oldBrokenAccess = mockApiResponse.requisition?.status // This would be undefined
     
     // The fixed code correctly accesses data.data.status
     const fixedAccess = mockApiResponse.data?.status
