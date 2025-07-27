@@ -187,8 +187,8 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
               <Col span={12}>
                 <Statistic
                   title="Cuentas"
-                  value={summary?.synced || 0}
-                  suffix={`/ ${summary?.total || 0}`}
+                  value={summary?.total_accounts || 0}
+                  suffix={`/ ${summary?.total_accounts || 0}`}
                   prefix={<CheckCircleOutlined />}
                   valueStyle={{ fontSize: "16px" }}
                 />
@@ -311,7 +311,7 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
                   <WarningOutlined /> Algunos límites de API alcanzados. Próximo
                   reset:{" "}
                   {dayjs(
-                    rateLimits.find((rl) => rl.window_end)?.window_end
+                    rateLimits.find((rl) => rl.window_reset_at)?.window_reset_at
                   ).fromNow()}
                 </Text>
               </div>

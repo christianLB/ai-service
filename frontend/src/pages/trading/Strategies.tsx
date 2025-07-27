@@ -207,7 +207,7 @@ const ConfigureStrategyModal: React.FC<ConfigureStrategyModalProps> = ({
       form.setFieldsValue({
         ...strategy.parameters,
         scheduleTime: strategy.parameters.scheduleEnabled && strategy.parameters.startTime && strategy.parameters.endTime
-          ? [dayjs(strategy.parameters.startTime, 'HH:mm'), dayjs(strategy.parameters.endTime, 'HH:mm')]
+          ? [dayjs(String(strategy.parameters.startTime), 'HH:mm'), dayjs(String(strategy.parameters.endTime), 'HH:mm')]
           : undefined
       });
     }

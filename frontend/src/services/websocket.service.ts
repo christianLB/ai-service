@@ -4,6 +4,10 @@ import { notification } from 'antd';
 export interface WebSocketNotification {
   type: string;
   timestamp: string;
+  error?: {
+    message?: string;
+    code?: string;
+  };
   [key: string]: unknown;
 }
 

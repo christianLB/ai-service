@@ -38,6 +38,11 @@ interface Transaction {
   valueDate?: string;
   remittanceInformationUnstructured?: string;
   additionalInformation?: string;
+  type?: string;
+  counterpartyName?: string;
+  counterpartyAccount?: string;
+  metadata?: Record<string, any>;
+  gocardlessData?: Record<string, any>;
 }
 
 interface Account {
@@ -135,11 +140,11 @@ const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         </Descriptions.Item>
 
         <Descriptions.Item label="Tipo">
-          {getTypeTag(transaction.type)}
+          {getTypeTag(transaction.type || 'unknown')}
         </Descriptions.Item>
 
         <Descriptions.Item label="Estado">
-          {getStatusTag(transaction.status)}
+          {getStatusTag(transaction.status || 'unknown')}
         </Descriptions.Item>
 
         <Descriptions.Item label="Descripción">

@@ -25,7 +25,8 @@ const ConnectAccountModal: React.FC<ConnectAccountModalProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [requisitionData, setRequisitionData] = useState<{
     requisitionId: string;
-    redirectUrl: string;
+    redirectUrl?: string;
+    consentUrl?: string;
     status: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);

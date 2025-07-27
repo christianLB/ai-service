@@ -145,7 +145,7 @@ historic-import-prod: ## Import historical transactions to production
 		echo "$(RED)Usage: make historic-import-prod FILE=export_file.sql$(NC)"; \
 		exit 1; \
 	fi; \
-	./scripts/import-historic-to-production.sh $(FILE)
+	./scripts/import-historic-via-ssh.sh $(FILE)
 
 .PHONY: historic-migrate
 historic-migrate: ## Complete migration of historical data to production
