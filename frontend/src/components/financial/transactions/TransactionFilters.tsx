@@ -39,10 +39,19 @@ interface TransactionFilters {
   searchTerm?: string;
 }
 
+interface Account {
+  id: string;
+  account_id: string;
+  iban?: string;
+  name?: string;
+  currency?: string;
+  institution_name?: string;
+}
+
 interface TransactionFiltersProps {
   filters: TransactionFilters;
   onChange: (filters: TransactionFilters) => void;
-  accounts: any[];
+  accounts: Account[];
   loading: boolean;
 }
 

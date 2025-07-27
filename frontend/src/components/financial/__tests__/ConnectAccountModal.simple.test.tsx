@@ -38,7 +38,7 @@ describe('ConnectAccountModal - Critical Fix Verification', () => {
   
   it('demonstrates the fix in checkRequisitionStatus logic', () => {
     // Simulate the checkRequisitionStatus function logic
-    const checkStatus = (response: any) => {
+    const checkStatus = (response: { success: boolean; data?: { status?: string; requisitionId?: string } }) => {
       // OLD BROKEN CODE:
       // if (data.requisition?.status === 'LN') { ... }
       

@@ -25,7 +25,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import dashboardService from '../../services/dashboardService';
 import type { HealthStatus } from '../../types';
 

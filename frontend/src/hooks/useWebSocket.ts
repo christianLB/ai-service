@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from './useAuth';
 import websocketService from '../services/websocket.service';
 import type { WebSocketNotification } from '../services/websocket.service';
 

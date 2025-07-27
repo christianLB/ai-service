@@ -47,8 +47,14 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   useEffect(() => {
     if (initialData) {
       reset({
-        ...initialData,
-      } as any);
+        userId: initialData.userId,
+        strategyId: initialData.strategyId || '',
+        type: initialData.type,
+        severity: initialData.severity,
+        title: initialData.title,
+        message: initialData.message,
+        data: initialData.data || {},
+      });
     }
   }, [initialData, reset]);
 
@@ -61,7 +67,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       }
       onSuccess();
       reset();
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };

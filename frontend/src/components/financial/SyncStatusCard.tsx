@@ -40,14 +40,41 @@ const { Text } = Typography;
 //   retryAfter?: string;
 // }
 
+interface RateLimit {
+  endpoint_type: string;
+  calls_limit: number;
+  calls_made: number;
+  status: 'normal' | 'exhausted' | 'rate_limited';
+  window_reset_at?: string;
+  retry_after?: string;
+}
+
+interface SyncStats {
+  lastSync?: string;
+  summary?: {
+    total_accounts: number;
+    total_transactions: number;
+    updated_today: number;
+  };
+}
+
+interface SyncScheduler {
+  nextSyncEstimate?: string;
+}
+
+interface SyncStatus {
+  stats?: SyncStats;
+  scheduler?: SyncScheduler;
+}
+
 interface SyncStatusCardProps {
-  syncStatus: any;
+  syncStatus: SyncStatus;
   autoSyncEnabled: boolean;
   syncing: boolean;
   toggleLoading: boolean;
   onToggleAutoSync: () => void;
   onManualSync: () => void;
-  rateLimits?: any[];
+  rateLimits?: RateLimit[];
   onSyncComplete?: () => void;
 }
 
@@ -100,7 +127,7 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
       } else {
         message.error(result.error || "Error al sincronizar");
       }
-    } catch (error) {
+    } catch {
       message.error("Error de conexión");
     } finally {
       setSyncingType(null);

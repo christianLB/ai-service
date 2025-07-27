@@ -13,6 +13,7 @@ import {
   Form
 } from 'antd';
 import { SearchOutlined, FilterOutlined, ClearOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import {
   DocumentType,
   FileFormat,
@@ -40,7 +41,14 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({ onSearch, loading }) =>
   const [form] = Form.useForm();
   const [advancedVisible, setAdvancedVisible] = useState(false);
 
-  const handleSearch = (values: any) => {
+  const handleSearch = (values: {
+    query?: string;
+    types?: DocumentType[];
+    formats?: FileFormat[];
+    sources?: DocumentSource[];
+    dateRange?: [dayjs.Dayjs, dayjs.Dayjs];
+    tags?: string;
+  }) => {
     const filters: SearchFilters = {};
 
     // Add filters only if they have values

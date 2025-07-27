@@ -21,9 +21,37 @@ import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
+interface Transaction {
+  id: string;
+  amount: number;
+  currency: string;
+  date: string;
+  description?: string;
+  reference?: string;
+  status?: string;
+  category?: string;
+  merchant?: string;
+  counterparty?: string;
+  balance_after?: number;
+  institution_name?: string;
+  bookingDate?: string;
+  valueDate?: string;
+  remittanceInformationUnstructured?: string;
+  additionalInformation?: string;
+}
+
+interface Account {
+  id: string;
+  account_id: string;
+  iban?: string;
+  name?: string;
+  currency?: string;
+  institution_name?: string;
+}
+
 interface TransactionDetailsProps {
-  transaction: any;
-  account?: any;
+  transaction: Transaction;
+  account?: Account;
 }
 
 const TransactionDetails: React.FC<TransactionDetailsProps> = ({

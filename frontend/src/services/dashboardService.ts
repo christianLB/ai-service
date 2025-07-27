@@ -46,7 +46,20 @@ class DashboardService {
     return response.data;
   }
 
-  async getAccountStatus(): Promise<ApiResponse<any>> {
+  async getAccountStatus(): Promise<ApiResponse<{
+    accounts: Array<{
+      id: string;
+      name: string;
+      iban: string;
+      currency: string;
+      balance: string;
+      institution: string;
+      status: string;
+      lastSyncedAt: string;
+    }>;
+    totalAccounts: number;
+    activeAccounts: number;
+  }>> {
     const response = await api.get('/financial/account-status');
     return response.data;
   }
@@ -68,17 +81,27 @@ class DashboardService {
     return response.data;
   }
 
-  async performManualSync(): Promise<ApiResponse<any>> {
+  async performManualSync(): Promise<ApiResponse<{
+    message: string;
+    synced: number;
+    errors: number;
+  }>> {
     const response = await api.post('/financial/sync');
     return response.data;
   }
 
-  async startScheduler(): Promise<ApiResponse<any>> {
+  async startScheduler(): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+  }>> {
     const response = await api.post('/financial/scheduler/start');
     return response.data;
   }
 
-  async stopScheduler(): Promise<ApiResponse<any>> {
+  async stopScheduler(): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+  }>> {
     const response = await api.post('/financial/scheduler/stop');
     return response.data;
   }
@@ -88,7 +111,23 @@ class DashboardService {
     currency?: string;
     includeProjections?: boolean;
     includeTrends?: boolean;
-  }): Promise<ApiResponse<any>> {
+  }): Promise<ApiResponse<{
+    income: string;
+    expenses: string;
+    net: string;
+    transactions: number;
+    accounts: number;
+    trends?: {
+      income: number;
+      expenses: number;
+      net: number;
+    };
+    projections?: {
+      income: string;
+      expenses: string;
+      net: string;
+    };
+  }>> {
     const response = await api.get('/financial/metrics/realtime', { params });
     return response.data;
   }
@@ -97,17 +136,42 @@ class DashboardService {
     startDate: string;
     endDate: string;
     currency?: string;
-  }): Promise<ApiResponse<any[]>> {
+  }): Promise<ApiResponse<Array<{
+    month: string;
+    income: string;
+    expenses: string;
+    net: string;
+    transactions: number;
+    categories: Array<{
+      name: string;
+      amount: string;
+      percentage: number;
+    }>;
+  }>>> {
     const response = await api.get('/financial/analytics/monthly-summary', { params });
     return response.data;
   }
 
-  async getAccountInsights(): Promise<ApiResponse<any[]>> {
+  async getAccountInsights(): Promise<ApiResponse<Array<{
+    accountId: string;
+    accountName: string;
+    balance: string;
+    currency: string;
+    lastActivity: string;
+    monthlyAverage: string;
+    trend: 'up' | 'down' | 'stable';
+  }>>> {
     const response = await api.get('/financial/insights/accounts');
     return response.data;
   }
 
-  async getCategories(type?: 'income' | 'expense' | 'transfer'): Promise<ApiResponse<any[]>> {
+  async getCategories(type?: 'income' | 'expense' | 'transfer'): Promise<ApiResponse<Array<{
+    id: string;
+    name: string;
+    type: string;
+    color: string;
+    icon?: string;
+  }>>> {
     const response = await api.get('/financial/categories', {
       params: { type }
     });

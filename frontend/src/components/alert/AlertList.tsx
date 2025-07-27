@@ -148,7 +148,7 @@ export const AlertList: React.FC = () => {
     try {
       await deleteItem(id);
       setSelectedRowKeys(selectedRowKeys.filter(key => key !== id));
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -162,7 +162,7 @@ export const AlertList: React.FC = () => {
     try {
       await bulkDelete(selectedRowKeys);
       setSelectedRowKeys([]);
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };

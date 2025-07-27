@@ -3,7 +3,7 @@ import { Button, Card, Table, Space, Modal, Form, Input, Switch, message, Popcon
 import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
 import { useInvoiceTemplates, useCreateInvoiceTemplate, useUpdateInvoiceTemplate, useDeleteInvoiceTemplate } from '../../hooks/use-invoice-template';
 import type { InvoiceTemplate } from '../../types/invoice-template.types';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 const InvoiceTemplatePage: React.FC = () => {
   const { user } = useAuth();

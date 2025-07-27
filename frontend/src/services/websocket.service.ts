@@ -4,7 +4,7 @@ import { notification } from 'antd';
 export interface WebSocketNotification {
   type: string;
   timestamp: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface FinancialSyncNotification extends WebSocketNotification {
@@ -53,7 +53,7 @@ class WebSocketService {
       return;
     }
 
-    const serverUrl = (window as any).REACT_APP_API_URL || window.location.origin;
+    const serverUrl = (window as Window & { REACT_APP_API_URL?: string }).REACT_APP_API_URL || window.location.origin;
     
     this.socket = io(serverUrl, {
       auth: { token },

@@ -22,7 +22,7 @@ export interface Client {
   outstandingBalance: number;
   lastInvoiceDate?: string;
   averageInvoiceAmount?: number;
-  customFields?: Record<string, any>;
+  customFields?: Record<string, string | number | boolean>;
   tags?: string[];
   notes?: string;
   createdAt: string;
@@ -88,7 +88,7 @@ export interface Invoice {
   relatedTransactionIds?: string[];
   notes?: string;
   termsAndConditions?: string;
-  customFields?: Record<string, any>;
+  customFields?: Record<string, string | number | boolean>;
   tags?: string[];
   createdAt: string;
   updatedAt: string;
@@ -165,7 +165,13 @@ export interface DashboardMetrics {
     date: string;
     categoryName?: string;
   }>;
-  alerts: any[];
+  alerts: Array<{
+    id: string;
+    type: string;
+    severity: 'info' | 'warning' | 'error';
+    message: string;
+    timestamp: string;
+  }>;
   lastUpdated: string;
 }
 
@@ -218,7 +224,7 @@ export interface ClientFormData {
   paymentMethod?: 'transfer' | 'cash' | 'card' | 'crypto' | 'other';
   bankAccount?: string;
   creditLimit: number;
-  customFields?: Record<string, any>;
+  customFields?: Record<string, string | number | boolean>;
   tags?: string[];
   notes?: string;
 }

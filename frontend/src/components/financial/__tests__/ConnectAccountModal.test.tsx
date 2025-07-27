@@ -43,7 +43,7 @@ describe('ConnectAccountModal', () => {
       }
     }
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockRequisitionResponse
     })
@@ -87,7 +87,7 @@ describe('ConnectAccountModal', () => {
       }
     }
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockRequisitionResponse
     })
@@ -125,13 +125,13 @@ describe('ConnectAccountModal', () => {
       message: 'Requisition is linked and ready for use'
     }
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockStatusResponse
     })
 
     // Mock the complete setup response
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true })
     })
@@ -191,7 +191,7 @@ describe('ConnectAccountModal', () => {
       }
     }
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockRequisitionResponse
     })
@@ -226,7 +226,7 @@ describe('ConnectAccountModal', () => {
       message: 'User is currently giving consent'
     }
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockStatusResponse
     })
@@ -241,7 +241,7 @@ describe('ConnectAccountModal', () => {
   })
 
   it('handles network errors gracefully', async () => {
-    ;(global.fetch as any).mockRejectedValueOnce(new Error('Network error'))
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'))
 
     render(
       <ConnectAccountModal
@@ -268,7 +268,7 @@ describe('ConnectAccountModal', () => {
       }
     }
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockRequisitionResponse
     })
@@ -304,7 +304,7 @@ describe('ConnectAccountModal', () => {
       }
     }
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockRequisitionResponse
     })
@@ -336,12 +336,12 @@ describe('ConnectAccountModal', () => {
       }
     }
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => mockStatusResponse
     })
 
-    ;(global.fetch as any).mockResolvedValueOnce({
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true })
     })

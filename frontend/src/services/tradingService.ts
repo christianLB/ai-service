@@ -38,7 +38,7 @@ export interface Strategy {
 }
 
 export interface StrategyParams {
-  [key: string]: any;
+  [key: string]: string | number | boolean | string[] | number[];
 }
 
 export interface ParameterSchema {
@@ -48,7 +48,7 @@ export interface ParameterSchema {
   min?: number;
   max?: number;
   step?: number;
-  default?: any;
+  default?: string | number | boolean;
 }
 
 export interface BacktestRequest {
@@ -86,8 +86,8 @@ export interface BacktestResult {
 export interface TradingWebSocket {
   subscribe: (channels: string[]) => void;
   unsubscribe: (channels: string[]) => void;
-  on: (event: string, callback: (data: any) => void) => void;
-  off: (event: string, callback?: (data: any) => void) => void;
+  on: (event: string, callback: (data: unknown) => void) => void;
+  off: (event: string, callback?: (data: unknown) => void) => void;
   disconnect: () => void;
 }
 
@@ -136,10 +136,10 @@ class TradingService {
       unsubscribe: (channels: string[]) => {
         this.socket?.emit('unsubscribe', { channels });
       },
-      on: (event: string, callback: (data: any) => void) => {
+      on: (event: string, callback: (data: unknown) => void) => {
         this.socket?.on(event, callback);
       },
-      off: (event: string, callback?: (data: any) => void) => {
+      off: (event: string, callback?: (data: unknown) => void) => {
         if (callback) {
           this.socket?.off(event, callback);
         } else {

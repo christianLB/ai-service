@@ -36,14 +36,23 @@ interface Transaction {
   date: string;
   counterpartyName?: string;
   counterpartyAccount?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
+}
+
+interface Account {
+  id: string;
+  account_id: string;
+  iban?: string;
+  name?: string;
+  currency?: string;
+  institution_name?: string;
 }
 
 interface TransactionsListProps {
   transactions: Transaction[];
   loading: boolean;
   pagination: TablePaginationConfig;
-  accounts: any[];
+  accounts: Account[];
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({

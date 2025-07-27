@@ -55,7 +55,9 @@ interface TableRow {
   isTotal?: boolean;
   isHeader?: boolean;
   type?: 'income' | 'expense' | 'balance';
-  [key: string]: any;
+  total?: string;
+  percentage?: number;
+  [key: `month_${number}`]: string | undefined;
 }
 
 const YearlyFinancialReport: React.FC = () => {
@@ -72,7 +74,7 @@ const YearlyFinancialReport: React.FC = () => {
 
   useEffect(() => {
     fetchYearlyReport();
-  }, [selectedYear, selectedCurrency]);
+  }, [selectedYear, selectedCurrency]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchYearlyReport = async () => {
     try {

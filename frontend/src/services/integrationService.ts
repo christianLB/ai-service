@@ -23,7 +23,7 @@ interface IntegrationConfig {
   isEncrypted?: boolean;
   isGlobal?: boolean;
   description?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -77,9 +77,12 @@ class IntegrationService {
         `${this.baseURL}/configs/${integrationType}/${configKey}${params}`
       );
       return response.data.data.value;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        return null;
+    } catch (error) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 404) {
+          return null;
+        }
       }
       console.error('Error fetching config:', error);
       throw error;
