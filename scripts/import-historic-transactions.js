@@ -5,7 +5,7 @@ const path = require('path');
 const axios = require('axios');
 const { checkAccountsForImport, HISTORIC_IBAN } = require('./check-accounts-for-import');
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3001/api';
 const HISTORIC_DIR = path.join(__dirname, '../historic_transactions');
 
 // Reference prefix for historic transactions

@@ -80,6 +80,90 @@ financial-diff: ## 🔍 Comparar datos financieros entre ambientes
 	@$(MAKE) -f Makefile.financial-sync financial-diff
 
 # =============================================================================
+# 🔐 DATABASE PASSWORD MANAGEMENT
+# =============================================================================
+
+.PHONY: db-password-change
+db-password-change: ## Change database password (interactive)
+	@echo "$(BLUE)Database Password Change Wizard$(NC)"
+	@echo "$(YELLOW)Select environment:$(NC)"
+	@echo "  1) Development"
+	@echo "  2) Production"
+	@read -p "Choice (1-2): " ENV_CHOICE; \
+	case $$ENV_CHOICE in \
+		1) $(MAKE) db-password-dev ;; \
+		2) $(MAKE) db-password-prod ;; \
+		*) echo "$(RED)Invalid choice$(NC)"; exit 1 ;; \
+	esac
+
+.PHONY: db-password-dev
+db-password-dev: ## Change development database password
+	@echo "$(BLUE)Changing Development Database Password...$(NC)"
+	@read -s -p "Enter new password: " NEW_PASS; echo; \
+	read -s -p "Confirm new password: " CONFIRM_PASS; echo; \
+	if [ "$$NEW_PASS" != "$$CONFIRM_PASS" ]; then \
+		echo "$(RED)Passwords don't match!$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(YELLOW)Updating docker-compose.yml...$(NC)"; \
+	sed -i.bak "s/POSTGRES_PASSWORD: .*/POSTGRES_PASSWORD: $$NEW_PASS/" docker-compose.yml; \
+	echo "$(YELLOW)Updating .env.local...$(NC)"; \
+	if [ -f .env.local ]; then \
+		sed -i.bak "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$NEW_PASS/" .env.local; \
+	fi; \
+	echo "$(GREEN)✅ Password updated. Restart containers with: make dev-restart$(NC)"
+
+.PHONY: db-password-prod
+db-password-prod: ## Change production database password
+	@echo "$(BLUE)Changing Production Database Password...$(NC)"
+	@echo "$(RED)⚠️  WARNING: This will update the production database!$(NC)"
+	@read -p "Are you sure? (yes/no): " CONFIRM; \
+	if [ "$$CONFIRM" != "yes" ]; then \
+		echo "$(YELLOW)Cancelled$(NC)"; \
+		exit 0; \
+	fi; \
+	read -s -p "Enter current password: " OLD_PASS; echo; \
+	read -s -p "Enter new password: " NEW_PASS; echo; \
+	read -s -p "Confirm new password: " CONFIRM_PASS; echo; \
+	if [ "$$NEW_PASS" != "$$CONFIRM_PASS" ]; then \
+		echo "$(RED)Passwords don't match!$(NC)"; \
+		exit 1; \
+	fi; \
+	$(MAKE) -f Makefile.security db-password-prod-execute OLD_PASS="$$OLD_PASS" NEW_PASS="$$NEW_PASS"
+
+# =============================================================================
+# 📊 HISTORICAL DATA MIGRATION
+# =============================================================================
+
+.PHONY: historic-export
+historic-export: ## Export historical transactions from development
+	@./scripts/export-historic-transactions.sh
+
+.PHONY: historic-import-prod
+historic-import-prod: ## Import historical transactions to production
+	@if [ -z "$(FILE)" ]; then \
+		echo "$(RED)Usage: make historic-import-prod FILE=export_file.sql$(NC)"; \
+		exit 1; \
+	fi; \
+	./scripts/import-historic-to-production.sh $(FILE)
+
+.PHONY: historic-migrate
+historic-migrate: ## Complete migration of historical data to production
+	@echo "$(PURPLE)Historical Data Migration to Production$(NC)"
+	@echo "$(YELLOW)This will:$(NC)"
+	@echo "  1. Export historical transactions from development"
+	@echo "  2. Import them into production database"
+	@echo ""
+	@read -p "Continue? (y/n): " CONFIRM; \
+	if [ "$$CONFIRM" = "y" ]; then \
+		EXPORT_FILE=$$(./scripts/export-historic-transactions.sh | grep "Exported to" | awk '{print $$3}'); \
+		echo "$(BLUE)Importing $$EXPORT_FILE to production...$(NC)"; \
+		$(MAKE) historic-import-prod FILE=$$EXPORT_FILE; \
+	else \
+		echo "$(YELLOW)Cancelled$(NC)"; \
+	fi
+
+# =============================================================================
 # 🌉 COMANDOS MCP BRIDGE
 # =============================================================================
 

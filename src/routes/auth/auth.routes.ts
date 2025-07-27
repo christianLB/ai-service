@@ -14,6 +14,15 @@ const loginLimiter = rateLimit({
   message: 'Too many login attempts, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
+  // Custom key generator to work with trust proxy
+  keyGenerator: (req) => {
+    // Use x-forwarded-for if available, otherwise fall back to req.ip
+    return req.headers['x-forwarded-for'] as string || req.ip || 'unknown';
+  },
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health';
+  }
 });
 
 export function createAuthRoutes(pool: Pool): Router {

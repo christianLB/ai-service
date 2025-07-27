@@ -383,5 +383,35 @@ test-ghcr-auth: ## Probar autenticación con GitHub Container Registry
 		grep -q "Login Succeeded" && echo "$(GREEN)✓ Autenticación exitosa$(NC)" || \
 		(echo "$(RED)✗ Fallo en autenticación$(NC)" && exit 1)
 
+# =============================================================================
+# 🔐 DATABASE PASSWORD MANAGEMENT
+# =============================================================================
+
+.PHONY: db-password-prod-execute
+db-password-prod-execute: ## Execute production database password change
+	@if [ -z "$(OLD_PASS)" ] || [ -z "$(NEW_PASS)" ]; then \
+		echo "$(RED)Error: OLD_PASS and NEW_PASS required$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Connecting to production database...$(NC)"
+	@PGPASSWORD="$(OLD_PASS)" psql -h $(NAS_HOST) -p 5433 -U ai_user -d ai_service -c \
+		"ALTER USER ai_user WITH PASSWORD '$(NEW_PASS)';" && \
+		echo "$(GREEN)✅ Database password changed$(NC)" || \
+		(echo "$(RED)❌ Failed to change password$(NC)" && exit 1)
+	@echo "$(YELLOW)Updating .env.production...$(NC)"
+	@if [ -f .env.production ]; then \
+		cp .env.production .env.production.bak; \
+		sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(NEW_PASS)/" .env.production; \
+		echo "$(GREEN)✅ .env.production updated (backup: .env.production.bak)$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠️  .env.production not found - create it manually$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)⚠️  IMPORTANT NEXT STEPS:$(NC)"
+	@echo "1. Update docker-compose.production.yml if password is hardcoded"
+	@echo "2. Restart production containers"
+	@echo "3. Update any scripts that use the old password"
+	@echo "4. Test database connectivity"
+
 # Target por defecto
 .DEFAULT_GOAL := help

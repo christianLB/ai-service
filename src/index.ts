@@ -141,6 +141,17 @@ app.get('/health', (_req: express.Request, res: express.Response) => {
   });
 });
 
+// API health check endpoint (for monitoring and frontend)
+app.get('/api/health', (_req: express.Request, res: express.Response) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'ai-service-api',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: process.env.VERSION || 'development'
+  });
+});
+
 // Neural health check endpoint
 app.get('/status', async (_req: express.Request, res: express.Response) => {
   const startTime = Date.now();

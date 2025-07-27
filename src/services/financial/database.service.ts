@@ -222,7 +222,7 @@ export class FinancialDatabaseService {
       queryParams.push(accountId);
     }
 
-    const countQuery = `SELECT COUNT(*) FROM financial.transactions ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) FROM financial.transactions ${accountId ? 'WHERE account_id = $1' : ''}`;
     const countResult = await this.pool.query(countQuery, accountId ? [accountId] : []);
     const total = parseInt(countResult.rows[0].count);
 

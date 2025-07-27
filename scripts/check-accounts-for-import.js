@@ -2,7 +2,7 @@
 
 const axios = require('axios');
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3001/api';
 const HISTORIC_IBAN = process.env.HISTORIC_IBAN || 'ES36XXXXXXXXXXXXXXXXXXXX'; // IBAN redacted for security
 
 async function checkAccountsForImport() {
