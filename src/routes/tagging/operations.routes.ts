@@ -461,7 +461,8 @@ router.post('/categorize', standardRateLimit, async (req: Request, res: Response
     const result = await aiTaggingService.autoCategorize(
       content,
       validEntityType,
-      { language, context }
+      language,
+      context
     );
     
     res.json({
@@ -548,11 +549,8 @@ router.post('/multilingual', standardRateLimit, async (req: Request, res: Respon
       targetLanguages
     );
     
-    // Convert Map to object for JSON response
-    const result: Record<string, any> = {};
-    suggestions.forEach((value, key) => {
-      result[key] = value;
-    });
+    // suggestions is already a Record, no conversion needed
+    const result = suggestions;
     
     res.json({
       success: true,

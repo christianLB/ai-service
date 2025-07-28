@@ -134,6 +134,13 @@ export class TagService implements ITagService {
   }
 
   /**
+   * Get tag by ID (alias for getTag)
+   */
+  async getTagById(tagId: string): Promise<TagResponse> {
+    return this.getTag(tagId);
+  }
+
+  /**
    * Update a tag
    */
   async updateTag(tagId: string, data: UpdateTag, userId: string): Promise<TagResponse> {

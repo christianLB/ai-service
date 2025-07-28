@@ -37,6 +37,7 @@ export interface ITagService {
   // CRUD operations
   createTag(data: CreateTag, userId: string): Promise<TagResponse>;
   getTag(tagId: string): Promise<TagResponse>;
+  getTagById(tagId: string): Promise<TagResponse>;
   updateTag(tagId: string, data: UpdateTag, userId: string): Promise<TagResponse>;
   deleteTag(tagId: string, options: DeleteTagOptions | undefined, userId: string): Promise<void>;
   listTags(query: TagQuery): Promise<TagListResponse>;
@@ -123,6 +124,66 @@ export interface IAITaggingService {
     reasoning?: string;
   }>>;
   
+  // Auto-categorization
+  autoCategorize(
+    content: string,
+    entityType: EntityType,
+    language?: string,
+    context?: Record<string, any>
+  ): Promise<{
+    category: string;
+    confidence: number;
+    reasoning?: string;
+  }>;
+  
+  // Batch AI processing
+  batchProcessTags(
+    items: Array<{
+      entityType: EntityType;
+      entityId: string;
+      content: string;
+      metadata?: Record<string, any>;
+    }>,
+    options?: {
+      provider?: 'claude' | 'openai';
+      parallel?: boolean;
+      batchSize?: number;
+    }
+  ): Promise<Array<{
+    entityId: string;
+    status: 'success' | 'error';
+    tags?: Array<{ tagId: string; confidence: number; reasoning?: string }>;
+    error?: string;
+  }>>;
+  
+  // Multi-language support
+  getMultilingualSuggestions(
+    content: string,
+    entityType: EntityType,
+    targetLanguages: string[],
+    metadata?: Record<string, any>
+  ): Promise<Record<string, Array<{
+    tagId: string;
+    confidence: number;
+    reasoning?: string;
+  }>>>;
+  
+  // Contextual suggestions
+  getContextualSuggestions(
+    content: string,
+    entityType: EntityType,
+    context: {
+      previousTags?: string[];
+      relatedEntities?: string[];
+      historicalPatterns?: Record<string, any>;
+    },
+    metadata?: Record<string, any>
+  ): Promise<Array<{
+    tagId: string;
+    confidence: number;
+    reasoning?: string;
+  }>>;
+  
   // Pattern learning
   learnFromFeedback(feedback: TagFeedback): Promise<FeedbackResponse>;
   learnFromCorrection(learning: TagLearning): Promise<LearningResponse>;
@@ -130,6 +191,10 @@ export interface IAITaggingService {
   // Pattern management
   updateTagPatterns(tagId: string, entityExamples: string[]): Promise<void>;
   testTagPattern(tagId: string, content: string): Promise<{ matches: boolean; confidence: number }>;
+  
+  // Analytics and insights
+  getTagAnalytics(): Promise<any>;
+  improveTagPatterns(tagId: string, successfulExamples: string[], failedExamples: string[]): Promise<void>;
 }
 
 // Analytics service interface

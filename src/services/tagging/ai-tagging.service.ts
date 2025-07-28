@@ -423,7 +423,7 @@ Response format:
     try {
       switch (entityType) {
         case 'transaction': {
-          const transaction = await prisma.bankTransaction.findUnique({
+          const transaction = await prisma.transactions.findUnique({
             where: { id: entityId }
           });
           if (!transaction) return null;
@@ -432,9 +432,9 @@ Response format:
             content: transaction.description || '',
             metadata: {
               amount: transaction.amount,
-              date: transaction.transactionDate,
-              merchantName: transaction.merchantName,
-              category: transaction.transactionCategory
+              date: transaction.date,
+              counterpartyName: transaction.counterparty_name,
+              type: transaction.type
             }
           };
         }
@@ -446,28 +446,28 @@ Response format:
           if (!client) return null;
           
           return {
-            content: `${client.name} ${client.businessName || ''} ${client.industry || ''}`,
+            content: `${client.name} ${client.businessName || ''}`,
             metadata: {
-              type: client.type,
-              industry: client.industry,
-              country: client.country,
-              language: client.language
+              clientType: client.clientType,
+              language: client.language,
+              currency: client.currency,
+              status: client.status
             }
           };
         }
         
         case 'invoice': {
           const invoice = await prisma.invoice.findUnique({
-            where: { id: entityId },
-            include: { invoiceItems: true }
+            where: { id: entityId }
           });
           if (!invoice) return null;
           
-          const items = invoice.invoiceItems.map(i => i.description).join(' ');
+          const items = Array.isArray(invoice.items) ? invoice.items : [];
+          const itemsDescription = items.map((i: any) => i.description || '').join(' ');
           return {
-            content: `${invoice.description || ''} ${items}`,
+            content: `${invoice.notes || ''} ${itemsDescription}`,
             metadata: {
-              amount: invoice.totalAmount,
+              amount: invoice.total,
               currency: invoice.currency,
               date: invoice.issueDate,
               clientId: invoice.clientId
@@ -484,23 +484,7 @@ Response format:
           };
         }
         
-        case 'expense': {
-          // Expenses might be stored as transactions with specific categories
-          const expense = await prisma.bankTransaction.findUnique({
-            where: { id: entityId }
-          });
-          if (!expense) return null;
-          
-          return {
-            content: expense.description || '',
-            metadata: {
-              amount: expense.amount,
-              date: expense.transactionDate,
-              category: expense.transactionCategory,
-              merchantName: expense.merchantName
-            }
-          };
-        }
+        // Removed expense case as it's not a valid EntityType
         
         default:
           return null;
@@ -792,19 +776,20 @@ Return up to 5 most relevant tags with confidence scores.`;
    */
   async batchProcessTags(
     items: Array<{
-      id: string;
-      content: string;
       entityType: EntityType;
+      entityId: string;
+      content: string;
       metadata?: Record<string, any>;
     }>,
     options?: {
       provider?: 'claude' | 'openai';
+      parallel?: boolean;
       batchSize?: number;
-      onProgress?: (processed: number, total: number) => void;
     }
   ): Promise<Array<{
-    id: string;
-    suggestions: Array<{ tagId: string; confidence: number; reasoning?: string }>;
+    entityId: string;
+    status: 'success' | 'error';
+    tags?: Array<{ tagId: string; confidence: number; reasoning?: string }>;
     error?: string;
   }>> {
     const batchSize = options?.batchSize || 10;
@@ -825,13 +810,14 @@ Return up to 5 most relevant tags with confidence scores.`;
             );
             
             return {
-              id: item.id,
-              suggestions
+              entityId: item.entityId,
+              status: 'success' as const,
+              tags: suggestions
             };
           } catch (error: any) {
             return {
-              id: item.id,
-              suggestions: [],
+              entityId: item.entityId,
+              status: 'error' as const,
               error: error.message
             };
           }
@@ -841,9 +827,7 @@ Return up to 5 most relevant tags with confidence scores.`;
       results.push(...batchResults);
 
       // Report progress
-      if (options?.onProgress) {
-        options.onProgress(Math.min(i + batchSize, items.length), items.length);
-      }
+      // Progress tracking removed - not in interface
     }
 
     return results;
@@ -855,19 +839,16 @@ Return up to 5 most relevant tags with confidence scores.`;
   async autoCategorize(
     content: string,
     entityType: EntityType,
-    options?: {
-      language?: string;
-      context?: Record<string, any>;
-    }
+    language?: string,
+    context?: Record<string, any>
   ): Promise<{
-    primaryCategory: string;
-    subCategories: string[];
+    category: string;
     confidence: number;
-    suggestedTags: Array<{ tagId: string; confidence: number }>;
+    reasoning?: string;
   }> {
     try {
       // Detect language if not provided
-      const language = options?.language || await this.detectLanguage(content);
+      const detectedLanguage = language || await this.detectLanguage(content);
       
       // Get all categories from tags
       const tags = await prisma.universalTag.findMany({
@@ -877,10 +858,10 @@ Return up to 5 most relevant tags with confidence scores.`;
         }
       });
 
-      // Group tags by category
+      // Group tags by category (using path as category)
       const categories = new Map<string, any[]>();
       tags.forEach(tag => {
-        const category = tag.category || 'uncategorized';
+        const category = tag.path.split('/')[1] || tag.name || 'uncategorized';
         if (!categories.has(category)) {
           categories.set(category, []);
         }
@@ -889,8 +870,8 @@ Return up to 5 most relevant tags with confidence scores.`;
 
       // Get AI suggestions
       const suggestions = await this.suggestTags(content, entityType, {
-        ...options?.context,
-        language
+        ...context,
+        language: detectedLanguage
       });
 
       // Determine primary category based on suggestions
@@ -898,7 +879,8 @@ Return up to 5 most relevant tags with confidence scores.`;
       suggestions.forEach(suggestion => {
         const tag = tags.find(t => t.id === suggestion.tagId);
         if (tag) {
-          const category = tag.category || 'uncategorized';
+          // Use the tag name or first level of path as category
+          const category = tag.path.split('/')[1] || tag.name || 'uncategorized';
           const currentScore = categoryScores.get(category) || 0;
           categoryScores.set(category, currentScore + suggestion.confidence);
         }
@@ -913,10 +895,9 @@ Return up to 5 most relevant tags with confidence scores.`;
       const confidence = sortedCategories[0]?.[1] || 0;
 
       return {
-        primaryCategory,
-        subCategories,
+        category: primaryCategory,
         confidence: Math.min(1, confidence),
-        suggestedTags: suggestions
+        reasoning: `Categorized based on ${suggestions.length} AI tag suggestions`
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -956,9 +937,10 @@ Return up to 5 most relevant tags with confidence scores.`;
   async getMultilingualSuggestions(
     content: string,
     entityType: EntityType,
-    targetLanguages: string[] = ['en', 'es', 'fr']
-  ): Promise<Map<string, Array<{ tagId: string; confidence: number; translation?: string }>>> {
-    const results = new Map();
+    targetLanguages: string[],
+    metadata?: Record<string, any>
+  ): Promise<Record<string, Array<{ tagId: string; confidence: number; reasoning?: string }>>> {
+    const results: Record<string, Array<{ tagId: string; confidence: number; reasoning?: string }>> = {};
 
     for (const lang of targetLanguages) {
       try {
@@ -974,21 +956,29 @@ Return up to 5 most relevant tags with confidence scores.`;
               where: { id: suggestion.tagId }
             });
 
-            if (tag && tag.translations && tag.translations[lang]) {
-              return {
-                ...suggestion,
-                translation: tag.translations[lang]
-              };
+            if (tag && tag.metadata && typeof tag.metadata === 'object' && tag.metadata !== null) {
+              const metadata = tag.metadata as any;
+              const translations = metadata.translations;
+              if (translations && translations[lang]) {
+                return {
+                  ...suggestion,
+                  translation: translations[lang]
+                };
+              }
             }
 
             return suggestion;
           })
         );
 
-        results.set(lang, enhancedSuggestions);
+        results[lang] = enhancedSuggestions.map(s => ({
+          tagId: s.tagId,
+          confidence: s.confidence,
+          reasoning: (s as any).translation || s.reasoning
+        }));
       } catch (error) {
         logger.warn(`Failed to get suggestions for language ${lang}`, error);
-        results.set(lang, []);
+        results[lang] = [];
       }
     }
 
@@ -1118,11 +1108,11 @@ Return up to 5 most relevant tags with confidence scores.`;
     content: string,
     entityType: EntityType,
     context: {
-      relatedClientId?: string;
-      relatedTransactionIds?: string[];
-      historicalTags?: string[];
-      userPreferences?: Record<string, any>;
-    }
+      previousTags?: string[];
+      relatedEntities?: string[];
+      historicalPatterns?: Record<string, any>;
+    },
+    metadata?: Record<string, any>
   ): Promise<Array<{ tagId: string; confidence: number; reasoning?: string }>> {
     try {
       // Get base suggestions
@@ -1131,28 +1121,29 @@ Return up to 5 most relevant tags with confidence scores.`;
       // Enhance with contextual information
       const contextualScores = new Map<string, number>();
 
-      // Check historical tags used for similar entities
-      if (context.historicalTags && context.historicalTags.length > 0) {
-        for (const tagId of context.historicalTags) {
+      // Check previous tags used for similar entities
+      if (context.previousTags && context.previousTags.length > 0) {
+        for (const tagId of context.previousTags) {
           const currentScore = contextualScores.get(tagId) || 0;
           contextualScores.set(tagId, currentScore + 0.2); // Historical usage boost
         }
       }
 
-      // Check tags used by related client
-      if (context.relatedClientId) {
-        const clientTags = await prisma.entityTag.findMany({
-          where: {
-            entityType: 'client',
-            entityId: context.relatedClientId
-          },
-          select: { tagId: true }
-        });
+      // Check tags used by related entities
+      if (context.relatedEntities && context.relatedEntities.length > 0) {
+        for (const entityId of context.relatedEntities) {
+          const relatedTags = await prisma.entityTag.findMany({
+            where: {
+              entityId: entityId
+            },
+            select: { tagId: true }
+          });
 
-        clientTags.forEach(ct => {
-          const currentScore = contextualScores.get(ct.tagId) || 0;
-          contextualScores.set(ct.tagId, currentScore + 0.15); // Client preference boost
-        });
+          relatedTags.forEach(rt => {
+            const currentScore = contextualScores.get(rt.tagId) || 0;
+            contextualScores.set(rt.tagId, currentScore + 0.15); // Related entity boost
+          });
+        }
       }
 
       // Merge base suggestions with contextual scores
