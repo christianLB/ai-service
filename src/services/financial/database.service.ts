@@ -211,7 +211,7 @@ export class FinancialDatabaseService {
   // TRANSACTION OPERATIONS
   // ============================================================================
 
-  async getTransactions(accountId?: string, page = 1, limit = 50): Promise<PaginatedResponse<Transaction>> {
+  async getTransactions(accountId?: string, page = 1, limit = 50, sortBy = 'date', sortOrder = 'desc'): Promise<PaginatedResponse<Transaction>> {
     const offset = (page - 1) * limit;
     
     let whereClause = '';
@@ -226,6 +226,19 @@ export class FinancialDatabaseService {
     const countResult = await this.pool.query(countQuery, accountId ? [accountId] : []);
     const total = parseInt(countResult.rows[0].count);
 
+    // Map frontend column names to database columns
+    const columnMap: Record<string, string> = {
+      date: 'date',
+      amount: 'amount',
+      description: 'description',
+      status: 'status',
+      type: 'type'
+    };
+
+    // Validate and sanitize sort column
+    const sortColumn = columnMap[sortBy] || 'date';
+    const order = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
     const query = `
       SELECT id, account_id as "accountId", type, status, amount, currency_id as "currencyId",
              description, reference, date, gocardless_data as "gocardlessData",
@@ -237,7 +250,7 @@ export class FinancialDatabaseService {
              created_at as "createdAt", updated_at as "updatedAt"
       FROM financial.transactions 
       ${whereClause}
-      ORDER BY date DESC, created_at DESC
+      ORDER BY ${sortColumn} ${order}, created_at DESC
       LIMIT $1 OFFSET $2
     `;
     const result = await this.pool.query(query, queryParams);

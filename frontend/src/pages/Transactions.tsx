@@ -54,6 +54,8 @@ const Transactions: FC = () => {
   const [pageSize, setPageSize] = useState(50);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [showFilters, setShowFilters] = useState(true);
+  const [sortField, setSortField] = useState<string>('date');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
   
   const { subscribe } = useWebSocket();
 
@@ -83,6 +85,8 @@ const Transactions: FC = () => {
       const params = new URLSearchParams();
       params.append('page', currentPage.toString());
       params.append('limit', pageSize.toString());
+      params.append('sortBy', sortField);
+      params.append('sortOrder', sortOrder === 'ascend' ? 'asc' : 'desc');
       
       if (filters.accountIds?.length) {
         filters.accountIds.forEach(id => params.append('accountIds[]', id));
@@ -120,7 +124,7 @@ const Transactions: FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, filters]);
+  }, [currentPage, pageSize, filters, sortField, sortOrder]);
 
   useEffect(() => {
     fetchAccounts();
@@ -156,6 +160,26 @@ const Transactions: FC = () => {
 
   const handleRefresh = () => {
     fetchTransactions();
+  };
+
+  const handleTableChange = (pagination: any, _filters: any, sorter: any) => {
+    // Handle pagination changes
+    if (pagination.current !== currentPage || pagination.pageSize !== pageSize) {
+      setCurrentPage(pagination.current);
+      setPageSize(pagination.pageSize);
+    }
+
+    // Handle sorting changes
+    if (sorter.field && sorter.order) {
+      setSortField(sorter.field);
+      setSortOrder(sorter.order);
+      setCurrentPage(1); // Reset to first page when sorting changes
+    } else if (!sorter.order) {
+      // Reset to default sorting
+      setSortField('date');
+      setSortOrder('descend');
+      setCurrentPage(1);
+    }
   };
 
   const handleExport = async () => {
@@ -306,6 +330,7 @@ const Transactions: FC = () => {
               },
             }}
             accounts={accounts}
+            onTableChange={handleTableChange}
           />
         </Col>
       </Row>

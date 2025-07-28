@@ -444,12 +444,20 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
   try {
     initializeServices();
     
-    const { accountId, page = '1', limit = '50' } = req.query;
+    const { 
+      accountId, 
+      page = '1', 
+      limit = '50',
+      sortBy = 'date',
+      sortOrder = 'desc'
+    } = req.query;
     
     const result = await databaseService.getTransactions(
       accountId as string,
       parseInt(page as string),
-      parseInt(limit as string)
+      parseInt(limit as string),
+      sortBy as string,
+      sortOrder as string
     );
     
     res.json({
