@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  PageHeader,
   Card,
   Descriptions,
   Tag,
@@ -16,7 +15,6 @@ import {
   Spin,
   Alert,
   Typography,
-  Divider,
 } from 'antd';
 import {
   EditOutlined,
@@ -25,21 +23,20 @@ import {
   CalendarOutlined,
   BarChartOutlined,
   FileTextOutlined,
-  ArrowLeftOutlined,
 } from '@ant-design/icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { PageHeader } from '../../components/common/PageHeader';
 import { taggingService } from '../../services/taggingService';
 
 dayjs.extend(relativeTime);
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const TagDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   // Fetch tag details
@@ -306,7 +303,7 @@ const TagDetail: React.FC = () => {
                 <Card size="small">
                   <Statistic
                     title={<Text className="capitalize">{type}</Text>}
-                    value={count}
+                    value={count as number}
                   />
                 </Card>
               </Col>
@@ -337,7 +334,7 @@ const TagDetail: React.FC = () => {
         onCancel={() => setDeleteModalVisible(false)}
         okText="Delete"
         okType="danger"
-        confirmLoading={deleteMutation.isLoading}
+        confirmLoading={deleteMutation.isPending}
       >
         <p>Are you sure you want to delete the tag "{tagData.name}"?</p>
         <p>This action cannot be undone.</p>

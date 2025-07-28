@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Select, Tag, Spin } from 'antd';
+import React, { useState } from 'react';
+import { Select, Tag as AntTag, Spin } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { taggingService } from '../../services/taggingService';
-import type { Tag as TagType } from '../../services/taggingService';
+import type { Tag } from '../../services/taggingService';
 
 const { Option } = Select;
 
@@ -90,26 +90,26 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
       notFoundContent={loading ? <Spin size="small" /> : 'No tags found'}
       maxTagCount={maxTags}
       tagRender={(props) => {
-        const tag = displayTags.find(t => t.id === props.value);
+        const tag = displayTags.find((t: Tag) => t.id === props.value);
         return (
-          <Tag
+          <AntTag
             color={tag?.color || 'default'}
             closable={props.closable}
             onClose={props.onClose}
             style={{ marginRight: 3 }}
           >
             {props.label}
-          </Tag>
+          </AntTag>
         );
       }}
     >
-      {displayTags.map((tag) => (
+      {displayTags.map((tag: Tag) => (
         <Option key={tag.id} value={tag.id} label={tag.name}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <Tag color={tag.color || 'default'} style={{ marginRight: 8 }}>
+              <AntTag color={tag.color || 'default'} style={{ marginRight: 8 }}>
                 {tag.name}
-              </Tag>
+              </AntTag>
               {showDescription && tag.description && (
                 <span className="text-gray-500 text-xs ml-2">{tag.description}</span>
               )}

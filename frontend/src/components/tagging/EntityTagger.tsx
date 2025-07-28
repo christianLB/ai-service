@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { Tag, Space, Select, Button, message, Spin, Tooltip } from 'antd';
+import React, { useState } from 'react';
+import { PlusOutlined } from '@ant-design/icons';
+import { Tag as AntTag, Space, Select, Button, message, Spin, Tooltip } from 'antd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { taggingService } from '../../services/taggingService';
-import type { Tag as TagType, EntityTag } from '../../services/taggingService';
+import type { EntityTag, Tag } from '../../services/taggingService';
 
 const { Option } = Select;
 
@@ -21,7 +21,6 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
   entityId,
   mode = 'edit',
   maxTags,
-  onTagsChange,
   className = '',
 }) => {
   const queryClient = useQueryClient();
@@ -32,9 +31,6 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
   const { data: entityTags, isLoading: tagsLoading } = useQuery({
     queryKey: ['entityTags', entityType, entityId],
     queryFn: () => taggingService.getEntityTags(entityType, entityId),
-    onSuccess: (data) => {
-      onTagsChange?.(data.data || []);
-    },
   });
 
   // Search available tags
@@ -55,7 +51,7 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
     mutationFn: (tagIds: string[]) => 
       taggingService.tagEntity(entityType, entityId, { tagIds }),
     onSuccess: () => {
-      queryClient.invalidateQueries(['entityTags', entityType, entityId]);
+      queryClient.invalidateQueries({ queryKey: ['entityTags', entityType, entityId] });
       setSelectedTagIds([]);
       message.success('Tags added successfully');
     },
@@ -69,7 +65,7 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
     mutationFn: (tagId: string) =>
       taggingService.removeEntityTag(entityType, entityId, tagId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['entityTags', entityType, entityId]);
+      queryClient.invalidateQueries({ queryKey: ['entityTags', entityType, entityId] });
       message.success('Tag removed');
     },
     onError: () => {
@@ -109,8 +105,8 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
     : allTags?.data || [];
 
   // Filter out already assigned tags
-  const assignedTagIds = entityTags?.data?.map(et => et.tagId) || [];
-  const filteredTags = displayTags.filter(tag => !assignedTagIds.includes(tag.id));
+  const assignedTagIds = entityTags?.data?.map((et: EntityTag) => et.tagId) || [];
+  const filteredTags = displayTags.filter((tag: Tag) => !assignedTagIds.includes(tag.id));
 
   if (tagsLoading) {
     return <Spin size="small" />;
@@ -123,8 +119,8 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
       {/* Display current tags */}
       <div className="mb-3">
         <Space size={[0, 8]} wrap>
-          {currentTags.map((entityTag) => (
-            <Tag
+          {currentTags.map((entityTag: EntityTag) => (
+            <AntTag
               key={entityTag.tagId}
               color={entityTag.tag?.color || 'default'}
               closable={mode === 'edit'}
@@ -139,7 +135,7 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
                   </span>
                 </Tooltip>
               )}
-            </Tag>
+            </AntTag>
           ))}
           {currentTags.length === 0 && (
             <span className="text-gray-500 text-sm">No tags assigned</span>
@@ -162,11 +158,11 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
             showSearch
             allowClear
           >
-            {filteredTags.map((tag) => (
+            {filteredTags.map((tag: Tag) => (
               <Option key={tag.id} value={tag.id}>
-                <Tag color={tag.color || 'default'} style={{ marginRight: 8 }}>
+                <AntTag color={tag.color || 'default'} style={{ marginRight: 8 }}>
                   {tag.name}
-                </Tag>
+                </AntTag>
                 {tag.description && (
                   <span className="text-gray-500 text-xs">{tag.description}</span>
                 )}
@@ -175,9 +171,9 @@ export const EntityTagger: React.FC<EntityTaggerProps> = ({
           </Select>
           <Button
             type="primary"
-            icon={<PlusIcon className="h-4 w-4" />}
+            icon={<PlusOutlined />}
             onClick={handleAddTags}
-            loading={addTagsMutation.isLoading}
+            loading={addTagsMutation.isPending}
             disabled={selectedTagIds.length === 0}
           >
             Add

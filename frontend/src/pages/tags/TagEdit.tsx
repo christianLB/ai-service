@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PageHeader, Card, Spin, Alert, Button, message } from 'antd';
-import { TagsOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { Card, Spin, Alert, Button, message } from 'antd';
+import { TagsOutlined } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { PageHeader } from '../../components/common/PageHeader';
 import TagForm from '../../components/tagging/TagForm';
 import { taggingService } from '../../services/taggingService';
 

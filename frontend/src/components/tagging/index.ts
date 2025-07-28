@@ -1,5 +1,5 @@
 export { TagList } from './TagList';
-export { TagForm } from './TagForm';
+export { default as TagForm } from './TagForm';
 export { EntityTagger } from './EntityTagger';
 export { TagSelector } from './TagSelector';
 export { TagDisplay } from './TagDisplay';

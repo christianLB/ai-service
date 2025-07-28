@@ -11,16 +11,10 @@ import {
   Tooltip,
   Badge,
   Dropdown,
-  Checkbox,
-  Card,
   Row,
   Col,
-  Typography,
-  Spin,
   Alert,
   Modal,
-  Form,
-  Radio,
 } from 'antd';
 import {
   EditOutlined,
@@ -33,7 +27,6 @@ import {
   ExportOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  TagsOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table/interface';
@@ -42,13 +35,12 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { taggingService, type Tag as TagType, type TagQuery } from '../../services/taggingService';
-import { TagForm } from './TagForm';
+import TagForm from './TagForm';
 
 dayjs.extend(relativeTime);
 
 const { Search } = Input;
 const { Option } = Select;
-const { Title } = Typography;
 
 interface TagListProps {
   onTagSelect?: (tag: TagType) => void;
@@ -89,7 +81,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
   const deleteMutation = useMutation({
     mutationFn: (id: string) => taggingService.deleteTag(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['tags']);
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
     },
   });
 
@@ -98,7 +90,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
     mutationFn: ({ ids, updates }: { ids: string[]; updates: Partial<TagType> }) =>
       Promise.all(ids.map(id => taggingService.updateTag(id, updates))),
     onSuccess: () => {
-      queryClient.invalidateQueries(['tags']);
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
       setSelectedRowKeys([]);
       message.success('Tags updated successfully');
     },
@@ -107,7 +99,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
   // Handle table change
   const handleTableChange = (
     pagination: TablePaginationConfig,
-    filters: any,
+    _filters: any,
     sorter: any,
   ) => {
     setCurrentPage(pagination.current || 1);
@@ -138,7 +130,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
     }));
 
     const headers = Object.keys(csvData[0]).join(',');
-    const rows = csvData.map(row => Object.values(row).join(',')).join('\n');
+    const rows = csvData.map((row: any) => Object.values(row).join(',')).join('\n');
     const csv = `${headers}\n${rows}`;
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -374,7 +366,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
                 selectedRowKeys.map(id => taggingService.deleteTag(id as string))
               );
               message.success('Tags deleted successfully');
-              queryClient.invalidateQueries(['tags']);
+              queryClient.invalidateQueries({ queryKey: ['tags'] });
               setSelectedRowKeys([]);
             } catch (error) {
               message.error('Failed to delete some tags');
@@ -521,10 +513,9 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
       >
         <TagForm
           mode="create"
-          onSuccess={(tag) => {
+          onSuccess={() => {
             setCreateModalVisible(false);
-            queryClient.invalidateQueries(['tags']);
-            navigate(`/tags/${tag.id}`);
+            queryClient.invalidateQueries({ queryKey: ['tags'] });
           }}
           onCancel={() => setCreateModalVisible(false)}
         />

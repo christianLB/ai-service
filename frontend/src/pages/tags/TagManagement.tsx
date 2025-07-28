@@ -1,6 +1,6 @@
 import React from 'react';
-import { PageHeader } from 'antd';
 import { TagsOutlined } from '@ant-design/icons';
+import { PageHeader } from '../../components/common/PageHeader';
 import TagList from '../../components/tagging/TagList';
 
 const TagManagement: React.FC = () => {
