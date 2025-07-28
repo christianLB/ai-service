@@ -7,6 +7,7 @@ import { FinancialSchedulerService } from '../services/financial/scheduler.servi
 // import { transactionMatchingPrismaService } from '../services/financial/transaction-matching-prisma.service';
 import { transactionManagementService } from '../services/financial/transaction-management.service';
 import { transactionImportService } from '../services/financial/transaction-import.service';
+import { integrationConfigService } from '../services/integrations';
 import { Account } from '../services/financial/types';
 import { transactionImportFileSchema } from '../types/transaction-import.types';
 import clientsRoutes from './financial/clients.routes';
@@ -702,6 +703,11 @@ router.post('/sync', async (req: Request, res: Response): Promise<void> => {
     initializeServices();
     
     console.log('Manual sync requested');
+    
+    // Clear GoCardless cache to ensure fresh credential lookup
+    console.log('Clearing GoCardless integration config cache...');
+    await integrationConfigService.clearCache('gocardless');
+    
     const result = await schedulerService.performManualSync();
     
     res.json({
@@ -1259,6 +1265,309 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
     res.status(500).json({
       success: false,
       error: 'Failed to diagnose GoCardless',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/gocardless/status
+ * Get comprehensive GoCardless configuration and connection status
+ */
+router.get('/gocardless/status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const status: any = {
+      timestamp: new Date().toISOString(),
+      configured: false,
+      authenticated: false,
+      credentials: {
+        hasSecretId: false,
+        hasSecretKey: false,
+        hasBaseUrl: false
+      },
+      cache: {
+        cleared: false
+      },
+      accounts: {
+        count: 0,
+        active: 0
+      }
+    };
+    
+    // Check if credentials are configured
+    try {
+      const hasCredentials = await goCardlessService.hasCredentials();
+      status.configured = hasCredentials;
+      
+      // Get more detailed credential info (without exposing sensitive data)
+      const secretId = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_id'
+      });
+      const secretKey = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_key'
+      });
+      const baseUrl = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'base_url'
+      });
+      
+      status.credentials = {
+        hasSecretId: !!secretId,
+        hasSecretKey: !!secretKey,
+        hasBaseUrl: !!baseUrl,
+        secretIdLength: secretId?.length,
+        secretKeyLength: secretKey?.length,
+        baseUrl: baseUrl || 'https://bankaccountdata.gocardless.com/api/v2'
+      };
+    } catch (error) {
+      status.error = 'Failed to check credentials: ' + (error instanceof Error ? error.message : 'Unknown error');
+    }
+    
+    // Test authentication if credentials exist
+    if (status.configured) {
+      try {
+        await goCardlessService.refreshAuthentication();
+        status.authenticated = true;
+      } catch (authError) {
+        status.authenticated = false;
+        status.authError = authError instanceof Error ? authError.message : 'Authentication failed';
+      }
+    }
+    
+    // Get account status
+    try {
+      const accountStatus = await goCardlessService.getAccountStatus();
+      if (accountStatus.success && accountStatus.data) {
+        status.accounts = {
+          count: accountStatus.data.length,
+          active: accountStatus.data.filter((a: any) => a.account_id).length
+        };
+      }
+    } catch (error) {
+      // Not critical, continue
+    }
+    
+    res.json({
+      success: status.configured && status.authenticated,
+      status,
+      recommendations: getRecommendations(status)
+    });
+    
+  } catch (error) {
+    console.error('GoCardless status check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check GoCardless status',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+function getRecommendations(status: any): string[] {
+  const recommendations: string[] = [];
+  
+  if (!status.configured) {
+    recommendations.push('Configure GoCardless credentials using POST /api/financial/gocardless/credentials');
+    recommendations.push('Required: secret_id and secret_key');
+  }
+  
+  if (status.configured && !status.authenticated) {
+    recommendations.push('Authentication is failing. Check if credentials are from the correct environment (production vs sandbox)');
+    recommendations.push('Verify credentials are active and not expired in GoCardless dashboard');
+  }
+  
+  if (!status.credentials.hasSecretId || !status.credentials.hasSecretKey) {
+    recommendations.push('Missing required credentials. Both secret_id and secret_key must be configured');
+  }
+  
+  if (status.credentials.secretIdLength && status.credentials.secretIdLength !== 36) {
+    recommendations.push('Secret ID should be a UUID (36 characters). Current length: ' + status.credentials.secretIdLength);
+  }
+  
+  if (status.credentials.secretKeyLength && status.credentials.secretKeyLength !== 43) {
+    recommendations.push('Secret Key should be 43 characters. Current length: ' + status.credentials.secretKeyLength);
+  }
+  
+  return recommendations;
+}
+
+/**
+ * GET /api/financial/gocardless/credentials
+ * Check if GoCardless credentials are configured
+ */
+router.get('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const hasCredentials = await goCardlessService.hasCredentials();
+    
+    res.json({
+      success: true,
+      configured: hasCredentials,
+      message: hasCredentials 
+        ? 'GoCardless credentials are configured' 
+        : 'GoCardless credentials are not configured'
+    });
+  } catch (error) {
+    console.error('Failed to check GoCardless credentials:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check credentials',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/gocardless/credentials
+ * Configure GoCardless credentials
+ */
+router.post('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { secret_id, secret_key, base_url, redirect_uri } = req.body;
+    
+    // Validate required fields
+    if (!secret_id || !secret_key) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'Both secret_id and secret_key are required'
+      });
+      return;
+    }
+    
+    // Validate credential format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(secret_id.trim())) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid secret_id format',
+        message: 'Secret ID must be a valid UUID'
+      });
+      return;
+    }
+    
+    if (secret_key.trim().length !== 43) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid secret_key length',
+        message: 'Secret Key must be exactly 43 characters'
+      });
+      return;
+    }
+    
+    // Save credentials
+    const configs = [
+      {
+        integrationType: 'gocardless',
+        configKey: 'secret_id',
+        configValue: secret_id.trim(),
+        isGlobal: true,
+        encrypt: true,
+        description: 'GoCardless Secret ID'
+      },
+      {
+        integrationType: 'gocardless',
+        configKey: 'secret_key',
+        configValue: secret_key.trim(),
+        isGlobal: true,
+        encrypt: true,
+        description: 'GoCardless Secret Key'
+      }
+    ];
+    
+    if (base_url) {
+      configs.push({
+        integrationType: 'gocardless',
+        configKey: 'base_url',
+        configValue: base_url.trim(),
+        isGlobal: true,
+        encrypt: false,
+        description: 'GoCardless API Base URL'
+      });
+    }
+    
+    if (redirect_uri) {
+      configs.push({
+        integrationType: 'gocardless',
+        configKey: 'redirect_uri',
+        configValue: redirect_uri.trim(),
+        isGlobal: true,
+        encrypt: false,
+        description: 'GoCardless Redirect URI'
+      });
+    }
+    
+    // Save all configurations
+    for (const config of configs) {
+      await integrationConfigService.setConfig(config);
+    }
+    
+    // Clear cache to ensure new credentials are used
+    await integrationConfigService.clearCache('gocardless');
+    
+    // Test authentication with new credentials
+    initializeServices(); // Re-initialize to pick up new credentials
+    
+    try {
+      await goCardlessService.refreshAuthentication();
+      
+      res.json({
+        success: true,
+        message: 'GoCardless credentials configured and authenticated successfully'
+      });
+    } catch (authError) {
+      res.json({
+        success: true,
+        message: 'GoCardless credentials saved but authentication failed',
+        warning: authError instanceof Error ? authError.message : 'Authentication failed',
+        hint: 'Check if credentials are from the correct environment (production vs sandbox)'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Failed to configure GoCardless credentials:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to configure credentials',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * DELETE /api/financial/gocardless/credentials
+ * Remove GoCardless credentials
+ */
+router.delete('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const keys = ['secret_id', 'secret_key', 'base_url', 'redirect_uri'];
+    let deletedCount = 0;
+    
+    for (const key of keys) {
+      const deleted = await integrationConfigService.deleteConfig({
+        integrationType: 'gocardless',
+        configKey: key
+      });
+      if (deleted) deletedCount++;
+    }
+    
+    // Clear cache
+    await integrationConfigService.clearCache('gocardless');
+    
+    res.json({
+      success: true,
+      message: `Removed ${deletedCount} GoCardless configuration items`
+    });
+  } catch (error) {
+    console.error('Failed to remove GoCardless credentials:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove credentials',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

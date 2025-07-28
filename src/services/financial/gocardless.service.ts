@@ -23,6 +23,11 @@ export class GoCardlessService {
   constructor(database: FinancialDatabaseService) {
     this.db = database;
     
+    // Clear any cached credentials to ensure fresh lookup
+    integrationConfigService.clearCache('gocardless').catch(error => {
+      logger.warn('Failed to clear GoCardless cache during initialization', error);
+    });
+    
     // Initialize service
     this.initializeService();
   }
@@ -206,11 +211,16 @@ export class GoCardlessService {
 
   private async ensureValidToken(): Promise<void> {
     if (!this.accessToken || !this.tokenExpiresAt || new Date() >= this.tokenExpiresAt) {
+      logger.info('GoCardless token expired or missing, checking credentials...');
+      
       // Check if credentials are configured before attempting authentication
       const hasCredentials = await this.hasCredentials();
       if (!hasCredentials) {
-        throw new Error('GoCardless credentials not configured');
+        logger.error('GoCardless credentials not found in database');
+        throw new Error('GoCardless credentials not configured. Please configure secret_id and secret_key in integration settings.');
       }
+      
+      logger.info('Credentials found, attempting authentication...');
       await this.authenticate();
     }
   }
@@ -223,6 +233,7 @@ export class GoCardlessService {
     
     // Clear the config cache to ensure fresh credentials
     await integrationConfigService.clearCache('gocardless');
+    logger.info('GoCardless config cache cleared');
     
     // Re-initialize the service to pick up any URL changes
     await this.initializeService();
@@ -1148,6 +1159,8 @@ export class GoCardlessService {
 
   async hasCredentials(): Promise<boolean> {
     try {
+      logger.debug('Checking GoCardless credentials...');
+      
       const secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_id'
@@ -1158,7 +1171,17 @@ export class GoCardlessService {
         configKey: 'secret_key'
       });
 
-      return !!(secretId && secretKey);
+      const hasId = !!secretId;
+      const hasKey = !!secretKey;
+      
+      logger.info('GoCardless credential check', {
+        hasSecretId: hasId,
+        hasSecretKey: hasKey,
+        secretIdLength: secretId?.length,
+        secretKeyLength: secretKey?.length
+      });
+
+      return hasId && hasKey;
     } catch (error) {
       logger.error('Failed to check credentials', error);
       return false;

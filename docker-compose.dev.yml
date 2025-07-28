@@ -28,6 +28,7 @@ services:
       - NODE_ENV=development
       - PORT=3001
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+      - INTEGRATION_CONFIG_KEY=${INTEGRATION_CONFIG_KEY:-ai-service-integration-key-2025!}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-development}
       - VERSION=${VERSION:-dev}

@@ -344,7 +344,56 @@ export class FinancialSchedulerService {
     console.log(`Timestamp: ${new Date().toISOString()}`);
     
     try {
-      console.log('Calling GoCardless performPeriodicSync...');
+      // Pre-flight check: Verify GoCardless credentials are configured
+      console.log('Performing pre-flight checks...');
+      const hasCredentials = await this.goCardless.hasCredentials();
+      
+      if (!hasCredentials) {
+        const error = 'GoCardless credentials not configured. Please configure secret_id and secret_key in integration settings.';
+        console.error(error);
+        
+        await this.logSyncMetrics({
+          accountsSynced: 0,
+          transactionsSynced: 0,
+          balancesSynced: 0,
+          success: false,
+          attempts: 1,
+          error: error
+        });
+        
+        return {
+          success: false,
+          error: error,
+          data: null
+        };
+      }
+      
+      // Pre-flight check: Test authentication
+      console.log('Testing GoCardless authentication...');
+      try {
+        await this.goCardless.refreshAuthentication();
+        console.log('Authentication successful');
+      } catch (authError) {
+        const error = `GoCardless authentication failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`;
+        console.error(error);
+        
+        await this.logSyncMetrics({
+          accountsSynced: 0,
+          transactionsSynced: 0,
+          balancesSynced: 0,
+          success: false,
+          attempts: 1,
+          error: error
+        });
+        
+        return {
+          success: false,
+          error: error,
+          data: null
+        };
+      }
+      
+      console.log('Pre-flight checks passed, calling GoCardless performPeriodicSync...');
       const result = await this.goCardless.performPeriodicSync();
       console.log('GoCardless sync result:', JSON.stringify(result, null, 2));
       
