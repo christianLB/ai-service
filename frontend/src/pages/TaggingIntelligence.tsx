@@ -43,7 +43,6 @@ import {
   TranslationOutlined,
   BarChartOutlined,
   ExperimentOutlined,
-  SettingOutlined,
   TeamOutlined,
   FolderOutlined,
   CalendarOutlined,
@@ -52,7 +51,6 @@ import {
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import CountUp from 'react-countup';
 import './TaggingIntelligence.css';
 
 const { Title, Paragraph, Text } = Typography;
