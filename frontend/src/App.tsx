@@ -42,6 +42,11 @@ import DocumentIntelligence from './pages/DocumentIntelligence';
 import TradingIntelligence from './pages/TradingIntelligence';
 import TaggingIntelligence from './pages/TaggingIntelligence';
 
+// Management routes
+import TagManagement from './pages/tags/TagManagement';
+import TagDetail from './pages/tags/TagDetail';
+import TagEdit from './pages/tags/TagEdit';
+
 import './App.css';
 
 // Configure dayjs
@@ -122,6 +127,11 @@ const AppComponent: React.FC = () => {
               <Route path="document-intelligence" element={<DocumentIntelligence />} />
               <Route path="trading-intelligence" element={<TradingIntelligence />} />
               <Route path="tagging-intelligence" element={<TaggingIntelligence />} />
+              
+              {/* Management Routes */}
+              <Route path="tags" element={<TagManagement />} />
+              <Route path="tags/:id" element={<TagDetail />} />
+              <Route path="tags/:id/edit" element={<TagEdit />} />
               
               {/* Demo */}
               <Route path="import-demo" element={<ImportDemo />} />
