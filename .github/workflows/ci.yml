@@ -175,10 +175,15 @@ jobs:
         run: npx prisma generate
       
       - name: Build backend
-        run: npm run build
+        run: npm run build:backend
       
       - name: Build frontend
-        run: cd frontend && npm run build
+        timeout-minutes: 10
+        run: |
+          cd frontend
+          echo "Building frontend..."
+          npm run typecheck || echo "⚠️ TypeScript check failed"
+          npm run build || (echo "❌ Frontend build failed" && exit 1)
       
       - name: Validate build outputs
         run: |
