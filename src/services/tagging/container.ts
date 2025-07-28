@@ -38,9 +38,3 @@ export function createTaggingContainer(): Container {
 
 // Export a singleton container instance
 export const taggingContainer = createTaggingContainer();
-
-// Export service instances for easy access
-export const tagService = taggingContainer.get<ITagService>(TAGGING_SERVICE_IDENTIFIERS.TagService);
-export const entityTaggingService = taggingContainer.get<IEntityTaggingService>(TAGGING_SERVICE_IDENTIFIERS.EntityTaggingService);
-export const aiTaggingService = taggingContainer.get<IAITaggingService>(TAGGING_SERVICE_IDENTIFIERS.AITaggingService);
-export const patternMatchingService = taggingContainer.get<IPatternMatchingService>(TAGGING_SERVICE_IDENTIFIERS.PatternMatchingService);

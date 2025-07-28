@@ -5,7 +5,7 @@ import {
   aiRateLimit, 
   batchRateLimit 
 } from '../../middleware/rate-limit.middleware';
-import { entityTaggingService } from '../../services/tagging';
+import { getEntityTaggingService } from '../../services/tagging';
 import {
   EntityTypeEnum,
   tagEntityRequestSchema,
@@ -30,6 +30,7 @@ router.post('/:type/:id/tags', aiRateLimit, async (req: Request, res: Response, 
     const request = tagEntityRequestSchema.parse(req.body);
     const userId = (req as any).user.userId;
 
+    const entityTaggingService = getEntityTaggingService();
     const result = await entityTaggingService.tagEntity(
       entityType,
       entityId,
@@ -59,6 +60,7 @@ router.post('/:type/:id/tags', aiRateLimit, async (req: Request, res: Response, 
  */
 router.get('/:type/:id/tags', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const entityTaggingService = getEntityTaggingService();
     const entityType = EntityTypeEnum.parse(req.params.type);
     const { id: entityId } = req.params;
 
@@ -85,6 +87,7 @@ router.get('/:type/:id/tags', standardRateLimit, async (req: Request, res: Respo
  */
 router.delete('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const entityTaggingService = getEntityTaggingService();
     const entityType = EntityTypeEnum.parse(req.params.type);
     const { id: entityId, tagId } = req.params;
     const userId = (req as any).user.userId;
@@ -121,6 +124,7 @@ router.delete('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, 
  */
 router.patch('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const entityTaggingService = getEntityTaggingService();
     const entityType = EntityTypeEnum.parse(req.params.type);
     const { id: entityId, tagId } = req.params;
     const data = updateEntityTagSchema.parse(req.body);
@@ -174,6 +178,7 @@ router.get('/by-tag/:tagId', standardRateLimit, async (req: Request, res: Respon
       limit: limit ? parseInt(limit as string) : 20
     };
 
+    const entityTaggingService = getEntityTaggingService();
     const result = await entityTaggingService.findEntitiesByTag(
       tagId,
       entityTypes,

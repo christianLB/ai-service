@@ -14,17 +14,20 @@ export class AITaggingService implements IAITaggingService {
   private openaiService: OpenAIAnalysisService;
   private tagEmbeddings: Map<string, number[]> = new Map();
   private learningPatterns: Map<string, { correct: number; incorrect: number }> = new Map();
+  private claudeInitialized = false;
 
   constructor() {
     // Initialize AI services
     this.openaiService = new OpenAIAnalysisService();
-    // Claude is a singleton, initialize it
-    this.initializeClaudeService();
+    // Claude initialization will be done lazily when needed
   }
 
   private async initializeClaudeService() {
+    if (this.claudeInitialized) return;
+    
     try {
       await claudeAIService.initialize();
+      this.claudeInitialized = true;
       logger.info('Claude AI service initialized for tagging');
     } catch (error) {
       logger.warn('Failed to initialize Claude AI service, will use OpenAI only', error);
@@ -75,8 +78,13 @@ export class AITaggingService implements IAITaggingService {
       let aiResponse: any;
       
       try {
-        if (provider === 'claude' && claudeAIService.isReady()) {
-          aiResponse = await this.getClaudeTagSuggestions(content, entityType, metadata, availableTags);
+        if (provider === 'claude') {
+          await this.initializeClaudeService();
+          if (claudeAIService.isReady()) {
+            aiResponse = await this.getClaudeTagSuggestions(content, entityType, metadata, availableTags);
+          } else {
+            aiResponse = await this.getOpenAITagSuggestions(content, entityType, metadata, availableTags);
+          }
         } else {
           aiResponse = await this.getOpenAITagSuggestions(content, entityType, metadata, availableTags);
         }
@@ -573,6 +581,7 @@ Response format:
       technicalIndicators: tagContext
     };
 
+    await this.initializeClaudeService();
     const decision = await claudeAIService.analyzeTradingOpportunity(mockContext);
     
     if (!decision || !decision.reasoning) {

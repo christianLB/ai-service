@@ -2,9 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { batchRateLimit, standardRateLimit } from '../../middleware/rate-limit.middleware';
 import { 
-  entityTaggingService, 
-  aiTaggingService, 
-  tagService 
+  getEntityTaggingService,
+  getAITaggingService,
+  getTagService
 } from '../../services/tagging';
 import {
   batchTagRequestSchema,
@@ -31,7 +31,7 @@ router.post('/batch', batchRateLimit, async (req: Request, res: Response, next: 
     const request = batchTagRequestSchema.parse(req.body);
     const userId = (req as any).user.userId;
 
-    const result = await entityTaggingService.batchTagEntities(request, userId);
+    const result = await getEntityTaggingService().batchTagEntities(request, userId);
     res.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -57,7 +57,7 @@ router.post('/retag', batchRateLimit, async (req: Request, res: Response, next: 
     const request = reTagRequestSchema.parse(req.body);
     const userId = (req as any).user.userId;
 
-    const result = await entityTaggingService.reTagEntities(request, userId);
+    const result = await getEntityTaggingService().reTagEntities(request, userId);
     res.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -81,7 +81,7 @@ router.post('/retag', batchRateLimit, async (req: Request, res: Response, next: 
 router.post('/feedback', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const feedback = tagFeedbackSchema.parse(req.body);
-    const result = await aiTaggingService.learnFromFeedback(feedback);
+    const result = await getAITaggingService().learnFromFeedback(feedback);
     res.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -105,7 +105,7 @@ router.post('/feedback', standardRateLimit, async (req: Request, res: Response, 
 router.post('/learn', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const learning = tagLearningSchema.parse(req.body);
-    const result = await aiTaggingService.learnFromCorrection(learning);
+    const result = await getAITaggingService().learnFromCorrection(learning);
     res.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -390,7 +390,7 @@ router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, r
     const entityType = EntityTypeEnum.parse(req.params.type);
     const { id: entityId } = req.params;
 
-    const result = await entityTaggingService.discoverRelationships(entityType, entityId);
+    const result = await getEntityTaggingService().discoverRelationships(entityType, entityId);
     res.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -418,7 +418,7 @@ router.post('/suggest', standardRateLimit, async (req: Request, res: Response, n
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
     
-    const suggestions = await aiTaggingService.suggestTags(
+    const suggestions = await getAITaggingService().suggestTags(
       content,
       validEntityType,
       metadata,
@@ -458,7 +458,7 @@ router.post('/categorize', standardRateLimit, async (req: Request, res: Response
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
     
-    const result = await aiTaggingService.autoCategorize(
+    const result = await getAITaggingService().autoCategorize(
       content,
       validEntityType,
       language,
@@ -508,7 +508,7 @@ router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, nex
       EntityTypeEnum.parse(item.entityType);
     }
     
-    const results = await aiTaggingService.batchProcessTags(items, options);
+    const results = await getAITaggingService().batchProcessTags(items, options);
     
     res.json({
       success: true,
@@ -543,7 +543,7 @@ router.post('/multilingual', standardRateLimit, async (req: Request, res: Respon
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
     
-    const suggestions = await aiTaggingService.getMultilingualSuggestions(
+    const suggestions = await getAITaggingService().getMultilingualSuggestions(
       content,
       validEntityType,
       targetLanguages
@@ -582,7 +582,7 @@ router.post('/contextual', standardRateLimit, async (req: Request, res: Response
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
     
-    const suggestions = await aiTaggingService.getContextualSuggestions(
+    const suggestions = await getAITaggingService().getContextualSuggestions(
       content,
       validEntityType,
       context
@@ -616,7 +616,7 @@ router.post('/contextual', standardRateLimit, async (req: Request, res: Response
  */
 router.get('/analytics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const analytics = await aiTaggingService.getTagAnalytics();
+    const analytics = await getAITaggingService().getTagAnalytics();
     
     res.json({
       success: true,
@@ -645,7 +645,7 @@ router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Re
       return;
     }
     
-    await aiTaggingService.improveTagPatterns(
+    await getAITaggingService().improveTagPatterns(
       tagId,
       successfulExamples,
       failedExamples

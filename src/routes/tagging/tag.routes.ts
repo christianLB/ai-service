@@ -6,7 +6,7 @@ import {
   batchRateLimit, 
   searchRateLimit 
 } from '../../middleware/rate-limit.middleware';
-import { tagService } from '../../services/tagging';
+import { getTagService } from '../../services/tagging';
 import {
   createTagSchema,
   updateTagSchema,
@@ -29,6 +29,7 @@ router.use(authMiddleware);
  */
 router.get('/', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tagService = getTagService();
     const query = tagQuerySchema.parse(req.query);
     const result = await tagService.listTags(query);
     res.json(result);
@@ -53,6 +54,7 @@ router.get('/', standardRateLimit, async (req: Request, res: Response, next: Nex
  */
 router.post('/', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tagService = getTagService();
     const data = createTagSchema.parse(req.body);
     const userId = (req as any).user.userId;
     const result = await tagService.createTag(data, userId);
@@ -78,6 +80,7 @@ router.post('/', standardRateLimit, async (req: Request, res: Response, next: Ne
  */
 router.get('/search', searchRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tagService = getTagService();
     const search = tagSearchSchema.parse(req.query);
     const result = await tagService.searchTags(search);
     res.json(result);
@@ -102,6 +105,7 @@ router.get('/search', searchRateLimit, async (req: Request, res: Response, next:
  */
 router.get('/hierarchy', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tagService = getTagService();
     const { parentId } = req.query;
     const hierarchy = await tagService.getTagHierarchy(parentId as string);
     res.json({
@@ -119,6 +123,7 @@ router.get('/hierarchy', standardRateLimit, async (req: Request, res: Response, 
  */
 router.get('/:id', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tagService = getTagService();
     const { id } = req.params;
     const result = await tagService.getTag(id);
     res.json(result);
@@ -133,6 +138,7 @@ router.get('/:id', standardRateLimit, async (req: Request, res: Response, next: 
  */
 router.put('/:id', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tagService = getTagService();
     const { id } = req.params;
     const data = updateTagSchema.parse(req.body);
     const userId = (req as any).user.userId;
@@ -159,6 +165,7 @@ router.put('/:id', standardRateLimit, async (req: Request, res: Response, next: 
  */
 router.delete('/:id', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tagService = getTagService();
     const { id } = req.params;
     const options = req.query.reassignTo 
       ? deleteTagOptionsSchema.parse(req.query)
@@ -188,6 +195,7 @@ router.delete('/:id', standardRateLimit, async (req: Request, res: Response, nex
  */
 router.get('/:id/path', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tagService = getTagService();
     const { id } = req.params;
     const path = await tagService.getTagPath(id);
     res.json({
@@ -224,6 +232,7 @@ router.post('/bulk', batchRateLimit, async (req: Request, res: Response, next: N
     const validatedTags = tags.map(tag => createTagSchema.parse(tag));
     const userId = (req as any).user.userId;
     
+    const tagService = getTagService();
     const created = await tagService.bulkCreateTags(validatedTags, userId);
     res.status(201).json({
       success: true,
@@ -270,6 +279,7 @@ router.put('/bulk', batchRateLimit, async (req: Request, res: Response, next: Ne
     }));
     
     const userId = (req as any).user.userId;
+    const tagService = getTagService();
     const updated = await tagService.bulkUpdateTags(validatedUpdates, userId);
     
     res.json({
@@ -299,6 +309,7 @@ router.put('/bulk', batchRateLimit, async (req: Request, res: Response, next: Ne
 router.get('/:id/metrics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const tagId = z.string().uuid().parse(req.params.id);
+    const tagService = getTagService();
     const tag = await tagService.getTagById(tagId);
     
     if (!tag.data) {
