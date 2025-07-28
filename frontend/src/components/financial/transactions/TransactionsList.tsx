@@ -8,6 +8,8 @@ import {
   Tooltip,
   Button,
   Drawer,
+  Modal,
+  message,
 } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import {
@@ -17,9 +19,12 @@ import {
   InfoCircleOutlined,
   BankOutlined,
   TransactionOutlined,
+  DeleteOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import TransactionDetails from './TransactionDetails';
+import ImportTransactionsModal from './ImportTransactionsModal';
 
 const { Text } = Typography;
 
@@ -42,10 +47,15 @@ interface Transaction {
 interface Account {
   id: string;
   account_id: string;
-  iban?: string;
   name?: string;
-  currency?: string;
-  institution_name?: string;
+  type?: string;
+  institution?: string;
+  iban?: string;
+  currency_id?: string;
+  currencies?: {
+    code: string;
+    symbol: string;
+  };
 }
 
 interface TransactionsListProps {
@@ -53,6 +63,7 @@ interface TransactionsListProps {
   loading: boolean;
   pagination: TablePaginationConfig;
   accounts: Account[];
+  onRefresh?: () => void;
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({
@@ -60,9 +71,14 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   loading,
   pagination,
   accounts,
+  onRefresh,
 }) => {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [importModalVisible, setImportModalVisible] = useState(false);
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -113,6 +129,46 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   const handleRowClick = (record: Transaction) => {
     setSelectedTransaction(record);
     setDetailsVisible(true);
+  };
+
+  const handleDeleteClick = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setDeleteModalVisible(true);
+  };
+
+  const handleDelete = async () => {
+    if (!transactionToDelete) return;
+
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/financial/transactions/${transactionToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar la transacción');
+      }
+
+      message.success('Transacción eliminada correctamente');
+      setDeleteModalVisible(false);
+      setTransactionToDelete(null);
+      
+      // Refresh the data
+      if (onRefresh) {
+        onRefresh();
+      } else {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      message.error('Error al eliminar la transacción');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const columns: ColumnsType<Transaction> = [
@@ -169,8 +225,8 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
         return (
           <Space>
             <BankOutlined />
-            <Text ellipsis={{ tooltip: account?.institution_name }}>
-              {account?.institution_name || 'Desconocida'}
+            <Text ellipsis={{ tooltip: account?.institution }}>
+              {account?.institution || 'Desconocida'}
             </Text>
           </Space>
         );
@@ -196,20 +252,34 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
     {
       title: 'Acciones',
       key: 'actions',
-      width: 80,
+      width: 120,
       align: 'center',
       render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<InfoCircleOutlined />}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleRowClick(record);
-          }}
-        >
-          Detalles
-        </Button>
+        <Space size="small">
+          <Tooltip title="Ver detalles">
+            <Button
+              type="link"
+              size="small"
+              icon={<InfoCircleOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRowClick(record);
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Eliminar">
+            <Button
+              type="link"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteClick(record);
+              }}
+            />
+          </Tooltip>
+        </Space>
       ),
     },
   ];
@@ -223,6 +293,15 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
             <span>Lista de Transacciones</span>
             {pagination.total && <Tag>{pagination.total} transacciones</Tag>}
           </Space>
+        }
+        extra={
+          <Button
+            type="primary"
+            icon={<UploadOutlined />}
+            onClick={() => setImportModalVisible(true)}
+          >
+            Importar desde JSON
+          </Button>
         }
         bodyStyle={{ padding: 0 }}
       >
@@ -259,6 +338,50 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
           />
         )}
       </Drawer>
+
+      <Modal
+        title="Confirmar eliminación"
+        open={deleteModalVisible}
+        onOk={handleDelete}
+        onCancel={() => {
+          setDeleteModalVisible(false);
+          setTransactionToDelete(null);
+        }}
+        confirmLoading={deleting}
+        okText="Eliminar"
+        cancelText="Cancelar"
+        okButtonProps={{ danger: true }}
+      >
+        <p>¿Está seguro de que desea eliminar esta transacción?</p>
+        {transactionToDelete && (
+          <div style={{ marginTop: 16, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
+            <p><strong>Descripción:</strong> {transactionToDelete.description}</p>
+            <p><strong>Monto:</strong> {formatAmount(transactionToDelete.amount, transactionToDelete.currency)}</p>
+            <p><strong>Fecha:</strong> {dayjs(transactionToDelete.date).format('DD/MM/YYYY')}</p>
+          </div>
+        )}
+        <p style={{ marginTop: 16, color: '#ff4d4f' }}>Esta acción no se puede deshacer.</p>
+      </Modal>
+
+      <ImportTransactionsModal
+        visible={importModalVisible}
+        accounts={accounts}
+        defaultAccountId={
+          transactions.length > 0 && 
+          transactions.every(t => t.accountId === transactions[0].accountId) 
+            ? transactions[0].accountId 
+            : undefined
+        }
+        onClose={() => setImportModalVisible(false)}
+        onSuccess={() => {
+          setImportModalVisible(false);
+          if (onRefresh) {
+            onRefresh();
+          } else {
+            window.location.reload();
+          }
+        }}
+      />
 
     </>
   );

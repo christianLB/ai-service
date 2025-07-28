@@ -160,6 +160,12 @@ npm run generate:crud:auto ModelName --features list,api  # Specific features
 
 ## 🔒 Critical Safety Rules
 
+### NEVER disable functionality without explicit authorization:
+- **NEVER comment out or disable working code** → Features must remain functional
+- **NEVER use placeholder returns** → Always use actual service implementations
+- **NEVER temporarily disable endpoints** → If something needs fixing, fix it properly
+- **ALWAYS keep features enabled** → Users depend on the application working
+
 ### NEVER execute these commands:
 - `docker-compose down -v` → **DESTROYS ALL DATA**
 - `DROP SCHEMA/TABLE` → Permanent data loss

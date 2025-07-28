@@ -27,6 +27,7 @@ import NotificationSettings from './pages/NotificationSettings';
 import BankAccounts from './pages/BankAccounts';
 import Transactions from './pages/Transactions';
 import InvoiceTemplatePage from './pages/invoice-template';
+import ImportDemo from './pages/ImportDemo';
 
 // Trading routes
 import TradingDashboard from './pages/trading/TradingDashboard';
@@ -119,6 +120,9 @@ const AppComponent: React.FC = () => {
               {/* Intelligence Routes */}
               <Route path="document-intelligence" element={<DocumentIntelligence />} />
               <Route path="trading-intelligence" element={<TradingIntelligence />} />
+              
+              {/* Demo */}
+              <Route path="import-demo" element={<ImportDemo />} />
               
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

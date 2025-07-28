@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "exported_at": "2024-01-26T10:00:00Z",
+    "account": "Demo Account",
+    "total_transactions": 5,
+    "date_range": {
+      "start": "2024-01-01",
+      "end": "2024-01-25"
+    }
+  },
+  "transactions": [
+    {
+      "transaction_id": "TRX001",
+      "amount": "-150.00",
+      "currency_id": "EUR",
+      "type": "bank_transfer",
+      "status": "confirmed",
+      "description": "Pago de servicios de hosting",
+      "reference": "INV-2024-001",
+      "counterparty_name": "Digital Ocean",
+      "date": "2024-01-05"
+    },
+    {
+      "transaction_id": "TRX002",
+      "amount": "1250.00",
+      "currency_id": "EUR",
+      "type": "bank_transfer",
+      "status": "confirmed",
+      "description": "Cobro factura cliente",
+      "reference": "FAC-2024-001",
+      "counterparty_name": "Cliente ABC S.L.",
+      "date": "2024-01-10"
+    },
+    {
+      "transaction_id": "TRX003",
+      "amount": "-89.99",
+      "currency_id": "EUR",
+      "type": "card_payment",
+      "status": "confirmed",
+      "description": "Suscripción mensual software",
+      "reference": "SUB-JAN-2024",
+      "counterparty_name": "Adobe Creative Cloud",
+      "date": "2024-01-15"
+    },
+    {
+      "transaction_id": "TRX004",
+      "amount": "-450.00",
+      "currency_id": "EUR",
+      "type": "bank_transfer",
+      "status": "confirmed",
+      "description": "Pago nómina freelance",
+      "reference": "NOM-2024-01",
+      "counterparty_name": "Juan Pérez",
+      "date": "2024-01-20"
+    },
+    {
+      "transaction_id": "TRX005",
+      "amount": "2500.00",
+      "currency_id": "EUR",
+      "type": "bank_transfer",
+      "status": "confirmed",
+      "description": "Cobro proyecto desarrollo web",
+      "reference": "PROJ-2024-002",
+      "counterparty_name": "Empresa XYZ",
+      "date": "2024-01-25"
+    }
+  ]
+}

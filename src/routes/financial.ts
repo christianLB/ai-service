@@ -5,12 +5,30 @@ import { FinancialDatabaseService } from '../services/financial/database.service
 import { FinancialSchedulerService } from '../services/financial/scheduler.service';
 // import { financialReportingPrismaService } from '../services/financial/reporting-prisma.service'; // TEMPORARILY DISABLED
 // import { transactionMatchingPrismaService } from '../services/financial/transaction-matching-prisma.service';
+import { transactionManagementService } from '../services/financial/transaction-management.service';
+import { transactionImportService } from '../services/financial/transaction-import.service';
 import { Account } from '../services/financial/types';
+import { transactionImportFileSchema } from '../types/transaction-import.types';
 import clientsRoutes from './financial/clients.routes';
 import invoicesRoutes from './financial/invoices.routes';
 import invoiceTemplatesRoutes from './financial/invoice-templates.routes';
-import { createTransactionRoutes } from './financial/transactions.routes';
 import dashboardRoutes from './financial/dashboard.routes';
+import multer from 'multer';
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/json') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JSON files are allowed'));
+    }
+  }
+});
 
 const router = Router();
 
@@ -43,11 +61,6 @@ const initializeServices = () => {
     databaseService = new FinancialDatabaseService(dbConfig);
     goCardlessService = new GoCardlessService(databaseService);
     schedulerService = new FinancialSchedulerService(goCardlessService, databaseService);
-    
-    // Mount transaction routes with pool
-    if (!router.stack.some((layer: any) => layer.regexp && layer.regexp.test('/transactions'))) {
-      router.use('/transactions', createTransactionRoutes(databaseService.pool));
-    }
     // Reporting service is now a Prisma-based singleton
     // Transaction matching service is now a Prisma-based singleton
     
@@ -480,6 +493,197 @@ router.get('/transactions/:id', async (req: Request, res: Response): Promise<voi
     res.status(500).json({
       success: false,
       error: 'Failed to get transaction',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * DELETE /api/financial/transactions/:id
+ * Delete a specific transaction
+ */
+router.delete('/transactions/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const { id } = req.params;
+    const userId = (req as any).user?.userId || (req as any).userId || 'system';
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      });
+      return;
+    }
+    
+    await transactionManagementService.deleteTransaction(id, userId);
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Delete transaction failed:', error);
+    
+    if (error instanceof Error && error.message === 'Transaction not found') {
+      res.status(404).json({
+        success: false,
+        error: 'Transaction not found'
+      });
+      return;
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete transaction',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/financial/transactions/import
+ * Import transactions from JSON file
+ */
+router.post('/transactions/import', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const userId = (req as any).user?.userId || (req as any).userId || 'system';
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      });
+      return;
+    }
+    
+    // Check if file was uploaded
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        error: 'No file uploaded'
+      });
+      return;
+    }
+    
+    // Check if accountId was provided
+    const { accountId } = req.body;
+    if (!accountId) {
+      res.status(400).json({
+        success: false,
+        error: 'Account ID is required'
+      });
+      return;
+    }
+    
+    try {
+      // Parse the JSON file
+      const fileContent = req.file.buffer.toString('utf-8');
+      const jsonData = JSON.parse(fileContent);
+      
+      // Validate the JSON structure
+      const validatedData = transactionImportFileSchema.parse(jsonData);
+      
+      // Validate transaction data before import
+      const validationErrors = transactionImportService.validateTransactions(validatedData.transactions);
+      if (validationErrors.length > 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          data: {
+            errors: validationErrors
+          }
+        });
+        return;
+      }
+      
+      // Import the transactions
+      const result = await transactionImportService.importTransactions(
+        accountId,
+        validatedData.transactions,
+        userId
+      );
+      
+      res.json({
+        success: true,
+        data: {
+          ...result,
+          accountId
+        },
+        message: `Successfully imported ${result.imported} transactions`
+      });
+      
+    } catch (parseError) {
+      if (parseError instanceof SyntaxError) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid JSON file'
+        });
+        return;
+      }
+      
+      if (parseError instanceof Error && parseError.name === 'ZodError') {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid file format',
+          details: parseError.message
+        });
+        return;
+      }
+      
+      throw parseError;
+    }
+    
+  } catch (error) {
+    console.error('Import transactions failed:', error);
+    
+    if (error instanceof Error && error.message === 'Account not found') {
+      res.status(404).json({
+        success: false,
+        error: 'Account not found'
+      });
+      return;
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to import transactions',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/accounts
+ * Get user accounts for import selection
+ */
+router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
+  try {
+    initializeServices();
+    
+    const userId = (req as any).user?.userId || (req as any).userId || 'system';
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      });
+      return;
+    }
+    
+    const accounts = await transactionImportService.getUserAccounts(userId);
+    
+    res.json({
+      success: true,
+      data: accounts,
+      count: accounts.length
+    });
+    
+  } catch (error) {
+    console.error('Get accounts failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get accounts',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

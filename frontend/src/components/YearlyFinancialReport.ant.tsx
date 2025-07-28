@@ -486,19 +486,51 @@ const YearlyFinancialReport: React.FC = () => {
         )}
 
         {!loading && !error && reportData && (
-          <Table
-            columns={columns}
-            dataSource={prepareTableData()}
-            pagination={false}
-            scroll={{ x: 1500 }}
-            size="small"
-            bordered
-            rowClassName={(record) => {
-              if (record.isHeader) return 'header-row';
-              if (record.isTotal) return 'total-row';
-              return '';
-            }}
-          />
+          <>
+            {/* Check if there's no data */}
+            {reportData.categories && 
+             reportData.categories.income.length === 0 && 
+             reportData.categories.expense.length === 0 ? (
+              <Alert
+                message="No hay datos para mostrar"
+                description={
+                  <div>
+                    <p>No se encontraron transacciones categorizadas para el año {selectedYear}.</p>
+                    <p style={{ marginTop: 8 }}>
+                      Esto puede deberse a:
+                    </p>
+                    <ul style={{ marginTop: 8, marginBottom: 8 }}>
+                      <li>Las transacciones no han sido categorizadas</li>
+                      <li>No hay transacciones para este período</li>
+                      <li>Las transacciones no tienen la moneda seleccionada ({selectedCurrency})</li>
+                    </ul>
+                    <p>
+                      <strong>Acción recomendada:</strong> Dirígete a la sección de transacciones 
+                      para categorizar las transacciones existentes o importar nuevas transacciones.
+                    </p>
+                  </div>
+                }
+                type="warning"
+                showIcon
+                icon={<BankOutlined />}
+                style={{ marginBottom: 16 }}
+              />
+            ) : (
+              <Table
+                columns={columns}
+                dataSource={prepareTableData()}
+                pagination={false}
+                scroll={{ x: 1500 }}
+                size="small"
+                bordered
+                rowClassName={(record) => {
+                  if (record.isHeader) return 'header-row';
+                  if (record.isTotal) return 'total-row';
+                  return '';
+                }}
+              />
+            )}
+          </>
         )}
       </Card>
       

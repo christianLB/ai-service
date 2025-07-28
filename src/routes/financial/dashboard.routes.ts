@@ -842,14 +842,16 @@ router.get('/yearly-report', authMiddleware, async (req: Request, res: Response)
     } = req.query;
 
     // Import reporting service
-    // const { financialReportingPrismaService } = await import('../../services/financial/reporting-prisma.service'); // TEMPORARILY DISABLED
+    const { FinancialReportingService } = await import('../../services/financial/reporting.service');
+    
+    // Create reporting service instance with database pool
+    const reportingService = new FinancialReportingService(databaseService.pool);
     
     // Get yearly report
-    // const yearlyReport = await financialReportingPrismaService.getYearlyFinancialReport( // TEMPORARILY DISABLED
-    //   parseInt(year as string), 
-    //   currency as string
-    // ); // TEMPORARILY DISABLED
-    const yearlyReport: any = {}; // PLACEHOLDER
+    const yearlyReport = await reportingService.getYearlyFinancialReport(
+      parseInt(year as string), 
+      currency as string
+    );
 
     res.json({
       success: true,
