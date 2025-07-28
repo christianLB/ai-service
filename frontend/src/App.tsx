@@ -40,6 +40,7 @@ import TradingSettings from './pages/trading/Settings';
 // Intelligence routes
 import DocumentIntelligence from './pages/DocumentIntelligence';
 import TradingIntelligence from './pages/TradingIntelligence';
+import TaggingIntelligence from './pages/TaggingIntelligence';
 
 import './App.css';
 
@@ -120,6 +121,7 @@ const AppComponent: React.FC = () => {
               {/* Intelligence Routes */}
               <Route path="document-intelligence" element={<DocumentIntelligence />} />
               <Route path="trading-intelligence" element={<TradingIntelligence />} />
+              <Route path="tagging-intelligence" element={<TaggingIntelligence />} />
               
               {/* Demo */}
               <Route path="import-demo" element={<ImportDemo />} />

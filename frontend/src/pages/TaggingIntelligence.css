@@ -1,0 +1,421 @@
+.tagging-intelligence-page {
+  min-height: 100vh;
+  background: #fff;
+}
+
+.hero-section {
+  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  position: relative;
+  overflow: hidden;
+  color: white;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: rotate 45s linear infinite;
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: -20%;
+  right: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%);
+  animation: rotate 60s linear infinite reverse;
+}
+
+.hero-section .ant-typography {
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.metric-card {
+  background: rgba(255,255,255,0.95);
+  border: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Card animations */
+.ant-card {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.ant-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* Timeline styling */
+.ant-timeline-item-content .ant-card {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.ant-timeline-item-content .ant-card:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* Tab styling */
+.ant-tabs-tab {
+  font-size: 16px;
+  padding: 12px 16px;
+}
+
+.ant-tabs-tab-active {
+  font-weight: 600;
+}
+
+/* Progress bar styling */
+.ant-progress-inner {
+  background: #f0f2f5;
+}
+
+/* Table styling */
+.ant-table-small .ant-table-cell {
+  padding: 8px 12px;
+}
+
+/* Alert styling */
+.ant-alert {
+  border-radius: 8px;
+}
+
+/* Modal styling */
+.ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Responsive charts */
+.recharts-wrapper {
+  margin: 0 auto;
+}
+
+/* Pre code blocks */
+pre {
+  margin: 0;
+  font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Statistic value animation */
+.ant-statistic-content-value {
+  font-weight: 600;
+}
+
+/* Badge ribbon */
+.ant-ribbon-wrapper {
+  position: relative;
+}
+
+/* Dark section cards */
+section[style*="background: #001529"] .ant-card {
+  transition: all 0.3s ease;
+}
+
+section[style*="background: #001529"] .ant-card:hover {
+  background: rgba(255,255,255,0.15) !important;
+  transform: translateY(-4px);
+}
+
+/* Tag styling */
+.ant-tag {
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+/* List item hover */
+.ant-list-item {
+  transition: all 0.2s ease;
+}
+
+.ant-list-item:hover {
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.6s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pulse animation for live indicators */
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Architecture diagram styling */
+.tagging-intelligence-page pre {
+  background: #f6f6f6;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 24px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.4;
+  font-family: 'Consolas', 'Monaco', 'Andale Mono', monospace;
+}
+
+/* Radar chart customization */
+.recharts-polar-grid-angle line {
+  stroke: #e8e8e8;
+}
+
+.recharts-polar-grid-concentric circle {
+  stroke: #e8e8e8;
+  fill: none;
+}
+
+/* Tooltip styling */
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+.recharts-default-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #e8e8e8 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}
+
+/* Collapse panel styling */
+.ant-collapse > .ant-collapse-item > .ant-collapse-header {
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.ant-collapse-content > .ant-collapse-content-box {
+  padding: 24px;
+}
+
+/* Feature cards gradient borders */
+.tagging-intelligence-page .ant-card:hover {
+  position: relative;
+}
+
+.tagging-intelligence-page .ant-card:hover::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #52c41a, #389e0d);
+  border-radius: 10px;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tagging-intelligence-page .ant-card:hover::before {
+  opacity: 0.1;
+}
+
+/* Demo modal styling */
+.ant-modal-body .ant-input-textarea {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+}
+
+/* CTA Section styling */
+section[style*="background: linear-gradient"] {
+  position: relative;
+  overflow: hidden;
+}
+
+section[style*="background: linear-gradient"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Method cards styling */
+.tagging-intelligence-page .ant-card-actions {
+  background: #fafafa;
+  border-top: 1px solid #f0f0f0;
+}
+
+.tagging-intelligence-page .ant-card-meta-avatar {
+  margin-right: 16px;
+}
+
+/* Learning system progress bars */
+.tagging-intelligence-page .ant-progress-success .ant-progress-bg {
+  background: #52c41a;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-section h1.ant-typography {
+    font-size: 28px;
+  }
+  
+  .hero-section h2.ant-typography {
+    font-size: 18px;
+  }
+  
+  .metric-card .ant-statistic-title {
+    font-size: 12px;
+  }
+  
+  .metric-card .ant-statistic-content {
+    font-size: 20px;
+  }
+  
+  pre {
+    font-size: 11px;
+    padding: 16px;
+  }
+  
+  .ant-timeline-item-content {
+    padding: 0;
+  }
+  
+  .ant-card-meta-avatar {
+    display: none;
+  }
+  
+  .recharts-wrapper {
+    margin-left: -20px;
+  }
+  
+  .ant-tabs-tab {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .tagging-intelligence-page {
+    background: white;
+  }
+  
+  .hero-section {
+    background: none;
+    color: black;
+    padding: 20px 0;
+  }
+  
+  .hero-section .ant-typography {
+    color: black;
+  }
+  
+  .ant-card {
+    box-shadow: none;
+    border: 1px solid #d9d9d9;
+  }
+  
+  pre {
+    border: 1px solid #d9d9d9;
+    page-break-inside: avoid;
+  }
+}
+
+/* Loading animation for metrics */
+.metric-card .ant-statistic-content {
+  position: relative;
+}
+
+.metric-card .ant-statistic-content::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: currentColor;
+  transition: width 1.5s ease;
+}
+
+.metric-card:hover .ant-statistic-content::after {
+  width: 100%;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+.tagging-intelligence-page ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.tagging-intelligence-page ::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.tagging-intelligence-page ::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.tagging-intelligence-page ::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

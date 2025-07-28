@@ -23,6 +23,7 @@ import {
   BarChartOutlined,
   BulbOutlined,
   ThunderboltOutlined,
+  TagsOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -133,6 +134,11 @@ const AppLayout: React.FC = () => {
           key: '/trading-intelligence',
           icon: <ThunderboltOutlined />,
           label: 'Trading Intelligence',
+        },
+        {
+          key: '/tagging-intelligence',
+          icon: <TagsOutlined />,
+          label: 'AI Universal Tagging',
         },
       ],
     },
