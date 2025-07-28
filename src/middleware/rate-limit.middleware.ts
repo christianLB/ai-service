@@ -45,7 +45,7 @@ const redisClient = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : n
 Object.entries(rateLimitConfigs).forEach(([key, config]) => {
   if (redisClient) {
     rateLimiters[key] = new RateLimiterRedis({
-      client: redisClient,
+      storeClient: redisClient,
       keyPrefix: `rl:${key}:`,
       points: config.points,
       duration: config.duration,

@@ -14,7 +14,7 @@ export const tagPatternsSchema = z.object({
   customRules: z.record(z.any()).optional()
 });
 
-// Base Tag schema
+// Base Tag schema (matches UniversalTag model)
 export const tagSchema = z.object({
   id: z.string().uuid().optional(),
   code: z.string()
@@ -23,34 +23,44 @@ export const tagSchema = z.object({
   name: z.string().min(1, 'Tag name is required'),
   description: z.string().optional().nullable(),
   entityTypes: z.array(EntityTypeEnum).min(1, 'At least one entity type is required'),
-  parentId: z.string().uuid().optional().nullable(),
   patterns: tagPatternsSchema.optional().nullable(),
-  confidence: z.number().min(0).max(1).optional(),
-  usageCount: z.number().int().min(0).default(0),
+  rules: z.record(z.any()).optional().nullable(),
+  confidence: z.number().min(0).max(1).default(0.5),
+  embeddingModel: z.string().max(50).optional().nullable(),
+  parentId: z.string().uuid().optional().nullable(),
+  path: z.string(),
+  level: z.number().int().min(0).default(0),
+  color: z.string().max(7).optional().nullable(),
+  icon: z.string().max(50).optional().nullable(),
   isActive: z.boolean().default(true),
+  isSystem: z.boolean().default(false),
   metadata: z.record(z.any()).optional().nullable(),
+  usageCount: z.number().int().min(0).default(0),
+  successRate: z.number().min(0).max(1).default(0.0),
+  lastUsed: z.date().optional().nullable(),
   createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
-  createdBy: z.string().optional(),
-  updatedBy: z.string().optional()
+  updatedAt: z.date().optional()
 });
 
 // Create tag schema
 export const createTagSchema = tagSchema.omit({
   id: true,
+  path: true, // Generated based on parent
+  level: true, // Calculated based on parent
   usageCount: true,
+  successRate: true,
+  lastUsed: true,
   createdAt: true,
-  updatedAt: true,
-  createdBy: true,
-  updatedBy: true
+  updatedAt: true
 });
 
 // Update tag schema
 export const updateTagSchema = tagSchema.partial().omit({
   id: true,
   code: true, // Code cannot be changed
-  createdAt: true,
-  createdBy: true
+  path: true, // Generated based on parent
+  level: true, // Calculated based on parent
+  createdAt: true
 });
 
 // Tag query schema

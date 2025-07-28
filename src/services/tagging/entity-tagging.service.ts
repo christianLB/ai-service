@@ -1,5 +1,7 @@
+import { injectable, inject } from 'inversify';
 import { prisma } from '../../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { TAGGING_SERVICE_IDENTIFIERS } from './identifiers';
 import {
   EntityType,
   TagEntityRequest,
@@ -22,10 +24,11 @@ import { IEntityTaggingService, IAITaggingService, IPatternMatchingService } fro
 import { EntityNotFoundError, TagNotFoundError, handleTaggingError } from './errors';
 import logger from '../../utils/logger';
 
+@injectable()
 export class EntityTaggingService implements IEntityTaggingService {
   constructor(
-    private aiTaggingService: IAITaggingService,
-    private patternMatchingService: IPatternMatchingService
+    @inject(TAGGING_SERVICE_IDENTIFIERS.AITaggingService) private aiTaggingService: IAITaggingService,
+    @inject(TAGGING_SERVICE_IDENTIFIERS.PatternMatchingService) private patternMatchingService: IPatternMatchingService
   ) {}
 
   /**
@@ -129,10 +132,7 @@ export class EntityTaggingService implements IEntityTaggingService {
                 confidence: suggestion.confidence,
                 method: suggestion.method,
                 appliedBy: userId,
-                metadata: {
-                  aiProvider: request.options?.aiProvider,
-                  timestamp: new Date().toISOString()
-                }
+                aiProvider: request.options?.aiProvider
               },
               include: {
                 tag: true
@@ -142,9 +142,12 @@ export class EntityTaggingService implements IEntityTaggingService {
             tags.push(entityTag);
 
             // Update tag usage count
-            await tx.tag.update({
+            await tx.universalTag.update({
               where: { id: suggestion.tagId },
-              data: { usageCount: { increment: 1 } }
+              data: { 
+                usageCount: { increment: 1 },
+                lastUsed: new Date()
+              }
             });
           } else {
             // Update confidence if new one is higher
@@ -153,12 +156,7 @@ export class EntityTaggingService implements IEntityTaggingService {
                 where: { id: existing.id },
                 data: {
                   confidence: suggestion.confidence,
-                  method: suggestion.method,
-                  metadata: {
-                    ...((existing.metadata as any) || {}),
-                    lastUpdated: new Date().toISOString(),
-                    updatedBy: userId
-                  }
+                  method: suggestion.method
                 },
                 include: {
                   tag: true
@@ -260,7 +258,7 @@ export class EntityTaggingService implements IEntityTaggingService {
         });
 
         // Decrement tag usage count
-        await tx.tag.update({
+        await tx.universalTag.update({
           where: { id: tagId },
           data: { usageCount: { decrement: 1 } }
         });
@@ -304,11 +302,8 @@ export class EntityTaggingService implements IEntityTaggingService {
             verifiedBy: userId,
             verifiedAt: new Date()
           }),
-          metadata: {
-            ...((entityTag.metadata as any) || {}),
-            lastUpdated: new Date().toISOString(),
-            updatedBy: userId
-          }
+          verifiedBy: data.isVerified ? userId : entityTag.verifiedBy,
+          verifiedAt: data.isVerified ? new Date() : entityTag.verifiedAt
         },
         include: { tag: true }
       });
@@ -362,7 +357,7 @@ export class EntityTaggingService implements IEntityTaggingService {
           entity.type,
           entity.id,
           {
-            method: request.options?.method || 'auto',
+            method: 'auto',
             options: request.options
           },
           userId
@@ -474,8 +469,10 @@ export class EntityTaggingService implements IEntityTaggingService {
                 id
               })),
               options: {
-                method: request.options.method,
-                forceReTag: true
+                forceReTag: true,
+                confidenceThreshold: 0.7,
+                maxTags: 5,
+                includeRelated: false
               }
             },
             userId
@@ -528,7 +525,7 @@ export class EntityTaggingService implements IEntityTaggingService {
     pagination?: { page: number; limit: number }
   ): Promise<FindEntitiesByTagResponse> {
     try {
-      const tag = await prisma.tag.findUnique({
+      const tag = await prisma.universalTag.findUnique({
         where: { id: tagId }
       });
 
@@ -551,7 +548,7 @@ export class EntityTaggingService implements IEntityTaggingService {
           where,
           skip: (page - 1) * limit,
           take: limit,
-          orderBy: { appliedAt: 'desc' }
+          orderBy: { createdAt: 'desc' }
         }),
         prisma.entityTag.count({ where })
       ]);
@@ -564,7 +561,7 @@ export class EntityTaggingService implements IEntityTaggingService {
             type: et.entityType as EntityType,
             id: et.entityId,
             preview: this.getEntityPreview(entity, et.entityType as EntityType),
-            taggedAt: et.appliedAt.toISOString(),
+            taggedAt: et.createdAt.toISOString(),
             confidence: et.confidence
           };
         })
@@ -604,7 +601,14 @@ export class EntityTaggingService implements IEntityTaggingService {
       // In a real implementation, this would analyze entity content,
       // metadata, and patterns to discover relationships
 
-      const relationships = [];
+      const relationships: Array<{
+        targetType: EntityType;
+        targetId: string;
+        relationshipType: string;
+        confidence: number;
+        discoveredBy: string;
+        metadata?: Record<string, any>;
+      }> = [];
 
       // Example: Find related entities through shared tags
       const entityTags = await prisma.entityTag.findMany({
@@ -686,9 +690,11 @@ export class EntityTaggingService implements IEntityTaggingService {
   private async getEntity(type: EntityType, id: string): Promise<any> {
     switch (type) {
       case 'transaction':
-        return prisma.transaction.findUnique({ where: { id } });
+        return prisma.transactions.findUnique({ where: { id } });
       case 'document':
-        return prisma.document.findUnique({ where: { id } });
+        // Document model doesn't exist yet, return null for now
+        // TODO: Implement when document management is added
+        return null;
       case 'client':
         return prisma.client.findUnique({ where: { id } });
       case 'invoice':
@@ -701,13 +707,14 @@ export class EntityTaggingService implements IEntityTaggingService {
   private extractEntityContent(entity: any, type: EntityType): string {
     switch (type) {
       case 'transaction':
-        return `${entity.description || ''} ${entity.counterpartyName || ''} ${entity.reference || ''}`.trim();
+        return `${entity.description || ''} ${entity.counterparty_name || ''} ${entity.reference || ''}`.trim();
       case 'document':
-        return entity.content || entity.extractedText || '';
+        // Document model doesn't exist yet
+        return '';
       case 'client':
-        return `${entity.name} ${entity.description || ''}`.trim();
+        return `${entity.name} ${entity.company || ''}`.trim();
       case 'invoice':
-        return `${entity.description || ''} ${entity.notes || ''}`.trim();
+        return `${entity.invoiceNumber || ''} ${entity.description || ''}`.trim();
       default:
         return '';
     }
@@ -718,27 +725,28 @@ export class EntityTaggingService implements IEntityTaggingService {
       case 'transaction':
         return {
           amount: entity.amount,
-          currency: entity.currency,
+          currencyId: entity.currency_id,
           date: entity.date,
-          accountId: entity.accountId
+          accountId: entity.account_id,
+          type: entity.type,
+          status: entity.status
         };
       case 'document':
-        return {
-          format: entity.format,
-          size: entity.size,
-          uploadedAt: entity.uploadedAt
-        };
+        // Document model doesn't exist yet
+        return {};
       case 'client':
         return {
-          country: entity.country,
-          currency: entity.defaultCurrency
+          vatNumber: entity.vatNumber,
+          email: entity.email,
+          taxId: entity.taxId
         };
       case 'invoice':
         return {
-          amount: entity.total,
+          amount: entity.amount,
           currency: entity.currency,
           status: entity.status,
-          clientId: entity.clientId
+          clientId: entity.clientId,
+          dueDate: entity.dueDate
         };
       default:
         return {};
@@ -750,9 +758,10 @@ export class EntityTaggingService implements IEntityTaggingService {
 
     switch (type) {
       case 'transaction':
-        return entity.counterpartyName || entity.description || 'Transaction';
+        return entity.counterparty_name || entity.description || 'Transaction';
       case 'document':
-        return entity.name || entity.filename || 'Document';
+        // Document model doesn't exist yet
+        return 'Document';
       case 'client':
         return entity.name || 'Client';
       case 'invoice':
@@ -793,12 +802,11 @@ export class EntityTaggingService implements IEntityTaggingService {
       tagName: entityTag.tag.name,
       confidence: entityTag.confidence,
       method: entityTag.method as TagMethod,
-      appliedAt: entityTag.appliedAt,
+      appliedAt: entityTag.createdAt,
       appliedBy: entityTag.appliedBy,
       isVerified: entityTag.isVerified,
       verifiedBy: entityTag.verifiedBy,
       verifiedAt: entityTag.verifiedAt,
-      metadata: entityTag.metadata
     };
   }
 

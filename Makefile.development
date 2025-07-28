@@ -289,12 +289,23 @@ dev-auth-create-admin: ## Crear/resetear usuario admin (admin@ai-service.local /
 .PHONY: dev-auth-get-token
 dev-auth-get-token: ## Obtener token JWT para usuario admin
 	@echo "$(BLUE)🔑 Obteniendo token para admin@ai-service.local...$(NC)"
-	@docker cp scripts/get-admin-token.js ai-service-api-dev:/app/get-admin-token.js
-	@docker cp scripts/get-admin-token.js ai-service-api-dev:/app/get-admin-token.js
-	@docker cp .env.local ai-service-api-dev:/app/.env.local
-	@docker exec ai-service-api-dev npm install --no-save dotenv
-	@docker exec ai-service-api-dev node /app/get-admin-token.js
-	@docker exec ai-service-api-dev rm /app/get-admin-token.js /app/.env.local
+	@docker exec ai-service-api-dev curl -s -X POST http://localhost:3001/api/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"email":"admin@ai-service.local","password":"admin123"}' | \
+		grep -o '"accessToken":"[^"]*' | cut -d'"' -f4 | \
+		sed 's/^/Token: /'
+
+.PHONY: dev-test-tagging
+dev-test-tagging: ## Test Universal AI Tagging System endpoints
+	@docker cp scripts/test-tagging.sh ai-service-api-dev:/tmp/test-tagging.sh
+	@docker exec ai-service-api-dev sh /tmp/test-tagging.sh
+	@docker exec ai-service-api-dev rm /tmp/test-tagging.sh || true
+
+.PHONY: dev-test-entity-tagging
+dev-test-entity-tagging: ## Test entity tagging functionality
+	@docker cp scripts/test-entity-tagging.sh ai-service-api-dev:/tmp/test-entity-tagging.sh
+	@docker exec ai-service-api-dev sh /tmp/test-entity-tagging.sh
+	@docker exec ai-service-api-dev rm /tmp/test-entity-tagging.sh || true
 
 .PHONY: dev-auth-unblock-ip
 dev-auth-unblock-ip: ## Desbloquear una IP específica

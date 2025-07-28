@@ -110,6 +110,31 @@
       }
     }
   },
+  "intelligentMakeIntegration": {
+    "enabled": true,
+    "autoAnalyzeIntents": true,
+    "confidenceThresholds": {
+      "autoExecute": 0.9,
+      "suggest": 0.6,
+      "showOptions": 0.3
+    },
+    "safeCommands": ["dev-status", "db-migrate-status", "check-db", "health", "trading-status", "mcp-status", "auth-token"],
+    "dangerousCommands": ["db-reset", "dev-down", "production-deploy"],
+    "workflowPatterns": {
+      "database": ["dev-status", "check-db", "db-migrate-status", "db-backup", "db-migrate"],
+      "trading": ["dev-status", "trading-status", "trading-up"],
+      "quality": ["test", "typecheck", "lint", "health"],
+      "deployment": ["test", "health", "db-backup", "deploy"]
+    },
+    "naturalLanguageMappings": {
+      "start": ["dev-up"],
+      "status": ["dev-status"], 
+      "test": ["test"],
+      "deploy": ["health", "test", "deploy"],
+      "database": ["db-migrate-status", "check-db"],
+      "trading": ["trading-status"]
+    }
+  },
   "customCommands": {
     "/db-safe": {
       "description": "Safe database operations with automatic backup",

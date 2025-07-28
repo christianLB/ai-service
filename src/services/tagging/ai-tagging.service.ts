@@ -1,3 +1,4 @@
+import { injectable } from 'inversify';
 import { prisma } from '../../lib/prisma';
 import { EntityType, TagFeedback, TagLearning } from '../../types/tagging/tag.types';
 import { FeedbackResponse, LearningResponse } from '../../types/tagging/response.types';
@@ -5,19 +6,29 @@ import { IAITaggingService } from './interfaces';
 import { AIProviderError, handleTaggingError } from './errors';
 import logger from '../../utils/logger';
 import crypto from 'crypto';
+import { claudeAIService, TradingContext } from '../ai/claude.service';
+import { OpenAIAnalysisService } from '../document-intelligence/openai-analysis.service';
 
-// Import AI providers (these would be your actual AI service implementations)
-// import { ClaudeService } from '../ai/claude.service';
-// import { OpenAIService } from '../ai/openai.service';
-
+@injectable()
 export class AITaggingService implements IAITaggingService {
-  // private claudeService: ClaudeService;
-  // private openaiService: OpenAIService;
+  private openaiService: OpenAIAnalysisService;
+  private tagEmbeddings: Map<string, number[]> = new Map();
+  private learningPatterns: Map<string, { correct: number; incorrect: number }> = new Map();
 
   constructor() {
     // Initialize AI services
-    // this.claudeService = new ClaudeService();
-    // this.openaiService = new OpenAIService();
+    this.openaiService = new OpenAIAnalysisService();
+    // Claude is a singleton, initialize it
+    this.initializeClaudeService();
+  }
+
+  private async initializeClaudeService() {
+    try {
+      await claudeAIService.initialize();
+      logger.info('Claude AI service initialized for tagging');
+    } catch (error) {
+      logger.warn('Failed to initialize Claude AI service, will use OpenAI only', error);
+    }
   }
 
   /**
@@ -39,7 +50,7 @@ export class AITaggingService implements IAITaggingService {
       const threshold = options?.confidenceThreshold || 0.7;
 
       // Get available tags for the entity type
-      const availableTags = await prisma.tag.findMany({
+      const availableTags = await prisma.universalTag.findMany({
         where: {
           isActive: true,
           entityTypes: { has: entityType }
@@ -64,17 +75,15 @@ export class AITaggingService implements IAITaggingService {
       let aiResponse: any;
       
       try {
-        if (provider === 'claude') {
-          // aiResponse = await this.claudeService.complete(prompt);
-          // For now, mock the response
-          aiResponse = await this.mockAIResponse(content, availableTags, maxTags);
+        if (provider === 'claude' && claudeAIService.isReady()) {
+          aiResponse = await this.getClaudeTagSuggestions(content, entityType, metadata, availableTags);
         } else {
-          // aiResponse = await this.openaiService.complete(prompt);
-          // For now, mock the response
-          aiResponse = await this.mockAIResponse(content, availableTags, maxTags);
+          aiResponse = await this.getOpenAITagSuggestions(content, entityType, metadata, availableTags);
         }
       } catch (error: any) {
-        throw new AIProviderError(provider, error.message);
+        logger.warn(`Failed to get AI suggestions from ${provider}, falling back to pattern matching`, error);
+        // Fallback to pattern-based matching
+        aiResponse = await this.patternBasedTagging(content, availableTags, maxTags);
       }
 
       // Parse AI response and map to tag IDs
@@ -105,19 +114,17 @@ export class AITaggingService implements IAITaggingService {
    */
   async learnFromFeedback(feedback: TagFeedback): Promise<FeedbackResponse> {
     try {
-      // Store feedback for pattern learning
-      await prisma.tagFeedback.create({
-        data: {
-          entityType: feedback.entityType,
-          entityId: feedback.entityId,
-          entityTagId: feedback.entityTagId,
-          isCorrect: feedback.feedback.isCorrect,
-          suggestedTagId: feedback.feedback.suggestedTagId,
-          reason: feedback.feedback.reason,
-          confidence: feedback.feedback.confidence,
-          createdAt: new Date()
-        }
-      });
+      // Update learning patterns
+      const patternKey = `${feedback.entityType}-${feedback.entityTagId}`;
+      const pattern = this.learningPatterns.get(patternKey) || { correct: 0, incorrect: 0 };
+      
+      if (feedback.feedback.isCorrect) {
+        pattern.correct++;
+      } else {
+        pattern.incorrect++;
+      }
+      
+      this.learningPatterns.set(patternKey, pattern);
 
       // Update tag confidence based on feedback
       if (!feedback.feedback.isCorrect && feedback.feedback.suggestedTagId) {
@@ -171,7 +178,7 @@ export class AITaggingService implements IAITaggingService {
       // Adjust confidence for the previous tag if provided
       if (learning.previousTagId) {
         // Decrease pattern confidence for incorrect tag
-        const previousTag = await prisma.tag.findUnique({
+        const previousTag = await prisma.universalTag.findUnique({
           where: { id: learning.previousTagId }
         });
 
@@ -181,17 +188,19 @@ export class AITaggingService implements IAITaggingService {
         }
       }
 
-      // Record the learning event
-      await prisma.tagLearningEvent.create({
-        data: {
-          entityType: learning.entityType,
-          entityId: learning.entityId,
-          correctTagId: learning.correctTagId,
-          previousTagId: learning.previousTagId,
-          context: learning.context as any,
-          createdAt: new Date()
-        }
-      });
+      // Record the learning event in patterns
+      const learningKey = `${learning.entityType}-${learning.correctTagId}`;
+      const pattern = this.learningPatterns.get(learningKey) || { correct: 0, incorrect: 0 };
+      pattern.correct++;
+      this.learningPatterns.set(learningKey, pattern);
+      
+      // Also track incorrect patterns if previous tag exists
+      if (learning.previousTagId) {
+        const incorrectKey = `${learning.entityType}-${learning.previousTagId}`;
+        const incorrectPattern = this.learningPatterns.get(incorrectKey) || { correct: 0, incorrect: 0 };
+        incorrectPattern.incorrect++;
+        this.learningPatterns.set(incorrectKey, incorrectPattern);
+      }
 
       logger.info('Tag learning processed', {
         entityType: learning.entityType,
@@ -217,7 +226,7 @@ export class AITaggingService implements IAITaggingService {
    */
   async updateTagPatterns(tagId: string, entityExamples: string[]): Promise<void> {
     try {
-      const tag = await prisma.tag.findUnique({
+      const tag = await prisma.universalTag.findUnique({
         where: { id: tagId }
       });
 
@@ -239,7 +248,7 @@ export class AITaggingService implements IAITaggingService {
       };
 
       // Update tag patterns
-      await prisma.tag.update({
+      await prisma.universalTag.update({
         where: { id: tagId },
         data: {
           patterns: updatedPatterns as any
@@ -263,7 +272,7 @@ export class AITaggingService implements IAITaggingService {
     content: string
   ): Promise<{ matches: boolean; confidence: number }> {
     try {
-      const tag = await prisma.tag.findUnique({
+      const tag = await prisma.universalTag.findUnique({
         where: { id: tagId }
       });
 
@@ -411,9 +420,95 @@ Response format:
     entityType: EntityType,
     entityId: string
   ): Promise<{ content: string; metadata: Record<string, any> } | null> {
-    // This would fetch actual entity content based on type
-    // For now, returning null
-    return null;
+    try {
+      switch (entityType) {
+        case 'transaction': {
+          const transaction = await prisma.bankTransaction.findUnique({
+            where: { id: entityId }
+          });
+          if (!transaction) return null;
+          
+          return {
+            content: transaction.description || '',
+            metadata: {
+              amount: transaction.amount,
+              date: transaction.transactionDate,
+              merchantName: transaction.merchantName,
+              category: transaction.transactionCategory
+            }
+          };
+        }
+        
+        case 'client': {
+          const client = await prisma.client.findUnique({
+            where: { id: entityId }
+          });
+          if (!client) return null;
+          
+          return {
+            content: `${client.name} ${client.businessName || ''} ${client.industry || ''}`,
+            metadata: {
+              type: client.type,
+              industry: client.industry,
+              country: client.country,
+              language: client.language
+            }
+          };
+        }
+        
+        case 'invoice': {
+          const invoice = await prisma.invoice.findUnique({
+            where: { id: entityId },
+            include: { invoiceItems: true }
+          });
+          if (!invoice) return null;
+          
+          const items = invoice.invoiceItems.map(i => i.description).join(' ');
+          return {
+            content: `${invoice.description || ''} ${items}`,
+            metadata: {
+              amount: invoice.totalAmount,
+              currency: invoice.currency,
+              date: invoice.issueDate,
+              clientId: invoice.clientId
+            }
+          };
+        }
+        
+        case 'document': {
+          // For documents, we'd need to fetch from document service
+          // Placeholder for now
+          return {
+            content: `Document ${entityId}`,
+            metadata: {}
+          };
+        }
+        
+        case 'expense': {
+          // Expenses might be stored as transactions with specific categories
+          const expense = await prisma.bankTransaction.findUnique({
+            where: { id: entityId }
+          });
+          if (!expense) return null;
+          
+          return {
+            content: expense.description || '',
+            metadata: {
+              amount: expense.amount,
+              date: expense.transactionDate,
+              category: expense.transactionCategory,
+              merchantName: expense.merchantName
+            }
+          };
+        }
+        
+        default:
+          return null;
+      }
+    } catch (error) {
+      logger.error(`Failed to fetch entity content for ${entityType}:${entityId}`, error);
+      return null;
+    }
   }
 
   private extractPatterns(examples: string[]): any {
@@ -460,6 +555,673 @@ Response format:
   private isCommonWord(word: string): boolean {
     const commonWords = ['the', 'and', 'for', 'with', 'from', 'this', 'that'];
     return commonWords.includes(word);
+  }
+
+  // AI Provider Methods
+
+  private async getClaudeTagSuggestions(
+    content: string,
+    entityType: EntityType,
+    metadata: Record<string, any> | undefined,
+    availableTags: any[]
+  ): Promise<any> {
+    // Use a custom analysis method for tagging
+    const tagContext = {
+      content,
+      entityType,
+      metadata,
+      availableTags: availableTags.map(t => ({
+        code: t.code,
+        name: t.name,
+        description: t.description
+      }))
+    };
+
+    // Create a trading-like context to use the existing Claude service method
+    const mockContext = {
+      symbol: 'TAG_ANALYSIS',
+      exchange: 'internal',
+      currentPrice: 0,
+      priceChange24h: 0,
+      volume24h: 0,
+      volatility: 0,
+      orderBook: { bidDepth: 0, askDepth: 0, spread: 0 },
+      technicalIndicators: tagContext
+    };
+
+    const decision = await claudeAIService.analyzeTradingOpportunity(mockContext);
+    
+    if (!decision || !decision.reasoning) {
+      throw new Error('No response from Claude');
+    }
+
+    // Parse the reasoning to extract tag suggestions
+    try {
+      // Claude's response might include JSON in the reasoning
+      const jsonMatch = decision.reasoning.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      
+      // Fallback: create suggestions from the decision
+      return this.parseClaudeDecisionToTags(decision, availableTags);
+    } catch (error) {
+      logger.error('Failed to parse Claude response for tagging', error);
+      return [];
+    }
+  }
+
+  private parseClaudeDecisionToTags(decision: any, availableTags: any[]): any[] {
+    // Extract tag codes mentioned in the reasoning
+    const reasoning = decision.reasoning.toLowerCase();
+    const suggestions = [];
+
+    for (const tag of availableTags) {
+      if (reasoning.includes(tag.code.toLowerCase()) || 
+          reasoning.includes(tag.name.toLowerCase())) {
+        suggestions.push({
+          code: tag.code,
+          confidence: decision.confidence || 0.7,
+          reasoning: `Mentioned in analysis: ${tag.name}`
+        });
+      }
+    }
+
+    return suggestions.slice(0, 5);
+  }
+
+  private async getOpenAITagSuggestions(
+    content: string,
+    entityType: EntityType,
+    metadata: Record<string, any> | undefined,
+    availableTags: any[]
+  ): Promise<any> {
+    // Generate embeddings for content and tags
+    const contentEmbedding = await this.getOrCreateEmbedding(content);
+    
+    // Get or create embeddings for all tags
+    const tagSimilarities = await Promise.all(
+      availableTags.map(async (tag) => {
+        const tagText = `${tag.name} ${tag.description || ''} ${tag.patterns?.keywords?.join(' ') || ''}`;
+        const tagEmbedding = await this.getOrCreateEmbedding(`${tag.id}-${tagText}`, tagText);
+        
+        // Calculate cosine similarity
+        const similarity = this.cosineSimilarity(contentEmbedding, tagEmbedding);
+        
+        // Get pattern score
+        const patternScore = await this.testTagPattern(tag.id, content);
+        
+        // Get learning score
+        const learningScore = this.getLearningScore(entityType, tag.id);
+        
+        // Combined confidence (weighted average)
+        const confidence = (similarity * 0.5) + (patternScore.confidence * 0.3) + (learningScore * 0.2);
+        
+        return {
+          code: tag.code,
+          confidence,
+          reasoning: `Semantic similarity: ${(similarity * 100).toFixed(0)}%, Pattern match: ${(patternScore.confidence * 100).toFixed(0)}%, Learning score: ${(learningScore * 100).toFixed(0)}%`
+        };
+      })
+    );
+
+    // Sort by confidence and return top results
+    return tagSimilarities
+      .filter(s => s.confidence > 0.3)
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 5);
+  }
+
+  private async getOrCreateEmbedding(key: string, text?: string): Promise<number[]> {
+    // Check cache first
+    if (this.tagEmbeddings.has(key)) {
+      return this.tagEmbeddings.get(key)!;
+    }
+
+    // Generate embedding
+    const embedding = await this.openaiService.generateEmbedding(text || key);
+    
+    // Cache it
+    this.tagEmbeddings.set(key, embedding);
+    
+    return embedding;
+  }
+
+  private cosineSimilarity(a: number[], b: number[]): number {
+    if (a.length !== b.length) return 0;
+    
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    
+    for (let i = 0; i < a.length; i++) {
+      dotProduct += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    
+    normA = Math.sqrt(normA);
+    normB = Math.sqrt(normB);
+    
+    if (normA === 0 || normB === 0) return 0;
+    
+    return dotProduct / (normA * normB);
+  }
+
+  private getLearningScore(entityType: EntityType, tagId: string): number {
+    const key = `${entityType}-${tagId}`;
+    const pattern = this.learningPatterns.get(key);
+    
+    if (!pattern) return 0.5; // Neutral score if no learning data
+    
+    const total = pattern.correct + pattern.incorrect;
+    if (total === 0) return 0.5;
+    
+    // Calculate confidence based on correct/incorrect ratio
+    const accuracy = pattern.correct / total;
+    
+    // Weight by total observations (more data = more confidence)
+    const weight = Math.min(1, total / 10); // Cap at 10 observations
+    
+    // Return weighted accuracy
+    return 0.5 + (accuracy - 0.5) * weight;
+  }
+
+  private buildClaudePrompt(
+    content: string,
+    entityType: EntityType,
+    metadata: Record<string, any> | undefined,
+    availableTags: any[]
+  ): string {
+    const tagList = availableTags.map(t => 
+      `- ${t.code}: ${t.name}${t.description ? ` (${t.description})` : ''}`
+    ).join('\n');
+
+    let contextInfo = '';
+    if (metadata) {
+      if (metadata.amount) contextInfo += `\nAmount: ${metadata.amount}`;
+      if (metadata.date) contextInfo += `\nDate: ${metadata.date}`;
+      if (metadata.category) contextInfo += `\nCategory: ${metadata.category}`;
+      if (metadata.language) contextInfo += `\nLanguage: ${metadata.language}`;
+    }
+
+    return `Analyze this ${entityType} content and suggest the most appropriate tags.
+
+Content: "${content}"${contextInfo}
+
+Available Tags:
+${tagList}
+
+Consider:
+1. Semantic meaning and context
+2. Keywords and patterns
+3. Entity type relevance
+4. Multi-language understanding if applicable
+
+Return up to 5 most relevant tags with confidence scores.`;
+  }
+
+  private async patternBasedTagging(
+    content: string,
+    availableTags: any[],
+    maxTags: number
+  ): Promise<any[]> {
+    const suggestions = [];
+
+    for (const tag of availableTags) {
+      const patternResult = await this.testTagPattern(tag.id, content);
+      const learningScore = this.getLearningScore('transaction', tag.id); // Default to transaction
+      
+      if (patternResult.matches || learningScore > 0.6) {
+        suggestions.push({
+          code: tag.code,
+          confidence: Math.max(patternResult.confidence, learningScore),
+          reasoning: `Pattern-based matching: ${(patternResult.confidence * 100).toFixed(0)}%, Historical accuracy: ${(learningScore * 100).toFixed(0)}%`
+        });
+      }
+    }
+
+    // Sort by confidence and limit
+    return suggestions
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, maxTags);
+  }
+
+  /**
+   * Batch process multiple items for AI tagging
+   */
+  async batchProcessTags(
+    items: Array<{
+      id: string;
+      content: string;
+      entityType: EntityType;
+      metadata?: Record<string, any>;
+    }>,
+    options?: {
+      provider?: 'claude' | 'openai';
+      batchSize?: number;
+      onProgress?: (processed: number, total: number) => void;
+    }
+  ): Promise<Array<{
+    id: string;
+    suggestions: Array<{ tagId: string; confidence: number; reasoning?: string }>;
+    error?: string;
+  }>> {
+    const batchSize = options?.batchSize || 10;
+    const results = [];
+
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      
+      // Process batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (item) => {
+          try {
+            const suggestions = await this.suggestTags(
+              item.content,
+              item.entityType,
+              item.metadata,
+              { provider: options?.provider }
+            );
+            
+            return {
+              id: item.id,
+              suggestions
+            };
+          } catch (error: any) {
+            return {
+              id: item.id,
+              suggestions: [],
+              error: error.message
+            };
+          }
+        })
+      );
+
+      results.push(...batchResults);
+
+      // Report progress
+      if (options?.onProgress) {
+        options.onProgress(Math.min(i + batchSize, items.length), items.length);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Auto-categorize content based on AI analysis
+   */
+  async autoCategorize(
+    content: string,
+    entityType: EntityType,
+    options?: {
+      language?: string;
+      context?: Record<string, any>;
+    }
+  ): Promise<{
+    primaryCategory: string;
+    subCategories: string[];
+    confidence: number;
+    suggestedTags: Array<{ tagId: string; confidence: number }>;
+  }> {
+    try {
+      // Detect language if not provided
+      const language = options?.language || await this.detectLanguage(content);
+      
+      // Get all categories from tags
+      const tags = await prisma.universalTag.findMany({
+        where: {
+          isActive: true,
+          entityTypes: { has: entityType }
+        }
+      });
+
+      // Group tags by category
+      const categories = new Map<string, any[]>();
+      tags.forEach(tag => {
+        const category = tag.category || 'uncategorized';
+        if (!categories.has(category)) {
+          categories.set(category, []);
+        }
+        categories.get(category)!.push(tag);
+      });
+
+      // Get AI suggestions
+      const suggestions = await this.suggestTags(content, entityType, {
+        ...options?.context,
+        language
+      });
+
+      // Determine primary category based on suggestions
+      const categoryScores = new Map<string, number>();
+      suggestions.forEach(suggestion => {
+        const tag = tags.find(t => t.id === suggestion.tagId);
+        if (tag) {
+          const category = tag.category || 'uncategorized';
+          const currentScore = categoryScores.get(category) || 0;
+          categoryScores.set(category, currentScore + suggestion.confidence);
+        }
+      });
+
+      // Sort categories by score
+      const sortedCategories = Array.from(categoryScores.entries())
+        .sort((a, b) => b[1] - a[1]);
+
+      const primaryCategory = sortedCategories[0]?.[0] || 'uncategorized';
+      const subCategories = sortedCategories.slice(1, 4).map(c => c[0]);
+      const confidence = sortedCategories[0]?.[1] || 0;
+
+      return {
+        primaryCategory,
+        subCategories,
+        confidence: Math.min(1, confidence),
+        suggestedTags: suggestions
+      };
+    } catch (error) {
+      throw handleTaggingError(error);
+    }
+  }
+
+  /**
+   * Detect language of content
+   */
+  private async detectLanguage(content: string): Promise<string> {
+    try {
+      // Use OpenAI to detect language
+      const prompt = `Detect the language of this text and return only the ISO 639-1 language code (e.g., 'en', 'es', 'fr'): "${content.substring(0, 200)}"`;
+      
+      // This would use OpenAI's completion API
+      // For now, simple detection based on common words
+      const lowerContent = content.toLowerCase();
+      
+      if (lowerContent.includes('the') || lowerContent.includes('and') || lowerContent.includes('for')) {
+        return 'en';
+      } else if (lowerContent.includes('el') || lowerContent.includes('la') || lowerContent.includes('de')) {
+        return 'es';
+      } else if (lowerContent.includes('le') || lowerContent.includes('de') || lowerContent.includes('et')) {
+        return 'fr';
+      }
+      
+      return 'en'; // Default to English
+    } catch (error) {
+      logger.warn('Failed to detect language, defaulting to English', error);
+      return 'en';
+    }
+  }
+
+  /**
+   * Get multi-language tag suggestions
+   */
+  async getMultilingualSuggestions(
+    content: string,
+    entityType: EntityType,
+    targetLanguages: string[] = ['en', 'es', 'fr']
+  ): Promise<Map<string, Array<{ tagId: string; confidence: number; translation?: string }>>> {
+    const results = new Map();
+
+    for (const lang of targetLanguages) {
+      try {
+        // Get suggestions in target language
+        const suggestions = await this.suggestTags(content, entityType, {
+          language: lang
+        });
+
+        // Add translations if needed
+        const enhancedSuggestions = await Promise.all(
+          suggestions.map(async (suggestion) => {
+            const tag = await prisma.universalTag.findUnique({
+              where: { id: suggestion.tagId }
+            });
+
+            if (tag && tag.translations && tag.translations[lang]) {
+              return {
+                ...suggestion,
+                translation: tag.translations[lang]
+              };
+            }
+
+            return suggestion;
+          })
+        );
+
+        results.set(lang, enhancedSuggestions);
+      } catch (error) {
+        logger.warn(`Failed to get suggestions for language ${lang}`, error);
+        results.set(lang, []);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Improve tag patterns based on successful applications
+   */
+  async improveTagPatterns(
+    tagId: string,
+    successfulExamples: string[],
+    failedExamples: string[] = []
+  ): Promise<void> {
+    try {
+      const tag = await prisma.universalTag.findUnique({
+        where: { id: tagId }
+      });
+
+      if (!tag) {
+        throw new Error('Tag not found');
+      }
+
+      // Extract positive patterns from successful examples
+      const positivePatterns = this.extractPatterns(successfulExamples);
+      
+      // Extract negative patterns from failed examples
+      const negativePatterns = failedExamples.length > 0 
+        ? this.extractPatterns(failedExamples)
+        : { keywords: [], merchants: [] };
+
+      // Update patterns with positive/negative reinforcement
+      const existingPatterns = (tag.patterns as any) || {};
+      const updatedPatterns = {
+        ...existingPatterns,
+        keywords: this.refineKeywords(
+          existingPatterns.keywords || [],
+          positivePatterns.keywords,
+          negativePatterns.keywords
+        ),
+        merchants: this.refineMerchants(
+          existingPatterns.merchants || [],
+          positivePatterns.merchants,
+          negativePatterns.merchants
+        ),
+        positiveExamples: [
+          ...(existingPatterns.positiveExamples || []),
+          ...successfulExamples.slice(0, 5)
+        ].slice(-20), // Keep last 20 examples
+        negativeExamples: [
+          ...(existingPatterns.negativeExamples || []),
+          ...failedExamples.slice(0, 5)
+        ].slice(-10), // Keep last 10 negative examples
+        confidence: this.calculatePatternConfidence(
+          successfulExamples.length,
+          failedExamples.length,
+          existingPatterns.confidence || 0.5
+        ),
+        lastImproved: new Date().toISOString()
+      };
+
+      await prisma.universalTag.update({
+        where: { id: tagId },
+        data: {
+          patterns: updatedPatterns as any
+        }
+      });
+
+      logger.info('Tag patterns improved', {
+        tagId,
+        positiveExamples: successfulExamples.length,
+        negativeExamples: failedExamples.length,
+        newConfidence: updatedPatterns.confidence
+      });
+    } catch (error) {
+      throw handleTaggingError(error);
+    }
+  }
+
+  private refineKeywords(
+    existing: string[],
+    positive: string[],
+    negative: string[]
+  ): string[] {
+    // Add positive keywords
+    const refined = new Set(existing);
+    positive.forEach(k => refined.add(k));
+    
+    // Remove keywords that appear in negative examples
+    negative.forEach(k => refined.delete(k));
+    
+    return Array.from(refined);
+  }
+
+  private refineMerchants(
+    existing: string[],
+    positive: string[],
+    negative: string[]
+  ): string[] {
+    const refined = new Set(existing);
+    positive.forEach(m => refined.add(m));
+    negative.forEach(m => refined.delete(m));
+    return Array.from(refined);
+  }
+
+  private calculatePatternConfidence(
+    successCount: number,
+    failureCount: number,
+    currentConfidence: number
+  ): number {
+    const total = successCount + failureCount;
+    if (total === 0) return currentConfidence;
+    
+    const successRate = successCount / total;
+    const weight = Math.min(1, total / 20); // More examples = more weight
+    
+    // Weighted average of current confidence and new success rate
+    const newConfidence = (currentConfidence * (1 - weight)) + (successRate * weight);
+    
+    return Math.round(newConfidence * 100) / 100;
+  }
+
+  /**
+   * Get contextual tag suggestions based on related entities
+   */
+  async getContextualSuggestions(
+    content: string,
+    entityType: EntityType,
+    context: {
+      relatedClientId?: string;
+      relatedTransactionIds?: string[];
+      historicalTags?: string[];
+      userPreferences?: Record<string, any>;
+    }
+  ): Promise<Array<{ tagId: string; confidence: number; reasoning?: string }>> {
+    try {
+      // Get base suggestions
+      const baseSuggestions = await this.suggestTags(content, entityType);
+      
+      // Enhance with contextual information
+      const contextualScores = new Map<string, number>();
+
+      // Check historical tags used for similar entities
+      if (context.historicalTags && context.historicalTags.length > 0) {
+        for (const tagId of context.historicalTags) {
+          const currentScore = contextualScores.get(tagId) || 0;
+          contextualScores.set(tagId, currentScore + 0.2); // Historical usage boost
+        }
+      }
+
+      // Check tags used by related client
+      if (context.relatedClientId) {
+        const clientTags = await prisma.entityTag.findMany({
+          where: {
+            entityType: 'client',
+            entityId: context.relatedClientId
+          },
+          select: { tagId: true }
+        });
+
+        clientTags.forEach(ct => {
+          const currentScore = contextualScores.get(ct.tagId) || 0;
+          contextualScores.set(ct.tagId, currentScore + 0.15); // Client preference boost
+        });
+      }
+
+      // Merge base suggestions with contextual scores
+      const enhancedSuggestions = baseSuggestions.map(suggestion => {
+        const contextBoost = contextualScores.get(suggestion.tagId) || 0;
+        return {
+          ...suggestion,
+          confidence: Math.min(1, suggestion.confidence + contextBoost),
+          reasoning: contextBoost > 0 
+            ? `${suggestion.reasoning || ''} (Context boost: +${(contextBoost * 100).toFixed(0)}%)`
+            : suggestion.reasoning
+        };
+      });
+
+      // Sort by enhanced confidence
+      enhancedSuggestions.sort((a, b) => b.confidence - a.confidence);
+
+      return enhancedSuggestions;
+    } catch (error) {
+      throw handleTaggingError(error);
+    }
+  }
+
+  /**
+   * Get tag suggestion analytics
+   */
+  async getTagAnalytics(): Promise<{
+    totalSuggestions: number;
+    accuracyByTag: Array<{ tagId: string; tagCode: string; accuracy: number; total: number }>;
+    providerPerformance: { claude: number; openai: number; pattern: number };
+    averageConfidence: number;
+  }> {
+    // Get all tags
+    const tags = await prisma.universalTag.findMany({
+      where: { isActive: true }
+    });
+
+    // Calculate accuracy for each tag
+    const accuracyByTag = tags.map(tag => {
+      const key = `transaction-${tag.id}`; // Assuming transaction entity type
+      const pattern = this.learningPatterns.get(key) || { correct: 0, incorrect: 0 };
+      const total = pattern.correct + pattern.incorrect;
+      const accuracy = total > 0 ? pattern.correct / total : 0;
+
+      return {
+        tagId: tag.id,
+        tagCode: tag.code,
+        accuracy,
+        total
+      };
+    }).filter(t => t.total > 0)
+      .sort((a, b) => b.accuracy - a.accuracy);
+
+    // Calculate average confidence from recent suggestions
+    const totalPatterns = Array.from(this.learningPatterns.values());
+    const totalObservations = totalPatterns.reduce((sum, p) => sum + p.correct + p.incorrect, 0);
+    const totalCorrect = totalPatterns.reduce((sum, p) => sum + p.correct, 0);
+    const averageConfidence = totalObservations > 0 ? totalCorrect / totalObservations : 0;
+
+    return {
+      totalSuggestions: totalObservations,
+      accuracyByTag: accuracyByTag.slice(0, 20), // Top 20
+      providerPerformance: {
+        claude: 0.85, // Placeholder - would track actual performance
+        openai: 0.82, // Placeholder - would track actual performance
+        pattern: averageConfidence
+      },
+      averageConfidence
+    };
   }
 }
 

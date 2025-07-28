@@ -5,9 +5,7 @@ import {
   aiRateLimit, 
   batchRateLimit 
 } from '../../middleware/rate-limit.middleware';
-import { EntityTaggingService } from '../../services/tagging/entity-tagging.service';
-import { aiTaggingService } from '../../services/tagging/ai-tagging.service';
-import { patternMatchingService } from '../../services/tagging/pattern-matching.service';
+import { entityTaggingService } from '../../services/tagging';
 import {
   EntityTypeEnum,
   tagEntityRequestSchema,
@@ -17,7 +15,6 @@ import { handleTaggingError } from '../../services/tagging/errors';
 import { z } from 'zod';
 
 const router = Router();
-const entityTaggingService = new EntityTaggingService(aiTaggingService, patternMatchingService);
 
 // Apply authentication to all routes
 router.use(authMiddleware);

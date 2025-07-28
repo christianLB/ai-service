@@ -6,7 +6,7 @@ import {
   batchRateLimit, 
   searchRateLimit 
 } from '../../middleware/rate-limit.middleware';
-import { tagService } from '../../services/tagging/tag.service';
+import { tagService } from '../../services/tagging';
 import {
   createTagSchema,
   updateTagSchema,
@@ -16,6 +16,7 @@ import {
 } from '../../types/tagging/tag.types';
 import { handleTaggingError } from '../../services/tagging/errors';
 import { z } from 'zod';
+import { prisma } from '../../lib/prisma';
 
 const router = Router();
 
@@ -282,6 +283,63 @@ router.put('/bulk', batchRateLimit, async (req: Request, res: Response, next: Ne
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Invalid update data',
+          details: error.errors
+        }
+      });
+      return;
+    }
+    next(handleTaggingError(error));
+  }
+});
+
+/**
+ * GET /api/tags/:id/metrics
+ * Get metrics for a specific tag
+ */
+router.get('/:id/metrics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const tagId = z.string().uuid().parse(req.params.id);
+    const tag = await tagService.getTagById(tagId);
+    
+    if (!tag.data) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Tag not found'
+        }
+      });
+      return;
+    }
+
+    // Get metrics from the tag
+    const metrics = {
+      tagId: tag.data.id,
+      tagCode: tag.data.code,
+      tagName: tag.data.name,
+      usageCount: tag.data.usageCount || 0,
+      successRate: tag.data.successRate || 0,
+      lastUsed: tag.data.lastUsed,
+      confidence: tag.data.confidence || 0.5,
+      entityCount: await prisma.entityTag.count({
+        where: { tagId }
+      }),
+      accuracyMetrics: {
+        totalTagged: tag.data.usageCount || 0,
+        correctlyTagged: Math.floor((tag.data.usageCount || 0) * (tag.data.successRate || 0)),
+        accuracy: tag.data.successRate || 0
+      }
+    };
+
+    res.json({
+      success: true,
+      data: metrics
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid tag ID',
           details: error.errors
         }
       });

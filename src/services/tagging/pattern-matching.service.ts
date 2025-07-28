@@ -1,3 +1,4 @@
+import { injectable } from 'inversify';
 import { prisma } from '../../lib/prisma';
 import { EntityType } from '../../types/tagging/tag.types';
 import { IPatternMatchingService } from './interfaces';
@@ -5,6 +6,7 @@ import { handleTaggingError } from './errors';
 import logger from '../../utils/logger';
 import crypto from 'crypto';
 
+@injectable()
 export class PatternMatchingService implements IPatternMatchingService {
   private patternCache: Map<string, Array<{ tagId: string; confidence: number }>> = new Map();
   private cacheTimeout = 300000; // 5 minutes
@@ -29,11 +31,11 @@ export class PatternMatchingService implements IPatternMatchingService {
       }
 
       // Get active tags with patterns for this entity type
-      const tagsWithPatterns = await prisma.tag.findMany({
+      const tagsWithPatterns = await prisma.universalTag.findMany({
         where: {
           isActive: true,
           entityTypes: { has: entityType },
-          patterns: { not: null }
+          patterns: { not: { equals: null } }
         }
       });
 
@@ -96,11 +98,11 @@ export class PatternMatchingService implements IPatternMatchingService {
   ): Promise<Map<string, Array<{ tagId: string; confidence: number }>>> {
     try {
       // Get all relevant tags once
-      const tagsWithPatterns = await prisma.tag.findMany({
+      const tagsWithPatterns = await prisma.universalTag.findMany({
         where: {
           isActive: true,
           entityTypes: { has: entityType },
-          patterns: { not: null }
+          patterns: { not: { equals: null } }
         }
       });
 
@@ -328,10 +330,9 @@ export class PatternMatchingService implements IPatternMatchingService {
     // Limit cache size
     if (this.patternCache.size > 1000) {
       const firstKey = this.patternCache.keys().next().value;
-      this.patternCache.delete(firstKey);
+      if (firstKey !== undefined) {
+        this.patternCache.delete(firstKey);
+      }
     }
   }
 }
-
-// Export singleton instance
-export const patternMatchingService = new PatternMatchingService();

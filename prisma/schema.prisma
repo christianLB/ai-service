@@ -7,7 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["financial", "public", "trading"]
+  schemas  = ["financial", "public", "trading", "tagging"]
 }
 
 model accounts {
@@ -737,4 +737,326 @@ model Payment {
   @@index([transactionId])
   @@map("payments")
   @@schema("trading")
+}
+
+// ==========================================
+// UNIVERSAL AI TAGGING SYSTEM SCHEMA
+// ==========================================
+
+model UniversalTag {
+  id               String              @id @default(uuid())
+  code             String              @unique @db.VarChar(100)
+  name             String              @db.VarChar(255)
+  description      String?
+  entityTypes      String[]            @map("entity_types")
+  
+  // Flexible pattern storage
+  patterns         Json?
+  rules            Json?
+  
+  // AI/ML fields
+  confidence       Float               @default(0.5)
+  embeddingModel   String?             @map("embedding_model") @db.VarChar(50)
+  
+  // Hierarchy
+  parentId         String?             @map("parent_id") @db.Uuid
+  path             String              @db.Text
+  level            Int                 @default(0)
+  
+  // Metadata
+  color            String?             @db.VarChar(7)
+  icon             String?             @db.VarChar(50)
+  isActive         Boolean             @default(true) @map("is_active")
+  isSystem         Boolean             @default(false) @map("is_system")
+  metadata         Json?
+  
+  // Usage tracking
+  usageCount       Int                 @default(0) @map("usage_count")
+  successRate      Float               @default(0.0) @map("success_rate")
+  lastUsed         DateTime?           @map("last_used") @db.Timestamptz(6)
+  
+  // Timestamps
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  parent           UniversalTag?       @relation("TagHierarchy", fields: [parentId], references: [id])
+  children         UniversalTag[]      @relation("TagHierarchy")
+  entityTags       EntityTag[]
+  tagPatterns      TagPattern[]
+  aiModels         TagAIModel[]
+  metrics          TagMetrics[]
+  
+  @@index([code])
+  @@index([parentId])
+  @@index([path])
+  @@index([isActive])
+  @@map("universal_tags")
+  @@schema("tagging")
+}
+
+model EntityTag {
+  id               String              @id @default(uuid())
+  tagId            String              @map("tag_id") @db.Uuid
+  entityType       String              @map("entity_type") @db.VarChar(50)
+  entityId         String              @map("entity_id") @db.VarChar(255)
+  
+  // Tagging metadata
+  method           String              @db.VarChar(20) // AI, PATTERN, RULE, MANUAL, INFERRED
+  confidence       Float               @default(0.5)
+  appliedBy        String?             @map("applied_by") @db.VarChar(255)
+  
+  // AI analysis results
+  aiProvider       String?             @map("ai_provider") @db.VarChar(50)
+  aiModel          String?             @map("ai_model") @db.VarChar(100)
+  aiResponse       Json?               @map("ai_response")
+  aiReasoning      String?             @map("ai_reasoning") @db.Text
+  
+  // User feedback
+  isVerified       Boolean             @default(false) @map("is_verified")
+  verifiedBy       String?             @map("verified_by") @db.VarChar(255)
+  verifiedAt       DateTime?           @map("verified_at") @db.Timestamptz(6)
+  feedback         String?             @db.Text
+  isCorrect        Boolean?            @map("is_correct")
+  
+  // Cross-entity relationships
+  sourceEntityType String?             @map("source_entity_type") @db.VarChar(50)
+  sourceEntityId   String?             @map("source_entity_id") @db.VarChar(255)
+  relationshipType String?             @map("relationship_type") @db.VarChar(50)
+  
+  // Timestamps
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  tag              UniversalTag        @relation(fields: [tagId], references: [id])
+  auditLogs        TaggingAuditLog[]
+  
+  @@unique([entityType, entityId, tagId])
+  @@index([entityType, entityId])
+  @@index([tagId])
+  @@index([confidence])
+  @@index([method])
+  @@index([isVerified])
+  @@index([createdAt])
+  @@map("entity_tags")
+  @@schema("tagging")
+}
+
+model TagPattern {
+  id               String              @id @default(uuid())
+  tagId            String              @map("tag_id") @db.Uuid
+  
+  patternType      String              @map("pattern_type") @db.VarChar(20) // KEYWORD, REGEX, SEMANTIC, NUMERIC, DATE, COMPOSITE
+  pattern          Json
+  weight           Float               @default(1.0)
+  minConfidence    Float               @default(0.5) @map("min_confidence")
+  
+  // Performance tracking
+  matchCount       Int                 @default(0) @map("match_count")
+  successCount     Int                 @default(0) @map("success_count")
+  accuracy         Float               @default(0.0)
+  
+  isActive         Boolean             @default(true) @map("is_active")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  tag              UniversalTag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@index([tagId, patternType])
+  @@index([isActive])
+  @@map("tag_patterns")
+  @@schema("tagging")
+}
+
+model EntityRelationship {
+  id               String              @id @default(uuid())
+  
+  // Source entity
+  sourceType       String              @map("source_type") @db.VarChar(50)
+  sourceId         String              @map("source_id") @db.VarChar(255)
+  
+  // Target entity
+  targetType       String              @map("target_type") @db.VarChar(50)
+  targetId         String              @map("target_id") @db.VarChar(255)
+  
+  // Relationship details
+  relationshipType String              @map("relationship_type") @db.VarChar(50)
+  confidence       Float
+  discoveredBy     String              @map("discovered_by") @db.VarChar(20) // AI, PATTERN, USER, SYSTEM
+  metadata         Json?
+  
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  @@unique([sourceType, sourceId, targetType, targetId, relationshipType])
+  @@index([sourceType, sourceId])
+  @@index([targetType, targetId])
+  @@index([relationshipType])
+  @@map("entity_relationships")
+  @@schema("tagging")
+}
+
+model TaggingAuditLog {
+  id               String              @id @default(uuid())
+  
+  // Operation details
+  operation        String              @db.VarChar(50)
+  entityType       String              @map("entity_type") @db.VarChar(50)
+  entityId         String              @map("entity_id") @db.VarChar(255)
+  entityTagId      String?             @map("entity_tag_id") @db.Uuid
+  
+  // Change details
+  previousTags     Json?               @map("previous_tags")
+  newTags          Json?               @map("new_tags")
+  changes          Json?
+  
+  // Context
+  method           String?             @db.VarChar(20)
+  userId           String?             @map("user_id") @db.VarChar(255)
+  userEmail        String?             @map("user_email") @db.VarChar(255)
+  ipAddress        String?             @map("ip_address") @db.Inet
+  userAgent        String?             @map("user_agent") @db.Text
+  
+  // Results
+  success          Boolean
+  errorMessage     String?             @map("error_message") @db.Text
+  processingTimeMs Int?                @map("processing_time_ms")
+  
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  // Relations
+  entityTag        EntityTag?          @relation(fields: [entityTagId], references: [id], onDelete: SetNull)
+  
+  @@index([entityType, entityId])
+  @@index([operation])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("tagging_audit_log")
+  @@schema("tagging")
+}
+
+model TagLearningFeedback {
+  id               String              @id @default(uuid())
+  
+  // Entity reference
+  entityType       String              @map("entity_type") @db.VarChar(50)
+  entityId         String              @map("entity_id") @db.VarChar(255)
+  entityTagId      String?             @map("entity_tag_id") @db.Uuid
+  
+  // Feedback details
+  originalTagId    String?             @map("original_tag_id") @db.Uuid
+  suggestedTagId   String?             @map("suggested_tag_id") @db.Uuid
+  isCorrect        Boolean             @map("is_correct")
+  confidenceImpact Float?              @map("confidence_impact")
+  
+  // User info
+  userId           String              @map("user_id") @db.VarChar(255)
+  userRole         String?             @map("user_role") @db.VarChar(50)
+  feedbackText     String?             @map("feedback_text") @db.Text
+  
+  // Processing
+  isProcessed      Boolean             @default(false) @map("is_processed")
+  processedAt      DateTime?           @map("processed_at") @db.Timestamptz(6)
+  appliedChanges   Json?               @map("applied_changes")
+  
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  @@index([entityType, entityId])
+  @@index([isProcessed])
+  @@index([createdAt])
+  @@map("tag_learning_feedback")
+  @@schema("tagging")
+}
+
+model TagMetrics {
+  id               String              @id @default(uuid())
+  tagId            String              @map("tag_id") @db.Uuid
+  
+  // Time period
+  periodStart      DateTime            @map("period_start") @db.Date
+  periodEnd        DateTime            @map("period_end") @db.Date
+  periodType       String              @map("period_type") @db.VarChar(20) // DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
+  
+  // Usage metrics
+  usageCount       Int                 @default(0) @map("usage_count")
+  uniqueEntities   Int                 @default(0) @map("unique_entities")
+  
+  // Accuracy metrics
+  verifiedCount    Int                 @default(0) @map("verified_count")
+  correctCount     Int                 @default(0) @map("correct_count")
+  accuracyRate     Float?              @map("accuracy_rate")
+  
+  // Performance metrics
+  avgConfidence    Float?              @map("avg_confidence")
+  avgProcessingMs  Float?              @map("avg_processing_time_ms")
+  
+  // Method breakdown
+  aiCount          Int                 @default(0) @map("ai_count")
+  patternCount     Int                 @default(0) @map("pattern_count")
+  manualCount      Int                 @default(0) @map("manual_count")
+  
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  // Relations
+  tag              UniversalTag        @relation(fields: [tagId], references: [id])
+  
+  @@unique([tagId, periodStart, periodType])
+  @@index([tagId])
+  @@index([periodStart, periodType])
+  @@map("tag_metrics")
+  @@schema("tagging")
+}
+
+model TagAIModel {
+  id               String              @id @default(uuid())
+  tagId            String              @map("tag_id") @db.Uuid
+  
+  provider         String              @db.VarChar(50) // openai, anthropic, local
+  modelName        String              @map("model_name") @db.VarChar(100)
+  modelVersion     String              @map("model_version") @db.VarChar(50)
+  
+  // Configuration
+  config           Json?
+  minConfidence    Float               @default(0.7) @map("min_confidence")
+  
+  // Performance tracking
+  totalPredictions Int                 @default(0) @map("total_predictions")
+  successRate      Float               @default(0.0) @map("success_rate")
+  avgLatencyMs     Float?              @map("avg_latency_ms")
+  
+  isActive         Boolean             @default(true) @map("is_active")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  tag              UniversalTag        @relation(fields: [tagId], references: [id])
+  
+  @@index([tagId])
+  @@index([provider])
+  @@index([isActive])
+  @@map("tag_ai_models")
+  @@schema("tagging")
+}
+
+model TagImportJob {
+  id               String              @id @default(uuid())
+  jobType          String              @map("job_type") @db.VarChar(20) // csv, api, migration
+  status           String              @default("pending") @db.VarChar(20) // pending, processing, completed, failed
+  config           Json
+  totalRecords     Int?                @map("total_records")
+  processedRecords Int                 @default(0) @map("processed_records")
+  successCount     Int                 @default(0) @map("success_count")
+  errorCount       Int                 @default(0) @map("error_count")
+  errors           Json?
+  startedAt        DateTime?           @map("started_at") @db.Timestamptz(6)
+  completedAt      DateTime?           @map("completed_at") @db.Timestamptz(6)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String              @map("created_by") @db.VarChar(255)
+  
+  @@index([status])
+  @@index([jobType])
+  @@index([createdAt])
+  @@map("tag_import_jobs")
+  @@schema("tagging")
 }

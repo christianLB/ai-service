@@ -5,7 +5,7 @@ export const ToolSchema = z.object({
   name: z.string(),
   description: z.string(),
   parameters: z.record(z.any()).optional().default({}),
-  category: z.enum(['financial', 'documents', 'system', 'trading']),
+  category: z.enum(['financial', 'documents', 'system', 'trading', 'development', 'database', 'quality', 'deployment', 'mcp', 'utility', 'information', 'validation', 'monitoring', 'intelligence']),
   requiresAuth: z.boolean().optional().default(true),
 });
 

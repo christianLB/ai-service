@@ -19,6 +19,7 @@ import {
   TagResponse,
   TagListResponse,
   TagSearchResponse,
+  EntityTagResponse,
   EntityTagsResponse,
   TagEntityResponse,
   BatchTagResponse,
@@ -37,7 +38,7 @@ export interface ITagService {
   createTag(data: CreateTag, userId: string): Promise<TagResponse>;
   getTag(tagId: string): Promise<TagResponse>;
   updateTag(tagId: string, data: UpdateTag, userId: string): Promise<TagResponse>;
-  deleteTag(tagId: string, options?: DeleteTagOptions, userId: string): Promise<void>;
+  deleteTag(tagId: string, options: DeleteTagOptions | undefined, userId: string): Promise<void>;
   listTags(query: TagQuery): Promise<TagListResponse>;
   searchTags(search: TagSearch): Promise<TagSearchResponse>;
   

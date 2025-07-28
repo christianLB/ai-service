@@ -1,5 +1,6 @@
+import { injectable } from 'inversify';
 import { prisma } from '../../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, UniversalTag as PrismaUniversalTag, EntityTag as PrismaEntityTag } from '@prisma/client';
 import {
   Tag,
   CreateTag,
@@ -11,7 +12,8 @@ import {
 import {
   TagResponse,
   TagListResponse,
-  TagSearchResponse
+  TagSearchResponse,
+  TagWithPath
 } from '../../types/tagging/response.types';
 import { ITagService } from './interfaces';
 import {
@@ -22,6 +24,7 @@ import {
 } from './errors';
 import logger from '../../utils/logger';
 
+@injectable()
 export class TagService implements ITagService {
   /**
    * Create a new tag
@@ -29,7 +32,7 @@ export class TagService implements ITagService {
   async createTag(data: CreateTag, userId: string): Promise<TagResponse> {
     try {
       // Check if tag code already exists
-      const existing = await prisma.tag.findUnique({
+      const existing = await prisma.universalTag.findUnique({
         where: { code: data.code }
       });
 
@@ -39,7 +42,7 @@ export class TagService implements ITagService {
 
       // Validate parent if provided
       if (data.parentId) {
-        const parent = await prisma.tag.findUnique({
+        const parent = await prisma.universalTag.findUnique({
           where: { id: data.parentId }
         });
 
@@ -49,7 +52,7 @@ export class TagService implements ITagService {
 
         // Check if entity types are compatible
         const commonTypes = data.entityTypes.filter(type => 
-          (parent.entityTypes as string[]).includes(type)
+          parent.entityTypes.includes(type)
         );
 
         if (commonTypes.length === 0) {
@@ -60,19 +63,37 @@ export class TagService implements ITagService {
         }
       }
 
+      // Calculate path and level based on parent
+      let path = '/';
+      let level = 0;
+      
+      if (data.parentId) {
+        const parent = await prisma.universalTag.findUnique({
+          where: { id: data.parentId }
+        });
+        
+        if (parent) {
+          path = parent.path === '/' ? `/${parent.code}` : `${parent.path}/${parent.code}`;
+          level = parent.level + 1;
+        }
+      }
+
       // Create the tag
-      const tag = await prisma.tag.create({
+      const tag = await prisma.universalTag.create({
         data: {
           ...data,
           entityTypes: data.entityTypes,
           patterns: data.patterns as any,
+          rules: data.rules as any,
           metadata: data.metadata as any,
-          createdBy: userId,
-          updatedBy: userId
+          path,
+          level,
+          usageCount: 0,
+          successRate: 0.0
         }
       });
 
-      logger.info('Tag created', { tagId: tag.id, code: tag.code, userId });
+      logger.info('Tag created', { tagId: tag.id, code: tag.code });
 
       return {
         success: true,
@@ -88,7 +109,7 @@ export class TagService implements ITagService {
    */
   async getTag(tagId: string): Promise<TagResponse> {
     try {
-      const tag = await prisma.tag.findUnique({
+      const tag = await prisma.universalTag.findUnique({
         where: { id: tagId },
         include: {
           parent: true,
@@ -118,7 +139,7 @@ export class TagService implements ITagService {
   async updateTag(tagId: string, data: UpdateTag, userId: string): Promise<TagResponse> {
     try {
       // Check if tag exists
-      const existing = await prisma.tag.findUnique({
+      const existing = await prisma.universalTag.findUnique({
         where: { id: tagId }
       });
 
@@ -142,19 +163,21 @@ export class TagService implements ITagService {
       }
 
       // Update the tag
-      const tag = await prisma.tag.update({
+      const { parentId, ...updateData } = data;
+      const tag = await prisma.universalTag.update({
         where: { id: tagId },
         data: {
-          ...data,
+          ...updateData,
           entityTypes: data.entityTypes,
           patterns: data.patterns as any,
           metadata: data.metadata as any,
-          updatedBy: userId,
+          rules: data.rules as any,
+          ...(parentId !== undefined && { parentId }),
           updatedAt: new Date()
         }
       });
 
-      logger.info('Tag updated', { tagId, userId });
+      logger.info('Tag updated', { tagId });
 
       return {
         success: true,
@@ -174,7 +197,7 @@ export class TagService implements ITagService {
     userId?: string
   ): Promise<void> {
     try {
-      const tag = await prisma.tag.findUnique({
+      const tag = await prisma.universalTag.findUnique({
         where: { id: tagId },
         include: {
           children: true,
@@ -196,7 +219,7 @@ export class TagService implements ITagService {
 
       // Handle entity reassignment if specified
       if (options?.reassignTo && tag.entityTags.length > 0) {
-        const reassignTarget = await prisma.tag.findUnique({
+        const reassignTarget = await prisma.universalTag.findUnique({
           where: { id: options.reassignTo }
         });
 
@@ -212,17 +235,16 @@ export class TagService implements ITagService {
 
         logger.info('Entity tags reassigned', { 
           fromTagId: tagId, 
-          toTagId: options.reassignTo,
-          userId 
+          toTagId: options.reassignTo 
         });
       }
 
       // Delete the tag (cascade will handle entity tags if not reassigned)
-      await prisma.tag.delete({
+      await prisma.universalTag.delete({
         where: { id: tagId }
       });
 
-      logger.info('Tag deleted', { tagId, userId });
+      logger.info('Tag deleted', { tagId });
     } catch (error) {
       throw handleTaggingError(error);
     }
@@ -233,7 +255,7 @@ export class TagService implements ITagService {
    */
   async listTags(query: TagQuery): Promise<TagListResponse> {
     try {
-      const where: Prisma.TagWhereInput = {
+      const where: Prisma.UniversalTagWhereInput = {
         ...(query.isActive !== undefined && { isActive: query.isActive }),
         ...(query.entityType && { 
           entityTypes: { has: query.entityType }
@@ -249,10 +271,10 @@ export class TagService implements ITagService {
       };
 
       // Get total count
-      const total = await prisma.tag.count({ where });
+      const total = await prisma.universalTag.count({ where });
 
       // Get tags
-      const tags = await prisma.tag.findMany({
+      const tags = await prisma.universalTag.findMany({
         where,
         skip: (query.page - 1) * query.limit,
         take: query.limit,
@@ -296,7 +318,7 @@ export class TagService implements ITagService {
    */
   async searchTags(search: TagSearch): Promise<TagSearchResponse> {
     try {
-      const where: Prisma.TagWhereInput = {
+      const where: Prisma.UniversalTagWhereInput = {
         isActive: true,
         ...(search.entityType && {
           entityTypes: { has: search.entityType }
@@ -308,7 +330,7 @@ export class TagService implements ITagService {
         ]
       };
 
-      const tags = await prisma.tag.findMany({
+      const tags = await prisma.universalTag.findMany({
         where,
         take: search.limit,
         orderBy: [
@@ -339,7 +361,7 @@ export class TagService implements ITagService {
 
       return {
         success: true,
-        data: results
+        data: results as TagWithPath[]
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -351,7 +373,7 @@ export class TagService implements ITagService {
    */
   async getTagHierarchy(parentId?: string): Promise<Tag[]> {
     try {
-      const tags = await prisma.tag.findMany({
+      const tags = await prisma.universalTag.findMany({
         where: {
           parentId: parentId || null,
           isActive: true
@@ -387,7 +409,7 @@ export class TagService implements ITagService {
       let currentId: string | null = tagId;
 
       while (currentId) {
-        const tag = await prisma.tag.findUnique({
+        const tag: { name: string; parentId: string | null } | null = await prisma.universalTag.findUnique({
           where: { id: currentId },
           select: { name: true, parentId: true }
         });
@@ -418,7 +440,7 @@ export class TagService implements ITagService {
       }
 
       // Check for existing codes
-      const existing = await prisma.tag.findMany({
+      const existing = await prisma.universalTag.findMany({
         where: { code: { in: codes } },
         select: { code: true }
       });
@@ -430,20 +452,23 @@ export class TagService implements ITagService {
       // Create all tags
       const created = await prisma.$transaction(
         tags.map(tag => 
-          prisma.tag.create({
+          prisma.universalTag.create({
             data: {
               ...tag,
               entityTypes: tag.entityTypes,
               patterns: tag.patterns as any,
+              rules: tag.rules as any,
               metadata: tag.metadata as any,
-              createdBy: userId,
-              updatedBy: userId
+              path: '/', // TODO: Calculate based on parent
+              level: 0, // TODO: Calculate based on parent
+              usageCount: 0,
+              successRate: 0.0
             }
           })
         )
       );
 
-      logger.info('Bulk tags created', { count: created.length, userId });
+      logger.info('Bulk tags created', { count: created.length });
 
       return created as Tag[];
     } catch (error) {
@@ -460,22 +485,24 @@ export class TagService implements ITagService {
   ): Promise<Tag[]> {
     try {
       const updated = await prisma.$transaction(
-        updates.map(({ id, data }) =>
-          prisma.tag.update({
+        updates.map(({ id, data }) => {
+          const { parentId, ...updateData } = data;
+          return prisma.universalTag.update({
             where: { id },
             data: {
-              ...data,
+              ...updateData,
               entityTypes: data.entityTypes,
               patterns: data.patterns as any,
               metadata: data.metadata as any,
-              updatedBy: userId,
+              rules: data.rules as any,
+              ...(parentId !== undefined && { parentId }),
               updatedAt: new Date()
             }
-          })
-        )
+          });
+        })
       );
 
-      logger.info('Bulk tags updated', { count: updated.length, userId });
+      logger.info('Bulk tags updated', { count: updated.length });
 
       return updated as Tag[];
     } catch (error) {
@@ -496,7 +523,7 @@ export class TagService implements ITagService {
 
       visited.add(currentId);
 
-      const parent = await prisma.tag.findUnique({
+      const parent: { parentId: string | null } | null = await prisma.universalTag.findUnique({
         where: { id: currentId },
         select: { parentId: true }
       });
@@ -509,7 +536,7 @@ export class TagService implements ITagService {
 
   private async loadChildrenRecursively(children: any[]): Promise<any[]> {
     for (const child of children) {
-      const grandchildren = await prisma.tag.findMany({
+      const grandchildren = await prisma.universalTag.findMany({
         where: {
           parentId: child.id,
           isActive: true
@@ -548,6 +575,3 @@ export class TagService implements ITagService {
     return score;
   }
 }
-
-// Export singleton instance
-export const tagService = new TagService();

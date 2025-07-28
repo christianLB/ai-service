@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "ai-service-local": {
+    "ai-service-dev": {
       "command": "node",
       "args": [
         "/home/k2600x/dev/ai-service/mcp-local/dist/server.js"
@@ -13,5 +13,22 @@
         "LOG_LEVEL": "info"
       }
     }
+  },
+  "description": "Enhanced MCP server for AI Service development with integrated Make commands",
+  "features": [
+    "Financial data access and analysis",
+    "Document search and AI analysis", 
+    "System health monitoring",
+    "Safe Make command execution with validation",
+    "Development workflow automation",
+    "Database operations with automatic backup",
+    "Trading system management",
+    "Quality assurance and testing tools"
+  ],
+  "safety": {
+    "validation": "All commands validated against .clauderc safety rules",
+    "backup": "Automatic backups before destructive operations",
+    "confirmation": "Dangerous commands require explicit confirmation",
+    "monitoring": "Real-time prerequisite and health checking"
   }
 }

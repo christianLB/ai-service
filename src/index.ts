@@ -1,3 +1,6 @@
+// Import reflect-metadata before anything else
+import 'reflect-metadata';
+
 // Load environment variables from .env.local if it exists
 import dotenv from 'dotenv';
 import path from 'path';
@@ -33,6 +36,8 @@ import documentRoutes from './routes/documents';
 // import { createCryptoRoutes } from './routes/crypto.routes';
 import realEstateRoutes from './routes/real-estate';
 import integrationRoutes from './routes/integrations';
+import taggingRoutes from './routes/tagging';
+import { taggingErrorHandler } from './middleware/tagging-error.middleware';
 import { tradingRouter } from './api/trading';
 import positionRoutes from './routes/position.routes';
 import alertRoutes from './routes/alert.routes';
@@ -264,6 +269,9 @@ app.use('/api/telegram', telegramRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/integrations', integrationRoutes);
 
+// Universal AI Tagging System routes
+app.use('/api', taggingRoutes);
+
 // Trading routes (these have built-in auth)
 app.use('/api/trading', tradingRouter);
 app.use('/api/positions', positionRoutes);
@@ -305,6 +313,9 @@ app.get('*', (_req: express.Request, res: express.Response) => {
     : path.join(__dirname, '../frontend/dist/index.html');
   res.sendFile(indexPath);
 });
+
+// Tagging error handler (specific for tagging routes)
+app.use(taggingErrorHandler);
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

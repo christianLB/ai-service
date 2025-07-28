@@ -1,6 +1,8 @@
-# AI Service MCP Local Server
+# AI Service Enhanced MCP Dev Server
 
-Local MCP (Model Context Protocol) server for integrating AI Service with Claude Code desktop application.
+**🚀 Enhanced MCP (Model Context Protocol) server with integrated Make command support for seamless AI Service development.**
+
+**Now with intelligent Make command integration! No more context switching between Claude and terminal.**
 
 ## 🚀 Quick Start
 
@@ -57,18 +59,26 @@ Restart Claude Code to load the new MCP server configuration.
 
 ## 📋 Available Tools
 
-### Financial Tools
+### 🔧 Enhanced Make Command Tools (NEW!)
+- `execute_make_command` - Execute Make commands with safety validation
+- `list_make_targets` - Discover available Make targets by category  
+- `make_command_help` - Get detailed help for Make commands
+- `validate_make_prerequisites` - Check prerequisites before execution
+- `make_command_status` - Monitor service health and status
+- `get_command_suggestions` - Get intelligent command suggestions based on context
+
+### 💰 Financial Tools
 - `get_financial_summary` - Get financial summary for a period
 - `get_account_balance` - Get current account balance
 - `get_transactions` - List transactions with filters
 - `analyze_expenses` - Analyze expenses by category
 - `create_invoice` - Create a new invoice
 
-### Document Tools
+### 📄 Document Tools
 - `search_documents` - Search documents semantically
 - `analyze_document` - Analyze document with AI
 
-### System Tools
+### 🔧 System Tools
 - `get_system_health` - Check system health status
 
 ## 🔧 Development
@@ -90,7 +100,36 @@ npm test
 
 ## 📝 Usage Examples
 
-In Claude Code, you can use the tools directly:
+### 🔧 Make Command Integration (NEW!)
+
+**Natural development workflows:**
+```
+Start the development environment
+→ Executes: make dev-up
+
+Check if all services are running  
+→ Executes: make dev-status
+
+Run database migrations safely
+→ Executes: make db-backup && make db-migrate
+
+What development commands are available?
+→ Lists all development-category Make targets
+
+I need help with the trading-up command
+→ Shows detailed help, prerequisites, and safety info
+```
+
+**Intelligent suggestions:**
+```
+I want to work on trading features
+→ Suggests: trading-status, trading-up, check API keys
+
+Help me deploy safely to production  
+→ Suggests: health checks, backups, validation steps
+```
+
+### 💰 Financial & Document Tools
 
 ```
 Can you show me my financial summary for last month?
@@ -172,6 +211,55 @@ To update the MCP server with new tools:
 2. Map tools to API endpoints
 3. Rebuild: `npm run build`
 4. Restart Claude Code
+
+## 🎯 What's New in Enhanced Version
+
+### ✨ Key Features Added
+
+1. **Make Command Integration** - Execute all 263+ Make targets directly through Claude Code
+2. **Safety Validation** - Integrated with `.clauderc` safety rules and automatic backups  
+3. **Smart Suggestions** - Context-aware command recommendations based on project state
+4. **Prerequisites Checking** - Validate dependencies before command execution
+5. **Health Monitoring** - Real-time service status across all project components
+6. **Workflow Intelligence** - Learn from usage patterns to suggest optimal command sequences
+
+### 🛡️ Safety Features
+
+- **Blocked Commands**: Prevents destructive operations like `docker-compose down -v`
+- **Automatic Backups**: Database backup before migrations and schema changes
+- **Confirmation Required**: Dangerous operations require explicit confirmation
+- **Prerequisite Validation**: Checks service status, API keys, and dependencies
+- **Health Monitoring**: Continuous monitoring of development, database, and trading services
+
+### 🧠 Intelligence Features
+
+- **Context-Aware**: Suggests commands based on current project state and user intent
+- **Learning System**: Improves suggestions based on successful command patterns
+- **Workflow Optimization**: Combines related commands for complex operations
+- **Error Recovery**: Provides helpful next steps when commands fail
+
+### 📊 Development Categories Supported
+
+- **Development**: `dev-up`, `dev-down`, `dev-refresh`, `dev-status` 
+- **Database**: `db-migrate`, `db-backup`, `db-migrate-status`, `check-db`
+- **Testing**: `test`, `typecheck`, `lint`, `health`
+- **Financial**: `financial-sync`, `financial-validate`, `financial-backup`  
+- **Trading**: `trading-up`, `trading-status`, `trading-positions`
+- **MCP**: `mcp-deploy`, `mcp-status`, `mcp-tools`
+- **Quality**: Build validation, code quality, and deployment readiness
+
+### 📈 Performance Benefits
+
+- **Zero Context Switching**: Stay in Claude Code conversation for all development tasks
+- **Reduced Errors**: Safety validation prevents common mistakes
+- **Faster Workflows**: Intelligent suggestions reduce decision time
+- **Learning Efficiency**: System learns and adapts to your development patterns
+
+## 📚 Complete Documentation
+
+- **Detailed Usage Guide**: See [HOW-TO-USE.md](HOW-TO-USE.md) for comprehensive examples
+- **Integration Test**: Run `node test-integration.js` to verify setup
+- **Configuration Guide**: Multiple setup options for different environments
 
 ## 📄 License
 

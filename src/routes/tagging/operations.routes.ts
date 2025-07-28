@@ -1,10 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { batchRateLimit, standardRateLimit } from '../../middleware/rate-limit.middleware';
-import { EntityTaggingService } from '../../services/tagging/entity-tagging.service';
-import { aiTaggingService } from '../../services/tagging/ai-tagging.service';
-import { patternMatchingService } from '../../services/tagging/pattern-matching.service';
-import { tagService } from '../../services/tagging/tag.service';
+import { 
+  entityTaggingService, 
+  aiTaggingService, 
+  tagService 
+} from '../../services/tagging';
 import {
   batchTagRequestSchema,
   reTagRequestSchema,
@@ -17,7 +18,6 @@ import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 
 const router = Router();
-const entityTaggingService = new EntityTaggingService(aiTaggingService, patternMatchingService);
 
 // Apply authentication to all routes
 router.use(authMiddleware);
@@ -142,67 +142,52 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
     const startDate = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
 
     // Get tagging statistics
-    const [totalTagged, verifiedTags, feedbackData] = await Promise.all([
+    const [totalTagged, verifiedTags] = await Promise.all([
       prisma.entityTag.count({
-        where: {
-          appliedAt: { gte: startDate },
-          ...(validEntityType && { entityType: validEntityType })
-        }
-      }),
-      prisma.entityTag.count({
-        where: {
-          appliedAt: { gte: startDate },
-          isVerified: true,
-          ...(validEntityType && { entityType: validEntityType })
-        }
-      }),
-      prisma.tagFeedback.groupBy({
-        by: ['isCorrect'],
         where: {
           createdAt: { gte: startDate },
           ...(validEntityType && { entityType: validEntityType })
-        },
-        _count: true
+        }
+      }),
+      prisma.entityTag.count({
+        where: {
+          createdAt: { gte: startDate },
+          isVerified: true,
+          ...(validEntityType && { entityType: validEntityType })
+        }
       })
     ]);
 
-    // Calculate accuracy
-    const correctCount = feedbackData.find(f => f.isCorrect)?.._count || 0;
-    const incorrectCount = feedbackData.find(f => !f.isCorrect)?.._count || 0;
-    const totalFeedback = correctCount + incorrectCount;
-    const accuracy = totalFeedback > 0 ? correctCount / totalFeedback : 1;
+    // Calculate accuracy based on verified tags (simplified without feedback table)
+    const accuracy = totalTagged > 0 ? verifiedTags / totalTagged : 1;
 
     // Get accuracy by entity type
     const entityTypes = ['transaction', 'document', 'client', 'invoice'];
     const byEntityType: Record<string, any> = {};
 
     for (const type of entityTypes) {
-      const [typeTotal, typeFeedback] = await Promise.all([
+      const [typeTotal, typeVerified] = await Promise.all([
         prisma.entityTag.count({
-          where: {
-            appliedAt: { gte: startDate },
-            entityType: type
-          }
-        }),
-        prisma.tagFeedback.groupBy({
-          by: ['isCorrect'],
           where: {
             createdAt: { gte: startDate },
             entityType: type
-          },
-          _count: true
+          }
+        }),
+        prisma.entityTag.count({
+          where: {
+            createdAt: { gte: startDate },
+            entityType: type,
+            isVerified: true
+          }
         })
       ]);
 
-      const typeCorrect = typeFeedback.find(f => f.isCorrect)?._count || 0;
-      const typeIncorrect = typeFeedback.find(f => !f.isCorrect)?._count || 0;
-      const typeAccuracy = (typeCorrect + typeIncorrect) > 0 
-        ? typeCorrect / (typeCorrect + typeIncorrect) 
-        : 1;
+      const typeAccuracy = typeTotal > 0 ? typeVerified / typeTotal : 1;
 
       byEntityType[type] = {
         accuracy: typeAccuracy,
-        count: typeTotal
+        count: typeTotal,
+        verified: typeVerified
       };
     }
 
@@ -213,7 +198,7 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
     for (const method of methods) {
       const methodTags = await prisma.entityTag.findMany({
         where: {
-          appliedAt: { gte: startDate },
+          createdAt: { gte: startDate },
           method,
           ...(validEntityType && { entityType: validEntityType })
         },
@@ -223,23 +208,24 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
       const methodTagIds = methodTags.map(t => t.id);
       
       if (methodTagIds.length > 0) {
-        const methodFeedback = await prisma.tagFeedback.groupBy({
-          by: ['isCorrect'],
+        const verifiedCount = await prisma.entityTag.count({
           where: {
-            entityTagId: { in: methodTagIds }
-          },
-          _count: true
+            id: { in: methodTagIds },
+            isVerified: true
+          }
         });
 
-        const methodCorrect = methodFeedback.find(f => f.isCorrect)?._count || 0;
-        const methodIncorrect = methodFeedback.find(f => !f.isCorrect)?._count || 0;
-        const methodAccuracy = (methodCorrect + methodIncorrect) > 0 
-          ? methodCorrect / (methodCorrect + methodIncorrect) 
+        const methodAccuracy = methodTagIds.length > 0 
+          ? verifiedCount / methodTagIds.length 
           : 1;
 
-        byMethod[method] = { accuracy: methodAccuracy };
+        byMethod[method] = { 
+          accuracy: methodAccuracy,
+          total: methodTagIds.length,
+          verified: verifiedCount
+        };
       } else {
-        byMethod[method] = { accuracy: 1 };
+        byMethod[method] = { accuracy: 1, total: 0, verified: 0 };
       }
     }
 
@@ -249,8 +235,7 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
         overall: {
           accuracy,
           totalTagged,
-          verified: verifiedTags,
-          corrected: incorrectCount
+          verified: verifiedTags
         },
         byEntityType,
         byMethod,
@@ -285,7 +270,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
     const { period, startDate, endDate } = req.query;
 
     // Validate tag exists
-    const tag = await prisma.tag.findUnique({
+    const tag = await prisma.universalTag.findUnique({
       where: { id: tagId },
       select: { id: true, code: true, name: true }
     });
@@ -313,40 +298,40 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
     }
 
     // Get metrics
-    const [usageCount, entityTags, feedbackData] = await Promise.all([
+    const [usageCount, entityTags, unverifiedCount] = await Promise.all([
       prisma.entityTag.count({
         where: {
           tagId,
-          appliedAt: { gte: start, lte: end }
+          createdAt: { gte: start, lte: end }
         }
       }),
       prisma.entityTag.findMany({
         where: {
           tagId,
-          appliedAt: { gte: start, lte: end }
+          createdAt: { gte: start, lte: end }
         },
         select: {
           confidence: true,
           isVerified: true,
-          appliedAt: true
+          createdAt: true
         }
       }),
-      prisma.tagFeedback.count({
+      prisma.entityTag.count({
         where: {
-          entityTag: { tagId },
+          tagId,
           createdAt: { gte: start, lte: end },
-          isCorrect: false
+          isVerified: false
         }
       })
     ]);
 
     // Calculate average confidence
     const avgConfidence = entityTags.length > 0
-      ? entityTags.reduce((sum, et) => sum + et.confidence, 0) / entityTags.length
+      ? entityTags.reduce((sum: number, et: any) => sum + et.confidence, 0) / entityTags.length
       : 0;
 
     // Calculate verification rate
-    const verifiedCount = entityTags.filter(et => et.isVerified).length;
+    const verifiedCount = entityTags.filter((et: any) => et.isVerified).length;
     const verificationRate = entityTags.length > 0 ? verifiedCount / entityTags.length : 0;
 
     // Generate daily trends
@@ -358,12 +343,12 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
       const dayStart = new Date(current);
       const dayEnd = new Date(current.getTime() + dayMs);
 
-      const dayTags = entityTags.filter(et => 
-        et.appliedAt >= dayStart && et.appliedAt < dayEnd
+      const dayTags = entityTags.filter((et: any) => 
+        et.createdAt >= dayStart && et.createdAt < dayEnd
       );
 
       const dayAvgConfidence = dayTags.length > 0
-        ? dayTags.reduce((sum, et) => sum + et.confidence, 0) / dayTags.length
+        ? dayTags.reduce((sum: number, et: any) => sum + et.confidence, 0) / dayTags.length
         : 0;
 
       trends.push({
@@ -418,6 +403,266 @@ router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, r
       });
       return;
     }
+    next(handleTaggingError(error));
+  }
+});
+
+/**
+ * POST /api/tagging/suggest
+ * Get AI-powered tag suggestions for content
+ */
+router.post('/suggest', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { content, entityType, metadata, options } = req.body;
+    
+    // Validate entity type
+    const validEntityType = EntityTypeEnum.parse(entityType);
+    
+    const suggestions = await aiTaggingService.suggestTags(
+      content,
+      validEntityType,
+      metadata,
+      options
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        suggestions,
+        provider: options?.provider || 'claude'
+      }
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid request data',
+          details: error.errors
+        }
+      });
+      return;
+    }
+    next(handleTaggingError(error));
+  }
+});
+
+/**
+ * POST /api/tagging/categorize
+ * Auto-categorize content using AI
+ */
+router.post('/categorize', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { content, entityType, language, context } = req.body;
+    
+    // Validate entity type
+    const validEntityType = EntityTypeEnum.parse(entityType);
+    
+    const result = await aiTaggingService.autoCategorize(
+      content,
+      validEntityType,
+      { language, context }
+    );
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid request data',
+          details: error.errors
+        }
+      });
+      return;
+    }
+    next(handleTaggingError(error));
+  }
+});
+
+/**
+ * POST /api/tagging/batch-ai
+ * Batch process items for AI tagging
+ */
+router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { items, options } = req.body;
+    
+    // Validate items
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Items must be a non-empty array'
+        }
+      });
+      return;
+    }
+    
+    // Validate entity types in items
+    for (const item of items) {
+      EntityTypeEnum.parse(item.entityType);
+    }
+    
+    const results = await aiTaggingService.batchProcessTags(items, options);
+    
+    res.json({
+      success: true,
+      data: {
+        processed: results.length,
+        results
+      }
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid request data',
+          details: error.errors
+        }
+      });
+      return;
+    }
+    next(handleTaggingError(error));
+  }
+});
+
+/**
+ * POST /api/tagging/multilingual
+ * Get multi-language tag suggestions
+ */
+router.post('/multilingual', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { content, entityType, targetLanguages } = req.body;
+    
+    // Validate entity type
+    const validEntityType = EntityTypeEnum.parse(entityType);
+    
+    const suggestions = await aiTaggingService.getMultilingualSuggestions(
+      content,
+      validEntityType,
+      targetLanguages
+    );
+    
+    // Convert Map to object for JSON response
+    const result: Record<string, any> = {};
+    suggestions.forEach((value, key) => {
+      result[key] = value;
+    });
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid request data',
+          details: error.errors
+        }
+      });
+      return;
+    }
+    next(handleTaggingError(error));
+  }
+});
+
+/**
+ * POST /api/tagging/contextual
+ * Get contextual tag suggestions based on related entities
+ */
+router.post('/contextual', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { content, entityType, context } = req.body;
+    
+    // Validate entity type
+    const validEntityType = EntityTypeEnum.parse(entityType);
+    
+    const suggestions = await aiTaggingService.getContextualSuggestions(
+      content,
+      validEntityType,
+      context
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        suggestions,
+        contextUsed: Object.keys(context || {})
+      }
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid request data',
+          details: error.errors
+        }
+      });
+      return;
+    }
+    next(handleTaggingError(error));
+  }
+});
+
+/**
+ * GET /api/tagging/analytics
+ * Get AI tagging analytics
+ */
+router.get('/analytics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const analytics = await aiTaggingService.getTagAnalytics();
+    
+    res.json({
+      success: true,
+      data: analytics
+    });
+  } catch (error) {
+    next(handleTaggingError(error));
+  }
+});
+
+/**
+ * POST /api/tagging/improve-patterns
+ * Improve tag patterns based on examples
+ */
+router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { tagId, successfulExamples, failedExamples } = req.body;
+    
+    if (!tagId || !Array.isArray(successfulExamples)) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'tagId and successfulExamples are required'
+        }
+      });
+      return;
+    }
+    
+    await aiTaggingService.improveTagPatterns(
+      tagId,
+      successfulExamples,
+      failedExamples
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        message: 'Tag patterns improved successfully',
+        tagId,
+        positiveExamples: successfulExamples.length,
+        negativeExamples: failedExamples?.length || 0
+      }
+    });
+  } catch (error) {
     next(handleTaggingError(error));
   }
 });
