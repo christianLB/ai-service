@@ -64,7 +64,7 @@ const TagForm: React.FC<TagFormProps> = ({
         icon: values.icon,
         metadata: values.metadata,
         isActive: values.isActive,
-        color: typeof values.color === 'string' ? values.color : (values.color as { toHexString?: () => string })?.toHexString?.()
+        color: typeof values.color === 'string' ? values.color : (values.color as any)?.toHexString?.()
       };
 
       if (mode === 'create') {

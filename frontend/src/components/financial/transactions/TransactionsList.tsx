@@ -69,7 +69,7 @@ interface TransactionsListProps {
   pagination: TablePaginationConfig;
   accounts: Account[];
   onRefresh?: () => void;
-  onTableChange?: (pagination: TablePaginationConfig, filters: Record<string, (string | number)[] | null>, sorter: Record<string, string | undefined>) => void;
+  onTableChange?: (pagination: TablePaginationConfig, filters: any, sorter: any) => void;
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({

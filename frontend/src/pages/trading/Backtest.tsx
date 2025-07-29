@@ -34,7 +34,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradingService } from '../../services/tradingService';
 import type { BacktestRequest, BacktestResult } from '../../services/tradingService';
 import { formatCurrency, formatPercentage, formatDate } from '../../utils/formatters';
-import type { Moment } from 'moment';
+import type { Dayjs } from 'dayjs';
 
 // Extended metrics interface with additional properties
 interface BacktestMetricsExtended {
@@ -59,7 +59,7 @@ const { TabPane } = Tabs;
 
 interface BacktestFormValues {
   strategy: string;
-  dateRange: [Moment, Moment];
+  dateRange: [Dayjs, Dayjs];
   symbols: string[];
   initialCapital: number;
 }

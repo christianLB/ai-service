@@ -100,7 +100,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
   const handleTableChange = (
     pagination: TablePaginationConfig,
     _filters: Record<string, unknown>,
-    sorter: { field?: string; order?: 'ascend' | 'descend' } | Array<{ field?: string; order?: 'ascend' | 'descend' }>,
+    sorter: any,
   ) => {
     setCurrentPage(pagination.current || 1);
     setPageSize(pagination.pageSize || 10);
