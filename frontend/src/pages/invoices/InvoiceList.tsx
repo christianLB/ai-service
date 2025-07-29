@@ -77,7 +77,7 @@ const InvoiceList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchText, statusFilter, typeFilter, dateRange, pagination, message]);
+  }, [searchText, statusFilter, typeFilter, dateRange, message]);
 
   const handleDelete = async (id: string) => {
     try {
