@@ -279,7 +279,7 @@ const BankAccounts: FC = () => {
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={8}>
                 <SyncStatusCard
-                  syncStatus={syncStatus || { processing: false }}
+                  syncStatus={syncStatus || {}}
                   autoSyncEnabled={autoSyncEnabled}
                   syncing={syncing}
                   toggleLoading={toggleLoading}
@@ -314,7 +314,7 @@ const BankAccounts: FC = () => {
             <Row gutter={[24, 24]}>
               <Col xs={24} md={12}>
                 <RecentSyncsCard 
-                  recentSyncs={syncStatus?.stats?.recentSyncs}
+                  recentSyncs={null}
                 />
               </Col>
               <Col xs={24} md={12}>

@@ -654,11 +654,11 @@ const InvoiceForm: React.FC = () => {
             </Col>
             <Col span={12}>
               <Form.Item label="Tasa de Impuesto (%)" name="taxRate">
-                <InputNumber
+                <InputNumber<number>
                   min={0}
                   max={100}
                   formatter={value => `${value}%`}
-                  parser={(value) => {
+                  parser={value => {
                     if (!value) return 0;
                     const num = value.replace('%', '');
                     return parseFloat(num) || 0;

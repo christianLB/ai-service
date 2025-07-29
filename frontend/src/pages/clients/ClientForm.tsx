@@ -282,11 +282,11 @@ const ClientForm: React.FC = () => {
             </Col>
             <Col span={6}>
               <Form.Item label="Límite de Crédito" name="creditLimit">
-                <InputNumber 
+                <InputNumber<number>
                   min={0} 
                   style={{ width: '100%' }} 
                   formatter={value => `€ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={(value) => {
+                  parser={value => {
                     if (!value) return 0;
                     const num = value.replace(/€\s?|(,*)/g, '');
                     return parseFloat(num) || 0;
