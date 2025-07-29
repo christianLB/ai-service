@@ -116,7 +116,7 @@ export const BulkTagger: React.FC<BulkTaggerProps> = ({
       title: 'Entity',
       dataIndex: 'name',
       key: 'name',
-      render: (name: string, record: any) => (
+      render: (name: string, record: { id: string; type: string }) => (
         <div>
           <Text strong>{name || record.id}</Text>
           <br />

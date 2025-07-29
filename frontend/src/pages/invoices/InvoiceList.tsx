@@ -31,7 +31,7 @@ const InvoiceList: React.FC = () => {
     overdueInvoices: 0,
   });
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
     try {
       setLoading(true);
       const response = await invoiceService.getInvoices({
@@ -57,7 +57,7 @@ const InvoiceList: React.FC = () => {
           // Convert to number if it's a Decimal object or string
           let total = 0;
           if (typeof inv.total === 'object' && inv.total && 'toString' in inv.total) {
-            total = parseFloat((inv.total as any).toString());
+            total = parseFloat((inv.total as { toString(): string }).toString());
           } else if (typeof inv.total === 'string' || typeof inv.total === 'number') {
             total = parseFloat(String(inv.total));
           }
@@ -77,7 +77,7 @@ const InvoiceList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchText, statusFilter, typeFilter, dateRange, pagination, message]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -86,14 +86,14 @@ const InvoiceList: React.FC = () => {
         message.success('La factura se ha eliminado correctamente');
         fetchInvoices();
       }
-    } catch (error) {
+    } catch {
       message.error('No se pudo eliminar la factura');
     }
   };
 
   useEffect(() => {
     fetchInvoices();
-  }, [searchText, statusFilter, typeFilter, dateRange, pagination.current, pagination.pageSize]);
+  }, [fetchInvoices]);
 
   const columns = [
     {
@@ -156,7 +156,7 @@ const InvoiceList: React.FC = () => {
       title: 'Total',
       dataIndex: 'total',
       key: 'total',
-      render: (value: any, record: Invoice) => {
+      render: (value: string | number | { toString(): string } | null | undefined, record: Invoice) => {
         // Convert to number if it's a Decimal object or string
         const numValue = typeof value === 'object' && value ? 
           parseFloat(value.toString()) : 
@@ -168,7 +168,7 @@ const InvoiceList: React.FC = () => {
     {
       title: 'Acciones',
       key: 'actions',
-      render: (_: any, record: Invoice) => (
+      render: (_: unknown, record: Invoice) => (
         <Space>
           <Button
             type="link"

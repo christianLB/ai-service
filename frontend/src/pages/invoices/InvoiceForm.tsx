@@ -93,13 +93,13 @@ const InvoiceForm: React.FC = () => {
       form.setFieldsValue({ clientId: preselectedClientId });
       handleClientChange(preselectedClientId);
     }
-  }, [id, isEdit, preselectedClientId]);
+  }, [id, isEdit, preselectedClientId, handleClientChange, loadClients, loadInvoice, form]);
 
   useEffect(() => {
     calculateTotals();
-  }, [lineItems]);
+  }, [calculateTotals]);
 
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     try {
       setLoadingClients(true);
       const response = await clientService.getClients({ limit: 1000 });
@@ -112,9 +112,9 @@ const InvoiceForm: React.FC = () => {
     } finally {
       setLoadingClients(false);
     }
-  };
+  }, [message]);
 
-  const loadInvoice = async () => {
+  const loadInvoice = useCallback(async () => {
     try {
       setLoading(true);
       const response = await invoiceService.getInvoice(id!);
@@ -138,7 +138,7 @@ const InvoiceForm: React.FC = () => {
 
         // Set line items
         if (invoice.items && Array.isArray(invoice.items)) {
-          const items = invoice.items.map((item: any, index: number) => ({
+          const items = invoice.items.map((item: { description?: string; quantity?: number; unitPrice?: number; amount?: number; taxRate?: number; taxAmount?: number; total?: number }, index: number) => ({
             ...item,
             key: String(index + 1),
           }));
@@ -152,9 +152,9 @@ const InvoiceForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, form, navigate, message]);
 
-  const handleClientChange = async (clientId: string) => {
+  const handleClientChange = useCallback(async (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
     if (client) {
       form.setFieldsValue({
@@ -168,7 +168,7 @@ const InvoiceForm: React.FC = () => {
       // Clone the dayjs object to avoid circular references
       form.setFieldValue('dueDate', dueDate.clone());
     }
-  };
+  }, [clients, form]);
 
   const calculateLineItemTotal = (item: LineItem) => {
     const amount = item.quantity * item.unitPrice;
@@ -183,7 +183,7 @@ const InvoiceForm: React.FC = () => {
     };
   };
 
-  const handleLineItemChange = (key: string, field: string, value: any) => {
+  const handleLineItemChange = (key: string, field: string, value: string | number) => {
     const newItems = lineItems.map(item => {
       if (item.key === key) {
         const updatedItem = { ...item, [field]: value };
@@ -218,13 +218,13 @@ const InvoiceForm: React.FC = () => {
     }
   };
 
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     const subtotal = lineItems.reduce((sum, item) => sum + item.amount, 0);
     const taxAmount = lineItems.reduce((sum, item) => sum + item.taxAmount, 0);
     const total = subtotal + taxAmount;
     
     setTotals({ subtotal, taxAmount, total });
-  };
+  }, [lineItems]);
 
   const validateLineItem = (item: LineItem) => {
     const errors: { description?: boolean; quantity?: boolean; unitPrice?: boolean } = {};
@@ -258,7 +258,7 @@ const InvoiceForm: React.FC = () => {
     return !hasErrors;
   };
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: { clientId: string; type: string; issueDate: dayjs.Dayjs; dueDate: dayjs.Dayjs; paymentTerms: number; currency: string; taxRate: number; taxType: string; notes?: string; termsAndConditions?: string; templateId?: string }) => {
     // Validate all line items first
     const isValid = validateAllLineItems();
     
@@ -302,7 +302,11 @@ const InvoiceForm: React.FC = () => {
         issueDate: values.issueDate.format('YYYY-MM-DD'),
         dueDate: values.dueDate.format('YYYY-MM-DD'),
         currency: values.currency,
-        items: lineItems.map(({ key, ...item }) => item),
+        items: lineItems.map((item) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { key, ...rest } = item;
+          return rest;
+        }),
         subtotal: totals.subtotal,
         taxAmount: totals.taxAmount,
         taxRate: values.taxRate,
@@ -325,7 +329,7 @@ const InvoiceForm: React.FC = () => {
         message.success(`Factura ${isEdit ? 'actualizada' : 'creada'} correctamente`);
         navigate('/invoices');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving invoice:', error);
       message.error(error.response?.data?.error || `No se pudo ${isEdit ? 'actualizar' : 'crear'} la factura`);
     } finally {
@@ -339,7 +343,7 @@ const InvoiceForm: React.FC = () => {
       dataIndex: 'description',
       key: 'description',
       width: '40%',
-      render: (_: any, record: LineItem) => (
+      render: (_: unknown, record: LineItem) => (
         <Input.TextArea
           value={record.description}
           onChange={(e) => handleLineItemChange(record.key!, 'description', e.target.value)}
@@ -374,7 +378,7 @@ const InvoiceForm: React.FC = () => {
       dataIndex: 'quantity',
       key: 'quantity',
       width: '10%',
-      render: (_: any, record: LineItem) => (
+      render: (_: unknown, record: LineItem) => (
         <InputNumber
           value={record.quantity}
           onChange={(value) => handleLineItemChange(record.key!, 'quantity', value || 0)}
@@ -410,14 +414,14 @@ const InvoiceForm: React.FC = () => {
       dataIndex: 'unitPrice',
       key: 'unitPrice',
       width: '15%',
-      render: (_: any, record: LineItem) => (
+      render: (_: unknown, record: LineItem) => (
         <InputNumber
           value={record.unitPrice}
           onChange={(value) => handleLineItemChange(record.key!, 'unitPrice', value || 0)}
           min={0.01}
           formatter={value => `€ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
           parser={(value) => {
-            const num = value!.replace(/\€\s?|(,*)/g, '');
+            const num = value!.replace(/€\s?|(,*)/g, '');
             return parseFloat(num) || 0;
           }}
           style={{ width: '100%' }}
@@ -451,7 +455,7 @@ const InvoiceForm: React.FC = () => {
       dataIndex: 'taxRate',
       key: 'taxRate',
       width: '10%',
-      render: (_: any, record: LineItem) => (
+      render: (_: unknown, record: LineItem) => (
         <InputNumber
           value={record.taxRate}
           onChange={(value) => handleLineItemChange(record.key!, 'taxRate', value || 0)}
@@ -471,7 +475,7 @@ const InvoiceForm: React.FC = () => {
       dataIndex: 'total',
       key: 'total',
       width: '15%',
-      render: (_: any, record: LineItem) => (
+      render: (_: unknown, record: LineItem) => (
         <Text strong>€ {record.total.toFixed(2)}</Text>
       ),
     },
@@ -479,7 +483,7 @@ const InvoiceForm: React.FC = () => {
       title: '',
       key: 'actions',
       width: '10%',
-      render: (_: any, record: LineItem) => (
+      render: (_: unknown, record: LineItem) => (
         <Button
           type="text"
           danger
@@ -647,7 +651,7 @@ const InvoiceForm: React.FC = () => {
                   formatter={value => `${value}%`}
                   parser={(value) => {
                     const num = value!.replace('%', '');
-                    return parseFloat(num) || 0 as any;
+                    return parseFloat(num) || 0;
                   }}
                   style={{ width: '100%' }}
                 />

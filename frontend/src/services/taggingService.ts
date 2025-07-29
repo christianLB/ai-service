@@ -28,9 +28,7 @@ export interface CreateTagDto {
   isActive?: boolean;
 }
 
-export interface UpdateTagDto extends Partial<CreateTagDto> {
-  // This interface extends CreateTagDto with all properties optional
-}
+export type UpdateTagDto = Partial<CreateTagDto>;
 
 export interface TagQuery {
   search?: string;

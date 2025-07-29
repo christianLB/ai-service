@@ -42,7 +42,7 @@ const InvoiceTemplatePage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: any, record: InvoiceTemplate) => (
+      render: (_: unknown, record: InvoiceTemplate) => (
         <Space>
           <Button
             icon={<EditOutlined />}
@@ -99,12 +99,12 @@ const InvoiceTemplatePage: React.FC = () => {
     try {
       await deleteMutation.mutateAsync(id);
       message.success('Template deleted successfully');
-    } catch (error) {
+    } catch {
       message.error('Failed to delete template');
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: { name: string; description?: string; isDefault?: boolean; templateType?: string; htmlContent?: string }) => {
     try {
       if (editingTemplate) {
         await updateMutation.mutateAsync({
@@ -123,7 +123,7 @@ const InvoiceTemplatePage: React.FC = () => {
       setIsModalOpen(false);
       form.resetFields();
       setEditingTemplate(null);
-    } catch (error) {
+    } catch {
       message.error('Failed to save template');
     }
   };

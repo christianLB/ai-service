@@ -98,7 +98,7 @@ const DocumentList: React.FC = () => {
   const handleUpload = async (file: UploadFile) => {
     setUploadLoading(true);
     try {
-      const result = await documentService.uploadDocument(file as any);
+      const result = await documentService.uploadDocument(file as File);
       message.success(`Documento "${result.document.title}" cargado exitosamente`);
       refetch();
       return false; // Prevent default upload behavior
@@ -243,7 +243,7 @@ const DocumentList: React.FC = () => {
                   a.download = record.metadata.fileName;
                   a.click();
                   window.URL.revokeObjectURL(url);
-                } catch (error) {
+                } catch {
                   message.error('Error al descargar el documento');
                 }
               }}
@@ -366,7 +366,7 @@ const DocumentList: React.FC = () => {
                   message.success('Documentos eliminados exitosamente');
                   setSelectedRowKeys([]);
                   refetch();
-                } catch (error) {
+                } catch {
                   message.error('Error al eliminar documentos');
                 }
               }}

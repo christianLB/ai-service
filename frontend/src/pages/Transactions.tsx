@@ -9,6 +9,8 @@ import {
   Button,
   Statistic,
 } from 'antd';
+import type { TablePaginationConfig } from 'antd/es/table';
+import type { SorterResult } from 'antd/es/table/interface';
 import {
   TransactionOutlined,
   FilterOutlined,
@@ -41,7 +43,7 @@ interface TransactionStats {
 
 const Transactions: FC = () => {
   const [searchParams] = useSearchParams();
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<ITransactionFilters>({});
   const [stats, setStats] = useState<TransactionStats>({
@@ -52,7 +54,7 @@ const Transactions: FC = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [showFilters, setShowFilters] = useState(true);
   const [sortField, setSortField] = useState<string>('date');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
@@ -162,7 +164,7 @@ const Transactions: FC = () => {
     fetchTransactions();
   };
 
-  const handleTableChange = (pagination: any, _filters: any, sorter: any) => {
+  const handleTableChange = (pagination: TablePaginationConfig, _filters: Record<string, unknown>, sorter: SorterResult<Transaction> | SorterResult<Transaction>[]) => {
     // Handle pagination changes
     if (pagination.current !== currentPage || pagination.pageSize !== pageSize) {
       setCurrentPage(pagination.current);
@@ -170,15 +172,17 @@ const Transactions: FC = () => {
     }
 
     // Handle sorting changes
-    if (sorter.field && sorter.order) {
-      setSortField(sorter.field);
-      setSortOrder(sorter.order);
-      setCurrentPage(1); // Reset to first page when sorting changes
-    } else if (!sorter.order) {
-      // Reset to default sorting
-      setSortField('date');
-      setSortOrder('descend');
-      setCurrentPage(1);
+    if (!Array.isArray(sorter)) {
+      if (sorter.field && sorter.order) {
+        setSortField(sorter.field as string);
+        setSortOrder(sorter.order);
+        setCurrentPage(1); // Reset to first page when sorting changes
+      } else if (!sorter.order) {
+        // Reset to default sorting
+        setSortField('date');
+        setSortOrder('descend');
+        setCurrentPage(1);
+      }
     }
   };
 

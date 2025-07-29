@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Row,
   Col,
@@ -56,21 +56,36 @@ import YearlyFinancialReport from '../components/YearlyFinancialReport.ant';
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
-  const [invoiceStats, setInvoiceStats] = useState<any>(null);
+  const [invoiceStats, setInvoiceStats] = useState<{
+    total: number;
+    paid: number;
+    pending: number;
+    overdue: number;
+  } | null>(null);
   const [clientMetrics, setClientMetrics] = useState<ClientMetrics | null>(null);
-  const [cashFlow, setCashFlow] = useState<any>(null);
+  const [cashFlow, setCashFlow] = useState<{
+    inflow: number;
+    outflow: number;
+    net: number;
+    byMonth?: Array<{ month: string; inflow: number; outflow: number; }>
+  } | null>(null);
   const [currency, setCurrency] = useState('EUR');
   const [activeTab, setActiveTab] = useState('overview');
-  const [errors, setErrors] = useState<{
+  const [, setErrors] = useState<{
     revenue?: string;
     invoice?: string;
     client?: string;
     cashFlow?: string;
   }>({});
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
-    const newErrors: typeof errors = {};
+    const newErrors: {
+      revenue?: string;
+      invoice?: string;
+      client?: string;
+      cashFlow?: string;
+    } = {};
 
     // Fetch revenue metrics
     try {
@@ -132,7 +147,7 @@ const Dashboard: React.FC = () => {
         ),
       });
     }
-  };
+  }, [currency]);
 
   const handleManualSync = async () => {
     try {
@@ -144,7 +159,7 @@ const Dashboard: React.FC = () => {
         });
         fetchDashboardData();
       }
-    } catch (error) {
+    } catch {
       notification.error({
         message: 'Error de sincronización',
         description: 'No se pudo completar la sincronización',
@@ -154,7 +169,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [currency]);
+  }, [fetchDashboardData]);
 
   const categoryColors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#fa8c16'];
 
@@ -314,7 +329,7 @@ const Dashboard: React.FC = () => {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                        <RechartsTooltip formatter={(value: any) => [formatCurrency(value), 'Ingresos']} />
+                        <RechartsTooltip formatter={(value: string | number) => [formatCurrency(value), 'Ingresos']} />
                         <Area 
                           type="monotone" 
                           dataKey="revenue" 
@@ -741,7 +756,7 @@ const Dashboard: React.FC = () => {
                         />
                         <YAxis tickFormatter={(value) => formatCurrency(value)} />
                         <RechartsTooltip 
-                          formatter={(value: any, name: string) => [
+                          formatter={(value: string | number, name: string) => [
                             formatCurrency(value), 
                             name === 'expectedReceipts' ? 'Ingresos Esperados' : 
                             name === 'projectedBalance' ? 'Balance Proyectado' : name

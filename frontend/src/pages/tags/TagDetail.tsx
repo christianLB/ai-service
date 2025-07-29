@@ -155,7 +155,7 @@ const TagDetail: React.FC = () => {
     {
       title: 'Action',
       key: 'action',
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: { entityType: string; entityId: string }) => (
         <Button
           type="link"
           size="small"

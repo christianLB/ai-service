@@ -239,7 +239,7 @@ describe('ImportTransactionsModal', () => {
     it('should complete import successfully with pre-selected account', async () => {
       const user = userEvent.setup();
 
-      (fetch as any).mockResolvedValueOnce({
+      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: true,

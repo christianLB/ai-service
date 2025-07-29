@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -48,20 +48,14 @@ const InvoiceDetail: React.FC = () => {
   const { message } = App.useApp();
 
   // Helper function to safely convert values to numbers
-  const toNumber = (value: any): number => {
+  const toNumber = (value: string | number | { toString(): string } | null | undefined): number => {
     if (typeof value === 'object' && value) {
       return parseFloat(value.toString());
     }
     return parseFloat(value || 0);
   };
 
-  useEffect(() => {
-    if (id) {
-      loadInvoice();
-    }
-  }, [id]);
-
-  const loadInvoice = async () => {
+  const loadInvoice = useCallback(async () => {
     try {
       setLoading(true);
       const response = await invoiceService.getInvoice(id!);
@@ -75,7 +69,14 @@ const InvoiceDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate, message]);
+
+  useEffect(() => {
+    if (id) {
+      loadInvoice();
+    }
+  }, [id, loadInvoice]);
+
 
   const handleDelete = async () => {
     try {
@@ -85,7 +86,7 @@ const InvoiceDetail: React.FC = () => {
         message.success('La factura se ha eliminado correctamente');
         navigate('/invoices');
       }
-    } catch (error) {
+    } catch {
       message.error('No se pudo eliminar la factura');
     } finally {
       setDeleting(false);
@@ -100,7 +101,7 @@ const InvoiceDetail: React.FC = () => {
         message.success(`La factura se ha marcado como ${getStatusLabel(newStatus)}`);
         loadInvoice();
       }
-    } catch (error) {
+    } catch {
       message.error('No se pudo actualizar el estado');
     } finally {
       setUpdating(false);
@@ -129,7 +130,7 @@ const InvoiceDetail: React.FC = () => {
       } else {
         message.error('Error al enviar la factura');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending invoice:', error);
       message.error('No se pudo enviar la factura por email');
     }
@@ -149,7 +150,7 @@ const InvoiceDetail: React.FC = () => {
       } else {
         message.error('Error al generar el PDF');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error downloading PDF:', error);
       message.error('No se pudo descargar el PDF');
     }
@@ -211,7 +212,7 @@ const InvoiceDetail: React.FC = () => {
       key: 'unitPrice',
       width: '15%',
       align: 'right' as const,
-      render: (value: any) => `€ ${toNumber(value).toFixed(2)}`,
+      render: (value: string | number) => `€ ${toNumber(value).toFixed(2)}`,
     },
     {
       title: 'Importe',
@@ -219,7 +220,7 @@ const InvoiceDetail: React.FC = () => {
       key: 'amount',
       width: '15%',
       align: 'right' as const,
-      render: (value: any) => `€ ${toNumber(value).toFixed(2)}`,
+      render: (value: string | number) => `€ ${toNumber(value).toFixed(2)}`,
     },
     {
       title: `IVA (${invoice?.taxRate || 0}%)`,
@@ -227,7 +228,7 @@ const InvoiceDetail: React.FC = () => {
       key: 'taxAmount',
       width: '10%',
       align: 'right' as const,
-      render: (value: any) => `€ ${toNumber(value).toFixed(2)}`,
+      render: (value: string | number) => `€ ${toNumber(value).toFixed(2)}`,
     },
     {
       title: 'Total',
@@ -235,7 +236,7 @@ const InvoiceDetail: React.FC = () => {
       key: 'total',
       width: '10%',
       align: 'right' as const,
-      render: (value: any) => <Text strong>€ {toNumber(value).toFixed(2)}</Text>,
+      render: (value: string | number) => <Text strong>€ {toNumber(value).toFixed(2)}</Text>,
     },
   ];
 

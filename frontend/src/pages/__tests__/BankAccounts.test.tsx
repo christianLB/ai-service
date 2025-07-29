@@ -42,7 +42,7 @@ import { message } from 'antd'
 
 describe('BankAccounts - Scheduler Functionality', () => {
   let queryClient: QueryClient
-  const mockApi = api.default as any
+  const mockApi = api.default as jest.MockedFunction<typeof api.default>
 
   const renderComponent = () => {
     queryClient = new QueryClient({

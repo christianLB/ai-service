@@ -56,11 +56,20 @@ const BankAccounts: FC = () => {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [setupModalVisible, setSetupModalVisible] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [syncStatus, setSyncStatus] = useState<{
+    processing: boolean;
+    progress?: number;
+    message?: string;
+    error?: string;
+  } | null>(null);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [rateLimits, setRateLimits] = useState<any[]>([]);
+  const [rateLimits, setRateLimits] = useState<{
+    endpoint: string;
+    remaining: number;
+    reset: Date;
+  }[]>([]);
   
   const { subscribe } = useWebSocket();
 
