@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, Button, Card, Typography, message, Checkbox } from 'antd';
+import { Form, Input, Button, Card, Typography, Checkbox, App } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -16,6 +16,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
   

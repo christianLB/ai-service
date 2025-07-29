@@ -67,7 +67,7 @@ const ClientList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchText, statusFilter, pagination]);
+  }, [searchText, statusFilter]);
 
   const handleDelete = async (id: string) => {
     try {
