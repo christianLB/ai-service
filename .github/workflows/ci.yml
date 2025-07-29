@@ -214,5 +214,5 @@ jobs:
       
       - name: Test Docker compose
         run: |
-          docker-compose -f docker-compose.yml config
+          docker compose -f docker-compose.yml config
           echo "✅ Docker configuration valid"
