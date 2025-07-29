@@ -20,11 +20,13 @@ import {
   LineChartOutlined,
   FundOutlined,
   StockOutlined,
-  BarChartOutlined,
   BulbOutlined,
   ThunderboltOutlined,
   TagsOutlined,
-  AppstoreOutlined,
+  ExperimentOutlined,
+  TrophyOutlined,
+  FileSearchOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -46,11 +48,6 @@ const AppLayout: React.FC = () => {
 
   const menuItems = [
     {
-      key: '/',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
-    },
-    {
       key: '/clients',
       icon: <UserOutlined />,
       label: 'Clientes',
@@ -71,6 +68,11 @@ const AppLayout: React.FC = () => {
       label: 'Finanzas',
       children: [
         {
+          key: '/',
+          icon: <DashboardOutlined />,
+          label: 'Dashboard',
+        },
+        {
           key: '/bank-accounts',
           icon: <BankOutlined />,
           label: 'Cuentas Bancarias',
@@ -89,7 +91,7 @@ const AppLayout: React.FC = () => {
       label: 'Trading',
       children: [
         {
-          key: '/trading/dashboard',
+          key: '/trading',
           icon: <FundOutlined />,
           label: 'Dashboard',
         },
@@ -100,17 +102,17 @@ const AppLayout: React.FC = () => {
         },
         {
           key: '/trading/strategies',
-          icon: <BarChartOutlined />,
+          icon: <BulbOutlined />,
           label: 'Estrategias',
         },
         {
           key: '/trading/backtest',
-          icon: <LineChartOutlined />,
+          icon: <ExperimentOutlined />,
           label: 'Backtest',
         },
         {
           key: '/trading/performance',
-          icon: <BarChartOutlined />,
+          icon: <TrophyOutlined />,
           label: 'Rendimiento',
         },
         {
@@ -128,7 +130,7 @@ const AppLayout: React.FC = () => {
       children: [
         {
           key: '/document-intelligence',
-          icon: <FolderOutlined />,
+          icon: <FileSearchOutlined />,
           label: 'Document Intelligence',
         },
         {
@@ -138,22 +140,15 @@ const AppLayout: React.FC = () => {
         },
         {
           key: '/tagging-intelligence',
-          icon: <TagsOutlined />,
+          icon: <RobotOutlined />,
           label: 'AI Universal Tagging',
         },
       ],
     },
     {
-      key: 'management',
-      icon: <AppstoreOutlined />,
-      label: 'Management',
-      children: [
-        {
-          key: '/tags',
-          icon: <TagsOutlined />,
-          label: 'Tags Admin',
-        },
-      ],
+      key: '/tags',
+      icon: <TagsOutlined />,
+      label: 'Tags',
     },
     {
       key: '/settings',
