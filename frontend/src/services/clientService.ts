@@ -91,7 +91,20 @@ class ClientService {
       limit?: number;
       offset?: number;
     }
-  ): Promise<ApiResponse<any>> {
+  ): Promise<ApiResponse<{
+    transactions: Array<{
+      id: string;
+      amount: number;
+      currency: string;
+      description: string;
+      date: string;
+      counterpartyName?: string;
+      categoryName?: string;
+    }>;
+    total: number;
+    limit: number;
+    offset: number;
+  }>> {
     const response = await api.get(`/financial/clients/${id}/transactions`, { params });
     return response.data;
   }
@@ -123,13 +136,24 @@ class ClientService {
   async bulkOperations(data: {
     operation: 'update_status' | 'add_tags';
     clientIds: string[];
-    data: any;
-  }): Promise<ApiResponse<{ results: any[] }>> {
+    data: Record<string, unknown>;
+  }): Promise<ApiResponse<{ 
+    results: Array<{
+      clientId: string;
+      operation: string;
+      success: boolean;
+      error?: string;
+    }>;
+  }>> {
     const response = await api.post('/financial/clients/bulk', data);
     return response.data;
   }
 
-  async getHealthCheck(): Promise<ApiResponse<any>> {
+  async getHealthCheck(): Promise<ApiResponse<{
+    status: string;
+    database: string;
+    timestamp: string;
+  }>> {
     const response = await api.get('/financial/clients/health');
     return response.data;
   }

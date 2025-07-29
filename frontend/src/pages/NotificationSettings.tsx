@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Card, 
   Typography, 
@@ -44,11 +44,7 @@ export const NotificationSettings: React.FC = () => {
     alerts_enabled: 'true'
   });
 
-  useEffect(() => {
-    loadConfiguration();
-  }, []);
-
-  const loadConfiguration = async () => {
+  const loadConfiguration = useCallback(async () => {
     setLoading(true);
     try {
       const config = await integrationService.getConfiguration('telegram');
@@ -66,9 +62,14 @@ export const NotificationSettings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [form]);
 
-  const handleSaveTelegram = async (values: any) => {
+  useEffect(() => {
+    loadConfiguration();
+  }, [loadConfiguration]);
+
+
+  const handleSaveTelegram = async (values: NotificationConfig) => {
     setSaving(true);
     try {
       const configToSave = {

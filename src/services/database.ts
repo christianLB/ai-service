@@ -49,7 +49,9 @@ class DatabaseService {
       password: process.env.POSTGRES_PASSWORD!,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 10000, // Increased to 10 seconds for CI environment
+      statement_timeout: 30000, // 30 second statement timeout
+      query_timeout: 30000, // 30 second query timeout
     });
 
     this.pool.on('error', (err) => {
@@ -75,7 +77,7 @@ class DatabaseService {
       const initPromise = this.createTables();
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Database initialization timeout after 10 seconds'));
+          reject(new Error(`Database initialization timeout after 10 seconds. Check if database is running on ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}`));
         }, 10000); // 10 second timeout
       });
       
@@ -100,8 +102,22 @@ class DatabaseService {
 
   private async createTables(): Promise<void> {
     console.log('[DB] Getting pool connection...');
-    const client = await this.pool.connect();
-    console.log('[DB] Pool connection obtained!');
+    let client;
+    try {
+      // Add timeout for getting connection from pool
+      const connectPromise = this.pool.connect();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Failed to get database connection from pool after 10 seconds`));
+        }, 10000);
+      });
+      
+      client = await Promise.race([connectPromise, timeoutPromise]) as PoolClient;
+      console.log('[DB] Pool connection obtained!');
+    } catch (error: any) {
+      console.error('[DB] Failed to get pool connection:', error.message);
+      throw error;
+    }
     
     try {
       // Tabla de workflows
@@ -165,7 +181,9 @@ class DatabaseService {
       await this.createFinancialSchema(client);
       
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+      }
     }
   }
   

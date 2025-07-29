@@ -28,6 +28,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { tradingService } from '../../services/tradingService';
+import type { DashboardData } from '../../services/tradingService';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
 
 const { Title, Text } = Typography;
@@ -35,7 +36,7 @@ const { Title, Text } = Typography;
 export const TradingDashboard: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const { data: dashboard, isLoading, error, refetch } = useQuery({
+  const { data: dashboard, isLoading, error, refetch } = useQuery<DashboardData>({
     queryKey: ['trading-dashboard'],
     queryFn: () => tradingService.getDashboard(),
     refetchInterval: autoRefresh ? 5000 : false,
@@ -109,7 +110,7 @@ export const TradingDashboard: React.FC = () => {
       {/* Alerts */}
       {dashboard?.alerts && dashboard.alerts.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          {dashboard.alerts.map((alert: any) => (
+          {dashboard.alerts.map((alert) => (
             <Alert
               key={alert.id}
               type={alert.type}

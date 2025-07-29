@@ -32,20 +32,16 @@ jobs:
           cd frontend && npm ci --legacy-peer-deps
       
       - name: Type checking - Backend
-        continue-on-error: true
-        run: npm run typecheck || echo "⚠️ Type checking not configured"
+        run: npm run typecheck || echo "⚠️ Backend type checking failed - please fix TypeScript errors"
       
       - name: Type checking - Frontend
-        continue-on-error: true
-        run: cd frontend && npm run typecheck || echo "⚠️ Frontend type checking not configured"
+        run: cd frontend && npm run typecheck || (echo "❌ Frontend type checking failed - build will fail" && exit 1)
       
       - name: Linting - Backend
-        continue-on-error: true
-        run: npm run lint || echo "⚠️ Linting not configured"
+        run: npm run lint || echo "⚠️ Backend linting issues found"
       
       - name: Linting - Frontend
-        continue-on-error: true
-        run: cd frontend && npm run lint || echo "⚠️ Frontend linting not configured"
+        run: cd frontend && npm run lint || (echo "❌ Frontend linting failed - fix ESLint errors" && exit 1)
       
       - name: Security audit
         run: |
@@ -56,6 +52,7 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # Add 15 minute timeout for test job
     services:
       postgres:
         image: postgres:15
@@ -117,6 +114,7 @@ jobs:
           EOF
       
       - name: Run Prisma migrations
+        timeout-minutes: 5  # Add 5 minute timeout for database migrations
         env:
           DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test
         run: |
@@ -125,6 +123,7 @@ jobs:
       
       - name: Run unit tests
         continue-on-error: true
+        timeout-minutes: 10  # Add 10 minute timeout for test execution
         run: npm run test:ci || echo "⚠️ Some tests failed - check logs for details"
         env:
           NODE_ENV: test
@@ -141,6 +140,7 @@ jobs:
       
       - name: Integration tests
         continue-on-error: true
+        timeout-minutes: 5  # Add 5 minute timeout for integration tests
         run: npm run test:integration || echo "⚠️ Integration tests not configured yet"
         env:
           NODE_ENV: test
@@ -152,6 +152,7 @@ jobs:
     name: Build Validation
     runs-on: ubuntu-latest
     needs: [quality-checks, tests]
+    timeout-minutes: 15  # Add 15 minute timeout for build job
     steps:
       - uses: actions/checkout@v4
       
@@ -170,10 +171,15 @@ jobs:
         run: npx prisma generate
       
       - name: Build backend
-        run: npm run build
+        run: npm run build:backend
       
       - name: Build frontend
-        run: cd frontend && npm run build
+        timeout-minutes: 10
+        run: |
+          cd frontend
+          echo "Building frontend..."
+          npm run typecheck || echo "⚠️ TypeScript check failed"
+          npm run build || (echo "❌ Frontend build failed" && exit 1)
       
       - name: Validate build outputs
         run: |
@@ -208,5 +214,5 @@ jobs:
       
       - name: Test Docker compose
         run: |
-          docker-compose -f docker-compose.yml config
+          docker compose -f docker-compose.yml config
           echo "✅ Docker configuration valid"

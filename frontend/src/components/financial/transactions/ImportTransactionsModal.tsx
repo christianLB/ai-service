@@ -51,7 +51,7 @@ interface ImportTransaction {
   reference?: string;
   counterparty_name?: string;
   date: string;
-  [key: string]: any;
+  [key: string]: string | undefined;
 }
 
 interface ImportResult {
@@ -79,7 +79,12 @@ const ImportTransactionsModal: React.FC<ImportTransactionsModalProps> = ({
   const [selectedAccount, setSelectedAccount] = useState<string | undefined>(defaultAccountId);
   const [fileData, setFileData] = useState<{
     transactions: ImportTransaction[];
-    metadata?: any;
+    metadata?: {
+      date_range?: {
+        start: string;
+        end: string;
+      };
+    };
   } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -151,7 +156,7 @@ const ImportTransactionsModal: React.FC<ImportTransactionsModalProps> = ({
     multiple: false,
     accept: '.json',
     showUploadList: false,
-    beforeUpload: async (file: any) => {
+    beforeUpload: async (file: File) => {
       try {
         await processFile(file);
         message.success(`${file.name} cargado correctamente`);

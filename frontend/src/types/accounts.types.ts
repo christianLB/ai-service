@@ -6,7 +6,7 @@ export interface Accounts {
   description?: string | null;
   isActive: boolean;
   userId?: string;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, string | number | boolean> | null;
     createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -15,7 +15,7 @@ export interface CreateAccounts {
   name: string;
   description?: string | null;
   isActive?: boolean;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, string | number | boolean> | null;
   }
 
 export interface UpdateAccounts extends Partial<CreateAccounts> {

@@ -239,9 +239,8 @@ describe('ImportTransactionsModal', () => {
     it('should complete import successfully with pre-selected account', async () => {
       const user = userEvent.setup();
 
-      (fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce(
+        new Response(JSON.stringify({
           success: true,
           data: {
             imported: 1,
@@ -250,8 +249,11 @@ describe('ImportTransactionsModal', () => {
             duplicates: [],
             accountId: 'acc1',
           },
-        }),
-      });
+        }), { 
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
 
       render(
         <ImportTransactionsModal

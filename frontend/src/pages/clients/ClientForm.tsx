@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Space, Form, Input, Select, InputNumber, notification, Spin, Row, Col } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -15,13 +15,7 @@ const ClientForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (isEdit && id) {
-      loadClient();
-    }
-  }, [id, isEdit]);
-
-  const loadClient = async () => {
+  const loadClient = useCallback(async () => {
     try {
       setLoading(true);
       const response = await clientService.getClient(id!);
@@ -60,9 +54,16 @@ const ClientForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, form, navigate]);
 
-  const onFinish = async (values: any) => {
+  useEffect(() => {
+    if (isEdit && id) {
+      loadClient();
+    }
+  }, [id, isEdit, loadClient]);
+
+
+  const onFinish = async (values: ClientFormData) => {
     try {
       setSubmitting(true);
       
@@ -82,13 +83,13 @@ const ClientForm: React.FC = () => {
         paymentMethod: values.paymentMethod,
         bankAccount: values.bankAccount,
         notes: values.notes,
-        address: {
-          street: values.street,
-          city: values.city,
+        address: values.street || values.city || values.country || values.postalCode ? {
+          street: values.street || '',
+          city: values.city || '',
           state: values.state,
-          country: values.country,
-          postalCode: values.postalCode,
-        },
+          country: values.country || '',
+          postalCode: values.postalCode || '',
+        } : undefined,
       };
 
       let response;
@@ -105,11 +106,11 @@ const ClientForm: React.FC = () => {
         });
         navigate('/clients');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving client:', error);
       notification.error({
         message: 'Error',
-        description: error.response?.data?.error || `No se pudo ${isEdit ? 'actualizar' : 'crear'} el cliente`,
+        description: (error as { response?: { data?: { error?: string } } }).response?.data?.error || `No se pudo ${isEdit ? 'actualizar' : 'crear'} el cliente`,
       });
     } finally {
       setSubmitting(false);
@@ -281,13 +282,14 @@ const ClientForm: React.FC = () => {
             </Col>
             <Col span={6}>
               <Form.Item label="Límite de Crédito" name="creditLimit">
-                <InputNumber 
+                <InputNumber<number>
                   min={0} 
                   style={{ width: '100%' }} 
                   formatter={value => `€ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={(value) => {
-                    const num = value!.replace(/\€\s?|(,*)/g, '');
-                    return parseFloat(num) || 0 as any;
+                  parser={value => {
+                    if (!value) return 0;
+                    const num = value.replace(/€\s?|(,*)/g, '');
+                    return parseFloat(num) || 0;
                   }}
                 />
               </Form.Item>

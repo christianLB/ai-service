@@ -1,134 +1,386 @@
 # Universal AI Tagging System - API Reference
 
-## Overview
-
-This document provides a complete reference for the Universal AI Tagging System API endpoints, including request/response formats, authentication requirements, and usage examples.
-
-## Base URL
-
-```
-Development: http://localhost:3001/api
-Production: https://api.yourdomain.com/api
-```
+## Table of Contents
+1. [Authentication](#authentication)
+2. [Rate Limiting](#rate-limiting)
+3. [Tag Management](#tag-management)
+4. [Entity Tagging](#entity-tagging)
+5. [Batch Operations](#batch-operations)
+6. [AI Operations](#ai-operations)
+7. [Analytics & Metrics](#analytics--metrics)
+8. [Error Handling](#error-handling)
+9. [Response Formats](#response-formats)
 
 ## Authentication
 
-All API endpoints require JWT authentication:
+All API endpoints require authentication using JWT (JSON Web Token).
 
+### Headers
 ```http
-Authorization: Bearer <jwt-token>
+Authorization: Bearer <your-jwt-token>
 ```
 
-## Endpoints
+### Getting a Token
+```bash
+# Login endpoint (not part of tagging system)
+POST /api/auth/login
+Content-Type: application/json
 
-### Tag Management
-
-#### List All Tags
-```http
-GET /tags
+{
+  "email": "user@example.com",
+  "password": "your-password"
+}
 ```
-
-Query Parameters:
-- `entityType` (string, optional): Filter by entity type
-- `search` (string, optional): Search tags by name or code
-- `parentId` (string, optional): Filter by parent tag
-- `page` (number, default: 1): Page number
-- `limit` (number, default: 20): Items per page
 
 Response:
 ```json
 {
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+    "expiresIn": 3600
+  }
+}
+```
+
+## Rate Limiting
+
+The API implements different rate limits for different types of operations:
+
+| Endpoint Type | Limit | Window | Block Duration |
+|--------------|-------|--------|----------------|
+| Standard | 100 requests | 60 seconds | 60 seconds |
+| AI | 20 requests | 60 seconds | 120 seconds |
+| Batch | 5 requests | 60 seconds | 300 seconds |
+| Search | 50 requests | 60 seconds | 60 seconds |
+
+### Rate Limit Headers
+All responses include rate limit information:
+
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 2024-01-20T10:30:00.000Z
+Retry-After: 60
+```
+
+## Tag Management
+
+### List Tags
+```http
+GET /api/tags?entityType=transaction&search=expense&page=1&limit=20&sortBy=name&sortOrder=asc
+```
+
+Query Parameters:
+- `entityType` (optional): Filter by entity type (`transaction`, `document`, `client`, `invoice`)
+- `search` (optional): Search in tag names and descriptions
+- `parentId` (optional): Filter by parent tag ID for hierarchical tags
+- `page` (default: 1): Page number
+- `limit` (default: 20, max: 100): Items per page
+- `sortBy` (default: `name`): Sort field (`name`, `code`, `usageCount`, `createdAt`)
+- `sortOrder` (default: `asc`): Sort order (`asc`, `desc`)
+- `isActive` (optional): Filter active/inactive tags
+
+Response:
+```json
+{
+  "success": true,
   "data": [
     {
-      "id": "tag_123",
-      "code": "EXPENSE_FOOD",
-      "name": "Food & Dining",
-      "entityTypes": ["transaction"],
-      "parentId": "tag_456",
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "code": "EXPENSE_TRAVEL",
+      "name": "Travel Expenses",
+      "description": "All travel-related expenses",
+      "entityTypes": ["transaction", "invoice"],
+      "patterns": {
+        "keywords": ["flight", "hotel", "taxi"],
+        "merchants": ["UBER", "LYFT", "AIRBNB"]
+      },
       "confidence": 0.85,
-      "usageCount": 1234,
-      "isActive": true
+      "parentId": "660e8400-e29b-41d4-a716-446655440000",
+      "path": "/expenses/travel",
+      "level": 2,
+      "color": "#FF5733",
+      "icon": "airplane",
+      "isActive": true,
+      "isSystem": false,
+      "usageCount": 245,
+      "successRate": 0.92,
+      "lastUsed": "2024-01-19T15:30:00.000Z",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-19T15:30:00.000Z"
     }
   ],
   "pagination": {
     "page": 1,
     "limit": 20,
     "total": 150,
-    "pages": 8
+    "pages": 8,
+    "hasNext": true,
+    "hasPrev": false
   }
 }
 ```
 
-#### Create Tag
+### Create Tag
 ```http
-POST /tags
-```
+POST /api/tags
+Content-Type: application/json
 
-Request Body:
-```json
 {
-  "code": "EXPENSE_ENTERTAINMENT",
-  "name": "Entertainment",
-  "description": "Entertainment expenses",
+  "code": "EXPENSE_TRAVEL",
+  "name": "Travel Expenses",
+  "description": "All travel-related expenses",
   "entityTypes": ["transaction", "invoice"],
-  "parentId": "tag_parent_id",
   "patterns": {
-    "keywords": ["netflix", "spotify", "cinema"],
-    "merchants": ["Netflix Inc", "Spotify AB"]
-  }
+    "keywords": ["flight", "hotel", "taxi"],
+    "merchants": ["UBER", "LYFT", "AIRBNB"],
+    "categories": ["Transportation", "Accommodation"]
+  },
+  "parentId": "660e8400-e29b-41d4-a716-446655440000",
+  "color": "#FF5733",
+  "icon": "airplane",
+  "confidence": 0.8
 }
 ```
 
 Response:
 ```json
 {
-  "id": "tag_789",
-  "code": "EXPENSE_ENTERTAINMENT",
-  "name": "Entertainment",
-  "createdAt": "2025-01-27T10:00:00Z"
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "code": "EXPENSE_TRAVEL",
+    "name": "Travel Expenses",
+    "path": "/expenses/travel",
+    "level": 2,
+    // ... full tag object
+  }
 }
 ```
 
-#### Update Tag
+### Get Tag by ID
 ```http
-PUT /tags/:id
+GET /api/tags/550e8400-e29b-41d4-a716-446655440000
 ```
 
-Request Body:
-```json
+### Update Tag
+```http
+PUT /api/tags/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
 {
-  "name": "Entertainment & Media",
+  "name": "Travel & Transportation Expenses",
+  "description": "Updated description",
   "patterns": {
-    "keywords": ["netflix", "spotify", "cinema", "hbo"],
-    "merchants": ["Netflix Inc", "Spotify AB", "HBO Max"]
+    "keywords": ["flight", "hotel", "taxi", "train", "bus"],
+    "merchants": ["UBER", "LYFT", "AIRBNB", "BOOKING.COM"]
   },
-  "confidence": 0.9
+  "confidence": 0.85
 }
 ```
 
-#### Delete Tag
+### Delete Tag
 ```http
-DELETE /tags/:id
+DELETE /api/tags/550e8400-e29b-41d4-a716-446655440000?reassignTo=770e8400-e29b-41d4-a716-446655440000
 ```
 
 Query Parameters:
-- `reassignTo` (string, optional): ID of tag to reassign entities to
+- `reassignTo` (optional): UUID of tag to reassign entities to
 
-### Entity Tagging
-
-#### Tag an Entity
+### Search Tags
 ```http
-POST /entities/:type/:id/tags
+GET /api/tags/search?q=expense&entityType=transaction&limit=10
 ```
 
-Path Parameters:
-- `type`: Entity type (transaction, document, client, invoice)
-- `id`: Entity ID
+### Get Tag Hierarchy
+```http
+GET /api/tags/hierarchy?parentId=660e8400-e29b-41d4-a716-446655440000
+```
 
-Request Body:
+### Get Tag Path (Breadcrumb)
+```http
+GET /api/tags/550e8400-e29b-41d4-a716-446655440000/path
+```
+
+Response:
 ```json
 {
+  "success": true,
+  "data": {
+    "tagId": "550e8400-e29b-41d4-a716-446655440000",
+    "path": [
+      {
+        "id": "root",
+        "code": "ROOT",
+        "name": "All Tags"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440000",
+        "code": "EXPENSES",
+        "name": "Expenses"
+      },
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "code": "EXPENSE_TRAVEL",
+        "name": "Travel Expenses"
+      }
+    ]
+  }
+}
+```
+
+### Bulk Create Tags
+```http
+POST /api/tags/bulk
+Content-Type: application/json
+
+{
+  "tags": [
+    {
+      "code": "TAG1",
+      "name": "Tag 1",
+      "entityTypes": ["transaction"]
+    },
+    {
+      "code": "TAG2",
+      "name": "Tag 2",
+      "entityTypes": ["document"]
+    }
+  ]
+}
+```
+
+### Bulk Update Tags
+```http
+PUT /api/tags/bulk
+Content-Type: application/json
+
+{
+  "updates": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "data": {
+        "name": "Updated Tag 1",
+        "confidence": 0.9
+      }
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440000",
+      "data": {
+        "isActive": false
+      }
+    }
+  ]
+}
+```
+
+## Entity Tagging
+
+### Tag an Entity
+```http
+POST /api/entities/transaction/12345/tags
+Content-Type: application/json
+
+{
   "method": "auto",
+  "options": {
+    "aiProvider": "claude",
+    "confidenceThreshold": 0.7,
+    "maxTags": 5,
+    "includeRelated": true,
+    "forceReTag": false
+  }
+}
+```
+
+Methods:
+- `auto`: Uses AI + pattern matching
+- `ai`: AI only
+- `pattern`: Pattern matching only
+- `manual`: Manual tagging
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "entity": {
+      "type": "transaction",
+      "id": "12345"
+    },
+    "tags": [
+      {
+        "id": "880e8400-e29b-41d4-a716-446655440000",
+        "entityType": "transaction",
+        "entityId": "12345",
+        "tagId": "550e8400-e29b-41d4-a716-446655440000",
+        "tagCode": "EXPENSE_TRAVEL",
+        "tagName": "Travel Expenses",
+        "confidence": 0.92,
+        "method": "AI",
+        "appliedAt": "2024-01-20T10:00:00.000Z",
+        "appliedBy": "user-123",
+        "isVerified": false
+      }
+    ],
+    "processingTime": 1250,
+    "aiProvider": "claude"
+  }
+}
+```
+
+### Get Entity Tags
+```http
+GET /api/entities/transaction/12345/tags
+```
+
+### Remove Tag from Entity
+```http
+DELETE /api/entities/transaction/12345/tags/550e8400-e29b-41d4-a716-446655440000
+```
+
+### Update Entity Tag
+```http
+PATCH /api/entities/transaction/12345/tags/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "confidence": 0.95,
+  "isVerified": true
+}
+```
+
+### Find Entities by Tag
+```http
+GET /api/entities/by-tag/550e8400-e29b-41d4-a716-446655440000?types=transaction,invoice&page=1&limit=20
+```
+
+## Batch Operations
+
+### Batch Tag Entities
+```http
+POST /api/tagging/batch
+Content-Type: application/json
+
+{
+  "entities": [
+    {
+      "type": "transaction",
+      "id": "12345",
+      "content": "Uber ride to airport",
+      "metadata": {
+        "amount": 45.00,
+        "currency": "USD"
+      }
+    },
+    {
+      "type": "invoice",
+      "id": "67890",
+      "content": "Hotel accommodation in Paris"
+    }
+  ],
   "options": {
     "aiProvider": "claude",
     "confidenceThreshold": 0.7,
@@ -140,423 +392,436 @@ Request Body:
 Response:
 ```json
 {
-  "entity": {
-    "type": "transaction",
-    "id": "trans_123"
-  },
-  "tags": [
-    {
-      "tagId": "tag_456",
-      "code": "EXPENSE_FOOD",
-      "name": "Food & Dining",
-      "confidence": 0.92,
-      "method": "AI"
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "entityId": "12345",
+        "status": "success",
+        "tags": [
+          {
+            "tagId": "550e8400-e29b-41d4-a716-446655440000",
+            "tagCode": "EXPENSE_TRAVEL",
+            "tagName": "Travel Expenses",
+            "confidence": 0.95
+          }
+        ],
+        "processingTime": 850
+      },
+      {
+        "entityId": "67890",
+        "status": "success",
+        "tags": [
+          {
+            "tagId": "550e8400-e29b-41d4-a716-446655440000",
+            "tagCode": "EXPENSE_TRAVEL",
+            "tagName": "Travel Expenses",
+            "confidence": 0.88
+          }
+        ],
+        "processingTime": 920
+      }
+    ],
+    "summary": {
+      "total": 2,
+      "successful": 2,
+      "failed": 0,
+      "skipped": 0,
+      "totalProcessingTime": 1770
     }
-  ],
-  "processingTime": 145,
-  "aiProvider": "claude"
+  }
 }
 ```
 
-#### Get Entity Tags
+### Re-tag Entities
 ```http
-GET /entities/:type/:id/tags
-```
+POST /api/tagging/retag
+Content-Type: application/json
 
-Response:
-```json
 {
-  "entity": {
-    "type": "transaction",
-    "id": "trans_123",
-    "preview": "AMAZON PRIME SUBSCRIPTION"
+  "filter": {
+    "entityType": "transaction",
+    "dateRange": {
+      "start": "2024-01-01T00:00:00.000Z",
+      "end": "2024-01-31T23:59:59.999Z"
+    },
+    "tags": ["OLD_TAG_ID"],
+    "hasNoTags": false
   },
-  "tags": [
-    {
-      "id": "entity_tag_123",
-      "tagId": "tag_456",
-      "code": "EXPENSE_SUBSCRIPTION",
-      "name": "Subscriptions",
-      "confidence": 0.95,
-      "method": "AI",
-      "appliedAt": "2025-01-27T10:00:00Z",
-      "appliedBy": "SYSTEM",
-      "isVerified": true,
-      "verifiedBy": "user_123",
-      "verifiedAt": "2025-01-27T11:00:00Z"
-    }
-  ]
+  "options": {
+    "method": "ai",
+    "batchSize": 100,
+    "dryRun": true
+  }
 }
 ```
 
-#### Remove Tag from Entity
+## AI Operations
+
+### Get AI Tag Suggestions
 ```http
-DELETE /entities/:type/:id/tags/:tagId
+POST /api/tagging/suggest
+Content-Type: application/json
+
+{
+  "content": "Uber ride from JFK to Manhattan hotel",
+  "entityType": "transaction",
+  "metadata": {
+    "amount": 65.00,
+    "currency": "USD",
+    "merchant": "UBER"
+  },
+  "options": {
+    "provider": "claude",
+    "maxTags": 5,
+    "confidenceThreshold": 0.7
+  }
+}
 ```
 
 Response:
 ```json
 {
   "success": true,
-  "message": "Tag removed successfully"
-}
-```
-
-#### Update Tag Confidence
-```http
-PATCH /entities/:type/:id/tags/:tagId
-```
-
-Request Body:
-```json
-{
-  "confidence": 0.98,
-  "isVerified": true
-}
-```
-
-### Batch Operations
-
-#### Batch Tag Entities
-```http
-POST /tagging/batch
-```
-
-Request Body:
-```json
-{
-  "entities": [
-    {
-      "type": "transaction",
-      "id": "trans_123",
-      "content": "NETFLIX SUBSCRIPTION",
-      "metadata": { "amount": -15.99 }
-    },
-    {
-      "type": "document",
-      "id": "doc_456",
-      "content": "Contract agreement...",
-      "metadata": { "format": "pdf" }
-    }
-  ],
-  "options": {
-    "method": "auto",
-    "aiProvider": "claude",
-    "maxTags": 3
-  }
-}
-```
-
-Response:
-```json
-{
-  "results": [
-    {
-      "entityId": "trans_123",
-      "status": "success",
-      "tags": [...],
-      "processingTime": 120
-    },
-    {
-      "entityId": "doc_456",
-      "status": "success",
-      "tags": [...],
-      "processingTime": 350
-    }
-  ],
-  "summary": {
-    "total": 2,
-    "successful": 2,
-    "failed": 0,
-    "totalProcessingTime": 470
-  }
-}
-```
-
-#### Re-tag Entities
-```http
-POST /tagging/retag
-```
-
-Request Body:
-```json
-{
-  "filter": {
-    "entityType": "transaction",
-    "dateRange": {
-      "start": "2025-01-01",
-      "end": "2025-01-31"
-    },
-    "tags": ["UNCATEGORIZED"]
-  },
-  "options": {
-    "method": "ai",
-    "batchSize": 100
-  }
-}
-```
-
-### Learning & Feedback
-
-#### Submit Feedback
-```http
-POST /tagging/feedback
-```
-
-Request Body:
-```json
-{
-  "entityType": "transaction",
-  "entityId": "trans_123",
-  "entityTagId": "entity_tag_456",
-  "feedback": {
-    "isCorrect": false,
-    "suggestedTagId": "tag_789",
-    "reason": "This is a business expense, not personal"
-  }
-}
-```
-
-#### Learn from Correction
-```http
-POST /tagging/learn
-```
-
-Request Body:
-```json
-{
-  "entityType": "transaction",
-  "entityId": "trans_123",
-  "correctTagId": "tag_789",
-  "previousTagId": "tag_456"
-}
-```
-
-### Search & Discovery
-
-#### Search Tags
-```http
-GET /tags/search
-```
-
-Query Parameters:
-- `q` (string, required): Search query
-- `entityType` (string, optional): Filter by entity type
-- `limit` (number, default: 10): Maximum results
-
-Response:
-```json
-{
-  "results": [
-    {
-      "id": "tag_123",
-      "code": "EXPENSE_FOOD",
-      "name": "Food & Dining",
-      "path": "/expenses/food",
-      "score": 0.95
-    }
-  ]
-}
-```
-
-#### Find Entities by Tag
-```http
-GET /entities/by-tag/:tagId
-```
-
-Query Parameters:
-- `types` (string[], optional): Entity types to include
-- `page` (number): Page number
-- `limit` (number): Items per page
-
-Response:
-```json
-{
-  "tag": {
-    "id": "tag_123",
-    "code": "EXPENSE_FOOD",
-    "name": "Food & Dining"
-  },
-  "entities": [
-    {
-      "type": "transaction",
-      "id": "trans_123",
-      "preview": "CARREFOUR SUPERMARKET",
-      "taggedAt": "2025-01-27T10:00:00Z",
-      "confidence": 0.92
-    }
-  ],
-  "pagination": {...}
-}
-```
-
-#### Discover Relationships
-```http
-GET /relationships/:type/:id
-```
-
-Response:
-```json
-{
-  "entity": {
-    "type": "document",
-    "id": "doc_123"
-  },
-  "relationships": [
-    {
-      "targetType": "client",
-      "targetId": "client_456",
-      "relationshipType": "CONTRACT_WITH",
-      "confidence": 0.87,
-      "discoveredBy": "AI",
-      "metadata": {
-        "contractNumber": "2025-001"
-      }
-    }
-  ]
-}
-```
-
-### Analytics
-
-#### Tag Metrics
-```http
-GET /tags/:id/metrics
-```
-
-Query Parameters:
-- `period` (string): day, week, month, year
-- `startDate` (string): ISO date
-- `endDate` (string): ISO date
-
-Response:
-```json
-{
-  "tag": {
-    "id": "tag_123",
-    "code": "EXPENSE_FOOD"
-  },
-  "metrics": {
-    "usageCount": 1234,
-    "avgConfidence": 0.89,
-    "verificationRate": 0.94,
-    "trends": [
+  "data": {
+    "suggestions": [
       {
-        "date": "2025-01-01",
-        "count": 45,
-        "avgConfidence": 0.88
+        "tagId": "550e8400-e29b-41d4-a716-446655440000",
+        "tagCode": "EXPENSE_TRAVEL",
+        "tagName": "Travel Expenses",
+        "confidence": 0.95,
+        "reasoning": "Transportation service for travel"
+      },
+      {
+        "tagId": "660e8400-e29b-41d4-a716-446655440000",
+        "tagCode": "TRANSPORT_TAXI",
+        "tagName": "Taxi & Rideshare",
+        "confidence": 0.92,
+        "reasoning": "Uber is a rideshare service"
+      }
+    ],
+    "provider": "claude"
+  }
+}
+```
+
+### Auto-Categorize Content
+```http
+POST /api/tagging/categorize
+Content-Type: application/json
+
+{
+  "content": "Monthly subscription to cloud storage service",
+  "entityType": "transaction",
+  "language": "en",
+  "context": {
+    "recurring": true,
+    "vendor": "Dropbox"
+  }
+}
+```
+
+### Batch AI Processing
+```http
+POST /api/tagging/batch-ai
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "entityType": "transaction",
+      "entityId": "12345",
+      "content": "Coffee at Starbucks"
+    },
+    {
+      "entityType": "document",
+      "entityId": "67890",
+      "content": "Meeting notes from client presentation"
+    }
+  ],
+  "options": {
+    "provider": "claude",
+    "parallel": true
+  }
+}
+```
+
+### Get Multilingual Suggestions
+```http
+POST /api/tagging/multilingual
+Content-Type: application/json
+
+{
+  "content": "Restaurant bill from dinner meeting",
+  "entityType": "transaction",
+  "targetLanguages": ["es", "fr", "de"]
+}
+```
+
+### Get Contextual Suggestions
+```http
+POST /api/tagging/contextual
+Content-Type: application/json
+
+{
+  "content": "Software license renewal",
+  "entityType": "transaction",
+  "context": {
+    "previousTags": ["SOFTWARE", "SUBSCRIPTION"],
+    "relatedEntities": ["invoice-789", "client-456"],
+    "historicalPatterns": {
+      "vendor": "Microsoft",
+      "frequency": "annual"
+    }
+  }
+}
+```
+
+## Analytics & Metrics
+
+### Get System Accuracy
+```http
+GET /api/tagging/accuracy?period=month&entityType=transaction
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "overall": {
+      "accuracy": 0.89,
+      "totalTagged": 5420,
+      "verified": 4824
+    },
+    "byEntityType": {
+      "transaction": {
+        "accuracy": 0.91,
+        "count": 3200,
+        "verified": 2912
+      },
+      "document": {
+        "accuracy": 0.86,
+        "count": 1500,
+        "verified": 1290
+      }
+    },
+    "byMethod": {
+      "AI": {
+        "accuracy": 0.92,
+        "total": 2800,
+        "verified": 2576
+      },
+      "PATTERN": {
+        "accuracy": 0.88,
+        "total": 1800,
+        "verified": 1584
+      },
+      "MANUAL": {
+        "accuracy": 1.0,
+        "total": 820,
+        "verified": 820
+      }
+    },
+    "period": {
+      "start": "2024-01-01T00:00:00.000Z",
+      "end": "2024-01-31T23:59:59.999Z"
+    }
+  }
+}
+```
+
+### Get Tag Metrics
+```http
+GET /api/tags/550e8400-e29b-41d4-a716-446655440000/metrics?period=week
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "tagId": "550e8400-e29b-41d4-a716-446655440000",
+    "tagCode": "EXPENSE_TRAVEL",
+    "tagName": "Travel Expenses",
+    "usageCount": 245,
+    "successRate": 0.92,
+    "lastUsed": "2024-01-19T15:30:00.000Z",
+    "confidence": 0.85,
+    "entityCount": 189,
+    "accuracyMetrics": {
+      "totalTagged": 245,
+      "correctlyTagged": 225,
+      "accuracy": 0.92
+    }
+  }
+}
+```
+
+### Get Tag Analytics
+```http
+GET /api/tagging/analytics
+```
+
+### Discover Entity Relationships
+```http
+GET /api/relationships/transaction/12345
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "entity": {
+      "type": "transaction",
+      "id": "12345"
+    },
+    "relationships": [
+      {
+        "targetType": "invoice",
+        "targetId": "67890",
+        "relationshipType": "payment_for",
+        "confidence": 0.95,
+        "discoveredBy": "pattern_matching",
+        "metadata": {
+          "matchedOn": ["amount", "date", "reference"]
+        }
       }
     ]
   }
 }
 ```
 
-#### System Accuracy
+## Feedback & Learning
+
+### Submit Tag Feedback
 ```http
-GET /tagging/accuracy
-```
+POST /api/tagging/feedback
+Content-Type: application/json
 
-Query Parameters:
-- `period` (string): Period to analyze
-- `entityType` (string, optional): Filter by entity type
-
-Response:
-```json
 {
-  "overall": {
-    "accuracy": 0.91,
-    "totalTagged": 12345,
-    "verified": 11234,
-    "corrected": 456
-  },
-  "byEntityType": {
-    "transaction": {
-      "accuracy": 0.93,
-      "count": 8000
-    },
-    "document": {
-      "accuracy": 0.87,
-      "count": 4345
-    }
-  },
-  "byMethod": {
-    "AI": { "accuracy": 0.89 },
-    "PATTERN": { "accuracy": 0.94 },
-    "MANUAL": { "accuracy": 1.0 }
+  "entityType": "transaction",
+  "entityId": "12345",
+  "entityTagId": "880e8400-e29b-41d4-a716-446655440000",
+  "feedback": {
+    "isCorrect": false,
+    "suggestedTagId": "990e8400-e29b-41d4-a716-446655440000",
+    "reason": "This is a food expense, not travel",
+    "confidence": 0.95
   }
 }
 ```
 
-## Error Responses
+### Learn from Corrections
+```http
+POST /api/tagging/learn
+Content-Type: application/json
 
-All endpoints follow a consistent error response format:
+{
+  "entityType": "transaction",
+  "entityId": "12345",
+  "correctTagId": "990e8400-e29b-41d4-a716-446655440000",
+  "previousTagId": "550e8400-e29b-41d4-a716-446655440000",
+  "context": {
+    "userCorrection": true,
+    "merchant": "STARBUCKS"
+  }
+}
+```
 
+### Improve Tag Patterns
+```http
+POST /api/tagging/improve-patterns
+Content-Type: application/json
+
+{
+  "tagId": "550e8400-e29b-41d4-a716-446655440000",
+  "successfulExamples": [
+    "Uber ride to airport",
+    "Flight ticket to Paris",
+    "Hotel booking in London"
+  ],
+  "failedExamples": [
+    "Coffee at airport",
+    "Restaurant near hotel"
+  ]
+}
+```
+
+## Error Handling
+
+### Error Response Format
 ```json
 {
+  "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Invalid tag code format",
+    "message": "Invalid request parameters",
     "details": {
-      "field": "code",
-      "value": "invalid code",
-      "constraint": "Must be uppercase with underscores"
+      "field": "entityType",
+      "value": "invalid_type",
+      "constraint": "Must be one of: transaction, document, client, invoice"
     }
   },
-  "timestamp": "2025-01-27T10:00:00Z",
+  "timestamp": "2024-01-20T10:00:00.000Z",
   "path": "/api/tags"
 }
 ```
 
-Common Error Codes:
-- `AUTHENTICATION_ERROR`: Invalid or missing token
-- `AUTHORIZATION_ERROR`: Insufficient permissions
-- `VALIDATION_ERROR`: Invalid request data
-- `NOT_FOUND`: Resource not found
-- `CONFLICT`: Resource conflict (e.g., duplicate tag code)
-- `RATE_LIMIT_EXCEEDED`: Too many requests
-- `INTERNAL_ERROR`: Server error
+### Error Codes
 
-## Rate Limiting
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| AUTHENTICATION_ERROR | 401 | Missing or invalid authentication token |
+| AUTHORIZATION_ERROR | 403 | Insufficient permissions |
+| VALIDATION_ERROR | 400 | Invalid request parameters |
+| NOT_FOUND | 404 | Resource not found |
+| CONFLICT | 409 | Resource conflict (e.g., duplicate tag code) |
+| RATE_LIMIT_EXCEEDED | 429 | Too many requests |
+| AI_PROVIDER_ERROR | 503 | AI service unavailable |
+| INSUFFICIENT_CREDITS | 402 | Not enough AI credits |
+| INTERNAL_ERROR | 500 | Server error |
 
-API endpoints are rate-limited to prevent abuse:
+## Response Formats
 
-- **Standard endpoints**: 100 requests per minute
-- **AI endpoints**: 20 requests per minute
-- **Batch operations**: 5 requests per minute
-
-Rate limit headers:
-```http
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1706353200
+### Success Response
+```json
+{
+  "success": true,
+  "data": { /* response data */ },
+  "timestamp": "2024-01-20T10:00:00.000Z"
+}
 ```
 
-## Webhooks
+### Paginated Response
+```json
+{
+  "success": true,
+  "data": [ /* array of items */ ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "pages": 8,
+    "hasNext": true,
+    "hasPrev": false
+  }
+}
+```
 
-Configure webhooks to receive real-time notifications:
-
-### Webhook Events
-- `tag.created`: New tag created
-- `tag.updated`: Tag updated
-- `tag.deleted`: Tag deleted
-- `entity.tagged`: Entity tagged
-- `entity.tag.removed`: Tag removed from entity
-- `entity.tag.verified`: Tag verified by user
-
-### Webhook Payload
+### Webhook Event Format
 ```json
 {
   "event": "entity.tagged",
-  "timestamp": "2025-01-27T10:00:00Z",
+  "timestamp": "2024-01-20T10:00:00.000Z",
   "data": {
-    "entity": {
-      "type": "transaction",
-      "id": "trans_123"
-    },
+    "entityType": "transaction",
+    "entityId": "12345",
     "tags": [
       {
-        "tagId": "tag_456",
-        "code": "EXPENSE_FOOD",
+        "tagId": "550e8400-e29b-41d4-a716-446655440000",
+        "tagCode": "EXPENSE_TRAVEL",
         "confidence": 0.92
       }
     ]
@@ -564,65 +829,24 @@ Configure webhooks to receive real-time notifications:
 }
 ```
 
-## SDK Examples
+## Webhook Events
 
-### JavaScript/TypeScript
-```typescript
-import { UniversalTaggingClient } from '@ai-service/tagging-sdk';
-
-const client = new UniversalTaggingClient({
-  apiKey: 'your-api-key',
-  baseUrl: 'https://api.yourdomain.com'
-});
-
-// Tag an entity
-const result = await client.tagEntity({
-  type: 'transaction',
-  id: 'trans_123',
-  options: {
-    method: 'auto',
-    maxTags: 3
-  }
-});
-
-// Search tags
-const tags = await client.searchTags('food', {
-  entityType: 'transaction',
-  limit: 5
-});
-```
-
-### Python
-```python
-from ai_service import UniversalTaggingClient
-
-client = UniversalTaggingClient(
-    api_key='your-api-key',
-    base_url='https://api.yourdomain.com'
-)
-
-# Tag an entity
-result = client.tag_entity(
-    entity_type='transaction',
-    entity_id='trans_123',
-    options={
-        'method': 'auto',
-        'max_tags': 3
-    }
-)
-
-# Search tags
-tags = client.search_tags(
-    query='food',
-    entity_type='transaction',
-    limit=5
-)
-```
+| Event | Description |
+|-------|-------------|
+| tag.created | New tag created |
+| tag.updated | Tag updated |
+| tag.deleted | Tag deleted |
+| entity.tagged | Entity tagged |
+| entity.tag.removed | Tag removed from entity |
+| entity.tag.verified | Entity tag verified |
 
 ## Best Practices
 
-1. **Batch Operations**: Use batch endpoints for multiple entities
-2. **Caching**: Cache tag hierarchies and frequently used tags
-3. **Error Handling**: Implement exponential backoff for retries
-4. **Webhooks**: Use webhooks instead of polling for real-time updates
-5. **Confidence Thresholds**: Set appropriate thresholds based on use case
+1. **Authentication**: Always include the Bearer token in the Authorization header
+2. **Rate Limiting**: Implement exponential backoff when rate limited
+3. **Batch Operations**: Use batch endpoints for multiple operations
+4. **Error Handling**: Check the `success` field and handle errors appropriately
+5. **Pagination**: Use pagination for large result sets
+6. **Caching**: Cache tag lists and hierarchies that don't change frequently
+7. **Webhooks**: Subscribe to webhooks for real-time updates
+EOF < /dev/null

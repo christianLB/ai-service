@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
+import type { AxiosError } from 'axios';
 import type { 
   Report, 
   CreateReport, 
@@ -86,7 +87,7 @@ export function useReportMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Report created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to create report');
     },
   });
@@ -101,7 +102,7 @@ export function useReportMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'Report updated successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to update report');
     },
   });
@@ -115,7 +116,7 @@ export function useReportMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Report deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete report');
     },
   });
@@ -132,7 +133,7 @@ export function useReportMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Reports deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete reports');
     },
   });

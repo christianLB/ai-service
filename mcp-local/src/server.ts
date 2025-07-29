@@ -7,7 +7,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { config } from './config';
 import { AIServiceBridge } from './adapters/ai-service-bridge';
+import { MakeCommandBridge } from './adapters/make-command-bridge';
 import { logger } from './utils/logger';
+import * as path from 'path';
 
 // Initialize AI Service bridge
 const bridge = new AIServiceBridge({
@@ -15,6 +17,10 @@ const bridge = new AIServiceBridge({
   authToken: config.aiService.authToken,
   timeout: config.aiService.timeout,
 });
+
+// Initialize Make command bridge
+const projectRoot = path.resolve(__dirname, '../../');
+const makeBridge = new MakeCommandBridge(projectRoot);
 
 // Create MCP server
 const server = new Server(
@@ -34,9 +40,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   logger.info('Listing available tools');
   
   try {
-    const tools = await bridge.listTools();
+    // Get tools from both bridges
+    const [aiServiceTools, makeTools] = await Promise.all([
+      bridge.listTools().catch(() => []),
+      makeBridge.getMakeTools().catch(() => [])
+    ]);
+    
+    const allTools = [...aiServiceTools, ...makeTools];
+    
     return {
-      tools: tools.map(tool => ({
+      tools: allTools.map(tool => ({
         name: tool.name,
         description: tool.description,
         inputSchema: {
@@ -57,7 +70,52 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   logger.info(`Executing tool: ${name}`, { args });
 
   try {
-    const result = await bridge.executeTool(name, args || {});
+    let result;
+    
+    // Route to appropriate bridge based on tool name
+    if (name.startsWith('execute_make_') || name.startsWith('list_make_') || 
+        name.startsWith('make_command_') || name.startsWith('validate_make_') || 
+        name.startsWith('get_command_') || name.startsWith('analyze_user_')) {
+      // Route to Make command bridge
+      switch (name) {
+        case 'execute_make_command':
+          result = await makeBridge.executeMakeCommand(
+            String(args?.target || ''), 
+            args?.args || {}, 
+            Boolean(args?.confirm)
+          );
+          break;
+        case 'list_make_targets':
+          result = await makeBridge.listMakeTargets(args?.category ? String(args.category) : undefined);
+          break;
+        case 'make_command_help':
+          result = await makeBridge.getMakeCommandHelp(String(args?.target || ''));
+          break;
+        case 'validate_make_prerequisites':
+          result = await makeBridge.validateMakePrerequisites(String(args?.target || ''));
+          break;
+        case 'make_command_status':
+          result = await makeBridge.getMakeCommandStatus(args?.service ? String(args.service) : undefined);
+          break;
+        case 'analyze_user_intent':
+          result = await makeBridge.analyzeUserIntent(
+            args?.intent ? String(args.intent) : undefined, 
+            args?.currentState
+          );
+          break;
+        case 'get_command_suggestions':
+          result = await makeBridge.getCommandSuggestions(
+            args?.intent ? String(args.intent) : undefined, 
+            args?.currentState
+          );
+          break;
+        default:
+          throw new Error(`Unknown make command tool: ${name}`);
+      }
+    } else {
+      // Route to AI Service bridge
+      result = await bridge.executeTool(name, args || {});
+    }
     
     return {
       content: [

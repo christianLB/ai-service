@@ -68,7 +68,6 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 
 # Copiar entrypoint script
 COPY --chown=nodejs:nodejs entrypoint.sh ./entrypoint.sh

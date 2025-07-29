@@ -9,6 +9,8 @@ import {
   Button,
   Statistic,
 } from 'antd';
+import type { TablePaginationConfig } from 'antd/es/table';
+import type { SorterResult } from 'antd/es/table/interface';
 import {
   TransactionOutlined,
   FilterOutlined,
@@ -22,6 +24,51 @@ import TransactionsList from '../components/financial/transactions/TransactionsL
 import TransactionFilters from '../components/financial/transactions/TransactionFilters';
 
 const { Title, Text } = Typography;
+
+// Define Transaction and Account types
+interface Transaction {
+  id: string;
+  accountId: string;
+  accountName?: string;
+  type: string;
+  status: string;
+  amount: number;
+  currency: string;
+  description: string;
+  reference?: string;
+  date: string;
+  counterpartyName?: string;
+  counterpartyAccount?: string;
+  metadata?: Record<string, string | number | boolean>;
+  gocardlessData?: {
+    valueDate?: string;
+    bookingDate?: string;
+    [key: string]: string | undefined;
+  };
+}
+
+interface Account {
+  id: string;
+  account_id: string;
+  name?: string;
+  type?: string;
+  institution?: string;
+  iban?: string;
+  currency_id?: string;
+  currencies?: {
+    code: string;
+    symbol: string;
+  };
+  // Additional properties from BankAccounts if needed
+  institution_id?: string;
+  institution_name?: string;
+  logo_url?: string;
+  balance?: number;
+  currency?: string;
+  owner_name?: string;
+  is_active?: boolean;
+  last_synced_at?: string;
+}
 
 interface ITransactionFilters {
   accountIds?: string[];
@@ -41,7 +88,7 @@ interface TransactionStats {
 
 const Transactions: FC = () => {
   const [searchParams] = useSearchParams();
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<ITransactionFilters>({});
   const [stats, setStats] = useState<TransactionStats>({
@@ -52,8 +99,10 @@ const Transactions: FC = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [showFilters, setShowFilters] = useState(true);
+  const [sortField, setSortField] = useState<string>('date');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
   
   const { subscribe } = useWebSocket();
 
@@ -83,6 +132,8 @@ const Transactions: FC = () => {
       const params = new URLSearchParams();
       params.append('page', currentPage.toString());
       params.append('limit', pageSize.toString());
+      params.append('sortBy', sortField);
+      params.append('sortOrder', sortOrder === 'ascend' ? 'asc' : 'desc');
       
       if (filters.accountIds?.length) {
         filters.accountIds.forEach(id => params.append('accountIds[]', id));
@@ -120,7 +171,7 @@ const Transactions: FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, filters]);
+  }, [currentPage, pageSize, filters, sortField, sortOrder]);
 
   useEffect(() => {
     fetchAccounts();
@@ -156,6 +207,28 @@ const Transactions: FC = () => {
 
   const handleRefresh = () => {
     fetchTransactions();
+  };
+
+  const handleTableChange = (pagination: TablePaginationConfig, _filters: Record<string, unknown>, sorter: SorterResult<Transaction> | SorterResult<Transaction>[]) => {
+    // Handle pagination changes
+    if (pagination.current !== currentPage || pagination.pageSize !== pageSize) {
+      setCurrentPage(pagination.current || 1);
+      setPageSize(pagination.pageSize || 50);
+    }
+
+    // Handle sorting changes
+    if (!Array.isArray(sorter)) {
+      if (sorter.field && sorter.order) {
+        setSortField(sorter.field as string);
+        setSortOrder(sorter.order);
+        setCurrentPage(1); // Reset to first page when sorting changes
+      } else if (!sorter.order) {
+        // Reset to default sorting
+        setSortField('date');
+        setSortOrder('descend');
+        setCurrentPage(1);
+      }
+    }
   };
 
   const handleExport = async () => {
@@ -306,6 +379,7 @@ const Transactions: FC = () => {
               },
             }}
             accounts={accounts}
+            onTableChange={handleTableChange}
           />
         </Col>
       </Row>

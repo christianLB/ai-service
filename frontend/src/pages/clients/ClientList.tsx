@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table,
   Button,
@@ -41,7 +41,7 @@ const ClientList: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
       const response = await clientService.getClients({
@@ -67,7 +67,7 @@ const ClientList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchText, statusFilter, pagination]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -79,7 +79,7 @@ const ClientList: React.FC = () => {
         });
         fetchClients();
       }
-    } catch (error) {
+    } catch {
       notification.error({
         message: 'Error',
         description: 'No se pudo eliminar el cliente',
@@ -89,7 +89,7 @@ const ClientList: React.FC = () => {
 
   useEffect(() => {
     fetchClients();
-  }, [searchText, statusFilter, pagination.current, pagination.pageSize]);
+  }, [fetchClients]);
 
   const columns = [
     {
@@ -179,7 +179,7 @@ const ClientList: React.FC = () => {
     {
       title: 'Acciones',
       key: 'actions',
-      render: (_: any, record: Client) => (
+      render: (_: unknown, record: Client) => (
         <Space size="middle">
           <Button
             type="link"

@@ -12,6 +12,7 @@ import {
   message,
 } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { FilterValue, SorterResult, TableCurrentDataSource } from 'antd/es/table/interface';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -41,7 +42,12 @@ interface Transaction {
   date: string;
   counterpartyName?: string;
   counterpartyAccount?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, string | number | boolean>;
+  gocardlessData?: {
+    valueDate?: string;
+    bookingDate?: string;
+    [key: string]: string | undefined;
+  };
 }
 
 interface Account {
@@ -64,6 +70,7 @@ interface TransactionsListProps {
   pagination: TablePaginationConfig;
   accounts: Account[];
   onRefresh?: () => void;
+  onTableChange?: (pagination: TablePaginationConfig, filters: Record<string, FilterValue | null>, sorter: SorterResult<Transaction> | SorterResult<Transaction>[], extra: TableCurrentDataSource<Transaction>) => void;
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({
@@ -72,6 +79,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   pagination,
   accounts,
   onRefresh,
+  onTableChange,
 }) => {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
@@ -79,6 +87,18 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [importModalVisible, setImportModalVisible] = useState(false);
+
+  // Helper function to get the most accurate date
+  const getTransactionDate = (transaction: Transaction): string => {
+    // Priority: valueDate > bookingDate > date
+    if (transaction.gocardlessData?.valueDate) {
+      return transaction.gocardlessData.valueDate;
+    }
+    if (transaction.gocardlessData?.bookingDate) {
+      return transaction.gocardlessData.bookingDate;
+    }
+    return transaction.date;
+  };
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -173,19 +193,24 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
 
   const columns: ColumnsType<Transaction> = [
     {
-      title: 'Fecha',
+      title: 'Fecha Valor',
       dataIndex: 'date',
       key: 'date',
-      width: 100,
+      width: 110,
       sorter: true,
-      render: (date: string) => (
-        <Space direction="vertical" size={0}>
-          <Text>{dayjs(date).format('DD/MM/YYYY')}</Text>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            {dayjs(date).format('HH:mm')}
-          </Text>
-        </Space>
-      ),
+      render: (_, record) => {
+        const displayDate = getTransactionDate(record);
+        const isValueDate = record.gocardlessData?.valueDate;
+        return (
+          <Space direction="vertical" size={0}>
+            <Text>{dayjs(displayDate).format('DD/MM/YYYY')}</Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              {dayjs(displayDate).format('HH:mm')}
+              {isValueDate && ' (valor)'}
+            </Text>
+          </Space>
+        );
+      },
     },
     {
       title: 'Tipo',
@@ -313,6 +338,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
           pagination={pagination}
           size="middle"
           scroll={{ x: 900 }}
+          onChange={onTableChange}
           onRow={(record) => ({
             onClick: () => handleRowClick(record),
             style: { cursor: 'pointer' },
@@ -357,7 +383,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
           <div style={{ marginTop: 16, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
             <p><strong>Descripción:</strong> {transactionToDelete.description}</p>
             <p><strong>Monto:</strong> {formatAmount(transactionToDelete.amount, transactionToDelete.currency)}</p>
-            <p><strong>Fecha:</strong> {dayjs(transactionToDelete.date).format('DD/MM/YYYY')}</p>
+            <p><strong>Fecha:</strong> {dayjs(getTransactionDate(transactionToDelete)).format('DD/MM/YYYY')}</p>
           </div>
         )}
         <p style={{ marginTop: 16, color: '#ff4d4f' }}>Esta acción no se puede deshacer.</p>

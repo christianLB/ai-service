@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -46,14 +46,7 @@ const ClientDetail: React.FC = () => {
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      loadClient();
-      loadClientInvoices();
-    }
-  }, [id]);
-
-  const loadClient = async () => {
+  const loadClient = useCallback(async () => {
     try {
       setLoading(true);
       const response = await clientService.getClient(id!);
@@ -70,9 +63,9 @@ const ClientDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
 
-  const loadClientInvoices = async () => {
+  const loadClientInvoices = useCallback(async () => {
     try {
       setLoadingInvoices(true);
       const response = await invoiceService.getInvoices({
@@ -87,7 +80,15 @@ const ClientDetail: React.FC = () => {
     } finally {
       setLoadingInvoices(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadClient();
+      loadClientInvoices();
+    }
+  }, [id, loadClient, loadClientInvoices]);
+
 
   const handleDelete = async () => {
     try {
@@ -100,7 +101,7 @@ const ClientDetail: React.FC = () => {
         });
         navigate('/clients');
       }
-    } catch (error) {
+    } catch {
       notification.error({
         message: 'Error',
         description: 'No se pudo eliminar el cliente',
@@ -182,7 +183,7 @@ const ClientDetail: React.FC = () => {
     {
       title: 'Acciones',
       key: 'actions',
-      render: (_: any, record: Invoice) => (
+      render: (_: unknown, record: Invoice) => (
         <Button
           type="link"
           size="small"

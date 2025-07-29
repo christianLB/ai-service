@@ -276,6 +276,16 @@ auth-test-endpoints: ## 🌐 Probar todos los endpoints protegidos con token
 	@echo "$(BLUE)🔐 Probando endpoints con autenticación...$(NC)"
 	@./scripts/check-auth.sh
 
+.PHONY: tagging-test
+tagging-test: ## 🏷️ Test Universal AI Tagging System endpoints
+	@echo "$(BLUE)🏷️ Testing Universal AI Tagging System endpoints...$(NC)"
+	@$(MAKE) -f Makefile.development dev-test-tagging
+
+.PHONY: entity-tagging-test
+entity-tagging-test: ## 🏷️ Test entity tagging functionality
+	@echo "$(BLUE)🏷️ Testing entity tagging functionality...$(NC)"
+	@$(MAKE) -f Makefile.development dev-test-entity-tagging
+
 .PHONY: fix-db
 fix-db: ## 🔧 Arreglar vistas y objetos faltantes en la base de datos
 	@$(MAKE) -f Makefile.development dev-fix-missing-views

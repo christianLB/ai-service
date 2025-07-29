@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
+import type { AxiosError } from 'axios';
 import type { 
   Client, 
   CreateClient, 
@@ -86,7 +87,7 @@ export function useClientMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Client created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to create client');
     },
   });
@@ -101,7 +102,7 @@ export function useClientMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'Client updated successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to update client');
     },
   });
@@ -115,7 +116,7 @@ export function useClientMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Client deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete client');
     },
   });
@@ -132,7 +133,7 @@ export function useClientMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Clients deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete clients');
     },
   });

@@ -172,7 +172,7 @@ describe('TransactionsList - Import Modal Integration', () => {
       fireEvent.click(importButton);
 
       // Verify modal is rendered with correct props
-      const modalMock = ImportTransactionsModal as any;
+      const modalMock = ImportTransactionsModal as jest.MockedFunction<typeof ImportTransactionsModal>;
       expect(modalMock).toHaveBeenCalledWith(
         expect.objectContaining({
           visible: true,

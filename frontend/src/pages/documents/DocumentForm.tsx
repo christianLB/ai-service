@@ -76,7 +76,7 @@ const DocumentForm: React.FC = () => {
       const metadata = form.getFieldValue('metadata') || {};
       const tags = form.getFieldValue('tags') || [];
       
-      const result = await documentService.uploadDocument(file as any, {
+      const result = await documentService.uploadDocument(file as File, {
         tags,
         userId: metadata.userId
       });
@@ -91,7 +91,7 @@ const DocumentForm: React.FC = () => {
             form.getFieldValue('analysisProfile')
           );
           message.success('Análisis completado exitosamente');
-        } catch (error) {
+        } catch {
           message.warning('Documento cargado pero el análisis falló');
         }
       }

@@ -217,6 +217,12 @@ export interface ClientFormData {
   email: string;
   phone?: string;
   address?: ClientAddress;
+  // Address fields for form handling
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
   clientType: 'individual' | 'business';
   currency: string;
   language: string;

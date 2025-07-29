@@ -102,9 +102,9 @@ const IntegrationSettings: React.FC = () => {
       
       setConfigs(configsByType);
       setFieldStatuses(statusesByType);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading integrations:', error);
-      if (error.response?.status === 401) {
+      if ((error as { response?: { status?: number } }).response?.status === 401) {
         message.error('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
       } else {
         message.error('Error al cargar las integraciones. Por favor, intenta de nuevo.');
@@ -500,7 +500,7 @@ const IntegrationForm: React.FC<IntegrationFormProps> = ({
                       } else {
                         message.error('Error de autenticación: ' + (result.details || 'Verifica las credenciales'));
                       }
-                    } catch (error) {
+                    } catch {
                       message.destroy();
                       message.error('Error de conexión con el servidor');
                     }

@@ -1,729 +1,751 @@
-# Universal AI Tagging System - Architecture Design
+# Universal AI Tagging System - Architecture Documentation
 
-## Executive Summary
+## Table of Contents
+1. [System Overview](#system-overview)
+2. [Architecture Diagram](#architecture-diagram)
+3. [Component Architecture](#component-architecture)
+4. [Data Flow](#data-flow)
+5. [Database Schema](#database-schema)
+6. [AI Integration Architecture](#ai-integration-architecture)
+7. [Security Architecture](#security-architecture)
+8. [Scalability & Performance](#scalability--performance)
 
-This document outlines the detailed architectural design for the Universal AI Tagging System, a next-generation classification engine that replaces entity-specific categorization with a unified, AI-powered tagging framework.
+## System Overview
 
-## System Components
+The Universal AI Tagging System is a comprehensive solution for intelligent content categorization and tagging. It combines AI-powered analysis with pattern matching and user feedback to provide accurate, scalable tagging across multiple entity types.
 
-### 1. Core Architecture Layers
+### Key Features
+- **Multi-entity support**: Transactions, documents, clients, invoices
+- **Hierarchical tagging**: Parent-child tag relationships
+- **AI-powered suggestions**: Claude and OpenAI integration
+- **Pattern matching**: Rule-based tagging
+- **Real-time updates**: WebSocket integration
+- **Batch processing**: Efficient bulk operations
+- **Learning system**: Continuous improvement from feedback
+
+### Technology Stack
+- **Backend**: Node.js, Express.js, TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **AI Providers**: Anthropic Claude, OpenAI
+- **Caching**: Redis
+- **Queue**: Bull (Redis-based)
+- **Real-time**: Socket.io
+- **Authentication**: JWT
+
+## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         API Gateway Layer                         │
-│  ┌──────────────┐ ┌──────────────┐ ┌─────────────────────────┐ │
-│  │  REST API    │ │  GraphQL API │ │  WebSocket (Real-time)   │ │
-│  └──────────────┘ └──────────────┘ └─────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────┤
-│                      Service Orchestration                        │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │            Universal Tagging Service Manager              │  │
-│  │  • Request routing  • Load balancing  • Circuit breaker  │  │
-│  └──────────────────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────────────────┤
-│                        Core Services                              │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐  │
-│  │  Tagging   │ │   Pattern  │ │    AI      │ │  Learning  │  │
-│  │  Engine    │ │   Engine   │ │ Integration│ │   Engine   │  │
-│  └────────────┘ └────────────┘ └────────────┘ └────────────┘  │
-├─────────────────────────────────────────────────────────────────┤
-│                      Infrastructure Layer                         │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐  │
-│  │ PostgreSQL │ │   Redis    │ │  Queue     │ │  Vector    │  │
-│  │  (Primary) │ │  (Cache)   │ │  (Bull)    │ │  Store     │  │
-│  └────────────┘ └────────────┘ └────────────┘ └────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              Client Layer                                │
+├─────────────────────┬─────────────────────┬─────────────────────────────┤
+│   Web Application   │   Mobile App        │   API Consumers             │
+│   (React)           │   (React Native)    │   (External Systems)        │
+└─────────────────────┴─────────────────────┴─────────────────────────────┘
+                      │                      │
+                      ▼                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           API Gateway Layer                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│   - Authentication (JWT)                                                 │
+│   - Rate Limiting                                                        │
+│   - Request Routing                                                      │
+│   - WebSocket Management                                                 │
+└─────────────────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          Application Layer                               │
+├──────────────────┬──────────────────┬──────────────────┬───────────────┤
+│  Tag Service     │ Entity Service   │  AI Service      │ Analytics     │
+│  - CRUD ops      │ - Tag entities   │  - Claude API    │ - Metrics    │
+│  - Hierarchy     │ - Batch ops      │  - OpenAI API    │ - Reports    │
+│  - Search        │ - Relationships  │  - Suggestions   │ - Insights   │
+└──────────────────┴──────────────────┴──────────────────┴───────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Business Logic Layer                           │
+├──────────────────┬──────────────────┬──────────────────┬───────────────┤
+│ Pattern Matching │ Learning Engine  │ Rule Engine      │ Workflow      │
+│ - Keywords       │ - Feedback       │ - Business rules │ - Automation │
+│ - Regex          │ - Improvements   │ - Validation     │ - Events     │
+└──────────────────┴──────────────────┴──────────────────┴───────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            Data Layer                                    │
+├────────────────┬────────────────┬────────────────┬─────────────────────┤
+│  PostgreSQL    │     Redis      │  Queue (Bull)  │   File Storage      │
+│  - Tags        │  - Cache       │  - Batch jobs  │   - Documents       │
+│  - Entities    │  - Sessions    │  - Async tasks │   - Attachments     │
+│  - Mappings    │  - Rate limits │  - Retries     │                     │
+└────────────────┴────────────────┴────────────────┴─────────────────────┘
 ```
 
-### 2. Service Component Details
+## Component Architecture
 
-#### A. Tagging Engine
+### 1. API Gateway Layer
+
+#### Authentication Middleware
 ```typescript
-class TaggingEngine {
-  // Core tagging logic
-  async processEntity(entity: TaggableEntity): Promise<TaggingResult> {
-    // 1. Extract features
-    const features = await this.featureExtractor.extract(entity);
-    
-    // 2. Run parallel analysis
-    const [patternResults, aiResults, semanticResults] = await Promise.all([
-      this.patternEngine.match(features),
-      this.aiEngine.analyze(features),
-      this.semanticEngine.search(features)
-    ]);
-    
-    // 3. Merge and rank results
-    const mergedTags = this.mergeTags(patternResults, aiResults, semanticResults);
-    
-    // 4. Apply business rules
-    const finalTags = await this.ruleEngine.apply(mergedTags, entity);
-    
-    // 5. Store and return
-    return this.persistTags(entity, finalTags);
-  }
+interface AuthMiddleware {
+  validateToken(token: string): Promise<User>;
+  refreshToken(refreshToken: string): Promise<TokenPair>;
+  revokeToken(token: string): Promise<void>;
 }
 ```
 
-#### B. Pattern Engine
+#### Rate Limiting
 ```typescript
-interface PatternEngine {
-  // Pattern types
-  patterns: {
-    keyword: KeywordMatcher;
-    regex: RegexMatcher;
-    numeric: NumericRangeMatcher;
-    date: DatePatternMatcher;
-    composite: CompositeMatcher;
-  };
+interface RateLimiter {
+  standard: RateLimit;    // 100 req/min
+  ai: RateLimit;         // 20 req/min
+  batch: RateLimit;      // 5 req/min
+  search: RateLimit;     // 50 req/min
+}
+```
+
+### 2. Service Layer Architecture
+
+#### Tag Service
+```typescript
+interface ITagService {
+  // CRUD Operations
+  createTag(data: CreateTag, userId: string): Promise<Tag>;
+  updateTag(id: string, data: UpdateTag, userId: string): Promise<Tag>;
+  deleteTag(id: string, options?: DeleteOptions, userId: string): Promise<void>;
+  getTag(id: string): Promise<Tag>;
+  listTags(query: TagQuery): Promise<PaginatedResponse<Tag>>;
   
-  // Matching logic
-  async match(features: EntityFeatures): Promise<PatternMatch[]> {
-    const matches = await Promise.all(
-      Object.values(this.patterns).map(p => p.match(features))
-    );
-    return this.rankMatches(matches.flat());
-  }
-}
-```
-
-#### C. AI Integration Layer
-```typescript
-class AIIntegrationService {
-  providers: {
-    claude: ClaudeProvider;
-    openai: OpenAIProvider;
-    custom: CustomModelProvider;
-  };
+  // Hierarchy Operations
+  getTagHierarchy(parentId?: string): Promise<TagHierarchy>;
+  getTagPath(tagId: string): Promise<TagPath[]>;
   
-  async analyze(entity: TaggableEntity): Promise<AIAnalysis> {
-    // Select best provider based on entity type
-    const provider = this.selectProvider(entity.type);
-    
-    // Generate prompt
-    const prompt = this.promptGenerator.generate(entity);
-    
-    // Get AI analysis
-    const response = await provider.complete(prompt);
-    
-    // Parse and validate
-    return this.parseAIResponse(response);
-  }
-}
-```
-
-#### D. Learning Engine
-```typescript
-class LearningEngine {
-  async processFeedback(feedback: UserFeedback): Promise<void> {
-    // Update pattern confidence
-    await this.updatePatternConfidence(feedback);
-    
-    // Retrain if needed
-    if (this.shouldRetrain(feedback)) {
-      await this.queueRetraining(feedback.entityType);
-    }
-    
-    // Update embeddings
-    await this.updateEmbeddings(feedback);
-  }
+  // Search Operations
+  searchTags(search: TagSearch): Promise<Tag[]>;
   
-  async retrain(entityType: string): Promise<void> {
-    // Get training data
-    const data = await this.getTrainingData(entityType);
-    
-    // Train new patterns
-    const newPatterns = await this.trainPatterns(data);
-    
-    // Validate and deploy
-    if (await this.validatePatterns(newPatterns)) {
-      await this.deployPatterns(newPatterns);
-    }
-  }
+  // Bulk Operations
+  bulkCreateTags(tags: CreateTag[], userId: string): Promise<Tag[]>;
+  bulkUpdateTags(updates: TagUpdate[], userId: string): Promise<Tag[]>;
 }
 ```
 
-### 3. Data Flow Architecture
-
-```mermaid
-graph TD
-    A[Entity Input] --> B{Router}
-    B --> C[Feature Extraction]
-    C --> D[Pattern Matching]
-    C --> E[AI Analysis]
-    C --> F[Semantic Search]
-    D --> G[Result Merger]
-    E --> G
-    F --> G
-    G --> H[Rule Engine]
-    H --> I[Confidence Scoring]
-    I --> J[Tag Assignment]
-    J --> K[Storage]
-    K --> L[Response]
-    
-    M[User Feedback] --> N[Learning Engine]
-    N --> O[Pattern Update]
-    N --> P[Model Retraining]
-    O --> D
-    P --> E
+#### Entity Tagging Service
+```typescript
+interface IEntityTaggingService {
+  // Single Entity Operations
+  tagEntity(
+    entityType: EntityType,
+    entityId: string,
+    request: TagEntityRequest,
+    userId: string
+  ): Promise<TagEntityResponse>;
+  
+  getEntityTags(
+    entityType: EntityType,
+    entityId: string
+  ): Promise<EntityTag[]>;
+  
+  removeEntityTag(
+    entityType: EntityType,
+    entityId: string,
+    tagId: string,
+    userId: string
+  ): Promise<void>;
+  
+  // Batch Operations
+  batchTagEntities(
+    request: BatchTagRequest,
+    userId: string
+  ): Promise<BatchTagResponse>;
+  
+  reTagEntities(
+    request: ReTagRequest,
+    userId: string
+  ): Promise<ReTagResponse>;
+  
+  // Discovery Operations
+  findEntitiesByTag(
+    tagId: string,
+    entityTypes?: EntityType[],
+    pagination?: Pagination
+  ): Promise<EntityPreview[]>;
+  
+  discoverRelationships(
+    entityType: EntityType,
+    entityId: string
+  ): Promise<EntityRelationship[]>;
+}
 ```
 
-### 4. Caching Architecture
-
-```yaml
-Redis Cache Structure:
-  tags:
-    hierarchy: "tags:hierarchy"              # Full tag tree (24h TTL)
-    entity: "tags:entity:{type}:{id}"       # Entity tags (1h TTL)
-    pattern: "tags:pattern:{id}"            # Pattern cache (6h TTL)
-    
-  embeddings:
-    tag: "embed:tag:{id}"                   # Tag embeddings (7d TTL)
-    entity: "embed:entity:{type}:{id}"      # Entity embeddings (1h TTL)
-    
-  analytics:
-    metrics: "metrics:tag:{id}:{period}"    # Tag metrics (1h TTL)
-    accuracy: "metrics:accuracy:{date}"     # Daily accuracy (24h TTL)
+#### AI Tagging Service
+```typescript
+interface IAITaggingService {
+  // Suggestion Engine
+  suggestTags(
+    content: string,
+    entityType: EntityType,
+    metadata?: Record<string, any>,
+    options?: AIOptions
+  ): Promise<TagSuggestion[]>;
+  
+  // Categorization
+  autoCategorize(
+    content: string,
+    entityType: EntityType,
+    options?: CategoryOptions
+  ): Promise<Category[]>;
+  
+  // Learning System
+  learnFromFeedback(feedback: TagFeedback): Promise<void>;
+  learnFromCorrection(learning: TagLearning): Promise<void>;
+  improveTagPatterns(
+    tagId: string,
+    examples: PatternExamples
+  ): Promise<void>;
+  
+  // Multi-language Support
+  getMultilingualSuggestions(
+    content: string,
+    entityType: EntityType,
+    languages: string[]
+  ): Promise<Map<string, TagSuggestion[]>>;
+  
+  // Analytics
+  getTagAnalytics(): Promise<TagAnalytics>;
+}
 ```
 
-### 5. Queue Architecture
+### 3. Pattern Matching Engine
 
 ```typescript
-// Queue definitions
-const queues = {
-  tagging: {
-    name: 'tagging-queue',
-    jobs: ['tag-entity', 'batch-tag', 'retag'],
-    concurrency: 10
-  },
+interface IPatternMatchingService {
+  // Pattern Types
+  matchKeywords(content: string, keywords: string[]): MatchResult;
+  matchMerchants(content: string, merchants: string[]): MatchResult;
+  matchRegex(content: string, pattern: string): MatchResult;
+  matchCustomRules(content: string, rules: CustomRule[]): MatchResult;
   
-  learning: {
-    name: 'learning-queue',
-    jobs: ['process-feedback', 'retrain-patterns', 'update-embeddings'],
-    concurrency: 5
-  },
+  // Composite Matching
+  matchPatterns(
+    content: string,
+    patterns: TagPatterns
+  ): Promise<PatternMatch[]>;
   
-  analytics: {
-    name: 'analytics-queue',
-    jobs: ['calculate-metrics', 'generate-reports', 'cleanup-old-data'],
-    concurrency: 3
-  }
-};
-
-// Job processors
-class TaggingQueueProcessor {
-  @Process('tag-entity')
-  async tagEntity(job: Job<TagEntityJob>) {
-    const { entityType, entityId, options } = job.data;
-    
-    try {
-      const entity = await this.loadEntity(entityType, entityId);
-      const result = await this.taggingEngine.processEntity(entity, options);
-      
-      await this.notifyCompletion(entityType, entityId, result);
-      return result;
-    } catch (error) {
-      await this.handleError(error, job);
-      throw error;
-    }
-  }
+  // Pattern Learning
+  updatePatterns(
+    tagId: string,
+    successfulMatches: string[],
+    failedMatches: string[]
+  ): Promise<void>;
 }
 ```
 
-## Integration Patterns
+## Data Flow
 
-### 1. Entity Integration
+### 1. Tagging Flow
 
-Each entity type requires an adapter to work with the universal tagging system:
-
-```typescript
-// Transaction Adapter
-class TransactionTagAdapter implements IEntityAdapter {
-  async prepareEntity(transaction: Transaction): Promise<TaggableEntity> {
-    return {
-      type: 'transaction',
-      id: transaction.id,
-      content: this.extractContent(transaction),
-      metadata: {
-        amount: transaction.amount,
-        currency: transaction.currency,
-        date: transaction.date,
-        counterparty: transaction.counterparty_name
-      }
-    };
-  }
-  
-  private extractContent(transaction: Transaction): string {
-    return [
-      transaction.description,
-      transaction.counterparty_name,
-      transaction.reference
-    ].filter(Boolean).join(' ');
-  }
-}
-
-// Document Adapter
-class DocumentTagAdapter implements IEntityAdapter {
-  async prepareEntity(document: Document): Promise<TaggableEntity> {
-    return {
-      type: 'document',
-      id: document.id,
-      content: document.content.text,
-      metadata: {
-        title: document.title,
-        format: document.format,
-        source: document.metadata.source,
-        language: document.content.language
-      }
-    };
-  }
-}
+```
+User Request → API Gateway → Tag Service → AI Service
+                                  ↓
+                           Pattern Matcher
+                                  ↓
+                           Rule Engine
+                                  ↓
+                           Database
+                                  ↓
+                           Response → User
 ```
 
-### 2. AI Provider Integration
+### 2. Learning Flow
+
+```
+User Feedback → API Gateway → AI Service → Learning Engine
+                                               ↓
+                                        Pattern Update
+                                               ↓
+                                        Model Training
+                                               ↓
+                                        Database Update
+```
+
+### 3. Batch Processing Flow
+
+```
+Batch Request → API Gateway → Queue Service
+                                  ↓
+                            Worker Process
+                                  ↓
+                         Parallel Processing
+                                  ↓
+                           Result Aggregation
+                                  ↓
+                            Notification
+```
+
+## Database Schema
+
+### Core Tables
+
+#### UniversalTag Table
+```sql
+CREATE TABLE UniversalTag (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  entityTypes TEXT[] NOT NULL,
+  patterns JSONB,
+  rules JSONB,
+  confidence DECIMAL(3,2) DEFAULT 0.50,
+  embeddingModel VARCHAR(50),
+  parentId UUID REFERENCES UniversalTag(id),
+  path TEXT NOT NULL,
+  level INTEGER DEFAULT 0,
+  color VARCHAR(7),
+  icon VARCHAR(50),
+  isActive BOOLEAN DEFAULT true,
+  isSystem BOOLEAN DEFAULT false,
+  metadata JSONB,
+  usageCount INTEGER DEFAULT 0,
+  successRate DECIMAL(3,2) DEFAULT 0.00,
+  lastUsed TIMESTAMP,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  createdBy UUID NOT NULL,
+  updatedBy UUID NOT NULL
+);
+
+-- Indexes
+CREATE INDEX idx_tag_code ON UniversalTag(code);
+CREATE INDEX idx_tag_entity_types ON UniversalTag USING GIN(entityTypes);
+CREATE INDEX idx_tag_parent ON UniversalTag(parentId);
+CREATE INDEX idx_tag_path ON UniversalTag(path);
+CREATE INDEX idx_tag_active ON UniversalTag(isActive);
+```
+
+#### EntityTag Table
+```sql
+CREATE TABLE EntityTag (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entityType VARCHAR(50) NOT NULL,
+  entityId VARCHAR(255) NOT NULL,
+  tagId UUID NOT NULL REFERENCES UniversalTag(id),
+  confidence DECIMAL(3,2) NOT NULL,
+  method VARCHAR(20) NOT NULL,
+  appliedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  appliedBy UUID NOT NULL,
+  isVerified BOOLEAN DEFAULT false,
+  verifiedBy UUID,
+  verifiedAt TIMESTAMP,
+  metadata JSONB,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  UNIQUE(entityType, entityId, tagId)
+);
+
+-- Indexes
+CREATE INDEX idx_entity_tag_lookup ON EntityTag(entityType, entityId);
+CREATE INDEX idx_entity_tag_tag ON EntityTag(tagId);
+CREATE INDEX idx_entity_tag_verified ON EntityTag(isVerified);
+CREATE INDEX idx_entity_tag_applied ON EntityTag(appliedAt);
+```
+
+#### TagLearning Table
+```sql
+CREATE TABLE TagLearning (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tagId UUID NOT NULL REFERENCES UniversalTag(id),
+  entityType VARCHAR(50) NOT NULL,
+  entityId VARCHAR(255) NOT NULL,
+  content TEXT,
+  isPositive BOOLEAN NOT NULL,
+  confidence DECIMAL(3,2),
+  feedback JSONB,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  createdBy UUID NOT NULL
+);
+
+-- Indexes
+CREATE INDEX idx_learning_tag ON TagLearning(tagId);
+CREATE INDEX idx_learning_entity ON TagLearning(entityType, entityId);
+CREATE INDEX idx_learning_positive ON TagLearning(isPositive);
+```
+
+### Relationships
+
+```sql
+-- Tag Hierarchy
+ALTER TABLE UniversalTag 
+ADD CONSTRAINT fk_parent_tag 
+FOREIGN KEY (parentId) REFERENCES UniversalTag(id) 
+ON DELETE CASCADE;
+
+-- Entity Tag Cascade
+ALTER TABLE EntityTag 
+ADD CONSTRAINT fk_tag 
+FOREIGN KEY (tagId) REFERENCES UniversalTag(id) 
+ON DELETE CASCADE;
+```
+
+## AI Integration Architecture
+
+### 1. AI Provider Abstraction
 
 ```typescript
-// Claude Integration
-class ClaudeTagProvider implements IAIProvider {
-  async generateTags(content: string, context: TagContext): Promise<AITags> {
-    const response = await this.claude.complete({
-      model: 'claude-3-opus',
-      system: this.getSystemPrompt(context),
-      messages: [{
-        role: 'user',
-        content: this.formatContent(content, context)
-      }],
-      tools: [{
-        name: 'suggest_tags',
-        description: 'Suggest relevant tags for the content',
-        parameters: {
-          tags: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                code: { type: 'string' },
-                confidence: { type: 'number' },
-                reasoning: { type: 'string' }
-              }
-            }
-          }
-        }
-      }]
-    });
-    
+interface AIProvider {
+  name: string;
+  suggestTags(
+    content: string,
+    context: AIContext
+  ): Promise<TagSuggestion[]>;
+  
+  categorize(
+    content: string,
+    options: CategoryOptions
+  ): Promise<Category[]>;
+  
+  generateEmbedding(
+    text: string
+  ): Promise<number[]>;
+}
+
+class ClaudeProvider implements AIProvider {
+  async suggestTags(content: string, context: AIContext) {
+    const prompt = this.buildPrompt(content, context);
+    const response = await claudeAPI.complete(prompt);
     return this.parseResponse(response);
   }
 }
 
-// OpenAI Integration
-class OpenAITagProvider implements IAIProvider {
-  async generateEmbedding(content: string): Promise<number[]> {
-    const response = await this.openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: content
-    });
-    
-    return response.data[0].embedding;
+class OpenAIProvider implements AIProvider {
+  async suggestTags(content: string, context: AIContext) {
+    const messages = this.buildMessages(content, context);
+    const response = await openaiAPI.chat(messages);
+    return this.parseResponse(response);
   }
 }
 ```
 
-### 3. Cross-Entity Relationship Discovery
+### 2. AI Request Flow
 
-```typescript
-class RelationshipDiscovery {
-  async discoverRelationships(
-    entity: TaggableEntity,
-    tags: AppliedTag[]
-  ): Promise<EntityRelationship[]> {
-    const relationships: EntityRelationship[] = [];
-    
-    // 1. Find entities with similar tags
-    const similarEntities = await this.findSimilarByTags(tags);
-    
-    // 2. Semantic search for mentions
-    const mentionedEntities = await this.searchMentions(entity.content);
-    
-    // 3. Temporal correlation
-    const temporalRelated = await this.findTemporalCorrelations(entity);
-    
-    // 4. Pattern-based relationships
-    const patternRelated = await this.findPatternRelationships(entity);
-    
-    // 5. Merge and score relationships
-    return this.mergeRelationships([
-      ...similarEntities,
-      ...mentionedEntities,
-      ...temporalRelated,
-      ...patternRelated
-    ]);
-  }
-}
+```
+                    ┌─────────────────┐
+                    │   AI Manager    │
+                    └────────┬────────┘
+                             │
+                ┌────────────┴────────────┐
+                │                         │
+         ┌──────▼──────┐          ┌──────▼──────┐
+         │   Claude    │          │   OpenAI    │
+         │  Provider   │          │  Provider   │
+         └──────┬──────┘          └──────┬──────┘
+                │                         │
+                └────────────┬────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │ Response Parser │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │   Confidence    │
+                    │   Calculator    │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │    Results      │
+                    └─────────────────┘
 ```
 
-## Performance Optimization
-
-### 1. Database Optimization
-
-```sql
--- Optimized indexes for common queries
-CREATE INDEX idx_entity_tags_lookup 
-  ON entity_tags(entity_type, entity_id, tag_id) 
-  WHERE is_verified = true;
-
-CREATE INDEX idx_tag_search 
-  ON universal_tags USING gin(to_tsvector('english', name || ' ' || description));
-
-CREATE INDEX idx_embedding_search 
-  ON universal_tags USING ivfflat(embedding vector_cosine_ops)
-  WITH (lists = 100);
-
--- Materialized view for tag statistics
-CREATE MATERIALIZED VIEW tag_statistics AS
-SELECT 
-  t.id,
-  t.code,
-  COUNT(DISTINCT et.entity_id) as usage_count,
-  AVG(et.confidence) as avg_confidence,
-  COUNT(CASE WHEN et.is_verified THEN 1 END)::float / 
-    NULLIF(COUNT(*), 0) as verification_rate
-FROM universal_tags t
-LEFT JOIN entity_tags et ON t.id = et.tag_id
-GROUP BY t.id, t.code;
-
-CREATE INDEX idx_tag_stats_usage ON tag_statistics(usage_count DESC);
-```
-
-### 2. Caching Strategy
+### 3. Learning Pipeline
 
 ```typescript
-class TagCacheManager {
-  private readonly layers = {
-    l1: new MemoryCache({ maxSize: 1000 }),     // In-memory
-    l2: new RedisCache({ ttl: 3600 }),          // Redis
-    l3: new DatabaseCache()                      // PostgreSQL
-  };
-  
-  async get(key: string): Promise<any> {
-    // Try each layer
-    for (const layer of Object.values(this.layers)) {
-      const value = await layer.get(key);
-      if (value) {
-        // Promote to higher layers
-        await this.promote(key, value);
-        return value;
-      }
+class LearningPipeline {
+  async processFeedback(feedback: TagFeedback) {
+    // 1. Validate feedback
+    await this.validateFeedback(feedback);
+    
+    // 2. Update tag confidence
+    await this.updateTagConfidence(feedback);
+    
+    // 3. Store learning data
+    await this.storeLearningData(feedback);
+    
+    // 4. Trigger pattern update if threshold met
+    if (await this.shouldUpdatePatterns(feedback.tagId)) {
+      await this.schedulePatternUpdate(feedback.tagId);
     }
-    return null;
-  }
-  
-  async set(key: string, value: any, options?: CacheOptions): Promise<void> {
-    // Write to all applicable layers
-    await Promise.all(
-      Object.values(this.layers).map(layer => 
-        layer.set(key, value, options)
-      )
-    );
-  }
-}
-```
-
-### 3. Batch Processing Optimization
-
-```typescript
-class BatchProcessor {
-  async processBatch(entities: TaggableEntity[]): Promise<BatchResult> {
-    // Group by entity type for optimized processing
-    const grouped = this.groupByType(entities);
     
-    // Process each group in parallel
-    const results = await Promise.all(
-      Object.entries(grouped).map(async ([type, group]) => {
-        // Load type-specific patterns once
-        const patterns = await this.loadPatterns(type);
-        
-        // Process entities in chunks
-        const chunks = this.chunk(group, 50);
-        const chunkResults = await this.processChunks(chunks, patterns);
-        
-        return { type, results: chunkResults };
-      })
-    );
-    
-    return this.mergeResults(results);
-  }
-}
-```
-
-## Monitoring and Observability
-
-### 1. Metrics Collection
-
-```typescript
-// Prometheus metrics
-const metrics = {
-  tagging_operations_total: new Counter({
-    name: 'tagging_operations_total',
-    help: 'Total tagging operations',
-    labelNames: ['entity_type', 'method', 'status']
-  }),
-  
-  tagging_duration_seconds: new Histogram({
-    name: 'tagging_duration_seconds',
-    help: 'Tagging operation duration',
-    labelNames: ['entity_type', 'method'],
-    buckets: [0.1, 0.5, 1, 2, 5, 10]
-  }),
-  
-  tag_confidence_score: new Histogram({
-    name: 'tag_confidence_score',
-    help: 'Distribution of tag confidence scores',
-    labelNames: ['entity_type', 'tag_code'],
-    buckets: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-  }),
-  
-  ai_provider_latency: new Histogram({
-    name: 'ai_provider_latency_seconds',
-    help: 'AI provider response latency',
-    labelNames: ['provider', 'operation'],
-    buckets: [0.5, 1, 2, 5, 10, 30]
-  })
-};
-```
-
-### 2. Logging Strategy
-
-```typescript
-// Structured logging
-const logger = winston.createLogger({
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'universal-tagging' },
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.simple()
-    }),
-    new winston.transports.File({
-      filename: 'tagging-errors.log',
-      level: 'error'
-    }),
-    new winston.transports.File({
-      filename: 'tagging-audit.log',
-      level: 'info'
-    })
-  ]
-});
-
-// Audit logging
-class TaggingAuditLogger {
-  async logTagOperation(operation: TagOperation): Promise<void> {
-    await logger.info('Tag operation', {
-      type: 'TAG_OPERATION',
-      entityType: operation.entityType,
-      entityId: operation.entityId,
-      tags: operation.tags,
-      method: operation.method,
-      userId: operation.userId,
-      timestamp: new Date().toISOString()
-    });
-  }
-}
-```
-
-### 3. Health Checks
-
-```typescript
-class HealthCheckService {
-  async checkHealth(): Promise<HealthStatus> {
-    const checks = await Promise.allSettled([
-      this.checkDatabase(),
-      this.checkRedis(),
-      this.checkAIProviders(),
-      this.checkQueues()
-    ]);
-    
-    return {
-      status: checks.every(c => c.status === 'fulfilled') ? 'healthy' : 'unhealthy',
-      checks: {
-        database: this.extractStatus(checks[0]),
-        redis: this.extractStatus(checks[1]),
-        aiProviders: this.extractStatus(checks[2]),
-        queues: this.extractStatus(checks[3])
-      },
-      timestamp: new Date().toISOString()
-    };
+    // 5. Update AI model if needed
+    if (await this.shouldUpdateModel()) {
+      await this.scheduleModelUpdate();
+    }
   }
 }
 ```
 
 ## Security Architecture
 
-### 1. Access Control
+### 1. Authentication & Authorization
 
 ```typescript
-// Tag-level permissions
-interface TagPermissions {
-  create: string[];    // Roles that can create tags
-  apply: string[];     // Roles that can apply tags
-  remove: string[];    // Roles that can remove tags
-  verify: string[];    // Roles that can verify tags
-  manage: string[];    // Roles that can manage tag definitions
-}
-
-// Entity-level permissions
-interface EntityTagPermissions {
-  canTag(user: User, entity: TaggableEntity): boolean;
-  canRemoveTag(user: User, entity: TaggableEntity, tag: UniversalTag): boolean;
-  canVerifyTag(user: User, entityTag: EntityTag): boolean;
+interface SecurityLayer {
+  // Authentication
+  authenticate(token: string): Promise<User>;
+  
+  // Authorization
+  authorize(user: User, resource: string, action: string): boolean;
+  
+  // Rate Limiting
+  checkRateLimit(user: User, endpoint: string): Promise<RateLimitStatus>;
+  
+  // Input Validation
+  validateInput<T>(data: unknown, schema: Schema<T>): T;
+  
+  // Output Sanitization
+  sanitizeOutput(data: any): any;
 }
 ```
 
-### 2. Data Protection
+### 2. Security Measures
+
+#### API Security
+- JWT token authentication
+- Role-based access control (RBAC)
+- Rate limiting per endpoint type
+- Request size limits
+- CORS configuration
+
+#### Data Security
+- Encryption at rest (PostgreSQL)
+- Encryption in transit (HTTPS)
+- Input validation (Zod schemas)
+- SQL injection prevention (Prisma)
+- XSS prevention
+
+#### AI Security
+- Prompt injection prevention
+- Content filtering
+- PII detection and masking
+- API key rotation
+- Usage monitoring
+
+### 3. Access Control Matrix
+
+| Role | Tag Management | Entity Tagging | AI Features | Analytics | Admin |
+|------|----------------|----------------|-------------|-----------|-------|
+| User | Read | Read/Write Own | Read/Write | Read Own | No |
+| Manager | Read/Write | Read/Write Team | Read/Write | Read Team | No |
+| Admin | Full | Full | Full | Full | Yes |
+
+## Scalability & Performance
+
+### 1. Caching Strategy
 
 ```typescript
-class TagDataProtection {
-  // Encrypt sensitive tag patterns
-  async encryptPattern(pattern: any): Promise<EncryptedPattern> {
-    const key = await this.getEncryptionKey();
-    const encrypted = await crypto.encrypt(JSON.stringify(pattern), key);
-    return {
-      data: encrypted,
-      keyId: key.id,
-      algorithm: 'AES-256-GCM'
-    };
-  }
+interface CacheStrategy {
+  // Tag Cache
+  tagCache: {
+    ttl: 3600, // 1 hour
+    keys: ['tag:{id}', 'tags:{entityType}', 'hierarchy:{parentId}']
+  };
   
-  // Anonymize entities for analytics
-  async anonymizeForAnalytics(entities: TaggableEntity[]): Promise<AnonymizedEntity[]> {
-    return entities.map(entity => ({
-      type: entity.type,
-      tags: entity.tags,
-      timestamp: entity.timestamp,
-      // Remove identifying information
-      id: this.hashId(entity.id),
-      content: '[REDACTED]'
-    }));
-  }
+  // Entity Cache
+  entityCache: {
+    ttl: 600, // 10 minutes
+    keys: ['entity:{type}:{id}:tags']
+  };
+  
+  // AI Response Cache
+  aiCache: {
+    ttl: 1800, // 30 minutes
+    keys: ['ai:{provider}:{contentHash}']
+  };
+}
+```
+
+### 2. Database Optimization
+
+#### Indexes
+- Composite indexes on frequently queried columns
+- GIN indexes for JSONB and array columns
+- Partial indexes for filtered queries
+
+#### Query Optimization
+- Eager loading for related data
+- Query result pagination
+- Database connection pooling
+- Read replicas for analytics
+
+### 3. Horizontal Scaling
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Load Balancer                      │
+└──────────┬──────────┬──────────┬───────────────────┘
+           │          │          │
+    ┌──────▼──┐ ┌────▼────┐ ┌──▼──────┐
+    │ API     │ │ API     │ │ API     │
+    │ Server  │ │ Server  │ │ Server  │
+    │ 1       │ │ 2       │ │ 3       │
+    └─────────┘ └─────────┘ └─────────┘
+           │          │          │
+           └──────────┴──────────┘
+                      │
+    ┌─────────────────▼──────────────────┐
+    │         Shared Services            │
+    ├────────────┬────────────┬──────────┤
+    │   Redis    │ PostgreSQL │  Queue   │
+    │  Cluster   │  Cluster   │ Cluster  │
+    └────────────┴────────────┴──────────┘
+```
+
+### 4. Performance Metrics
+
+#### Target SLAs
+- API Response Time: p95 < 200ms
+- Batch Processing: 1000 entities/minute
+- AI Suggestion Time: < 2 seconds
+- Search Response: < 100ms
+- Uptime: 99.9%
+
+#### Monitoring
+- Application Performance Monitoring (APM)
+- Real-time metrics dashboard
+- Error tracking and alerting
+- Resource utilization monitoring
+
+### 5. Queue Architecture
+
+```typescript
+interface QueueSystem {
+  // Priority Queues
+  queues: {
+    critical: { concurrency: 10, priority: 1 },
+    standard: { concurrency: 5, priority: 2 },
+    batch: { concurrency: 2, priority: 3 }
+  };
+  
+  // Job Types
+  jobs: {
+    tagEntity: { queue: 'standard', timeout: 30000 },
+    batchTag: { queue: 'batch', timeout: 300000 },
+    reindex: { queue: 'critical', timeout: 60000 },
+    learn: { queue: 'standard', timeout: 60000 }
+  };
+  
+  // Retry Strategy
+  retry: {
+    attempts: 3,
+    backoff: 'exponential',
+    delay: 1000
+  };
 }
 ```
 
 ## Deployment Architecture
 
-### 1. Container Structure
+### 1. Container Architecture
 
 ```yaml
-version: '3.8'
 services:
-  tagging-api:
-    image: ai-service/tagging-api:latest
+  api:
+    image: tagging-api:latest
     replicas: 3
+    resources:
+      limits:
+        memory: 2Gi
+        cpu: 1000m
     environment:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
-    ports:
-      - "3000:3000"
-    
-  tagging-worker:
-    image: ai-service/tagging-worker:latest
+  
+  worker:
+    image: tagging-worker:latest
     replicas: 2
-    environment:
-      - WORKER_TYPE=tagging
-      - QUEUE_URL=${REDIS_URL}
-    
-  learning-worker:
-    image: ai-service/learning-worker:latest
+    resources:
+      limits:
+        memory: 4Gi
+        cpu: 2000m
+  
+  redis:
+    image: redis:7-alpine
     replicas: 1
-    environment:
-      - WORKER_TYPE=learning
-      - AI_PROVIDER=${AI_PROVIDER}
+    persistence:
+      enabled: true
+      size: 10Gi
+  
+  postgres:
+    image: postgres:15
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 100Gi
 ```
 
-### 2. Scaling Strategy
+### 2. Infrastructure as Code
 
-```typescript
-// Horizontal scaling rules
-const scalingRules = {
-  api: {
-    metric: 'cpu',
-    target: 70,
-    min: 2,
-    max: 10
-  },
+```terraform
+resource "aws_ecs_service" "tagging_api" {
+  name            = "tagging-api"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.api.arn
+  desired_count   = 3
   
-  workers: {
-    metric: 'queue_depth',
-    target: 100,
-    min: 1,
-    max: 5
+  load_balancer {
+    target_group_arn = aws_lb_target_group.api.arn
+    container_name   = "api"
+    container_port   = 3000
   }
-};
-
-// Vertical scaling for specific operations
-const resourceAllocation = {
-  batchTagging: {
-    cpu: '2000m',
-    memory: '4Gi'
-  },
   
-  aiAnalysis: {
-    cpu: '1000m',
-    memory: '2Gi'
-  },
-  
-  learning: {
-    cpu: '4000m',
-    memory: '8Gi'
+  auto_scaling {
+    min_capacity = 2
+    max_capacity = 10
+    
+    cpu_threshold    = 70
+    memory_threshold = 80
   }
-};
+}
 ```
 
 ## Disaster Recovery
 
 ### 1. Backup Strategy
-
-```bash
-# Daily backup of tag definitions and patterns
-0 2 * * * pg_dump -t universal_tags -t tag_patterns > tags_backup_$(date +%Y%m%d).sql
-
-# Continuous backup of entity tags
-pg_basebackup -D /backup/continuous -R -X stream
-
-# Redis persistence
-save 900 1
-save 300 10
-save 60 10000
-```
+- Database: Daily automated backups with 30-day retention
+- Redis: Periodic snapshots every 6 hours
+- File Storage: Incremental backups with versioning
 
 ### 2. Recovery Procedures
+- RTO (Recovery Time Objective): 4 hours
+- RPO (Recovery Point Objective): 1 hour
+- Automated failover for critical services
+- Manual intervention for data recovery
 
-```typescript
-class DisasterRecovery {
-  async recoverFromBackup(backupDate: Date): Promise<RecoveryResult> {
-    // 1. Restore database
-    await this.restoreDatabase(backupDate);
-    
-    // 2. Rebuild caches
-    await this.rebuildCaches();
-    
-    // 3. Reprocess failed operations
-    await this.reprocessFailedOperations(backupDate);
-    
-    // 4. Validate system integrity
-    await this.validateSystemIntegrity();
-    
-    return {
-      recoveredTags: await this.countTags(),
-      recoveredMappings: await this.countMappings(),
-      dataLoss: await this.assessDataLoss(backupDate)
-    };
-  }
-}
-```
+### 3. High Availability
+- Multi-AZ deployment
+- Database replication
+- Redis Sentinel for automatic failover
+- Load balancer health checks
 
-## Conclusion
+## Future Enhancements
 
-This architecture provides a robust, scalable foundation for universal tagging across all entity types. The modular design allows for easy extension, while the performance optimizations ensure the system can handle millions of entities efficiently. The integration of AI providers enables intelligent tagging, while the learning system continuously improves accuracy based on user feedback.
+### 1. Planned Features
+- GraphQL API support
+- Real-time collaboration
+- Advanced analytics dashboard
+- Mobile SDK
+- Webhook management UI
+
+### 2. AI Improvements
+- Custom model training
+- Multi-modal tagging (images, audio)
+- Explainable AI features
+- Federated learning
+
+### 3. Performance Enhancements
+- Edge caching with CDN
+- Database sharding
+- Async API with WebSockets
+- GPU acceleration for AI

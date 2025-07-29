@@ -36,6 +36,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { tradingService } from '../../services/tradingService';
+import type { PerformanceMetrics } from '../../services/tradingService';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
 
 const { Title, Text } = Typography;
@@ -55,7 +56,7 @@ export default function Performance() {
     queryFn: tradingService.getStrategies
   });
 
-  const { data: performanceMetrics } = useQuery({
+  const { data: performanceMetrics } = useQuery<PerformanceMetrics>({
     queryKey: ['performance', timeRange, selectedStrategy],
     queryFn: () => tradingService.getPerformanceMetrics(),
     refetchInterval: 60000 // Refresh every minute
@@ -195,7 +196,7 @@ export default function Performance() {
             <YAxis />
             <RechartsTooltip formatter={(value: number) => formatPercentage(value)} />
             <Bar dataKey="return">
-              {performanceMetrics.monthlyReturns.map((entry: any, index: number) => (
+              {performanceMetrics.monthlyReturns.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.return >= 0 ? '#52c41a' : '#ff4d4f'} />
               ))}
             </Bar>
@@ -221,7 +222,7 @@ export default function Performance() {
               outerRadius={100}
               label
             >
-              {performanceMetrics.tradeDistribution.map((_: any, index: number) => (
+              {performanceMetrics.tradeDistribution.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>
@@ -249,7 +250,7 @@ export default function Performance() {
               style={{ width: 200 }}
             >
               <Option value="all">All Strategies</Option>
-              {strategies?.map((strategy: any) => (
+              {strategies?.map((strategy) => (
                 <Option key={strategy.id} value={strategy.id}>
                   {strategy.name}
                 </Option>

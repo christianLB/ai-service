@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
+import type { AxiosError } from 'axios';
 import type { 
   InvoiceTemplate, 
   CreateInvoiceTemplate, 
@@ -87,7 +88,7 @@ export function useInvoiceTemplateMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceTemplate created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to create invoicetemplate');
     },
   });
@@ -102,7 +103,7 @@ export function useInvoiceTemplateMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'InvoiceTemplate updated successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to update invoicetemplate');
     },
   });
@@ -116,7 +117,7 @@ export function useInvoiceTemplateMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceTemplate deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete invoicetemplate');
     },
   });
@@ -133,7 +134,7 @@ export function useInvoiceTemplateMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceTemplates deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete invoicetemplates');
     },
   });
@@ -165,7 +166,7 @@ export function useCreateInvoiceTemplate() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Invoice template created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to create invoice template');
     },
   });
@@ -184,7 +185,7 @@ export function useUpdateInvoiceTemplate() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'Invoice template updated successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to update invoice template');
     },
   });
@@ -202,7 +203,7 @@ export function useDeleteInvoiceTemplate() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Invoice template deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete invoice template');
     },
   });

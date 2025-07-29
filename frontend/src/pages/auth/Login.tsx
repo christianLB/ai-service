@@ -20,7 +20,7 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   
   // Get redirect location from state
-  const from = (location.state as any)?.from?.pathname || '/';
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
   const onFinish = async (values: LoginFormValues) => {
     setLoading(true);
@@ -35,8 +35,8 @@ export const Login: React.FC = () => {
       await login(values.email, values.password);
       message.success('Login successful!');
       navigate(from, { replace: true });
-    } catch (error: any) {
-      message.error(error.message || 'Login failed. Please check your credentials.');
+    } catch (error) {
+      message.error((error as Error).message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

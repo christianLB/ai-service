@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
+import type { AxiosError } from 'axios';
 import type { 
   Position, 
   CreatePosition, 
@@ -86,7 +87,7 @@ export function usePositionMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Position created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to create position');
     },
   });
@@ -101,7 +102,7 @@ export function usePositionMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'Position updated successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to update position');
     },
   });
@@ -115,7 +116,7 @@ export function usePositionMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Position deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete position');
     },
   });
@@ -132,7 +133,7 @@ export function usePositionMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Positions deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete positions');
     },
   });
