@@ -67,7 +67,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
     offset: (currentPage - 1) * pageSize,
     ...(statusFilter !== 'all' && { isActive: statusFilter === 'active' }),
     ...(typeFilter !== 'all' && { isSystem: typeFilter === 'system' }),
-    ...(sortField && { sortBy: sortField as any }),
+    ...(sortField && { sortBy: sortField }),
     ...(sortOrder && { sortOrder }),
   };
 
@@ -99,8 +99,8 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
   // Handle table change
   const handleTableChange = (
     pagination: TablePaginationConfig,
-    _filters: any,
-    sorter: any,
+    _filters: Record<string, unknown>,
+    sorter: { field?: string; order?: 'ascend' | 'descend' },
   ) => {
     setCurrentPage(pagination.current || 1);
     setPageSize(pagination.pageSize || 10);
@@ -130,7 +130,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
     }));
 
     const headers = Object.keys(csvData[0]).join(',');
-    const rows = csvData.map((row: any) => Object.values(row).join(',')).join('\n');
+    const rows = csvData.map((row) => Object.values(row).join(',')).join('\n');
     const csv = `${headers}\n${rows}`;
 
     const blob = new Blob([csv], { type: 'text/csv' });

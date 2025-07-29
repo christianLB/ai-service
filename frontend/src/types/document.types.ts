@@ -49,7 +49,7 @@ export interface Entity {
   confidence: number;
   startIndex?: number;
   endIndex?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean | null>;
 }
 
 export interface Topic {
@@ -192,7 +192,7 @@ export interface ProcessingJob {
   startTime: string;
   endTime?: string;
   error?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean | null>;
 }
 
 // Helper functions

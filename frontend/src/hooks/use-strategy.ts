@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
+import type { AxiosError } from 'axios';
 import type { 
   Strategy, 
   CreateStrategy, 
@@ -86,7 +87,7 @@ export function useStrategyMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Strategy created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to create strategy');
     },
   });
@@ -101,7 +102,7 @@ export function useStrategyMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'Strategy updated successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to update strategy');
     },
   });
@@ -115,7 +116,7 @@ export function useStrategyMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Strategy deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete strategy');
     },
   });
@@ -132,7 +133,7 @@ export function useStrategyMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'Strategys deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       message.error(error.response?.data?.message || 'Failed to delete strategys');
     },
   });

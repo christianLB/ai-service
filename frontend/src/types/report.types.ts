@@ -6,7 +6,7 @@ export interface Report {
   description?: string | null;
   isActive: boolean;
   userId?: string;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, string | number | boolean> | null;
     createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -15,7 +15,7 @@ export interface CreateReport {
   name: string;
   description?: string | null;
   isActive?: boolean;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, string | number | boolean> | null;
   }
 
 export interface UpdateReport extends Partial<CreateReport> {

@@ -7,8 +7,8 @@ export interface InvoiceTemplate {
   isDefault: boolean;
   templateType: string;
   htmlContent: string;
-  variables: any;
-  metadata?: Record<string, any> | null;
+  variables: TemplateVariable[];
+  metadata?: Record<string, string | number | boolean> | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -20,8 +20,8 @@ export interface CreateInvoiceTemplate {
   isDefault?: boolean;
   templateType?: string;
   htmlContent: string;
-  variables?: any;
-  metadata?: Record<string, any> | null;
+  variables?: TemplateVariable[];
+  metadata?: Record<string, string | number | boolean> | null;
 }
 
 export interface UpdateInvoiceTemplate extends Partial<CreateInvoiceTemplate> {
@@ -42,7 +42,7 @@ export interface TemplateVariable {
   label: string;
   type: 'text' | 'number' | 'date' | 'boolean';
   required?: boolean;
-  defaultValue?: any;
+  defaultValue?: string | number | boolean | null;
 }
 
 // Response types

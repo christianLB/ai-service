@@ -5,7 +5,7 @@ import type { WebSocketNotification } from '../services/websocket.service';
 
 export const useWebSocket = () => {
   const auth = useAuth();
-  const token = (auth as any)?.token;
+  const token = auth?.user ? localStorage.getItem('auth_token') : null;
 
   useEffect(() => {
     if (token) {

@@ -7,7 +7,7 @@ export interface Alert {
   severity: string;
   title: string;
   message: string;
-  data?: any;
+  data?: Record<string, string | number | boolean | null> | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -19,7 +19,7 @@ export interface CreateAlert {
   severity: string;
   title: string;
   message: string;
-  data?: any;
+  data?: Record<string, string | number | boolean | null> | null;
 }
 
 export interface UpdateAlert extends Partial<CreateAlert> {

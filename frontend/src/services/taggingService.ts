@@ -153,7 +153,7 @@ class TaggingService {
     } catch (error: any) {
       notification.error({
         message: 'Error updating tag',
-        description: error.response?.data?.message || 'Failed to update tag'
+        description: (error as any).response?.data?.message || 'Failed to update tag'
       });
       throw error;
     }
@@ -239,14 +239,14 @@ class TaggingService {
     }
   }
 
-  async updateEntityTag(entityType: string, entityId: string, tagId: string, data: { confidence?: number; metadata?: Record<string, any> }) {
+  async updateEntityTag(entityType: string, entityId: string, tagId: string, data: { confidence?: number; metadata?: Record<string, string | number | boolean> }) {
     try {
       const response = await api.patch(`/entities/${entityType}/${entityId}/tags/${tagId}`, data);
       return response.data;
     } catch (error: any) {
       notification.error({
         message: 'Error updating tag',
-        description: error.response?.data?.message || 'Failed to update tag'
+        description: (error as any).response?.data?.message || 'Failed to update tag'
       });
       throw error;
     }

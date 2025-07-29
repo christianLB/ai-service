@@ -14,7 +14,7 @@ export const createClientSchema = z.object({
   paymentTerms: z.number().int().min(0).default(30),
   notes: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
-  metadata: z.record(z.any()).optional().nullable(),
+  metadata: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().nullable(),
 });
 
 export const updateClientSchema = createClientSchema.partial();
@@ -39,7 +39,24 @@ export type CreateClient = z.infer<typeof createClientSchema>;
 export type UpdateClient = z.infer<typeof updateClientSchema>;
 export type ClientQuery = z.infer<typeof clientQuerySchema>;
 
+// Invoice type - minimal interface to avoid circular dependencies
+interface Invoice {
+  id: string;
+  clientId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt: Date | string;
+}
+
+// User type - minimal interface
+interface User {
+  id: string;
+  email: string;
+  name?: string;
+}
+
 export interface ClientWithRelations extends Client {
-  invoices?: any[];
-  user?: any;
+  invoices?: Invoice[];
+  user?: User;
 }

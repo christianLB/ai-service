@@ -33,8 +33,9 @@ const TagForm: React.FC<TagFormProps> = ({
       form.resetFields();
       onSuccess?.();
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to create tag');
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create tag';
+      message.error(errorMessage);
     }
   });
 
@@ -48,12 +49,13 @@ const TagForm: React.FC<TagFormProps> = ({
       message.success('Tag updated successfully');
       onSuccess?.();
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to update tag');
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update tag';
+      message.error(errorMessage);
     }
   });
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: CreateTagDto | UpdateTagDto) => {
     setLoading(true);
     try {
       const data = {

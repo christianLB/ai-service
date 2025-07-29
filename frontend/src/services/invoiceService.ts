@@ -128,7 +128,11 @@ class InvoiceService {
     return response.data;
   }
 
-  async getHealthCheck(): Promise<ApiResponse<any>> {
+  async getHealthCheck(): Promise<ApiResponse<{
+    status: string;
+    database: string;
+    timestamp: string;
+  }>> {
     const response = await api.get('/financial/invoices/health');
     return response.data;
   }
