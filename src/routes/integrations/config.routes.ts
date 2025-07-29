@@ -330,6 +330,18 @@ router.get('/types', async (req: Request, res: Response) => {
           { key: 'organization_id', required: false, encrypted: false, description: 'OpenAI organization ID' },
           { key: 'model', required: false, encrypted: false, description: 'Default model to use' }
         ]
+      },
+      {
+        type: 'claude',
+        name: 'Claude (Anthropic)',
+        category: 'integrations',
+        description: 'Anthropic Claude AI integration for trading intelligence',
+        configKeys: [
+          { key: 'api_key', required: true, encrypted: true, description: 'Claude API key' },
+          { key: 'model', required: false, encrypted: false, description: 'Model (e.g., claude-3-opus-20240229)' },
+          { key: 'max_tokens', required: false, encrypted: false, description: 'Maximum tokens per request' },
+          { key: 'temperature', required: false, encrypted: false, description: 'Temperature (0.0-1.0)' }
+        ]
       }
     ];
     

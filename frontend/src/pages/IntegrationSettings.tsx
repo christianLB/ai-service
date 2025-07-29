@@ -193,6 +193,8 @@ const IntegrationSettings: React.FC = () => {
         return <MailOutlined />;
       case 'openai':
         return <ApiOutlined />;
+      case 'claude':
+        return <ApiOutlined />;
       default:
         return <ApiOutlined />;
     }
@@ -313,6 +315,8 @@ const IntegrationForm: React.FC<IntegrationFormProps> = ({
       case 'email':
         return <MailOutlined />;
       case 'openai':
+        return <ApiOutlined />;
+      case 'claude':
         return <ApiOutlined />;
       default:
         return <ApiOutlined />;
