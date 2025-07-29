@@ -104,7 +104,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        processQueue(refreshError, null);
+        processQueue(refreshError instanceof Error ? refreshError : new Error('Token refresh failed'), null);
         localStorage.removeItem('auth_token');
         localStorage.removeItem('refresh_token');
         window.location.href = '/login';

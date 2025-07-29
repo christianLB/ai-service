@@ -170,7 +170,20 @@ export const AlertForm: React.FC<AlertFormProps> = ({
             name="data"
             control={control}
             render={({ field }) => (
-              <TextArea {...field} rows={4} placeholder="Enter JSON data" />
+              <TextArea 
+                {...field} 
+                value={typeof field.value === 'string' ? field.value : JSON.stringify(field.value || {})}
+                onChange={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value);
+                    field.onChange(parsed);
+                  } catch {
+                    field.onChange(e.target.value);
+                  }
+                }}
+                rows={4} 
+                placeholder="Enter JSON data" 
+              />
             )}
           />
           {errors.data && (

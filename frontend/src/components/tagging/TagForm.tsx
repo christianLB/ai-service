@@ -59,8 +59,12 @@ const TagForm: React.FC<TagFormProps> = ({
     setLoading(true);
     try {
       const data = {
-        ...values,
-        color: typeof values.color === 'string' ? values.color : values.color?.toHexString()
+        name: values.name || '',
+        description: values.description,
+        icon: values.icon,
+        metadata: values.metadata,
+        isActive: values.isActive,
+        color: typeof values.color === 'string' ? values.color : (values.color as any)?.toHexString?.()
       };
 
       if (mode === 'create') {
