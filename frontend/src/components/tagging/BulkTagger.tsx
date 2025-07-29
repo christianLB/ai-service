@@ -105,7 +105,7 @@ export const BulkTagger: React.FC<BulkTaggerProps> = ({
       await bulkTagMutation.mutateAsync(batchOperation);
       setProgress(100);
       clearInterval(progressInterval);
-    } catch (error) {
+    } catch {
       clearInterval(progressInterval);
       setProcessing(false);
     }

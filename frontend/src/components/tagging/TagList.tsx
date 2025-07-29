@@ -368,7 +368,7 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
               message.success('Tags deleted successfully');
               queryClient.invalidateQueries({ queryKey: ['tags'] });
               setSelectedRowKeys([]);
-            } catch (error) {
+            } catch {
               message.error('Failed to delete some tags');
             }
           },
