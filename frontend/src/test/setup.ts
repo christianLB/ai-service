@@ -36,7 +36,7 @@ const localStorageMock = {
   length: 0,
   key: vi.fn(),
 }
-global.localStorage = localStorageMock as any
+global.localStorage = localStorageMock as Storage
 
 // Mock HTMLElement.prototype methods for Ant Design
 if (!HTMLElement.prototype.scrollIntoView) {

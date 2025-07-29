@@ -1,5 +1,6 @@
 import api from './api';
 import { notification } from 'antd';
+import type { AxiosError } from 'axios';
 
 // Types
 export interface Tag {
@@ -9,7 +10,7 @@ export interface Tag {
   description?: string;
   color?: string;
   icon?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   isActive: boolean;
   isSystem: boolean;
   usageCount: number;
@@ -23,11 +24,13 @@ export interface CreateTagDto {
   description?: string;
   color?: string;
   icon?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   isActive?: boolean;
 }
 
-export interface UpdateTagDto extends Partial<CreateTagDto> {}
+export interface UpdateTagDto extends Partial<CreateTagDto> {
+  // This interface extends CreateTagDto with all properties optional
+}
 
 export interface TagQuery {
   search?: string;
@@ -45,7 +48,7 @@ export interface EntityTag {
   entityId: string;
   confidence?: number;
   source: 'manual' | 'ai' | 'rule' | 'import';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   taggedBy?: string;
   taggedAt: string;
   tag?: Tag;
@@ -55,7 +58,7 @@ export interface TagEntityDto {
   tagIds: string[];
   confidence?: number;
   source?: 'manual' | 'ai' | 'rule' | 'import';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface BatchTagOperation {
@@ -68,7 +71,7 @@ export interface BatchTagOperation {
   options?: {
     confidence?: number;
     source?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
 }
 
@@ -103,10 +106,11 @@ class TaggingService {
       
       const response = await api.get(`/tags?${params.toString()}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error fetching tags',
-        description: error.response?.data?.message || 'Failed to load tags'
+        description: axiosError.response?.data?.message || 'Failed to load tags'
       });
       throw error;
     }
@@ -116,10 +120,11 @@ class TaggingService {
     try {
       const response = await api.get(`/tags/${id}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error fetching tag',
-        description: error.response?.data?.message || 'Failed to load tag details'
+        description: axiosError.response?.data?.message || 'Failed to load tag details'
       });
       throw error;
     }
@@ -133,10 +138,11 @@ class TaggingService {
         description: `Tag "${data.name}" has been created successfully`
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error creating tag',
-        description: error.response?.data?.message || 'Failed to create tag'
+        description: axiosError.response?.data?.message || 'Failed to create tag'
       });
       throw error;
     }
@@ -150,10 +156,11 @@ class TaggingService {
         description: 'Tag has been updated successfully'
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error updating tag',
-        description: (error as any).response?.data?.message || 'Failed to update tag'
+        description: axiosError.response?.data?.message || 'Failed to update tag'
       });
       throw error;
     }
@@ -175,10 +182,11 @@ class TaggingService {
         description: 'Tag has been deleted successfully'
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error deleting tag',
-        description: error.response?.data?.message || 'Failed to delete tag'
+        description: axiosError.response?.data?.message || 'Failed to delete tag'
       });
       throw error;
     }
@@ -188,7 +196,7 @@ class TaggingService {
     try {
       const response = await api.get(`/tags/search?q=${encodeURIComponent(query)}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error searching tags:', error);
       return { data: [] };
     }
@@ -203,10 +211,11 @@ class TaggingService {
         description: `Successfully added ${data.tagIds.length} tag(s)`
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error tagging entity',
-        description: error.response?.data?.message || 'Failed to tag entity'
+        description: axiosError.response?.data?.message || 'Failed to tag entity'
       });
       throw error;
     }
@@ -216,7 +225,7 @@ class TaggingService {
     try {
       const response = await api.get(`/entities/${entityType}/${entityId}/tags`);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching entity tags:', error);
       return { data: [] };
     }
@@ -230,10 +239,11 @@ class TaggingService {
         description: 'Tag has been removed from entity'
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error removing tag',
-        description: error.response?.data?.message || 'Failed to remove tag'
+        description: axiosError.response?.data?.message || 'Failed to remove tag'
       });
       throw error;
     }
@@ -243,10 +253,11 @@ class TaggingService {
     try {
       const response = await api.patch(`/entities/${entityType}/${entityId}/tags/${tagId}`, data);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error updating tag',
-        description: (error as any).response?.data?.message || 'Failed to update tag'
+        description: axiosError.response?.data?.message || 'Failed to update tag'
       });
       throw error;
     }
@@ -257,10 +268,11 @@ class TaggingService {
       const params = entityType ? `?type=${entityType}` : '';
       const response = await api.get(`/entities/by-tag/${tagId}${params}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error finding entities',
-        description: error.response?.data?.message || 'Failed to find entities by tag'
+        description: axiosError.response?.data?.message || 'Failed to find entities by tag'
       });
       throw error;
     }
@@ -275,10 +287,11 @@ class TaggingService {
         description: `Successfully processed ${operation.entities.length} entities`
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Batch operation failed',
-        description: error.response?.data?.message || 'Failed to complete batch operation'
+        description: axiosError.response?.data?.message || 'Failed to complete batch operation'
       });
       throw error;
     }
@@ -297,10 +310,11 @@ class TaggingService {
         description: 'Entity has been retagged using AI'
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'AI retagging failed',
-        description: error.response?.data?.message || 'Failed to retag entity'
+        description: axiosError.response?.data?.message || 'Failed to retag entity'
       });
       throw error;
     }
@@ -319,7 +333,7 @@ class TaggingService {
         description: 'Thank you for improving our AI tagging'
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting feedback:', error);
       throw error;
     }
@@ -330,10 +344,11 @@ class TaggingService {
     try {
       const response = await api.get(`/tags/${tagId}/metrics`);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
       notification.error({
         message: 'Error fetching metrics',
-        description: error.response?.data?.message || 'Failed to load tag metrics'
+        description: axiosError.response?.data?.message || 'Failed to load tag metrics'
       });
       throw error;
     }
@@ -349,7 +364,7 @@ class TaggingService {
       }
       const response = await api.get(`/tagging/accuracy?${params.toString()}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching accuracy metrics:', error);
       return { data: null };
     }

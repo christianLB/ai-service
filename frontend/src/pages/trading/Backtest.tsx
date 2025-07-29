@@ -34,11 +34,35 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradingService } from '../../services/tradingService';
 import type { BacktestRequest, BacktestResult } from '../../services/tradingService';
 import { formatCurrency, formatPercentage, formatDate } from '../../utils/formatters';
+import type { Moment } from 'moment';
+
+// Extended metrics interface with additional properties
+interface BacktestMetricsExtended {
+  totalReturn: number;
+  sharpeRatio: number;
+  maxDrawdown: number;
+  winRate: number;
+  totalTrades: number;
+  profitFactor: number;
+  winningTrades?: number;
+  avgWin?: number;
+  avgLoss?: number;
+  recoveryFactor?: number;
+  expectancy?: number;
+  maxConsecutiveLosses?: number;
+}
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 const { TabPane } = Tabs;
+
+interface BacktestFormValues {
+  strategy: string;
+  dateRange: [Moment, Moment];
+  symbols: string[];
+  initialCapital: number;
+}
 
 export default function Backtest() {
   const [form] = Form.useForm();
@@ -67,7 +91,7 @@ export default function Backtest() {
     }
   });
 
-  const handleRunBacktest = (values: any) => {
+  const handleRunBacktest = (values: BacktestFormValues) => {
     const [startDate, endDate] = values.dateRange;
     const backtestParams: BacktestRequest = {
       strategyId: values.strategy,
@@ -206,7 +230,7 @@ export default function Backtest() {
                     <Select
                       placeholder="Select strategy"
                     >
-                      {strategies?.map((strategy: any) => (
+                      {strategies?.map((strategy) => (
                         <Option key={strategy.id} value={strategy.id}>
                           {strategy.name}
                         </Option>
@@ -324,17 +348,17 @@ export default function Backtest() {
                           />
                           <Statistic
                             title="Winning Trades"
-                            value={(currentResult.metrics as any).winningTrades || 0}
+                            value={(currentResult.metrics as BacktestMetricsExtended).winningTrades || 0}
                             suffix={`/ ${currentResult.metrics.totalTrades}`}
                           />
                           <Statistic
                             title="Average Win"
-                            value={formatCurrency((currentResult.metrics as any).avgWin || 0)}
+                            value={formatCurrency((currentResult.metrics as BacktestMetricsExtended).avgWin || 0)}
                             valueStyle={{ color: '#3f8600' }}
                           />
                           <Statistic
                             title="Average Loss"
-                            value={formatCurrency((currentResult.metrics as any).avgLoss || 0)}
+                            value={formatCurrency((currentResult.metrics as BacktestMetricsExtended).avgLoss || 0)}
                             valueStyle={{ color: '#cf1322' }}
                           />
                         </Space>
@@ -350,15 +374,15 @@ export default function Backtest() {
                           />
                           <Statistic
                             title="Recovery Factor"
-                            value={(currentResult.metrics as any).recoveryFactor?.toFixed(2) || 'N/A'}
+                            value={(currentResult.metrics as BacktestMetricsExtended).recoveryFactor?.toFixed(2) || 'N/A'}
                           />
                           <Statistic
                             title="Expectancy"
-                            value={formatCurrency((currentResult.metrics as any).expectancy || 0)}
+                            value={formatCurrency((currentResult.metrics as BacktestMetricsExtended).expectancy || 0)}
                           />
                           <Statistic
                             title="Max Consecutive Losses"
-                            value={(currentResult.metrics as any).maxConsecutiveLosses || 0}
+                            value={(currentResult.metrics as BacktestMetricsExtended).maxConsecutiveLosses || 0}
                           />
                         </Space>
                       </Card>
@@ -381,14 +405,14 @@ export default function Backtest() {
                     dataIndex: 'strategyId',
                     key: 'strategyId',
                     render: (id: string) => {
-                      const strategy = strategies?.find((s: any) => s.id === id);
+                      const strategy = strategies?.find((s) => s.id === id);
                       return strategy?.name || id;
                     }
                   },
                   {
                     title: 'Period',
                     key: 'period',
-                    render: (_: any, record: BacktestResult) => `${record.startDate} - ${record.endDate}`
+                    render: (_: unknown, record: BacktestResult) => `${record.startDate} - ${record.endDate}`
                   },
                   {
                     title: 'Return',

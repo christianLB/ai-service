@@ -41,8 +41,12 @@ interface Transaction {
   type?: string;
   counterpartyName?: string;
   counterpartyAccount?: string;
-  metadata?: Record<string, any>;
-  gocardlessData?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
+  gocardlessData?: {
+    transactionId?: string;
+    bookingDate?: string;
+    valueDate?: string;
+  };
 }
 
 interface Account {

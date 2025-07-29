@@ -57,7 +57,7 @@ export const BulkTagger: React.FC<BulkTaggerProps> = ({
       onSuccess?.();
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       message.error(error.message || 'Bulk tagging failed');
     },
   });
@@ -116,7 +116,7 @@ export const BulkTagger: React.FC<BulkTaggerProps> = ({
       title: 'Entity',
       dataIndex: 'name',
       key: 'name',
-      render: (name: string, record: any) => (
+      render: (name: string, record: BulkTagEntity) => (
         <div>
           <Text strong>{name || record.id}</Text>
           <br />

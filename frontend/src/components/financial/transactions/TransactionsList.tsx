@@ -45,7 +45,7 @@ interface Transaction {
   gocardlessData?: {
     valueDate?: string;
     bookingDate?: string;
-    [key: string]: any;
+    [key: string]: string | undefined;
   };
 }
 
@@ -69,7 +69,7 @@ interface TransactionsListProps {
   pagination: TablePaginationConfig;
   accounts: Account[];
   onRefresh?: () => void;
-  onTableChange?: (pagination: any, filters: any, sorter: any) => void;
+  onTableChange?: (pagination: TablePaginationConfig, filters: Record<string, (string | number)[] | null>, sorter: Record<string, string | undefined>) => void;
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({

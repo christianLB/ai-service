@@ -100,14 +100,15 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
   const handleTableChange = (
     pagination: TablePaginationConfig,
     _filters: Record<string, unknown>,
-    sorter: any,
+    sorter: { field?: string; order?: 'ascend' | 'descend' } | Array<{ field?: string; order?: 'ascend' | 'descend' }>,
   ) => {
     setCurrentPage(pagination.current || 1);
     setPageSize(pagination.pageSize || 10);
     
-    if (sorter.field) {
-      setSortField(sorter.field);
-      setSortOrder(sorter.order === 'ascend' ? 'asc' : 'desc');
+    const singleSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (singleSorter?.field) {
+      setSortField(singleSorter.field);
+      setSortOrder(singleSorter.order === 'ascend' ? 'asc' : 'desc');
     } else {
       setSortField(undefined);
       setSortOrder(undefined);

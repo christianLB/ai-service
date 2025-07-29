@@ -73,13 +73,18 @@ export interface BacktestResult {
     totalTrades: number;
     profitFactor: number;
   };
-  equityCurve: Array<{ date: string; equity: number }>;
+  equityCurve: Array<{ date: string; value: number }>;
   trades: Array<{
+    id: string;
     symbol: string;
     side: string;
     entryDate: string;
     exitDate: string;
+    date: string;
+    entryPrice: number;
+    exitPrice: number;
     pnl: number;
+    returnPct: number;
   }>;
 }
 
@@ -89,6 +94,58 @@ export interface TradingWebSocket {
   on: (event: string, callback: (data: unknown) => void) => void;
   off: (event: string, callback?: (data: unknown) => void) => void;
   disconnect: () => void;
+}
+
+export interface DashboardAlert {
+  id: string;
+  type: 'success' | 'info' | 'warning' | 'error';
+  message: string;
+}
+
+export interface DashboardData {
+  alerts: DashboardAlert[];
+  portfolio: {
+    totalValue: number;
+    dailyPnL: number;
+    weeklyPnL: number;
+    monthlyPnL: number;
+  };
+  positions: {
+    open: number;
+    profitable: number;
+    losing: number;
+    totalPnL: number;
+  };
+  strategies: {
+    active: number;
+    paused: number;
+    stopped: number;
+    performance: Record<string, number>;
+  };
+  marketOverview: {
+    btcPrice: number;
+    btcChange24h: number;
+    marketCap: number;
+    fearGreedIndex: number;
+  };
+}
+
+export interface PerformanceMetrics {
+  totalReturn: number;
+  totalReturnPercent: number;
+  sharpeRatio: number;
+  maxDrawdown: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number;
+  profitFactor: number;
+  expectancy: number;
+  avgWin: number;
+  avgLoss: number;
+  equity?: Array<{ date: string; value: number }>;
+  monthlyReturns?: Array<{ month: string; return: number }>;
+  tradeDistribution?: Array<{ range: string; count: number }>;
 }
 
 class TradingService {
@@ -153,7 +210,7 @@ class TradingService {
   }
 
   // Dashboard API
-  async getDashboard() {
+  async getDashboard(): Promise<DashboardData> {
     const response = await api.get('/trading/dashboard/overview');
     return response.data;
   }
@@ -312,7 +369,7 @@ class TradingService {
     return response.data;
   }
 
-  async getPerformanceMetrics() {
+  async getPerformanceMetrics(): Promise<PerformanceMetrics> {
     const response = await api.get('/trading/performance/metrics');
     return response.data;
   }
