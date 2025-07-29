@@ -309,7 +309,7 @@ app.use(express.static(frontendPath));
 // Catch-all route for SPA - serve index.html for any non-API route
 app.get('*', (_req: express.Request, res: express.Response) => {
   const indexPath = process.env.NODE_ENV === 'production' 
-    ? path.join(__dirname, '../public/index.html')
+    ? path.join(__dirname, '../frontend/dist/index.html')
     : path.join(__dirname, '../frontend/dist/index.html');
   res.sendFile(indexPath);
 });
