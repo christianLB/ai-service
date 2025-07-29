@@ -57,18 +57,28 @@ const BankAccounts: FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [setupModalVisible, setSetupModalVisible] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{
-    processing: boolean;
-    progress?: number;
-    message?: string;
-    error?: string;
+    stats?: {
+      lastSync?: string;
+      summary?: {
+        total_accounts: number;
+        total_transactions: number;
+        updated_today: number;
+      };
+    };
+    scheduler?: {
+      nextSyncEstimate?: string;
+    };
   } | null>(null);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [rateLimits, setRateLimits] = useState<{
-    endpoint: string;
-    remaining: number;
-    reset: Date;
+    endpoint_type: string;
+    calls_limit: number;
+    calls_made: number;
+    status: 'normal' | 'exhausted' | 'rate_limited';
+    window_reset_at?: string;
+    retry_after?: string;
   }[]>([]);
   
   const { subscribe } = useWebSocket();
@@ -269,7 +279,7 @@ const BankAccounts: FC = () => {
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={8}>
                 <SyncStatusCard
-                  syncStatus={syncStatus}
+                  syncStatus={syncStatus || { processing: false }}
                   autoSyncEnabled={autoSyncEnabled}
                   syncing={syncing}
                   toggleLoading={toggleLoading}
@@ -309,7 +319,19 @@ const BankAccounts: FC = () => {
               </Col>
               <Col xs={24} md={12}>
                 <RateLimitCard 
-                  rateLimits={rateLimits}
+                  rateLimits={rateLimits.map(limit => ({
+                    account_id: '',
+                    account_name: 'General',
+                    endpoint_type: limit.endpoint_type,
+                    calls_made: limit.calls_made,
+                    calls_limit: limit.calls_limit,
+                    window_start: new Date().toISOString(),
+                    window_end: limit.window_reset_at || new Date().toISOString(),
+                    retry_after: limit.retry_after,
+                    last_call_at: undefined,
+                    status: limit.status === 'normal' ? 'available' : limit.status,
+                    calls_remaining: limit.calls_limit - limit.calls_made,
+                  }))}
                   loading={loading}
                 />
               </Col>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Table, Tag, Space, Row, Col, Input, Select, DatePicker, Statistic, App } from 'antd';
 import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, FileTextOutlined, DollarOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -160,7 +160,7 @@ const InvoiceList: React.FC = () => {
         // Convert to number if it's a Decimal object or string
         const numValue = typeof value === 'object' && value ? 
           parseFloat(value.toString()) : 
-          parseFloat(value || 0);
+          parseFloat(String(value || 0));
         return `${!isNaN(numValue) ? numValue.toFixed(2) : '0.00'} ${record.currency || 'EUR'}`;
       },
       align: 'right' as const,
@@ -173,12 +173,12 @@ const InvoiceList: React.FC = () => {
           <Button
             type="link"
             icon={<EyeOutlined />}
-            onClick={() => navigate(`/invoices/${record.id}`)}
+            onClick={() => navigate(`/invoices/${String(record.id)}`)}
           />
           <Button
             type="link"
             icon={<EditOutlined />}
-            onClick={() => navigate(`/invoices/${record.id}/edit`)}
+            onClick={() => navigate(`/invoices/${String(record.id)}/edit`)}
             disabled={record.status === 'paid' || record.status === 'cancelled'}
           />
           <Button

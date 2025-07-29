@@ -12,6 +12,7 @@ import {
   message,
 } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { FilterValue, SorterResult, TableCurrentDataSource } from 'antd/es/table/interface';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -69,7 +70,7 @@ interface TransactionsListProps {
   pagination: TablePaginationConfig;
   accounts: Account[];
   onRefresh?: () => void;
-  onTableChange?: (pagination: TablePaginationConfig, filters: Record<string, (string | number)[] | null>, sorter: Record<string, unknown> | Record<string, unknown>[]) => void;
+  onTableChange?: (pagination: TablePaginationConfig, filters: Record<string, FilterValue | null>, sorter: SorterResult<Transaction> | SorterResult<Transaction>[], extra: TableCurrentDataSource<Transaction>) => void;
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({

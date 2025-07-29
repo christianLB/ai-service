@@ -52,7 +52,7 @@ const InvoiceDetail: React.FC = () => {
     if (typeof value === 'object' && value) {
       return parseFloat(value.toString());
     }
-    return parseFloat(value || 0);
+    return parseFloat(String(value || 0));
   };
 
   const loadInvoice = useCallback(async () => {

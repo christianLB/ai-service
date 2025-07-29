@@ -47,11 +47,23 @@ import dashboardService from '../services/dashboardService';
 import BankAccounts from './BankAccounts';
 import type { 
   RevenueMetrics, 
-  ClientMetrics
+  ClientMetrics,
+  InvoiceStatistics,
+  CashFlowProjections
 } from '../types';
 import dayjs from 'dayjs';
 import VersionIndicator from '../components/VersionIndicator';
 import YearlyFinancialReport from '../components/YearlyFinancialReport.ant';
+
+// Define a simplified cash flow state type
+interface CashFlowState {
+  inflow: number;
+  outflow: number;
+  net: number;
+  byMonth?: Array<{ month: string; inflow: number; outflow: number; }>
+  weeklyProjections?: CashFlowProjections['weeklyProjections'];
+  riskAnalysis?: CashFlowProjections['riskAnalysis'];
+}
 
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -62,13 +74,10 @@ const Dashboard: React.FC = () => {
     pending: number;
     overdue: number;
   } | null>(null);
+  const [invoiceFullData, setInvoiceFullData] = useState<InvoiceStatistics | null>(null);
   const [clientMetrics, setClientMetrics] = useState<ClientMetrics | null>(null);
-  const [cashFlow, setCashFlow] = useState<{
-    inflow: number;
-    outflow: number;
-    net: number;
-    byMonth?: Array<{ month: string; inflow: number; outflow: number; }>
-  } | null>(null);
+  const [cashFlow, setCashFlow] = useState<CashFlowState | null>(null);
+  const [cashFlowFullData, setCashFlowFullData] = useState<CashFlowProjections | null>(null);
   const [currency, setCurrency] = useState('EUR');
   const [activeTab, setActiveTab] = useState('overview');
   const [, setErrors] = useState<{
@@ -102,7 +111,16 @@ const Dashboard: React.FC = () => {
     try {
       const invoiceResponse = await dashboardService.getInvoiceStats({ currency });
       if (invoiceResponse.success && invoiceResponse.data) {
-        setInvoiceStats(invoiceResponse.data);
+        const data = invoiceResponse.data as InvoiceStatistics;
+        // Store full data for components that need it
+        setInvoiceFullData(data);
+        // Map the API response to the expected state structure
+        setInvoiceStats({
+          total: data.overview?.totalInvoices || 0,
+          paid: data.overview?.paidInvoices || 0,
+          pending: data.overview?.sentInvoices || 0,
+          overdue: data.overview?.overdueInvoices || 0,
+        });
       }
     } catch (error) {
       console.error('Error fetching invoice stats:', error);
@@ -124,7 +142,22 @@ const Dashboard: React.FC = () => {
     try {
       const cashFlowResponse = await dashboardService.getCashFlowProjections({ currency });
       if (cashFlowResponse.success && cashFlowResponse.data) {
-        setCashFlow(cashFlowResponse.data);
+        const data = cashFlowResponse.data as CashFlowProjections;
+        // Store full data for components that need it
+        setCashFlowFullData(data);
+        // Map the API response to the expected state structure
+        setCashFlow({
+          inflow: parseFloat(data.currentPosition?.expectedCollections || '0'),
+          outflow: parseFloat(data.currentPosition?.totalOutstanding || '0'),
+          net: parseFloat(data.currentPosition?.currentCashBalance || '0'),
+          weeklyProjections: data.weeklyProjections,
+          riskAnalysis: data.riskAnalysis,
+          byMonth: data.weeklyProjections?.map((proj) => ({
+            month: proj.weekStart,
+            inflow: parseFloat(proj.expectedReceipts || '0'),
+            outflow: 0, // No outflow data in weekly projections
+          }))
+        });
       }
     } catch (error) {
       console.error('Error fetching cash flow:', error);
@@ -405,7 +438,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Total Facturas"
-                          value={invoiceStats.overview?.totalInvoices || 0}
+                          value={invoiceFullData?.overview?.totalInvoices || 0}
                           prefix={<FileTextOutlined />}
                         />
                       </Card>
@@ -414,7 +447,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Pagadas"
-                          value={invoiceStats.overview?.paidInvoices || 0}
+                          value={invoiceFullData?.overview?.paidInvoices || 0}
                           prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                           valueStyle={{ color: '#52c41a' }}
                         />
@@ -424,7 +457,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Pendientes"
-                          value={(invoiceStats.overview?.sentInvoices || 0) + (invoiceStats.overview?.viewedInvoices || 0)}
+                          value={(invoiceFullData?.overview?.sentInvoices || 0) + (invoiceFullData?.overview?.viewedInvoices || 0)}
                           prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
                           valueStyle={{ color: '#faad14' }}
                         />
@@ -434,7 +467,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Vencidas"
-                          value={invoiceStats.overview?.overdueInvoices || 0}
+                          value={invoiceFullData?.overview?.overdueInvoices || 0}
                           prefix={<WarningOutlined style={{ color: '#ff4d4f' }} />}
                           valueStyle={{ color: '#ff4d4f' }}
                         />
@@ -444,7 +477,7 @@ const Dashboard: React.FC = () => {
                 )}
 
                 {/* Invoice Status Chart */}
-                {invoiceStats?.overview && (
+                {invoiceFullData?.overview && (
                   <Row gutter={16} style={{ marginBottom: 24 }}>
                     <Col xs={24} lg={12}>
                       <Card title="Distribución por Estado">
@@ -452,12 +485,12 @@ const Dashboard: React.FC = () => {
                           <PieChart>
                             <Pie
                               data={[
-                                { name: 'Borradores', value: invoiceStats.overview.draftInvoices || 0 },
-                                { name: 'Enviadas', value: invoiceStats.overview.sentInvoices || 0 },
-                                { name: 'Vistas', value: invoiceStats.overview.viewedInvoices || 0 },
-                                { name: 'Pagadas', value: invoiceStats.overview.paidInvoices || 0 },
-                                { name: 'Vencidas', value: invoiceStats.overview.overdueInvoices || 0 },
-                                { name: 'Canceladas', value: invoiceStats.overview.cancelledInvoices || 0 },
+                                { name: 'Borradores', value: invoiceFullData?.overview?.draftInvoices || 0 },
+                                { name: 'Enviadas', value: invoiceFullData?.overview?.sentInvoices || 0 },
+                                { name: 'Vistas', value: invoiceFullData?.overview?.viewedInvoices || 0 },
+                                { name: 'Pagadas', value: invoiceFullData?.overview?.paidInvoices || 0 },
+                                { name: 'Vencidas', value: invoiceFullData?.overview?.overdueInvoices || 0 },
+                                { name: 'Canceladas', value: invoiceFullData?.overview?.cancelledInvoices || 0 },
                               ].filter(item => item.value > 0)}
                               cx="50%"
                               cy="50%"
@@ -476,9 +509,9 @@ const Dashboard: React.FC = () => {
                     </Col>
                     <Col xs={24} lg={12}>
                       <Card title="Creación Mensual">
-                        {invoiceStats.trends?.monthlyCreation && (
+                        {invoiceFullData?.trends?.monthlyCreation && (
                           <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={invoiceStats.trends.monthlyCreation}>
+                            <BarChart data={invoiceFullData?.trends?.monthlyCreation}>
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis dataKey="month" />
                               <YAxis />
@@ -493,10 +526,10 @@ const Dashboard: React.FC = () => {
                 )}
 
                 {/* Overdue Invoices */}
-                {invoiceStats?.topOverdueInvoices && (
+                {invoiceFullData?.topOverdueInvoices && (
                   <Card title="Facturas Vencidas" style={{ marginBottom: 24 }}>
                     <Table
-                      dataSource={invoiceStats.topOverdueInvoices}
+                      dataSource={invoiceFullData?.topOverdueInvoices}
                       rowKey="id"
                       pagination={false}
                       size="small"
@@ -701,11 +734,11 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Posición Actual"
-                          value={cashFlow.currentPosition?.currentCashBalance || '0'}
+                          value={cashFlowFullData?.currentPosition?.currentCashBalance || '0'}
                           formatter={(value) => formatCurrency(value as string)}
                           prefix={<DollarOutlined />}
                           valueStyle={{ 
-                            color: parseFloat(cashFlow.currentPosition?.currentCashBalance || '0') >= 0 ? '#52c41a' : '#ff4d4f' 
+                            color: parseFloat(cashFlowFullData?.currentPosition?.currentCashBalance || '0') >= 0 ? '#52c41a' : '#ff4d4f' 
                           }}
                         />
                       </Card>
@@ -714,7 +747,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Ingresos Esperados (30d)"
-                          value={cashFlow.currentPosition?.expectedCollections || '0'}
+                          value={cashFlowFullData?.currentPosition?.expectedCollections || '0'}
                           formatter={(value) => formatCurrency(value as string)}
                           prefix={<ArrowUpOutlined style={{ color: '#52c41a' }} />}
                           valueStyle={{ color: '#52c41a' }}
@@ -725,7 +758,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Con Riesgo"
-                          value={cashFlow.riskAnalysis?.highRisk?.amount || '0'}
+                          value={cashFlowFullData?.riskAnalysis?.highRisk?.amount || '0'}
                           formatter={(value) => formatCurrency(value as string)}
                           prefix={<WarningOutlined style={{ color: '#ff4d4f' }} />}
                           valueStyle={{ color: '#ff4d4f' }}
@@ -736,7 +769,7 @@ const Dashboard: React.FC = () => {
                       <Card className="metric-card">
                         <Statistic
                           title="Tasa de Cobranza"
-                          value={cashFlow.currentPosition?.collectionRate || '0%'}
+                          value={cashFlowFullData?.currentPosition?.collectionRate || '0%'}
                           prefix={<LineChartOutlined />}
                         />
                       </Card>
@@ -748,7 +781,7 @@ const Dashboard: React.FC = () => {
                 {cashFlow?.weeklyProjections && (
                   <Card title="Proyección Semanal de Flujo de Caja" style={{ marginBottom: 24 }}>
                     <ResponsiveContainer width="100%" height={400}>
-                      <LineChart data={cashFlow.weeklyProjections}>
+                      <LineChart data={cashFlowFullData?.weeklyProjections}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
                           dataKey="weekStart" 
@@ -789,8 +822,8 @@ const Dashboard: React.FC = () => {
                       <Col xs={24} md={8}>
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span>Bajo Riesgo ({cashFlow.riskAnalysis.lowRisk?.count || 0} facturas)</span>
-                            <span>{formatCurrency(cashFlow.riskAnalysis.lowRisk?.amount || '0')}</span>
+                            <span>Bajo Riesgo ({cashFlowFullData?.riskAnalysis?.lowRisk?.count || 0} facturas)</span>
+                            <span>{formatCurrency(cashFlowFullData?.riskAnalysis?.lowRisk?.amount || '0')}</span>
                           </div>
                           <Progress 
                             percent={75} 
@@ -800,8 +833,8 @@ const Dashboard: React.FC = () => {
                         </div>
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span>Riesgo Medio ({cashFlow.riskAnalysis.mediumRisk?.count || 0} facturas)</span>
-                            <span>{formatCurrency(cashFlow.riskAnalysis.mediumRisk?.amount || '0')}</span>
+                            <span>Riesgo Medio ({cashFlowFullData?.riskAnalysis?.mediumRisk?.count || 0} facturas)</span>
+                            <span>{formatCurrency(cashFlowFullData?.riskAnalysis?.mediumRisk?.amount || '0')}</span>
                           </div>
                           <Progress 
                             percent={50} 
@@ -811,8 +844,8 @@ const Dashboard: React.FC = () => {
                         </div>
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span>Alto Riesgo ({cashFlow.riskAnalysis.highRisk?.count || 0} facturas)</span>
-                            <span>{formatCurrency(cashFlow.riskAnalysis.highRisk?.amount || '0')}</span>
+                            <span>Alto Riesgo ({cashFlowFullData?.riskAnalysis?.highRisk?.count || 0} facturas)</span>
+                            <span>{formatCurrency(cashFlowFullData?.riskAnalysis?.highRisk?.amount || '0')}</span>
                           </div>
                           <Progress 
                             percent={25} 

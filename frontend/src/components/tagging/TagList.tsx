@@ -16,6 +16,8 @@ import {
   Alert,
   Modal,
 } from 'antd';
+import type { TablePaginationConfig } from 'antd/es/table';
+import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import {
   EditOutlined,
   DeleteOutlined,
@@ -29,7 +31,7 @@ import {
   CloseCircleOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table/interface';
+import type { ColumnsType } from 'antd/es/table/interface';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -99,15 +101,15 @@ export const TagList: React.FC<TagListProps> = ({ onTagSelect, selectable = fals
   // Handle table change
   const handleTableChange = (
     pagination: TablePaginationConfig,
-    _filters: Record<string, unknown>,
-    sorter: { field?: string; order?: 'ascend' | 'descend' } | Array<{ field?: string; order?: 'ascend' | 'descend' }>,
+    _filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<TagType> | SorterResult<TagType>[],
   ) => {
     setCurrentPage(pagination.current || 1);
     setPageSize(pagination.pageSize || 10);
     
     const singleSorter = Array.isArray(sorter) ? sorter[0] : sorter;
     if (singleSorter?.field) {
-      setSortField(singleSorter.field);
+      setSortField(singleSorter.field as string);
       setSortOrder(singleSorter.order === 'ascend' ? 'asc' : 'desc');
     } else {
       setSortField(undefined);

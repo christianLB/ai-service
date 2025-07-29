@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -85,20 +85,6 @@ const InvoiceForm: React.FC = () => {
     sortOrder: 'asc',
   });
 
-  useEffect(() => {
-    loadClients();
-    if (isEdit && id) {
-      loadInvoice();
-    } else if (preselectedClientId) {
-      form.setFieldsValue({ clientId: preselectedClientId });
-      handleClientChange(preselectedClientId);
-    }
-  }, [id, isEdit, preselectedClientId, handleClientChange, loadClients, loadInvoice, form]);
-
-  useEffect(() => {
-    calculateTotals();
-  }, [calculateTotals]);
-
   const loadClients = useCallback(async () => {
     try {
       setLoadingClients(true);
@@ -138,9 +124,17 @@ const InvoiceForm: React.FC = () => {
 
         // Set line items
         if (invoice.items && Array.isArray(invoice.items)) {
-          const items = invoice.items.map((item: { description?: string; quantity?: number; unitPrice?: number; amount?: number; taxRate?: number; taxAmount?: number; total?: number }, index: number) => ({
-            ...item,
+          const items: LineItem[] = invoice.items.map((item: InvoiceItem, index: number) => ({
             key: String(index + 1),
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || 0,
+            amount: item.amount || 0,
+            taxRate: item.taxRate || 0,
+            taxAmount: item.taxAmount || 0,
+            total: item.total || 0,
+            unit: item.unit,
+            discount: item.discount,
           }));
           setLineItems(items);
         }
@@ -226,6 +220,20 @@ const InvoiceForm: React.FC = () => {
     setTotals({ subtotal, taxAmount, total });
   }, [lineItems]);
 
+  useEffect(() => {
+    loadClients();
+    if (isEdit && id) {
+      loadInvoice();
+    } else if (preselectedClientId) {
+      form.setFieldsValue({ clientId: preselectedClientId });
+      handleClientChange(preselectedClientId);
+    }
+  }, [id, isEdit, preselectedClientId, handleClientChange, loadClients, loadInvoice, form]);
+
+  useEffect(() => {
+    calculateTotals();
+  }, [calculateTotals]);
+
   const validateLineItem = (item: LineItem) => {
     const errors: { description?: boolean; quantity?: boolean; unitPrice?: boolean } = {};
     
@@ -298,7 +306,7 @@ const InvoiceForm: React.FC = () => {
               .filter(Boolean)
               .join(', ')
           : '',
-        type: values.type || 'invoice',
+        type: (values.type || 'invoice') as 'invoice' | 'credit_note' | 'proforma' | 'receipt',
         issueDate: values.issueDate.format('YYYY-MM-DD'),
         dueDate: values.dueDate.format('YYYY-MM-DD'),
         currency: values.currency,
@@ -310,7 +318,7 @@ const InvoiceForm: React.FC = () => {
         subtotal: totals.subtotal,
         taxAmount: totals.taxAmount,
         taxRate: values.taxRate,
-        taxType: values.taxType,
+        taxType: values.taxType as 'IVA' | 'VAT' | 'GST' | 'NONE',
         total: totals.total,
         paymentTerms: values.paymentTerms,
         notes: values.notes,
@@ -331,7 +339,8 @@ const InvoiceForm: React.FC = () => {
       }
     } catch (error) {
       console.error('Error saving invoice:', error);
-      message.error(error.response?.data?.error || `No se pudo ${isEdit ? 'actualizar' : 'crear'} la factura`);
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || `No se pudo ${isEdit ? 'actualizar' : 'crear'} la factura`;
+      message.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -650,7 +659,8 @@ const InvoiceForm: React.FC = () => {
                   max={100}
                   formatter={value => `${value}%`}
                   parser={(value) => {
-                    const num = value!.replace('%', '');
+                    if (!value) return 0;
+                    const num = value.replace('%', '');
                     return parseFloat(num) || 0;
                   }}
                   style={{ width: '100%' }}

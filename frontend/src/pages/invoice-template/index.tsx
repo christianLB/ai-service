@@ -115,6 +115,7 @@ const InvoiceTemplatePage: React.FC = () => {
       } else {
         await createMutation.mutateAsync({
           ...values,
+          htmlContent: values.htmlContent || '',
           userId: user?.id || '',
           variables: [],
         });

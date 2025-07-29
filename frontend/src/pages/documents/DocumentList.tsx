@@ -98,7 +98,9 @@ const DocumentList: React.FC = () => {
   const handleUpload = async (file: UploadFile) => {
     setUploadLoading(true);
     try {
-      const result = await documentService.uploadDocument(file as File);
+      // Access the actual File object from UploadFile
+      const actualFile = file.originFileObj || file as unknown as File;
+      const result = await documentService.uploadDocument(actualFile);
       message.success(`Documento "${result.document.title}" cargado exitosamente`);
       refetch();
       return false; // Prevent default upload behavior

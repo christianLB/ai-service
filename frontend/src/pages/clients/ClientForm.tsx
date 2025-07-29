@@ -83,13 +83,13 @@ const ClientForm: React.FC = () => {
         paymentMethod: values.paymentMethod,
         bankAccount: values.bankAccount,
         notes: values.notes,
-        address: {
-          street: values.street,
-          city: values.city,
+        address: values.street || values.city || values.country || values.postalCode ? {
+          street: values.street || '',
+          city: values.city || '',
           state: values.state,
-          country: values.country,
-          postalCode: values.postalCode,
-        },
+          country: values.country || '',
+          postalCode: values.postalCode || '',
+        } : undefined,
       };
 
       let response;
@@ -287,7 +287,8 @@ const ClientForm: React.FC = () => {
                   style={{ width: '100%' }} 
                   formatter={value => `€ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                   parser={(value) => {
-                    const num = value!.replace(/€\s?|(,*)/g, '');
+                    if (!value) return 0;
+                    const num = value.replace(/€\s?|(,*)/g, '');
                     return parseFloat(num) || 0;
                   }}
                 />

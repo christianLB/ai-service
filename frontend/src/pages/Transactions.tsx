@@ -25,6 +25,51 @@ import TransactionFilters from '../components/financial/transactions/Transaction
 
 const { Title, Text } = Typography;
 
+// Define Transaction and Account types
+interface Transaction {
+  id: string;
+  accountId: string;
+  accountName?: string;
+  type: string;
+  status: string;
+  amount: number;
+  currency: string;
+  description: string;
+  reference?: string;
+  date: string;
+  counterpartyName?: string;
+  counterpartyAccount?: string;
+  metadata?: Record<string, string | number | boolean>;
+  gocardlessData?: {
+    valueDate?: string;
+    bookingDate?: string;
+    [key: string]: string | undefined;
+  };
+}
+
+interface Account {
+  id: string;
+  account_id: string;
+  name?: string;
+  type?: string;
+  institution?: string;
+  iban?: string;
+  currency_id?: string;
+  currencies?: {
+    code: string;
+    symbol: string;
+  };
+  // Additional properties from BankAccounts if needed
+  institution_id?: string;
+  institution_name?: string;
+  logo_url?: string;
+  balance?: number;
+  currency?: string;
+  owner_name?: string;
+  is_active?: boolean;
+  last_synced_at?: string;
+}
+
 interface ITransactionFilters {
   accountIds?: string[];
   dateRange?: [string, string];
@@ -167,8 +212,8 @@ const Transactions: FC = () => {
   const handleTableChange = (pagination: TablePaginationConfig, _filters: Record<string, unknown>, sorter: SorterResult<Transaction> | SorterResult<Transaction>[]) => {
     // Handle pagination changes
     if (pagination.current !== currentPage || pagination.pageSize !== pageSize) {
-      setCurrentPage(pagination.current);
-      setPageSize(pagination.pageSize);
+      setCurrentPage(pagination.current || 1);
+      setPageSize(pagination.pageSize || 50);
     }
 
     // Handle sorting changes
