@@ -252,7 +252,7 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
                 <p>No se pudo sincronizar ninguna cuenta.</p>
                 {failedAccounts.map((account: SyncResult, idx: number) => (
                   <p key={idx} style={{ marginTop: idx === 0 ? 8 : 4 }}>
-                    • {account.accountName}: {account.error}
+                    • {String(account.accountName || '').substring(0, 100)}: {String(account.error || '').substring(0, 200)}
                   </p>
                 ))}
               </div>
