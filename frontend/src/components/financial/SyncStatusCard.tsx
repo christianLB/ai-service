@@ -178,7 +178,7 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
                 </p>
                 {rateLimitAccounts.map((account: SyncResult, idx: number) => (
                   <p key={idx} style={{ marginTop: 4 }}>
-                    • {account.accountName}: {account.error}
+                    • {String(account.accountName || '').substring(0, 100)}: {String(account.error || '').substring(0, 200)}
                   </p>
                 ))}
                 <p style={{ marginTop: 8 }}>
@@ -202,7 +202,7 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
                 </p>
                 {failedAccounts.map((account: SyncResult, idx: number) => (
                   <p key={idx} style={{ marginTop: 4 }}>
-                    • {account.accountName}: {account.error}
+                    • {String(account.accountName || '').substring(0, 100)}: {String(account.error || '').substring(0, 200)}
                   </p>
                 ))}
               </div>
@@ -231,7 +231,7 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
                                   "un tiempo";
                   return (
                     <p key={idx} style={{ marginTop: idx === 0 ? 8 : 4 }}>
-                      • {account.accountName}: Disponible en {waitTime}
+                      • {String(account.accountName || '').substring(0, 100)}: Disponible en {waitTime}
                     </p>
                   );
                 })}

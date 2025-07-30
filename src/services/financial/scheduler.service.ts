@@ -304,8 +304,8 @@ export class FinancialSchedulerService {
           AVG(attempts) as avg_attempts,
           MAX(created_at) as last_sync
         FROM financial.sync_logs
-        WHERE created_at > NOW() - INTERVAL '${days} days'
-      `);
+        WHERE created_at > NOW() - INTERVAL $1
+      `, [`${days} days`]);
 
       const recentSyncs = await this.db.query(`
         SELECT 
@@ -316,10 +316,10 @@ export class FinancialSchedulerService {
           error,
           created_at
         FROM financial.sync_logs
-        WHERE created_at > NOW() - INTERVAL '${days} days'
+        WHERE created_at > NOW() - INTERVAL $1
         ORDER BY created_at DESC
         LIMIT 10
-      `);
+      `, [`${days} days`]);
 
       // Get actual count of bank accounts
       const accountCount = await this.db.query(`
