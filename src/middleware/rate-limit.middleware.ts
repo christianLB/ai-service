@@ -32,6 +32,11 @@ const rateLimitConfigs: Record<string, RateLimitConfig> = {
     points: 50,
     duration: 60, // 50 requests per minute
     blockDuration: 60
+  },
+  database: {
+    points: 30,
+    duration: 60, // 30 requests per minute for database-intensive operations
+    blockDuration: 60
   }
 };
 
@@ -116,6 +121,7 @@ export const standardRateLimit = createRateLimiter('standard');
 export const aiRateLimit = createRateLimiter('ai');
 export const batchRateLimit = createRateLimiter('batch');
 export const searchRateLimit = createRateLimiter('search');
+export const databaseRateLimit = createRateLimiter('database');
 
 // Dynamic rate limiter based on endpoint
 export function dynamicRateLimit(req: Request, res: Response, next: NextFunction): void {

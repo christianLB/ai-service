@@ -1,8 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { FinancialDatabaseService } from '../../services/financial/database.service';
 import { authMiddleware } from '../../middleware/auth.middleware';
+import { createRateLimiter } from '../../middleware/rate-limit.middleware';
 
 const router = Router();
+
+// Create database rate limiter for dashboard endpoints
+const databaseRateLimit = createRateLimiter('database');
 
 // Database service instance
 let databaseService: FinancialDatabaseService;
@@ -29,7 +33,7 @@ const initializeService = () => {
  * GET /api/financial/dashboard/revenue-metrics
  * Get comprehensive revenue metrics with trends and comparisons
  */
-router.get('/revenue-metrics', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeService();
     

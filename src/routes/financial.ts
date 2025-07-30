@@ -16,6 +16,7 @@ import invoicesRoutes from './financial/invoices.routes';
 import invoiceTemplatesRoutes from './financial/invoice-templates.routes';
 import dashboardRoutes from './financial/dashboard.routes';
 import multer from 'multer';
+import { createRateLimiter } from '../middleware/rate-limit.middleware';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -33,6 +34,9 @@ const upload = multer({
 });
 
 const router = Router();
+
+// Create database rate limiter for database-intensive operations
+const databaseRateLimit = createRateLimiter('database');
 
 // Initialize services (these would be injected in a real app)
 let goCardlessService: GoCardlessService;
@@ -360,7 +364,7 @@ function getStatusMessage(status: string | undefined, isSetupComplete: boolean):
  * GET /api/financial/accounts
  * Get all financial accounts
  */
-router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
+router.get('/accounts', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeServices();
 
@@ -443,7 +447,7 @@ router.get('/account-status', async (req: Request, res: Response): Promise<void>
  * GET /api/financial/transactions
  * Get transactions with optional account filter
  */
-router.get('/transactions', async (req: Request, res: Response): Promise<void> => {
+router.get('/transactions', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeServices();
 
@@ -907,7 +911,7 @@ router.get('/rate-limits', async (req: Request, res: Response): Promise<void> =>
  * GET /api/financial/sync-status
  * Get scheduler status and recent sync history
  */
-router.get('/sync-status', async (req: Request, res: Response): Promise<void> => {
+router.get('/sync-status', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeServices();
 
@@ -2362,7 +2366,7 @@ router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promis
  * GET /api/financial/dashboard/overview
  * Get comprehensive dashboard data for web interface
  */
-router.get('/dashboard/overview', async (req: Request, res: Response): Promise<void> => {
+router.get('/dashboard/overview', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeServices();
 
