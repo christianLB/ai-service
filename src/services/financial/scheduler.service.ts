@@ -115,10 +115,6 @@ export class FinancialSchedulerService {
 
   private async performInitialSyncCheck(): Promise<void> {
     try {
-      console.log('Initial sync check disabled due to GoCardless rate limit.');
-      console.log('Rate limit will reset tomorrow. Automatic sync will resume then.');
-      return;
-      
       console.log('Checking if initial sync is needed...');
       
       // Check if we have any accounts
@@ -325,9 +321,25 @@ export class FinancialSchedulerService {
         LIMIT 10
       `);
 
+      // Get actual count of bank accounts
+      const accountCount = await this.db.query(`
+        SELECT COUNT(*) as count 
+        FROM financial.accounts 
+        WHERE type = 'bank_account' AND is_active = true
+      `);
+
+      // Get count of transactions updated today
+      const todayTransactions = await this.db.query(`
+        SELECT COUNT(*) as count
+        FROM financial.transactions
+        WHERE DATE(updated_at) = CURRENT_DATE
+      `);
+
       return {
         summary: stats.rows[0],
-        recentSyncs: recentSyncs.rows
+        recentSyncs: recentSyncs.rows,
+        totalAccounts: parseInt(accountCount.rows[0].count),
+        transactionsUpdatedToday: parseInt(todayTransactions.rows[0].count)
       };
     } catch (error) {
       console.error('Failed to get sync stats:', error);

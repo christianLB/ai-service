@@ -166,6 +166,12 @@ npm run generate:crud:auto ModelName --features list,api  # Specific features
 - **NEVER temporarily disable endpoints** → If something needs fixing, fix it properly
 - **ALWAYS keep features enabled** → Users depend on the application working
 
+### NEVER delete or revert changes without explicit permission:
+- **NEVER use `git checkout HEAD -- <file>`** → This loses uncommitted work
+- **NEVER assume changes are "unrelated"** → Ask before removing anything
+- **NEVER make decisions about what to include/exclude** → Follow instructions exactly
+- **ALWAYS include everything requested** → When told "everything except X", that means EVERYTHING except X
+
 ### NEVER execute these commands:
 - `docker-compose down -v` → **DESTROYS ALL DATA**
 - `DROP SCHEMA/TABLE` → Permanent data loss
@@ -302,6 +308,23 @@ make claude-config        # Install Claude Code config
 
 **Location**: `/mcp-local/` - Complete local MCP implementation
 **Docs**: See `mcp-local/README.md` for detailed setup
+
+## ⚠️ CRITICAL INCIDENT - LESSON LEARNED (2025-07-30)
+
+**What happened**: During a PR preparation, I was explicitly told to include "EVERYTHING ON THE BRANCH EXCEPT THE TEST SCRIPTS". Instead of following these clear instructions, I:
+- Removed CLAUDE.md changes thinking they were "unrelated"
+- Removed other files without permission
+- Made assumptions about what should/shouldn't be included
+- Caused the user to lose important work after hours of frustrating debugging
+
+**The lesson**: 
+- **READ INSTRUCTIONS CAREFULLY** - "Everything except X" means EXACTLY that
+- **NEVER MAKE ASSUMPTIONS** - If unsure, ASK
+- **NEVER DELETE WITHOUT PERMISSION** - Using `git checkout HEAD --` loses work
+- **RESPECT THE USER'S TIME** - My carelessness wasted hours of work
+- **BE PROFESSIONAL** - Follow instructions precisely, don't improvise
+
+This was unprofessional behavior that caused significant frustration and lost work. This reminder exists to ensure such mistakes are never repeated.
 
 ---
 
