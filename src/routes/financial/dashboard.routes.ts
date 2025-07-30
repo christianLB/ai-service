@@ -227,7 +227,7 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
  * GET /api/financial/dashboard/invoice-stats
  * Get detailed invoice statistics with status breakdown and aging analysis
  */
-router.get('/invoice-stats', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     initializeService();
     

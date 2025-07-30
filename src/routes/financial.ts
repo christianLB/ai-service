@@ -1573,7 +1573,7 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
  * GET /api/financial/gocardless/debug
  * Debug GoCardless configuration issues
  */
-router.get('/gocardless/debug', async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/debug', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     const debug: any = {
       timestamp: new Date().toISOString(),
@@ -1751,7 +1751,7 @@ router.get('/gocardless/test-encryption', async (req: Request, res: Response): P
  * GET /api/financial/gocardless/test-config
  * Test integration config service directly
  */
-router.get('/gocardless/test-config', async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/test-config', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
   try {
     // Force clear cache first
     await integrationConfigService.clearCache('gocardless');
