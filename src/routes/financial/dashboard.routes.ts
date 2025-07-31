@@ -401,7 +401,7 @@ router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Requ
  * GET /api/financial/dashboard/client-metrics
  * Get client performance metrics including payment behavior and revenue analysis
  */
-router.get('/client-metrics', authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeService();
     
@@ -613,7 +613,7 @@ router.get('/client-metrics', authMiddleware, async (req: Request, res: Response
  * GET /api/financial/dashboard/cash-flow
  * Get cash flow projections based on outstanding invoices and payment history
  */
-router.get('/cash-flow', authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/cash-flow', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeService();
     
@@ -836,7 +836,7 @@ router.get('/cash-flow', authMiddleware, async (req: Request, res: Response, nex
  * GET /api/financial/dashboard/yearly-report
  * Get yearly financial report with income/expense matrix by category and month
  */
-router.get('/yearly-report', authMiddleware, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/yearly-report', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeService();
     
