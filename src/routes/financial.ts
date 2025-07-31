@@ -88,7 +88,7 @@ const initializeServices = () => {
  * POST /api/financial/refresh-auth
  * Force refresh GoCardless authentication token
  */
-router.post('/refresh-auth', async (req: Request, res: Response): Promise<void> => {
+router.post('/refresh-auth', async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('[refresh-auth] Forcing GoCardless authentication refresh');
     initializeServices();
@@ -117,7 +117,7 @@ router.post('/refresh-auth', async (req: Request, res: Response): Promise<void> 
  * POST /api/financial/setup-bbva
  * Start BBVA account setup process
  */
-router.post('/setup-bbva', async (req: Request, res: Response): Promise<void> => {
+router.post('/setup-bbva', async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('[setup-bbva] Initializing BBVA account setup process');
     initializeServices();
@@ -159,7 +159,7 @@ router.post('/setup-bbva', async (req: Request, res: Response): Promise<void> =>
  * POST /api/financial/complete-setup
  * Complete the setup after user consent
  */
-router.post('/complete-setup', async (req: Request, res: Response): Promise<void> => {
+router.post('/complete-setup', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -225,7 +225,7 @@ router.post('/complete-setup', async (req: Request, res: Response): Promise<void
  * GET /api/financial/requisition-status/:requisitionId
  * Check the status of a requisition including consent status and linked accounts
  */
-router.get('/requisition-status/:requisitionId', async (req: Request, res: Response): Promise<void> => {
+router.get('/requisition-status/:requisitionId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -364,7 +364,7 @@ function getStatusMessage(status: string | undefined, isSetupComplete: boolean):
  * GET /api/financial/accounts
  * Get all financial accounts
  */
-router.get('/accounts', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
+router.get('/accounts', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -389,7 +389,7 @@ router.get('/accounts', databaseRateLimit, async (req: Request, res: Response): 
  * GET /api/financial/accounts/:id
  * Get specific account details
  */
-router.get('/accounts/:id', async (req: Request, res: Response): Promise<void> => {
+router.get('/accounts/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -422,7 +422,7 @@ router.get('/accounts/:id', async (req: Request, res: Response): Promise<void> =
  * GET /api/financial/account-status
  * Get status of all accounts including sync info
  */
-router.get('/account-status', async (req: Request, res: Response): Promise<void> => {
+router.get('/account-status', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -447,7 +447,7 @@ router.get('/account-status', async (req: Request, res: Response): Promise<void>
  * GET /api/financial/transactions
  * Get transactions with optional account filter
  */
-router.get('/transactions', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
+router.get('/transactions', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -485,7 +485,7 @@ router.get('/transactions', databaseRateLimit, async (req: Request, res: Respons
  * GET /api/financial/transactions/:id
  * Get specific transaction details
  */
-router.get('/transactions/:id', async (req: Request, res: Response): Promise<void> => {
+router.get('/transactions/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -518,7 +518,7 @@ router.get('/transactions/:id', async (req: Request, res: Response): Promise<voi
  * DELETE /api/financial/transactions/:id
  * Delete a specific transaction
  */
-router.delete('/transactions/:id', async (req: Request, res: Response): Promise<void> => {
+router.delete('/transactions/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -559,7 +559,7 @@ router.delete('/transactions/:id', async (req: Request, res: Response): Promise<
  * POST /api/financial/transactions/import
  * Import transactions from JSON file
  */
-router.post('/transactions/import', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+router.post('/transactions/import', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -673,7 +673,7 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
  * GET /api/financial/accounts
  * Get user accounts for import selection
  */
-router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
+router.get('/accounts', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -713,7 +713,7 @@ router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
  * POST /api/financial/sync
  * Perform manual sync of all accounts
  */
-router.post('/sync', async (req: Request, res: Response): Promise<void> => {
+router.post('/sync', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -744,7 +744,7 @@ router.post('/sync', async (req: Request, res: Response): Promise<void> => {
  * POST /api/financial/sync/accounts
  * Sync only account details for all accounts
  */
-router.post('/sync/accounts', async (req: Request, res: Response): Promise<void> => {
+router.post('/sync/accounts', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -787,7 +787,7 @@ router.post('/sync/accounts', async (req: Request, res: Response): Promise<void>
  * POST /api/financial/sync/balances
  * Sync only account balances for all accounts
  */
-router.post('/sync/balances', async (req: Request, res: Response): Promise<void> => {
+router.post('/sync/balances', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -834,7 +834,7 @@ router.post('/sync/balances', async (req: Request, res: Response): Promise<void>
  * POST /api/financial/sync/transactions
  * Sync only transactions for all accounts
  */
-router.post('/sync/transactions', async (req: Request, res: Response): Promise<void> => {
+router.post('/sync/transactions', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -886,7 +886,7 @@ router.post('/sync/transactions', async (req: Request, res: Response): Promise<v
  * GET /api/financial/rate-limits
  * Get current rate limit status for all accounts
  */
-router.get('/rate-limits', async (req: Request, res: Response): Promise<void> => {
+router.get('/rate-limits', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -911,7 +911,7 @@ router.get('/rate-limits', async (req: Request, res: Response): Promise<void> =>
  * GET /api/financial/sync-status
  * Get scheduler status and recent sync history
  */
-router.get('/sync-status', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
+router.get('/sync-status', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -952,7 +952,7 @@ router.get('/sync-status', databaseRateLimit, async (req: Request, res: Response
  * POST /api/financial/scheduler/start
  * Start the automatic scheduler
  */
-router.post('/scheduler/start', async (req: Request, res: Response): Promise<void> => {
+router.post('/scheduler/start', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -985,7 +985,7 @@ router.post('/scheduler/start', async (req: Request, res: Response): Promise<voi
  * POST /api/financial/scheduler/stop
  * Stop the automatic scheduler
  */
-router.post('/scheduler/stop', async (req: Request, res: Response): Promise<void> => {
+router.post('/scheduler/stop', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1022,7 +1022,7 @@ router.post('/scheduler/stop', async (req: Request, res: Response): Promise<void
  * GET /api/financial/summary
  * Get financial summary
  */
-router.get('/summary', async (req: Request, res: Response): Promise<void> => {
+router.get('/summary', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1078,7 +1078,7 @@ router.get('/summary', async (req: Request, res: Response): Promise<void> => {
  * GET /api/financial/health
  * Health check for financial services
  */
-router.get('/health', async (req: Request, res: Response): Promise<void> => {
+router.get('/health', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1128,7 +1128,7 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
  * POST /api/financial/test-gocardless
  * Test GoCardless authentication and connectivity
  */
-router.post('/test-gocardless', async (req: Request, res: Response): Promise<void> => {
+router.post('/test-gocardless', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1175,7 +1175,7 @@ router.post('/test-gocardless', async (req: Request, res: Response): Promise<voi
  * POST /api/financial/diagnose-gocardless
  * Diagnose GoCardless configuration and connectivity issues
  */
-router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise<void> => {
+router.post('/diagnose-gocardless', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1304,7 +1304,7 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
  * GET /api/financial/gocardless/status
  * Get comprehensive GoCardless configuration and connection status
  */
-router.get('/gocardless/status', async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/status', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1429,7 +1429,7 @@ function getRecommendations(status: any): string[] {
  * GET /api/financial/gocardless/credentials
  * Check if GoCardless credentials are configured
  */
-router.get('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/credentials', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1456,7 +1456,7 @@ router.get('/gocardless/credentials', async (req: Request, res: Response): Promi
  * POST /api/financial/gocardless/credentials
  * Configure GoCardless credentials
  */
-router.post('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+router.post('/gocardless/credentials', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { secret_id, secret_key, base_url, redirect_uri } = req.body;
 
@@ -1573,7 +1573,7 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
  * GET /api/financial/gocardless/debug
  * Debug GoCardless configuration issues
  */
-router.get('/gocardless/debug', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/debug', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const debug: any = {
       timestamp: new Date().toISOString(),
@@ -1687,7 +1687,7 @@ router.get('/gocardless/debug', databaseRateLimit, async (req: Request, res: Res
  * GET /api/financial/gocardless/test-encryption
  * Test encryption key setup and consistency
  */
-router.get('/gocardless/test-encryption', async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/test-encryption', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result: any = {
       timestamp: new Date().toISOString(),
@@ -1751,7 +1751,7 @@ router.get('/gocardless/test-encryption', async (req: Request, res: Response): P
  * GET /api/financial/gocardless/test-config
  * Test integration config service directly
  */
-router.get('/gocardless/test-config', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/test-config', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Force clear cache first
     await integrationConfigService.clearCache('gocardless');
@@ -1847,7 +1847,7 @@ router.get('/gocardless/test-config', databaseRateLimit, async (req: Request, re
  * DELETE /api/financial/gocardless/credentials
  * Remove GoCardless credentials
  */
-router.delete('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+router.delete('/gocardless/credentials', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const keys = ['secret_id', 'secret_key', 'base_url', 'redirect_uri'];
     let deletedCount = 0;
@@ -1887,7 +1887,7 @@ router.delete('/gocardless/credentials', async (req: Request, res: Response): Pr
  * GET /api/financial/categories
  * Get all categories with optional filtering by type
  */
-router.get('/categories', async (req: Request, res: Response): Promise<void> => {
+router.get('/categories', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1914,7 +1914,7 @@ router.get('/categories', async (req: Request, res: Response): Promise<void> => 
  * GET /api/financial/categories/:id/subcategories
  * Get subcategories for a specific category
  */
-router.get('/categories/:id/subcategories', async (req: Request, res: Response): Promise<void> => {
+router.get('/categories/:id/subcategories', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1941,7 +1941,7 @@ router.get('/categories/:id/subcategories', async (req: Request, res: Response):
  * POST /api/financial/categorize/auto
  * Auto-categorize uncategorized transactions using AI
  */
-router.post('/categorize/auto', async (req: Request, res: Response): Promise<void> => {
+router.post('/categorize/auto', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -1970,7 +1970,7 @@ router.post('/categorize/auto', async (req: Request, res: Response): Promise<voi
  * POST /api/financial/transactions/:id/categorize
  * Manually categorize a specific transaction
  */
-router.post('/transactions/:id/categorize', async (req: Request, res: Response): Promise<void> => {
+router.post('/transactions/:id/categorize', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -2007,7 +2007,7 @@ router.post('/transactions/:id/categorize', async (req: Request, res: Response):
  * GET /api/financial/transactions/categorized
  * Get categorized transactions with advanced filtering
  */
-router.get('/transactions/categorized', async (req: Request, res: Response): Promise<void> => {
+router.get('/transactions/categorized', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -2067,7 +2067,7 @@ router.get('/transactions/categorized', async (req: Request, res: Response): Pro
  * GET /api/financial/reports/comprehensive
  * Generate comprehensive financial report
  */
-router.get('/reports/comprehensive', async (req: Request, res: Response): Promise<void> => {
+router.get('/reports/comprehensive', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -2110,7 +2110,7 @@ router.get('/reports/comprehensive', async (req: Request, res: Response): Promis
  * GET /api/financial/metrics/realtime
  * Get real-time financial metrics and dashboard data
  */
-router.get('/metrics/realtime', async (req: Request, res: Response): Promise<void> => {
+router.get('/metrics/realtime', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -2149,7 +2149,7 @@ router.get('/metrics/realtime', async (req: Request, res: Response): Promise<voi
  * GET /api/financial/analytics/monthly-summary
  * Get monthly category summaries for a date range
  */
-router.get('/analytics/monthly-summary', async (req: Request, res: Response): Promise<void> => {
+router.get('/analytics/monthly-summary', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -2193,7 +2193,7 @@ router.get('/analytics/monthly-summary', async (req: Request, res: Response): Pr
  * GET /api/financial/insights/accounts
  * Get account insights with 30-day activity metrics
  */
-router.get('/insights/accounts', async (req: Request, res: Response): Promise<void> => {
+router.get('/insights/accounts', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -2223,7 +2223,7 @@ router.get('/insights/accounts', async (req: Request, res: Response): Promise<vo
  * GET /api/financial/dashboard/overview
  * Get dashboard overview with key metrics
  */
-router.get('/dashboard/overview', async (req: Request, res: Response): Promise<void> => {
+router.get('/dashboard/overview', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -2282,7 +2282,7 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
  * GET /api/financial/dashboard/quick-stats
  * Get quick financial statistics for widgets
  */
-router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promise<void> => {
+router.get('/dashboard/quick-stats', async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
@@ -2366,7 +2366,7 @@ router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promis
  * GET /api/financial/dashboard/overview
  * Get comprehensive dashboard data for web interface
  */
-router.get('/dashboard/overview', databaseRateLimit, async (req: Request, res: Response): Promise<void> => {
+router.get('/dashboard/overview', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
 
