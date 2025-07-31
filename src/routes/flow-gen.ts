@@ -1,22 +1,21 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { openai } from '../services/openai';
 import { createWorkflowPrompt } from '../utils/prompts';
 import { logger } from '../utils/log';
 import { validateWorkflow } from '../services/validator';
 import { db } from '../services/database';
 import { metricsService } from '../services/metrics';
+import { validate } from '../middleware/validation.middleware';
+import { flowGenSchema, getFlowsSchema, getFlowByIdSchema, getPerformanceSchema } from '../validation/flow.validation';
+import { standardRateLimit } from '../middleware/express-rate-limit.middleware';
 
 const router = Router();
 
-router.post('/flow-gen', async (req: any, res: any) => {
+router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const { description, save = true } = req.body;
   
   try {
-    // Validar entrada
-    if (!description || typeof description !== 'string') {
-      return res.status(400).json({ error: 'Description is required and must be a string' });
-    }
 
     // Generar workflow con IA
     const prompt = createWorkflowPrompt(description);
@@ -118,7 +117,7 @@ router.post('/flow-gen', async (req: any, res: any) => {
 });
 
 // Endpoint para obtener workflows guardados
-router.get('/flows', async (req: any, res: any) => {
+router.get('/flows', standardRateLimit, validate(getFlowsSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { active } = req.query;
     const activeFilter = active === 'true' ? true : active === 'false' ? false : undefined;
@@ -136,7 +135,7 @@ router.get('/flows', async (req: any, res: any) => {
 });
 
 // Endpoint para obtener un workflow específico
-router.get('/flows/:id', async (req: any, res: any) => {
+router.get('/flows/:id', standardRateLimit, validate(getFlowByIdSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const workflow = await db.getWorkflow(id);
@@ -159,7 +158,7 @@ router.get('/flows/:id', async (req: any, res: any) => {
 });
 
 // Endpoint para métricas
-router.get('/metrics', async (req: any, res: any) => {
+router.get('/metrics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const metrics = await metricsService.getMetrics();
     res.set('Content-Type', 'text/plain');
@@ -171,7 +170,7 @@ router.get('/metrics', async (req: any, res: any) => {
 });
 
 // Endpoint para métricas en JSON
-router.get('/metrics/json', async (req: any, res: any) => {
+router.get('/metrics/json', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const metrics = await metricsService.getMetricsJson();
     res.json(metrics);
@@ -182,7 +181,7 @@ router.get('/metrics/json', async (req: any, res: any) => {
 });
 
 // Endpoint para reporte de rendimiento
-router.get('/performance', async (req: any, res: any) => {
+router.get('/performance', standardRateLimit, validate(getPerformanceSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const hours = parseInt(req.query.hours as string) || 24;
     const report = await metricsService.getPerformanceReport(hours);

@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { RealEstateService } from '../services/real-estate';
 import { Pool } from 'pg';
 
@@ -14,7 +14,7 @@ const pool = new Pool({
 
 const service = new RealEstateService(pool);
 
-router.get('/properties', async (_req: Request, res: Response) => {
+router.get('/properties', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const properties = await service.listProperties();
     res.json({ success: true, data: properties });
@@ -23,7 +23,7 @@ router.get('/properties', async (_req: Request, res: Response) => {
   }
 });
 
-router.post('/properties', async (req: Request, res: Response) => {
+router.post('/properties', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const property = await service.createProperty(req.body);
     res.status(201).json({ success: true, data: property });

@@ -24,6 +24,9 @@ import express from 'express';
 import { createServer } from 'http';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import { csrfProtection, csrfErrorHandler, sendCSRFToken } from './middleware/csrf';
+import { standardRateLimit } from './middleware/express-rate-limit.middleware';
 import { createAuthRoutes } from './routes/auth/auth.routes';
 import { authMiddleware } from './middleware/auth.middleware';
 import flowGen from './routes/flow-gen';
@@ -93,9 +96,16 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Global rate limiting - MUST be before other middleware
+app.use(standardRateLimit);
+
 // Middleware básico
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cookieParser());
+
+// CSRF protection - MUST be after body parsing and cookie parsing
+app.use(csrfProtection);
 
 // Middleware de métricas (debe ir antes de las rutas)
 app.use(metricsService.createApiMetricsMiddleware());
@@ -116,6 +126,9 @@ app.use((req, res, next) => {
 // Public endpoints (no auth required)
 const authRoutes = createAuthRoutes(db.pool);
 app.use('/api/auth', authRoutes);
+
+// CSRF token endpoint (public)
+app.get('/api/csrf-token', sendCSRFToken);
 
 // API info endpoint (public)
 app.get('/api/info', (_req: express.Request, res: express.Response) => {
@@ -316,6 +329,9 @@ app.get('*', (_req: express.Request, res: express.Response) => {
 
 // Tagging error handler (specific for tagging routes)
 app.use(taggingErrorHandler);
+
+// CSRF error handler
+app.use(csrfErrorHandler);
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
