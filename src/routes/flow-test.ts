@@ -1,21 +1,20 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { n8nClient } from '../services/n8n';
 import { logger } from '../utils/log';
 import { validateWorkflow } from '../services/validator';
 import { db } from '../services/database';
 import { metricsService } from '../services/metrics';
+import { validate } from '../middleware/validation.middleware';
+import { flowTestSchema } from '../validation/flow.validation';
+import { standardRateLimit } from '../middleware/express-rate-limit.middleware';
 
 const router = Router();
 
-router.post('/flow-test', async (req: any, res: any) => {
+router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const { workflow, testData } = req.body;
   
   try {
-    // Validar entrada
-    if (!workflow) {
-      return res.status(400).json({ error: 'Workflow is required' });
-    }
 
     // Validar workflow antes de testear
     const validation = validateWorkflow(workflow);

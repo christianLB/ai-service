@@ -13,7 +13,9 @@ import {
   Tooltip,
   Progress,
   message,
+  App,
 } from "antd";
+import api from "../../services/api";
 import {
   CalendarOutlined,
   CheckCircleOutlined,
@@ -67,6 +69,15 @@ interface SyncStatus {
   scheduler?: SyncScheduler;
 }
 
+interface SyncResult {
+  success: boolean;
+  error?: string;
+  accountName?: string;
+  rateLimitInfo?: {
+    status?: string;
+  };
+}
+
 interface SyncStatusCardProps {
   syncStatus: SyncStatus;
   autoSyncEnabled: boolean;
@@ -88,6 +99,7 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
   rateLimits,
   onSyncComplete,
 }) => {
+  const { notification } = App.useApp();
   const [syncingType, setSyncingType] = useState<string | null>(null);
   const lastSync = syncStatus?.stats?.lastSync;
   const summary = syncStatus?.stats?.summary;
@@ -110,25 +122,154 @@ const SyncStatusCard: React.FC<SyncStatusCardProps> = ({
   ) => {
     setSyncingType(operationType);
     try {
-      const response = await fetch(`/api/financial/sync/${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body:
-          endpoint === "transactions" ? JSON.stringify({ days: 7 }) : undefined,
-      });
+      const response = await api.post(
+        `/financial/sync/${endpoint}`,
+        endpoint === "transactions" ? { days: 7 } : {}
+      );
 
-      const result = await response.json();
-      if (result.success) {
-        message.success(result.message);
-        // Call the callback to refresh data
+      const result = response.data;
+      console.log(`[SyncStatusCard] ${endpoint} sync response:`, result);
+
+      // Check if we have results data - but still process them even if success is false
+      if (!result.data || !result.data.results) {
+        // Handle unexpected response structure
+        if (result.success) {
+          message.success(result.message || `${operationType} sincronizados correctamente`);
+        } else {
+          message.error(result.message || `Error al sincronizar ${operationType}`);
+        }
         if (onSyncComplete) {
           setTimeout(onSyncComplete, 1000);
         }
-      } else {
-        message.error(result.error || "Error al sincronizar");
+        return;
       }
-    } catch {
-      message.error("Error de conexión");
+
+      // Extract successful and failed results
+      const results = result.data.results || [];
+      const successfulAccounts = results.filter((r: SyncResult) => r.success);
+      const failedAccounts = results.filter((r: SyncResult) => !r.success && r.error);
+      
+      // Check for rate limit errors specifically
+      const rateLimitAccounts = failedAccounts.filter((r: SyncResult) => 
+        r.error?.toLowerCase().includes("rate limit") || 
+        r.error?.toLowerCase().includes("429") ||
+        r.rateLimitInfo?.status === "exhausted" ||
+        r.rateLimitInfo?.status === "rate_limited"
+      );
+
+      // Handle different scenarios
+      if (failedAccounts.length === 0 && successfulAccounts.length > 0) {
+        // Complete success
+        message.success(result.message || `Todos los ${operationType} sincronizados correctamente`);
+        if (onSyncComplete) {
+          setTimeout(onSyncComplete, 1000);
+        }
+      } else if (failedAccounts.length > 0 && successfulAccounts.length > 0) {
+        // Partial success
+        if (rateLimitAccounts.length > 0) {
+          // Show rate limit notification for partial success with rate limits
+          notification.warning({
+            message: "Sincronización Parcial",
+            description: (
+              <div>
+                <p>Se sincronizaron {successfulAccounts.length} de {results.length} cuentas.</p>
+                <p style={{ marginTop: 8 }}>
+                  <strong>Cuentas con límite de API alcanzado:</strong>
+                </p>
+                {rateLimitAccounts.map((account: SyncResult, idx: number) => (
+                  <p key={idx} style={{ marginTop: 4 }}>
+                    • {String(account.accountName || '').substring(0, 100)}: {String(account.error || '').substring(0, 200)}
+                  </p>
+                ))}
+                <p style={{ marginTop: 8 }}>
+                  <strong>💡 Consejo:</strong> GoCardless permite solo 4 sincronizaciones por día por cuenta. 
+                  Intenta de nuevo más tarde.
+                </p>
+              </div>
+            ),
+            duration: 10,
+            placement: "topRight",
+          });
+        } else {
+          // Show regular errors for partial success
+          notification.warning({
+            message: "Sincronización Parcial",
+            description: (
+              <div>
+                <p>Se sincronizaron {successfulAccounts.length} de {results.length} cuentas.</p>
+                <p style={{ marginTop: 8 }}>
+                  <strong>Errores encontrados:</strong>
+                </p>
+                {failedAccounts.map((account: SyncResult, idx: number) => (
+                  <p key={idx} style={{ marginTop: 4 }}>
+                    • {String(account.accountName || '').substring(0, 100)}: {String(account.error || '').substring(0, 200)}
+                  </p>
+                ))}
+              </div>
+            ),
+            duration: 8,
+            placement: "topRight",
+          });
+        }
+        if (onSyncComplete) {
+          setTimeout(onSyncComplete, 2000);
+        }
+      } else if (failedAccounts.length > 0 && successfulAccounts.length === 0) {
+        // Complete failure
+        if (rateLimitAccounts.length === failedAccounts.length) {
+          // All failures are due to rate limits
+          notification.error({
+            message: "Límite de API Alcanzado",
+            description: (
+              <div>
+                <p>No se pudo sincronizar ninguna cuenta debido a límites de API.</p>
+                {rateLimitAccounts.map((account: SyncResult, idx: number) => {
+                  const hoursMatch = account.error?.match(/(\d+)\s*hours?/i);
+                  const minutesMatch = account.error?.match(/(\d+)\s*minutes?/i);
+                  const waitTime = hoursMatch ? `${hoursMatch[1]} horas` : 
+                                  minutesMatch ? `${minutesMatch[1]} minutos` : 
+                                  "un tiempo";
+                  return (
+                    <p key={idx} style={{ marginTop: idx === 0 ? 8 : 4 }}>
+                      • {String(account.accountName || '').substring(0, 100)}: Disponible en {waitTime}
+                    </p>
+                  );
+                })}
+                <p style={{ marginTop: 8 }}>
+                  <strong>💡 Consejo:</strong> GoCardless permite solo 4 sincronizaciones por día por cuenta.
+                </p>
+              </div>
+            ),
+            duration: 10,
+            placement: "topRight",
+          });
+        } else {
+          // Mixed errors or all non-rate-limit errors
+          notification.error({
+            message: "Error en Sincronización",
+            description: (
+              <div>
+                <p>No se pudo sincronizar ninguna cuenta.</p>
+                {failedAccounts.map((account: SyncResult, idx: number) => (
+                  <p key={idx} style={{ marginTop: idx === 0 ? 8 : 4 }}>
+                    • {String(account.accountName || '').substring(0, 100)}: {String(account.error || '').substring(0, 200)}
+                  </p>
+                ))}
+              </div>
+            ),
+            duration: 8,
+            placement: "topRight",
+          });
+        }
+      } else {
+        // No results at all
+        message.warning("No se encontraron cuentas para sincronizar");
+      }
+    } catch (error) {
+      console.error(`[SyncStatusCard] ${endpoint} sync error:`, error);
+      const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.error || axiosError.message || "Error de conexión";
+      message.error(errorMessage);
     } finally {
       setSyncingType(null);
     }

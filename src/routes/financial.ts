@@ -8,6 +8,7 @@ import { FinancialSchedulerService } from '../services/financial/scheduler.servi
 import { transactionManagementService } from '../services/financial/transaction-management.service';
 import { transactionImportService } from '../services/financial/transaction-import.service';
 import { integrationConfigService } from '../services/integrations';
+import { db } from '../services/database';
 import { Account } from '../services/financial/types';
 import { transactionImportFileSchema } from '../types/transaction-import.types';
 import clientsRoutes from './financial/clients.routes';
@@ -15,6 +16,7 @@ import invoicesRoutes from './financial/invoices.routes';
 import invoiceTemplatesRoutes from './financial/invoice-templates.routes';
 import dashboardRoutes from './financial/dashboard.routes';
 import multer from 'multer';
+import { standardRateLimit, databaseRateLimit } from '../middleware/express-rate-limit.middleware';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -33,6 +35,8 @@ const upload = multer({
 
 const router = Router();
 
+// Rate limiters are now imported directly from express-rate-limit.middleware
+
 // Initialize services (these would be injected in a real app)
 let goCardlessService: GoCardlessService;
 let databaseService: FinancialDatabaseService;
@@ -46,7 +50,7 @@ const initializeServices = () => {
     // Validate required environment variables
     const requiredEnvVars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    
+
     if (missingVars.length > 0) {
       throw new Error(`Missing required environment variables: ${missingVars.join(', ')}. Please set them in .env.local`);
     }
@@ -64,9 +68,9 @@ const initializeServices = () => {
     schedulerService = new FinancialSchedulerService(goCardlessService, databaseService);
     // Reporting service is now a Prisma-based singleton
     // Transaction matching service is now a Prisma-based singleton
-    
+
     // Transaction matching service uses Prisma singleton
-    
+
     // Get client controller instance and set transaction matching service
     const ClientsController = require('./financial/clients.controller').ClientsController;
     const clientsController = new ClientsController();
@@ -83,13 +87,13 @@ const initializeServices = () => {
  * POST /api/financial/refresh-auth
  * Force refresh GoCardless authentication token
  */
-router.post('/refresh-auth', async (req: Request, res: Response): Promise<void> => {
+router.post('/refresh-auth', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('[refresh-auth] Forcing GoCardless authentication refresh');
     initializeServices();
-    
+
     await goCardlessService.refreshAuthentication();
-    
+
     res.json({
       success: true,
       message: 'Authentication refreshed successfully'
@@ -112,13 +116,13 @@ router.post('/refresh-auth', async (req: Request, res: Response): Promise<void> 
  * POST /api/financial/setup-bbva
  * Start BBVA account setup process
  */
-router.post('/setup-bbva', async (req: Request, res: Response): Promise<void> => {
+router.post('/setup-bbva', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('[setup-bbva] Initializing BBVA account setup process');
     initializeServices();
-    
+
     const result = await goCardlessService.setupBBVAAccount();
-    
+
     if (result.success) {
       console.log(`[setup-bbva] Setup initiated successfully. Requisition ID: ${result.data?.requisitionId}`);
       res.json({
@@ -154,12 +158,12 @@ router.post('/setup-bbva', async (req: Request, res: Response): Promise<void> =>
  * POST /api/financial/complete-setup
  * Complete the setup after user consent
  */
-router.post('/complete-setup', async (req: Request, res: Response): Promise<void> => {
+router.post('/complete-setup', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { requisitionId } = req.body;
-    
+
     if (!requisitionId) {
       console.error('[complete-setup] Missing requisitionId in request body');
       res.status(400).json({
@@ -183,18 +187,18 @@ router.post('/complete-setup', async (req: Request, res: Response): Promise<void
     }
 
     console.log(`[complete-setup] Starting setup completion for requisition: ${requisitionId}`);
-    
+
     const result = await goCardlessService.completeSetup(requisitionId);
-    
+
     if (result.success) {
       console.log(`[complete-setup] Setup completed successfully. Accounts: ${result.data!.accounts.length}, Transactions: ${result.data!.transactionsSynced}`);
-      
+
       // Start the scheduler after successful setup
       if (!schedulerService.isActive()) {
         console.log('[complete-setup] Starting scheduler service...');
         schedulerService.start();
       }
-      
+
       res.json({
         success: true,
         data: result.data,
@@ -220,12 +224,12 @@ router.post('/complete-setup', async (req: Request, res: Response): Promise<void
  * GET /api/financial/requisition-status/:requisitionId
  * Check the status of a requisition including consent status and linked accounts
  */
-router.get('/requisition-status/:requisitionId', async (req: Request, res: Response): Promise<void> => {
+router.get('/requisition-status/:requisitionId', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { requisitionId } = req.params;
-    
+
     if (!requisitionId) {
       console.error('[requisition-status] Missing requisitionId in URL parameters');
       res.status(400).json({
@@ -249,10 +253,10 @@ router.get('/requisition-status/:requisitionId', async (req: Request, res: Respo
     }
 
     console.log(`[requisition-status] Checking status for requisition: ${requisitionId}`);
-    
+
     // Get requisition status from GoCardless
     const requisitionStatus = await goCardlessService.getRequisitionStatus(requisitionId);
-    
+
     if (!requisitionStatus.success) {
       console.error(`[requisition-status] Failed to get requisition status: ${requisitionStatus.error}`);
       res.status(404).json({
@@ -264,11 +268,11 @@ router.get('/requisition-status/:requisitionId', async (req: Request, res: Respo
     }
 
     console.log(`[requisition-status] Retrieved status successfully. Status: ${requisitionStatus.data?.status}, Accounts: ${requisitionStatus.data?.accounts?.length || 0}`);
-    
+
     // Check if requisition exists in our database
     let isSetupComplete = false;
     let localAccountsCount = 0;
-    
+
     try {
       const dbCheckQuery = `
         SELECT COUNT(DISTINCT a.id) as account_count
@@ -278,7 +282,7 @@ router.get('/requisition-status/:requisitionId', async (req: Request, res: Respo
       const dbResult = await databaseService.pool.query(dbCheckQuery, [requisitionId]);
       localAccountsCount = parseInt(dbResult.rows[0].account_count);
       isSetupComplete = localAccountsCount > 0;
-      
+
       console.log(`[requisition-status] Database check - Accounts found: ${localAccountsCount}, Setup complete: ${isSetupComplete}`);
     } catch (dbError) {
       console.error('[requisition-status] Database check failed:', dbError);
@@ -329,23 +333,25 @@ router.get('/requisition-status/:requisitionId', async (req: Request, res: Respo
  * Helper function to generate user-friendly status messages
  */
 function getStatusMessage(status: string | undefined, isSetupComplete: boolean): string {
-  if (!status) return 'Unable to determine requisition status';
-  
+  if (!status) {
+    return 'Unable to determine requisition status';
+  }
+
   const statusMessages: { [key: string]: string } = {
     'CR': 'Requisition created. Please visit the consent URL to authorize account access.',
     'GC': 'Currently giving consent. Please complete the authorization process.',
     'UA': 'Undergoing authentication. Please complete the bank authentication.',
-    'LN': isSetupComplete 
+    'LN': isSetupComplete
       ? 'Account is linked and setup is complete. You can now access your financial data.'
       : 'Account is linked but setup is not complete. Please call /complete-setup to finish configuration.',
-    'LINKED': isSetupComplete 
+    'LINKED': isSetupComplete
       ? 'Account is linked and setup is complete. You can now access your financial data.'
       : 'Account is linked but setup is not complete. Please call /complete-setup to finish configuration.',
     'EX': 'Requisition has expired. Please create a new requisition.',
     'RJ': 'Consent was rejected. Please create a new requisition and grant the necessary permissions.',
     'SU': 'Account access is suspended. Please contact support or create a new requisition.'
   };
-  
+
   return statusMessages[status] || `Unknown status: ${status}`;
 }
 
@@ -357,12 +363,12 @@ function getStatusMessage(status: string | undefined, isSetupComplete: boolean):
  * GET /api/financial/accounts
  * Get all financial accounts
  */
-router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
+router.get('/accounts', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const accounts = await databaseService.getAccounts();
-    
+
     res.json({
       success: true,
       data: accounts,
@@ -382,13 +388,13 @@ router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
  * GET /api/financial/accounts/:id
  * Get specific account details
  */
-router.get('/accounts/:id', async (req: Request, res: Response): Promise<void> => {
+router.get('/accounts/:id', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { id } = req.params;
     const account = await databaseService.getAccountById(id);
-    
+
     if (!account) {
       res.status(404).json({
         success: false,
@@ -415,12 +421,12 @@ router.get('/accounts/:id', async (req: Request, res: Response): Promise<void> =
  * GET /api/financial/account-status
  * Get status of all accounts including sync info
  */
-router.get('/account-status', async (req: Request, res: Response): Promise<void> => {
+router.get('/account-status', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const result = await goCardlessService.getAccountStatus();
-    
+
     res.json(result);
   } catch (error) {
     console.error('Get account status failed:', error);
@@ -440,18 +446,18 @@ router.get('/account-status', async (req: Request, res: Response): Promise<void>
  * GET /api/financial/transactions
  * Get transactions with optional account filter
  */
-router.get('/transactions', async (req: Request, res: Response): Promise<void> => {
+router.get('/transactions', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
-    const { 
-      accountId, 
-      page = '1', 
+
+    const {
+      accountId,
+      page = '1',
       limit = '50',
       sortBy = 'date',
       sortOrder = 'desc'
     } = req.query;
-    
+
     const result = await databaseService.getTransactions(
       accountId as string,
       parseInt(page as string),
@@ -459,7 +465,7 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
       sortBy as string,
       sortOrder as string
     );
-    
+
     res.json({
       success: true,
       data: result
@@ -478,13 +484,13 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
  * GET /api/financial/transactions/:id
  * Get specific transaction details
  */
-router.get('/transactions/:id', async (req: Request, res: Response): Promise<void> => {
+router.get('/transactions/:id', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { id } = req.params;
     const transaction = await databaseService.getTransactionById(id);
-    
+
     if (!transaction) {
       res.status(404).json({
         success: false,
@@ -511,13 +517,13 @@ router.get('/transactions/:id', async (req: Request, res: Response): Promise<voi
  * DELETE /api/financial/transactions/:id
  * Delete a specific transaction
  */
-router.delete('/transactions/:id', async (req: Request, res: Response): Promise<void> => {
+router.delete('/transactions/:id', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { id } = req.params;
     const userId = (req as any).user?.userId || (req as any).userId || 'system';
-    
+
     if (!userId) {
       res.status(401).json({
         success: false,
@@ -525,13 +531,13 @@ router.delete('/transactions/:id', async (req: Request, res: Response): Promise<
       });
       return;
     }
-    
+
     await transactionManagementService.deleteTransaction(id, userId);
-    
+
     res.status(204).send();
   } catch (error) {
     console.error('Delete transaction failed:', error);
-    
+
     if (error instanceof Error && error.message === 'Transaction not found') {
       res.status(404).json({
         success: false,
@@ -539,7 +545,7 @@ router.delete('/transactions/:id', async (req: Request, res: Response): Promise<
       });
       return;
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to delete transaction',
@@ -552,12 +558,12 @@ router.delete('/transactions/:id', async (req: Request, res: Response): Promise<
  * POST /api/financial/transactions/import
  * Import transactions from JSON file
  */
-router.post('/transactions/import', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+router.post('/transactions/import', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const userId = (req as any).user?.userId || (req as any).userId || 'system';
-    
+
     if (!userId) {
       res.status(401).json({
         success: false,
@@ -565,7 +571,7 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
       });
       return;
     }
-    
+
     // Check if file was uploaded
     if (!req.file) {
       res.status(400).json({
@@ -574,7 +580,7 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
       });
       return;
     }
-    
+
     // Check if accountId was provided
     const { accountId } = req.body;
     if (!accountId) {
@@ -584,15 +590,15 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
       });
       return;
     }
-    
+
     try {
       // Parse the JSON file
       const fileContent = req.file.buffer.toString('utf-8');
       const jsonData = JSON.parse(fileContent);
-      
+
       // Validate the JSON structure
       const validatedData = transactionImportFileSchema.parse(jsonData);
-      
+
       // Validate transaction data before import
       const validationErrors = transactionImportService.validateTransactions(validatedData.transactions);
       if (validationErrors.length > 0) {
@@ -605,14 +611,14 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
         });
         return;
       }
-      
+
       // Import the transactions
       const result = await transactionImportService.importTransactions(
         accountId,
         validatedData.transactions,
         userId
       );
-      
+
       res.json({
         success: true,
         data: {
@@ -621,7 +627,7 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
         },
         message: `Successfully imported ${result.imported} transactions`
       });
-      
+
     } catch (parseError) {
       if (parseError instanceof SyntaxError) {
         res.status(400).json({
@@ -630,7 +636,7 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
         });
         return;
       }
-      
+
       if (parseError instanceof Error && parseError.name === 'ZodError') {
         res.status(400).json({
           success: false,
@@ -639,13 +645,13 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
         });
         return;
       }
-      
+
       throw parseError;
     }
-    
+
   } catch (error) {
     console.error('Import transactions failed:', error);
-    
+
     if (error instanceof Error && error.message === 'Account not found') {
       res.status(404).json({
         success: false,
@@ -653,7 +659,7 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
       });
       return;
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to import transactions',
@@ -666,12 +672,12 @@ router.post('/transactions/import', upload.single('file'), async (req: Request, 
  * GET /api/financial/accounts
  * Get user accounts for import selection
  */
-router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
+router.get('/accounts', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const userId = (req as any).user?.userId || (req as any).userId || 'system';
-    
+
     if (!userId) {
       res.status(401).json({
         success: false,
@@ -679,15 +685,15 @@ router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
-    
+
     const accounts = await transactionImportService.getUserAccounts(userId);
-    
+
     res.json({
       success: true,
       data: accounts,
       count: accounts.length
     });
-    
+
   } catch (error) {
     console.error('Get accounts failed:', error);
     res.status(500).json({
@@ -706,18 +712,18 @@ router.get('/accounts', async (req: Request, res: Response): Promise<void> => {
  * POST /api/financial/sync
  * Perform manual sync of all accounts
  */
-router.post('/sync', async (req: Request, res: Response): Promise<void> => {
+router.post('/sync', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     console.log('Manual sync requested');
-    
+
     // Clear GoCardless cache to ensure fresh credential lookup
     console.log('Clearing GoCardless integration config cache...');
     await integrationConfigService.clearCache('gocardless');
-    
+
     const result = await schedulerService.performManualSync();
-    
+
     res.json({
       success: true,
       data: result.data,
@@ -737,14 +743,14 @@ router.post('/sync', async (req: Request, res: Response): Promise<void> => {
  * POST /api/financial/sync/accounts
  * Sync only account details for all accounts
  */
-router.post('/sync/accounts', async (req: Request, res: Response): Promise<void> => {
+router.post('/sync/accounts', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     console.log('Account details sync requested');
     const accounts = await databaseService.getAccounts();
     const results = [];
-    
+
     for (const account of accounts.filter((a: Account) => a.type === 'bank_account' && a.accountId)) {
       const result = await goCardlessService.syncAccountDetails(account.accountId!);
       results.push({
@@ -755,7 +761,7 @@ router.post('/sync/accounts', async (req: Request, res: Response): Promise<void>
         rateLimitInfo: result.metadata?.rateLimitInfo
       });
     }
-    
+
     const successCount = results.filter(r => r.success).length;
     res.json({
       success: successCount > 0,
@@ -780,14 +786,16 @@ router.post('/sync/accounts', async (req: Request, res: Response): Promise<void>
  * POST /api/financial/sync/balances
  * Sync only account balances for all accounts
  */
-router.post('/sync/balances', async (req: Request, res: Response): Promise<void> => {
+router.post('/sync/balances', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
-    console.log('Balance sync requested');
+
+    const forceRefresh = req.body?.forceRefresh === true;
+    console.log('Balance sync requested', { forceRefresh });
+
     const accounts = await databaseService.getAccounts();
     const results = [];
-    
+
     for (const account of accounts.filter((a: Account) => a.type === 'bank_account' && a.accountId)) {
       const result = await goCardlessService.syncAccountBalances(account.accountId!);
       results.push({
@@ -800,7 +808,7 @@ router.post('/sync/balances', async (req: Request, res: Response): Promise<void>
         rateLimitInfo: result.metadata?.rateLimitInfo
       });
     }
-    
+
     const successCount = results.filter(r => r.success).length;
     res.json({
       success: successCount > 0,
@@ -825,17 +833,17 @@ router.post('/sync/balances', async (req: Request, res: Response): Promise<void>
  * POST /api/financial/sync/transactions
  * Sync only transactions for all accounts
  */
-router.post('/sync/transactions', async (req: Request, res: Response): Promise<void> => {
+router.post('/sync/transactions', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { days = 7 } = req.body; // Default to 7 days
     console.log(`Transaction sync requested for last ${days} days`);
-    
+
     const accounts = await databaseService.getAccounts();
     const results = [];
     let totalTransactionsSynced = 0;
-    
+
     for (const account of accounts.filter((a: Account) => a.type === 'bank_account' && a.accountId)) {
       const result = await goCardlessService.syncAccountTransactions(account.accountId!, days);
       results.push({
@@ -846,12 +854,12 @@ router.post('/sync/transactions', async (req: Request, res: Response): Promise<v
         error: result.error,
         rateLimitInfo: result.metadata?.rateLimitInfo
       });
-      
+
       if (result.success && result.data) {
         totalTransactionsSynced += result.data.transactionsSynced;
       }
     }
-    
+
     const successCount = results.filter(r => r.success).length;
     res.json({
       success: successCount > 0,
@@ -877,12 +885,12 @@ router.post('/sync/transactions', async (req: Request, res: Response): Promise<v
  * GET /api/financial/rate-limits
  * Get current rate limit status for all accounts
  */
-router.get('/rate-limits', async (req: Request, res: Response): Promise<void> => {
+router.get('/rate-limits', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const rateLimitStatus = await goCardlessService.getRateLimitStatus();
-    
+
     res.json({
       success: rateLimitStatus.success,
       data: rateLimitStatus.data,
@@ -902,18 +910,31 @@ router.get('/rate-limits', async (req: Request, res: Response): Promise<void> =>
  * GET /api/financial/sync-status
  * Get scheduler status and recent sync history
  */
-router.get('/sync-status', async (req: Request, res: Response): Promise<void> => {
+router.get('/sync-status', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const schedulerStatus = schedulerService.getSchedulerStatus();
     const syncStats = await schedulerService.getSyncStats(7); // Last 7 days
-    
+
+    // Transform the data to match frontend expectations
+    let transformedStats = null;
+    if (syncStats) {
+      transformedStats = {
+        lastSync: syncStats.summary?.last_sync || null,
+        summary: {
+          total_accounts: syncStats.totalAccounts || 0,
+          total_transactions: parseInt(syncStats.summary?.total_transactions_synced as string) || 0,
+          updated_today: syncStats.transactionsUpdatedToday || 0
+        }
+      };
+    }
+
     res.json({
       success: true,
       data: {
         scheduler: schedulerStatus,
-        stats: syncStats
+        stats: transformedStats
       }
     });
   } catch (error) {
@@ -930,10 +951,10 @@ router.get('/sync-status', async (req: Request, res: Response): Promise<void> =>
  * POST /api/financial/scheduler/start
  * Start the automatic scheduler
  */
-router.post('/scheduler/start', async (req: Request, res: Response): Promise<void> => {
+router.post('/scheduler/start', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     if (schedulerService.isActive()) {
       res.json({
         success: true,
@@ -943,7 +964,7 @@ router.post('/scheduler/start', async (req: Request, res: Response): Promise<voi
     }
 
     schedulerService.start();
-    
+
     res.json({
       success: true,
       message: 'Scheduler started successfully',
@@ -963,10 +984,10 @@ router.post('/scheduler/start', async (req: Request, res: Response): Promise<voi
  * POST /api/financial/scheduler/stop
  * Stop the automatic scheduler
  */
-router.post('/scheduler/stop', async (req: Request, res: Response): Promise<void> => {
+router.post('/scheduler/stop', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     if (!schedulerService.isActive()) {
       res.json({
         success: true,
@@ -976,7 +997,7 @@ router.post('/scheduler/stop', async (req: Request, res: Response): Promise<void
     }
 
     schedulerService.stop();
-    
+
     res.json({
       success: true,
       message: 'Scheduler stopped successfully',
@@ -1000,10 +1021,10 @@ router.post('/scheduler/stop', async (req: Request, res: Response): Promise<void
  * GET /api/financial/summary
  * Get financial summary
  */
-router.get('/summary', async (req: Request, res: Response): Promise<void> => {
+router.get('/summary', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     // Get account summaries
     const accounts = await databaseService.getAccounts();
     const summaries = await Promise.all(
@@ -1056,17 +1077,17 @@ router.get('/summary', async (req: Request, res: Response): Promise<void> => {
  * GET /api/financial/health
  * Health check for financial services
  */
-router.get('/health', async (req: Request, res: Response): Promise<void> => {
+router.get('/health', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const healthStatus: any = {
       success: true,
       status: 'healthy',
       services: {},
       timestamp: new Date().toISOString()
     };
-    
+
     // Test database connection
     try {
       await databaseService.query('SELECT NOW()');
@@ -1075,7 +1096,7 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
       healthStatus.services.database = 'disconnected';
       healthStatus.status = 'degraded';
     }
-    
+
     // Check GoCardless configuration (without authentication)
     try {
       const hasCredentials = await goCardlessService.hasCredentials();
@@ -1084,10 +1105,10 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
       healthStatus.services.gocardless = 'error';
       healthStatus.status = 'degraded';
     }
-    
+
     // Check scheduler status
     healthStatus.services.scheduler = schedulerService.isActive() ? 'running' : 'stopped';
-    
+
     // Return appropriate status code based on health
     const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
     res.status(statusCode).json(healthStatus);
@@ -1106,10 +1127,10 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
  * POST /api/financial/test-gocardless
  * Test GoCardless authentication and connectivity
  */
-router.post('/test-gocardless', async (req: Request, res: Response): Promise<void> => {
+router.post('/test-gocardless', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     // Check if credentials are configured
     const hasCredentials = await goCardlessService.hasCredentials();
     if (!hasCredentials) {
@@ -1120,7 +1141,7 @@ router.post('/test-gocardless', async (req: Request, res: Response): Promise<voi
       });
       return;
     }
-    
+
     // Attempt authentication
     try {
       await goCardlessService.authenticate();
@@ -1153,15 +1174,15 @@ router.post('/test-gocardless', async (req: Request, res: Response): Promise<voi
  * POST /api/financial/diagnose-gocardless
  * Diagnose GoCardless configuration and connectivity issues
  */
-router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise<void> => {
+router.post('/diagnose-gocardless', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const diagnosis: any = {
       timestamp: new Date().toISOString(),
       checks: []
     };
-    
+
     // Check 1: Credentials exist
     try {
       const hasCredentials = await goCardlessService.hasCredentials();
@@ -1170,7 +1191,7 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
         passed: hasCredentials,
         message: hasCredentials ? 'Credentials found in database' : 'Credentials not found'
       });
-      
+
       if (!hasCredentials) {
         res.json({ success: false, diagnosis });
         return;
@@ -1183,26 +1204,26 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
-    
+
     // Check 2: Get credentials and validate format
     try {
       const { integrationConfigService } = await import('../services/integrations');
-      
+
       const secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_id'
       });
-      
+
       const secretKey = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_key'
       });
-      
+
       const baseUrl = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'base_url'
       }) || 'https://bankaccountdata.gocardless.com/api/v2';
-      
+
       diagnosis.checks.push({
         name: 'credential_format',
         passed: true,
@@ -1214,11 +1235,11 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
           environment: baseUrl.includes('sandbox') ? 'sandbox' : 'production'
         }
       });
-      
+
       // Check 3: Test direct authentication
       const axios = require('axios');
       const tokenUrl = `${baseUrl}/token/new/`;
-      
+
       try {
         const response = await axios.post(tokenUrl, {
           secret_id: secretId,
@@ -1229,14 +1250,14 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
             'Accept': 'application/json'
           }
         });
-        
+
         diagnosis.checks.push({
           name: 'authentication',
           passed: true,
           message: 'Authentication successful',
           tokenReceived: !!response.data?.access
         });
-        
+
       } catch (authError: any) {
         diagnosis.checks.push({
           name: 'authentication',
@@ -1250,7 +1271,7 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
           }
         });
       }
-      
+
     } catch (error) {
       diagnosis.checks.push({
         name: 'credential_retrieval',
@@ -1259,15 +1280,15 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
-    
+
     const allPassed = diagnosis.checks.every((check: any) => check.passed !== false);
-    
+
     res.json({
       success: allPassed,
       diagnosis,
       summary: allPassed ? 'All checks passed' : 'Some checks failed - review diagnosis for details'
     });
-    
+
   } catch (error) {
     console.error('GoCardless diagnosis failed:', error);
     res.status(500).json({
@@ -1282,10 +1303,10 @@ router.post('/diagnose-gocardless', async (req: Request, res: Response): Promise
  * GET /api/financial/gocardless/status
  * Get comprehensive GoCardless configuration and connection status
  */
-router.get('/gocardless/status', async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/status', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const status: any = {
       timestamp: new Date().toISOString(),
       configured: false,
@@ -1303,12 +1324,12 @@ router.get('/gocardless/status', async (req: Request, res: Response): Promise<vo
         active: 0
       }
     };
-    
+
     // Check if credentials are configured
     try {
       const hasCredentials = await goCardlessService.hasCredentials();
       status.configured = hasCredentials;
-      
+
       // Get more detailed credential info (without exposing sensitive data)
       const secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
@@ -1322,7 +1343,7 @@ router.get('/gocardless/status', async (req: Request, res: Response): Promise<vo
         integrationType: 'gocardless',
         configKey: 'base_url'
       });
-      
+
       status.credentials = {
         hasSecretId: !!secretId,
         hasSecretKey: !!secretKey,
@@ -1334,7 +1355,7 @@ router.get('/gocardless/status', async (req: Request, res: Response): Promise<vo
     } catch (error) {
       status.error = 'Failed to check credentials: ' + (error instanceof Error ? error.message : 'Unknown error');
     }
-    
+
     // Test authentication if credentials exist
     if (status.configured) {
       try {
@@ -1345,7 +1366,7 @@ router.get('/gocardless/status', async (req: Request, res: Response): Promise<vo
         status.authError = authError instanceof Error ? authError.message : 'Authentication failed';
       }
     }
-    
+
     // Get account status
     try {
       const accountStatus = await goCardlessService.getAccountStatus();
@@ -1358,13 +1379,13 @@ router.get('/gocardless/status', async (req: Request, res: Response): Promise<vo
     } catch (error) {
       // Not critical, continue
     }
-    
+
     res.json({
       success: status.configured && status.authenticated,
       status,
       recommendations: getRecommendations(status)
     });
-    
+
   } catch (error) {
     console.error('GoCardless status check failed:', error);
     res.status(500).json({
@@ -1377,29 +1398,29 @@ router.get('/gocardless/status', async (req: Request, res: Response): Promise<vo
 
 function getRecommendations(status: any): string[] {
   const recommendations: string[] = [];
-  
+
   if (!status.configured) {
     recommendations.push('Configure GoCardless credentials using POST /api/financial/gocardless/credentials');
     recommendations.push('Required: secret_id and secret_key');
   }
-  
+
   if (status.configured && !status.authenticated) {
     recommendations.push('Authentication is failing. Check if credentials are from the correct environment (production vs sandbox)');
     recommendations.push('Verify credentials are active and not expired in GoCardless dashboard');
   }
-  
+
   if (!status.credentials.hasSecretId || !status.credentials.hasSecretKey) {
     recommendations.push('Missing required credentials. Both secret_id and secret_key must be configured');
   }
-  
+
   if (status.credentials.secretIdLength && status.credentials.secretIdLength !== 36) {
     recommendations.push('Secret ID should be a UUID (36 characters). Current length: ' + status.credentials.secretIdLength);
   }
-  
+
   if (status.credentials.secretKeyLength && status.credentials.secretKeyLength !== 43) {
     recommendations.push('Secret Key should be 43 characters. Current length: ' + status.credentials.secretKeyLength);
   }
-  
+
   return recommendations;
 }
 
@@ -1407,17 +1428,17 @@ function getRecommendations(status: any): string[] {
  * GET /api/financial/gocardless/credentials
  * Check if GoCardless credentials are configured
  */
-router.get('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+router.get('/gocardless/credentials', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const hasCredentials = await goCardlessService.hasCredentials();
-    
+
     res.json({
       success: true,
       configured: hasCredentials,
-      message: hasCredentials 
-        ? 'GoCardless credentials are configured' 
+      message: hasCredentials
+        ? 'GoCardless credentials are configured'
         : 'GoCardless credentials are not configured'
     });
   } catch (error) {
@@ -1434,10 +1455,10 @@ router.get('/gocardless/credentials', async (req: Request, res: Response): Promi
  * POST /api/financial/gocardless/credentials
  * Configure GoCardless credentials
  */
-router.post('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+router.post('/gocardless/credentials', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { secret_id, secret_key, base_url, redirect_uri } = req.body;
-    
+
     // Validate required fields
     if (!secret_id || !secret_key) {
       res.status(400).json({
@@ -1447,7 +1468,7 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
       });
       return;
     }
-    
+
     // Validate credential format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(secret_id.trim())) {
@@ -1458,7 +1479,7 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
       });
       return;
     }
-    
+
     if (secret_key.trim().length !== 43) {
       res.status(400).json({
         success: false,
@@ -1467,7 +1488,7 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
       });
       return;
     }
-    
+
     // Save credentials
     const configs = [
       {
@@ -1487,7 +1508,7 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
         description: 'GoCardless Secret Key'
       }
     ];
-    
+
     if (base_url) {
       configs.push({
         integrationType: 'gocardless',
@@ -1498,7 +1519,7 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
         description: 'GoCardless API Base URL'
       });
     }
-    
+
     if (redirect_uri) {
       configs.push({
         integrationType: 'gocardless',
@@ -1509,21 +1530,21 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
         description: 'GoCardless Redirect URI'
       });
     }
-    
+
     // Save all configurations
     for (const config of configs) {
       await integrationConfigService.setConfig(config);
     }
-    
+
     // Clear cache to ensure new credentials are used
     await integrationConfigService.clearCache('gocardless');
-    
+
     // Test authentication with new credentials
     initializeServices(); // Re-initialize to pick up new credentials
-    
+
     try {
       await goCardlessService.refreshAuthentication();
-      
+
       res.json({
         success: true,
         message: 'GoCardless credentials configured and authenticated successfully'
@@ -1536,7 +1557,7 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
         hint: 'Check if credentials are from the correct environment (production vs sandbox)'
       });
     }
-    
+
   } catch (error) {
     console.error('Failed to configure GoCardless credentials:', error);
     res.status(500).json({
@@ -1548,25 +1569,301 @@ router.post('/gocardless/credentials', async (req: Request, res: Response): Prom
 });
 
 /**
+ * GET /api/financial/gocardless/debug
+ * Debug GoCardless configuration issues
+ */
+router.get('/gocardless/debug', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const debug: any = {
+      timestamp: new Date().toISOString(),
+      tests: {}
+    };
+
+    // Test 1: Direct database query
+    try {
+      const directQuery = await databaseService.query(
+        "SELECT integration_type, config_key, is_encrypted, is_global, user_id FROM financial.integration_configs WHERE integration_type = 'gocardless' ORDER BY config_key"
+      );
+      debug.tests.directDatabaseQuery = {
+        success: true,
+        rowCount: directQuery.rows.length,
+        rows: directQuery.rows
+      };
+    } catch (error) {
+      debug.tests.directDatabaseQuery = {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+
+    // Test 2: Integration config service
+    try {
+      // Test db.pool directly first
+      const testQuery = await db.pool.query('SELECT 1');
+      debug.tests.dbPoolTest = {
+        success: true,
+        result: testQuery.rows[0]
+      };
+
+      // Now test the actual query the service would run
+      const manualQuery = await db.pool.query(
+        `SELECT config_value, is_encrypted 
+         FROM financial.integration_configs 
+         WHERE integration_type = $1 AND config_key = $2 
+         AND user_id IS NULL AND is_global = true`,
+        ['gocardless', 'secret_id']
+      );
+
+      debug.tests.manualQuery = {
+        success: true,
+        rowCount: manualQuery.rows.length,
+        hasData: manualQuery.rows.length > 0
+      };
+
+      const secretId = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_id'
+      });
+
+      const secretKey = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_key'
+      });
+
+      debug.tests.integrationConfigService = {
+        success: true,
+        hasSecretId: !!secretId,
+        hasSecretKey: !!secretKey,
+        secretIdLength: secretId?.length,
+        secretKeyLength: secretKey?.length
+      };
+    } catch (error) {
+      debug.tests.integrationConfigService = {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      };
+    }
+
+    // Test 3: GoCardless service
+    try {
+      const hasCredentials = await goCardlessService.hasCredentials();
+      debug.tests.goCardlessService = {
+        success: true,
+        hasCredentials
+      };
+    } catch (error) {
+      debug.tests.goCardlessService = {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+
+    // Test 4: Database connection pools
+    debug.connectionPools = {
+      mainDb: {
+        totalCount: (db.pool as any).totalCount,
+        idleCount: (db.pool as any).idleCount,
+        waitingCount: (db.pool as any).waitingCount
+      },
+      financialDb: {
+        totalCount: (databaseService.pool as any).totalCount,
+        idleCount: (databaseService.pool as any).idleCount,
+        waitingCount: (databaseService.pool as any).waitingCount
+      }
+    };
+
+    res.json(debug);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Debug endpoint failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/gocardless/test-encryption
+ * Test encryption key setup and consistency
+ */
+router.get('/gocardless/test-encryption', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result: any = {
+      timestamp: new Date().toISOString(),
+      environment: {
+        INTEGRATION_CONFIG_KEY_SET: !!process.env.INTEGRATION_CONFIG_KEY,
+        INTEGRATION_CONFIG_KEY_LENGTH: process.env.INTEGRATION_CONFIG_KEY?.length,
+        NODE_ENV: process.env.NODE_ENV
+      }
+    };
+
+    // Test if we can save and retrieve a value
+    try {
+      const testKey = `test_${Date.now()}`;
+      const testValue = 'test-encryption-value-123';
+
+      // Save encrypted value
+      await integrationConfigService.setConfig({
+        integrationType: 'test',
+        configKey: testKey,
+        configValue: testValue,
+        isGlobal: true,
+        encrypt: true,
+        description: 'Test encryption'
+      });
+
+      // Retrieve and decrypt
+      const retrieved = await integrationConfigService.getConfig({
+        integrationType: 'test',
+        configKey: testKey
+      });
+
+      // Clean up
+      await integrationConfigService.deleteConfig({
+        integrationType: 'test',
+        configKey: testKey
+      });
+
+      result.encryptionTest = {
+        success: retrieved === testValue,
+        saved: testValue,
+        retrieved: retrieved,
+        match: retrieved === testValue
+      };
+    } catch (e) {
+      result.encryptionTest = {
+        success: false,
+        error: e instanceof Error ? e.message : 'Unknown error'
+      };
+    }
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Test failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/financial/gocardless/test-config
+ * Test integration config service directly
+ */
+router.get('/gocardless/test-config', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Force clear cache first
+    await integrationConfigService.clearCache('gocardless');
+
+    // Try to get config with all details
+    const result: any = {
+      cacheCleared: true,
+      directSqlTest: {},
+      configAttempts: {}
+    };
+
+    // Direct SQL test using same query as integration config service
+    try {
+      const directResult = await db.pool.query(
+        `SELECT config_value, is_encrypted 
+         FROM financial.integration_configs 
+         WHERE integration_type = $1 AND config_key = $2 
+         AND user_id IS NULL AND is_global = true`,
+        ['gocardless', 'secret_id']
+      );
+      result.directSqlTest = {
+        success: true,
+        rowCount: directResult.rows.length,
+        rows: directResult.rows.map(r => ({
+          hasValue: !!r.config_value,
+          isEncrypted: r.is_encrypted,
+          valueLength: r.config_value?.length
+        }))
+      };
+    } catch (e) {
+      result.directSqlTest = {
+        success: false,
+        error: e instanceof Error ? e.message : 'Unknown error'
+      };
+    }
+
+    // Try secret_id
+    try {
+      const secretId = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_id'
+      });
+      result.configAttempts.secret_id = {
+        success: true,
+        hasValue: !!secretId,
+        length: secretId?.length
+      };
+    } catch (e) {
+      result.configAttempts.secret_id = {
+        success: false,
+        error: e instanceof Error ? e.message : 'Unknown error'
+      };
+    }
+
+    // Try secret_key
+    try {
+      const secretKey = await integrationConfigService.getConfig({
+        integrationType: 'gocardless',
+        configKey: 'secret_key'
+      });
+      result.configAttempts.secret_key = {
+        success: true,
+        hasValue: !!secretKey,
+        length: secretKey?.length
+      };
+    } catch (e) {
+      result.configAttempts.secret_key = {
+        success: false,
+        error: e instanceof Error ? e.message : 'Unknown error'
+      };
+    }
+
+    // Debug test
+    try {
+      const debugResult = await (integrationConfigService as any).debugGetConfig('gocardless', 'secret_id');
+      result.debugTest = debugResult;
+    } catch (e) {
+      result.debugTest = {
+        error: e instanceof Error ? e.message : 'Unknown error'
+      };
+    }
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Test failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * DELETE /api/financial/gocardless/credentials
  * Remove GoCardless credentials
  */
-router.delete('/gocardless/credentials', async (req: Request, res: Response): Promise<void> => {
+router.delete('/gocardless/credentials', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const keys = ['secret_id', 'secret_key', 'base_url', 'redirect_uri'];
     let deletedCount = 0;
-    
+
     for (const key of keys) {
       const deleted = await integrationConfigService.deleteConfig({
         integrationType: 'gocardless',
         configKey: key
       });
-      if (deleted) deletedCount++;
+      if (deleted) {
+        deletedCount++;
+      }
     }
-    
+
     // Clear cache
     await integrationConfigService.clearCache('gocardless');
-    
+
     res.json({
       success: true,
       message: `Removed ${deletedCount} GoCardless configuration items`
@@ -1589,14 +1886,14 @@ router.delete('/gocardless/credentials', async (req: Request, res: Response): Pr
  * GET /api/financial/categories
  * Get all categories with optional filtering by type
  */
-router.get('/categories', async (req: Request, res: Response): Promise<void> => {
+router.get('/categories', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { type } = req.query;
     // const categories = await financialReportingPrismaService.getCategories(type as any); // TEMPORARILY DISABLED
     const categories: any[] = []; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: categories,
@@ -1616,14 +1913,14 @@ router.get('/categories', async (req: Request, res: Response): Promise<void> => 
  * GET /api/financial/categories/:id/subcategories
  * Get subcategories for a specific category
  */
-router.get('/categories/:id/subcategories', async (req: Request, res: Response): Promise<void> => {
+router.get('/categories/:id/subcategories', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { id } = req.params;
     // const subcategories = await financialReportingPrismaService.getSubcategories(id); // TEMPORARILY DISABLED
     const subcategories: any[] = []; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: subcategories,
@@ -1643,14 +1940,14 @@ router.get('/categories/:id/subcategories', async (req: Request, res: Response):
  * POST /api/financial/categorize/auto
  * Auto-categorize uncategorized transactions using AI
  */
-router.post('/categorize/auto', async (req: Request, res: Response): Promise<void> => {
+router.post('/categorize/auto', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { transactionIds } = req.body;
     // const categorizedCount = await financialReportingPrismaService.autoCategorizeTransactions(transactionIds); // TEMPORARILY DISABLED
     const categorizedCount = 0; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: {
@@ -1672,13 +1969,13 @@ router.post('/categorize/auto', async (req: Request, res: Response): Promise<voi
  * POST /api/financial/transactions/:id/categorize
  * Manually categorize a specific transaction
  */
-router.post('/transactions/:id/categorize', async (req: Request, res: Response): Promise<void> => {
+router.post('/transactions/:id/categorize', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { id } = req.params;
     const { categoryId, subcategoryId, notes } = req.body;
-    
+
     // const categorization = await financialReportingPrismaService.categorizeTransaction( // TEMPORARILY DISABLED
     //   id,
     //   categoryId,
@@ -1689,7 +1986,7 @@ router.post('/transactions/:id/categorize', async (req: Request, res: Response):
     //   notes
     // );
     const categorization = { success: true }; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: categorization,
@@ -1709,10 +2006,10 @@ router.post('/transactions/:id/categorize', async (req: Request, res: Response):
  * GET /api/financial/transactions/categorized
  * Get categorized transactions with advanced filtering
  */
-router.get('/transactions/categorized', async (req: Request, res: Response): Promise<void> => {
+router.get('/transactions/categorized', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const {
       startDate,
       endDate,
@@ -1737,7 +2034,7 @@ router.get('/transactions/categorized', async (req: Request, res: Response): Pro
 
     // const result = await financialReportingPrismaService.getCategorizedTransactions(params); // TEMPORARILY DISABLED
     const result = { transactions: [], total: 0, page: 1, limit: 50, totalPages: 0 }; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: {
@@ -1769,10 +2066,10 @@ router.get('/transactions/categorized', async (req: Request, res: Response): Pro
  * GET /api/financial/reports/comprehensive
  * Generate comprehensive financial report
  */
-router.get('/reports/comprehensive', async (req: Request, res: Response): Promise<void> => {
+router.get('/reports/comprehensive', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const {
       startDate,
       endDate,
@@ -1793,7 +2090,7 @@ router.get('/reports/comprehensive', async (req: Request, res: Response): Promis
 
     // const report = await financialReportingPrismaService.generateReport(params); // TEMPORARILY DISABLED
     const report: any = {}; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: report
@@ -1812,10 +2109,10 @@ router.get('/reports/comprehensive', async (req: Request, res: Response): Promis
  * GET /api/financial/metrics/realtime
  * Get real-time financial metrics and dashboard data
  */
-router.get('/metrics/realtime', async (req: Request, res: Response): Promise<void> => {
+router.get('/metrics/realtime', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const {
       period = 'month',
       currency = 'EUR',
@@ -1832,7 +2129,7 @@ router.get('/metrics/realtime', async (req: Request, res: Response): Promise<voi
 
     // const metrics = await financialReportingPrismaService.getRealtimeMetrics(params); // TEMPORARILY DISABLED
     const metrics: any = { currentMonth: {}, trends: {}, topExpenseCategories: [], recentTransactions: [], alerts: [], updatedAt: new Date() }; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: metrics
@@ -1851,10 +2148,10 @@ router.get('/metrics/realtime', async (req: Request, res: Response): Promise<voi
  * GET /api/financial/analytics/monthly-summary
  * Get monthly category summaries for a date range
  */
-router.get('/analytics/monthly-summary', async (req: Request, res: Response): Promise<void> => {
+router.get('/analytics/monthly-summary', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const {
       startDate,
       endDate,
@@ -1876,7 +2173,7 @@ router.get('/analytics/monthly-summary', async (req: Request, res: Response): Pr
     //   currency: currency as string
     // }); // TEMPORARILY DISABLED
     const summary: any = {}; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: summary
@@ -1895,13 +2192,13 @@ router.get('/analytics/monthly-summary', async (req: Request, res: Response): Pr
  * GET /api/financial/insights/accounts
  * Get account insights with 30-day activity metrics
  */
-router.get('/insights/accounts', async (req: Request, res: Response): Promise<void> => {
+router.get('/insights/accounts', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     // const insights = await financialReportingPrismaService.getAccountInsights(); // TEMPORARILY DISABLED
     const insights: any[] = []; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: insights,
@@ -1925,26 +2222,26 @@ router.get('/insights/accounts', async (req: Request, res: Response): Promise<vo
  * GET /api/financial/dashboard/overview
  * Get dashboard overview with key metrics
  */
-router.get('/dashboard/overview', async (req: Request, res: Response): Promise<void> => {
+router.get('/dashboard/overview', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { currency = 'EUR' } = req.query;
-    
+
     // Get current month metrics
     // const metrics = await financialReportingPrismaService.getRealtimeMetrics({ // TEMPORARILY DISABLED
-    //   currency: currency as string 
+    //   currency: currency as string
     // });
     const metrics: any = { currentMonth: {}, trends: {}, topExpenseCategories: [], recentTransactions: [], alerts: [], updatedAt: new Date() }; // PLACEHOLDER
-    
+
     // Get account insights
     // const accountInsights = await financialReportingPrismaService.getAccountInsights(); // TEMPORARILY DISABLED
     const accountInsights: any[] = []; // PLACEHOLDER
-    
+
     // Get categories for quick access
     // const categories = await financialReportingPrismaService.getCategories(); // TEMPORARILY DISABLED
     const categories: any[] = []; // PLACEHOLDER
-    
+
     res.json({
       success: true,
       data: {
@@ -1955,7 +2252,7 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
         },
         accounts: {
           total: accountInsights.length,
-          totalBalance: accountInsights.reduce((sum, acc) => 
+          totalBalance: accountInsights.reduce((sum, acc) =>
             sum + parseFloat(acc.balance), 0
           ).toFixed(2),
           insights: accountInsights.slice(0, 3) // Top 3 accounts
@@ -1984,18 +2281,18 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
  * GET /api/financial/dashboard/quick-stats
  * Get quick financial statistics for widgets
  */
-router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promise<void> => {
+router.get('/dashboard/quick-stats', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { currency = 'EUR', period = 'month' } = req.query;
-    
+
     const now = new Date();
     const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const previousEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    
+
     // Get current and previous period for comparison
     // const [currentReport, previousReport] = await Promise.all([ // TEMPORARILY DISABLED
     //   financialReportingPrismaService.generateReport({
@@ -2010,16 +2307,16 @@ router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promis
     //   })
     // ]); // TEMPORARILY DISABLED
     const [currentReport, previousReport] = [{ summary: { totalIncome: '0', totalExpenses: '0', netIncome: '0', savingsRate: '0', transactionCount: 0 } }, { summary: { totalIncome: '0', totalExpenses: '0', netIncome: '0', savingsRate: '0', transactionCount: 0 } }]; // PLACEHOLDER
-    
+
     // Calculate changes
-    const incomeChange = previousReport.summary.totalIncome !== '0' 
+    const incomeChange = previousReport.summary.totalIncome !== '0'
       ? ((parseFloat(currentReport.summary.totalIncome) - parseFloat(previousReport.summary.totalIncome)) / parseFloat(previousReport.summary.totalIncome)) * 100
       : 0;
-      
+
     const expenseChange = previousReport.summary.totalExpenses !== '0'
       ? ((parseFloat(currentReport.summary.totalExpenses) - parseFloat(previousReport.summary.totalExpenses)) / parseFloat(previousReport.summary.totalExpenses)) * 100
       : 0;
-    
+
     res.json({
       success: true,
       data: {
@@ -2038,7 +2335,7 @@ router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promis
         changes: {
           income: incomeChange,
           expenses: expenseChange,
-          net: previousReport.summary.netIncome !== '0' 
+          net: previousReport.summary.netIncome !== '0'
             ? ((parseFloat(currentReport.summary.netIncome) - parseFloat(previousReport.summary.netIncome)) / Math.abs(parseFloat(previousReport.summary.netIncome))) * 100
             : 0
         },
@@ -2068,17 +2365,17 @@ router.get('/dashboard/quick-stats', async (req: Request, res: Response): Promis
  * GET /api/financial/dashboard/overview
  * Get comprehensive dashboard data for web interface
  */
-router.get('/dashboard/overview', async (req: Request, res: Response): Promise<void> => {
+router.get('/dashboard/overview', databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     initializeServices();
-    
+
     // Current month calculations
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    
+
     // Get current month metrics
     const currentMetricsQuery = `
         SELECT 
@@ -2088,28 +2385,28 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
         FROM financial.transactions t
         WHERE t.date >= $1 AND t.date <= $2 AND t.status = 'confirmed'
     `;
-    
+
     const [currentResult, previousResult] = await Promise.all([
-        databaseService.pool.query(currentMetricsQuery, [currentMonthStart, currentMonthEnd]),
-        databaseService.pool.query(currentMetricsQuery, [previousMonthStart, previousMonthEnd])
+      databaseService.pool.query(currentMetricsQuery, [currentMonthStart, currentMonthEnd]),
+      databaseService.pool.query(currentMetricsQuery, [previousMonthStart, previousMonthEnd])
     ]);
-    
+
     const current = currentResult.rows[0];
     const previous = previousResult.rows[0];
-    
+
     const currentIncome = parseFloat(current.income);
     const currentExpenses = parseFloat(current.expenses);
     const currentBalance = currentIncome - currentExpenses;
-    
+
     const previousIncome = parseFloat(previous.income);
     const previousExpenses = parseFloat(previous.expenses);
     const previousBalance = previousIncome - previousExpenses;
-    
+
     // Calculate trends
     const incomeChange = previousIncome > 0 ? ((currentIncome - previousIncome) / previousIncome) * 100 : 0;
     const expenseChange = previousExpenses > 0 ? ((currentExpenses - previousExpenses) / previousExpenses) * 100 : 0;
     const balanceChange = previousBalance !== 0 ? ((currentBalance - previousBalance) / Math.abs(previousBalance)) * 100 : 0;
-    
+
     // Get top expense categories
     const topCategoriesQuery = `
         SELECT 
@@ -2126,9 +2423,9 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
         ORDER BY amount DESC
         LIMIT 5
     `;
-    
+
     const topCategoriesResult = await databaseService.pool.query(topCategoriesQuery, [currentMonthStart, currentMonthEnd]);
-    
+
     // Get recent transactions
     const recentTransactionsQuery = `
         SELECT 
@@ -2146,9 +2443,9 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
         ORDER BY t.date DESC
         LIMIT 10
     `;
-    
+
     const recentTransactionsResult = await databaseService.pool.query(recentTransactionsQuery);
-    
+
     // Get account balances
     const accountsQuery = `
         SELECT 
@@ -2157,10 +2454,10 @@ router.get('/dashboard/overview', async (req: Request, res: Response): Promise<v
         FROM financial.accounts
         WHERE is_active = true
     `;
-    
+
     const accountsResult = await databaseService.pool.query(accountsQuery);
     const accounts = accountsResult.rows[0];
-    
+
     // Build dashboard response
     res.json({
       success: true,
@@ -2235,7 +2532,7 @@ import { metricsService } from '../services/metrics';
 import { logger } from '../utils/log';
 
 // Performance metrics endpoint
-router.get('/metrics/performance', async (req: Request, res: Response) => {
+router.get('/metrics/performance', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const hours = parseInt(req.query.hours as string) || 24;
     const report = await metricsService.getPerformanceReport(hours);
@@ -2250,7 +2547,7 @@ router.get('/metrics/performance', async (req: Request, res: Response) => {
 });
 
 // Alerts endpoint
-router.get('/metrics/alerts', async (req: Request, res: Response) => {
+router.get('/metrics/alerts', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const alerts = await metricsService.checkAlerts();
     res.json({

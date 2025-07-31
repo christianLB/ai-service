@@ -5,7 +5,7 @@ import {
   aiRateLimit, 
   batchRateLimit, 
   searchRateLimit 
-} from '../../middleware/rate-limit.middleware';
+} from '../../middleware/express-rate-limit.middleware';
 import { getTagService } from '../../services/tagging';
 import {
   createTagSchema,

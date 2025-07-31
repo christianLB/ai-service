@@ -1,5 +1,5 @@
 // Version and Deployment Notification Routes
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { TelegramService } from '../services/communication/telegram.service';
 import { FinancialAlert } from '../services/communication/types';
 import { logger } from '../utils/log';
@@ -18,7 +18,7 @@ function getTelegramService(): TelegramService | null {
 }
 
 // Get current version information
-router.get('/version', (req: Request, res: Response) => {
+router.get('/version', (req: Request, res: Response, next: NextFunction) => {
   const versionInfo = {
     version: process.env.VERSION || 'development',
     buildDate: process.env.BUILD_DATE || 'unknown',
@@ -37,7 +37,7 @@ router.get('/version', (req: Request, res: Response) => {
 });
 
 // Watchtower deployment notification endpoint
-router.post('/watchtower/notify', async (req: Request, res: Response) => {
+router.post('/watchtower/notify', async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('📦 Watchtower notification received:', req.body);
     
@@ -110,7 +110,7 @@ router.post('/watchtower/notify', async (req: Request, res: Response) => {
 });
 
 // Manual deployment test notification
-router.post('/test-notification', async (req: Request, res: Response) => {
+router.post('/test-notification', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const telegramService = getTelegramService();
     if (!telegramService) {

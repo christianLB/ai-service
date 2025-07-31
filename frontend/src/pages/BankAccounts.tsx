@@ -6,6 +6,7 @@ import {
   Card,
   Col,
   message,
+  notification,
   Row,
   Space,
   Typography,
@@ -179,8 +180,40 @@ const BankAccounts: FC = () => {
     setSyncing(true);
     message.info("Iniciando sincronización manual...");
     try {
-      await api.post("/financial/sync");
-      message.success("Sincronización iniciada. Los datos se actualizarán pronto.");
+      const response = await api.post("/financial/sync");
+      console.log("[BankAccounts] Manual sync response:", response.data);
+      
+      // Check if there were any errors in the sync
+      if (response.data?.data?.errors && response.data.data.errors.length > 0) {
+        const errors = response.data.data.errors;
+        const rateLimitErrors = errors.filter((err: string) => 
+          err.toLowerCase().includes("rate limit") || err.toLowerCase().includes("429")
+        );
+        
+        if (rateLimitErrors.length > 0) {
+          notification.warning({
+            message: "Sincronización Parcial",
+            description: (
+              <div>
+                <p>Algunas cuentas no pudieron sincronizarse debido a límites de API:</p>
+                <ul style={{ marginTop: 8 }}>
+                  {rateLimitErrors.map((err: string, idx: number) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
+                <p style={{ marginTop: 8 }}>
+                  <strong>💡 Recuerda:</strong> GoCardless permite 4 sincronizaciones por día por cuenta.
+                </p>
+              </div>
+            ),
+            duration: 15,
+            placement: "topRight",
+          });
+        }
+      } else {
+        message.success("Sincronización iniciada. Los datos se actualizarán pronto.");
+      }
+      
       setTimeout(() => {
         fetchAccounts();
         fetchSyncStatus();
@@ -188,7 +221,30 @@ const BankAccounts: FC = () => {
       }, 2000);
     } catch (error) {
       console.error("Error starting manual sync:", error);
-      message.error("Error al iniciar la sincronización manual");
+      
+      const axiosError = error as { response?: { data?: { error?: string }; status?: number } };
+      const errorMessage = axiosError.response?.data?.error || "Error al iniciar la sincronización manual";
+      const isRateLimitError = errorMessage.toLowerCase().includes("rate limit") || 
+                              axiosError.response?.status === 429;
+      
+      if (isRateLimitError) {
+        notification.error({
+          message: "Límite de API Alcanzado",
+          description: (
+            <div>
+              <p>{errorMessage}</p>
+              <p style={{ marginTop: 8 }}>
+                <strong>💡 Consejo:</strong> Intenta usar las opciones de sincronización individual 
+                para optimizar el uso de las llamadas API disponibles.
+              </p>
+            </div>
+          ),
+          duration: 10,
+          placement: "topRight",
+        });
+      } else {
+        message.error(errorMessage);
+      }
     } finally {
       setSyncing(false);
     }

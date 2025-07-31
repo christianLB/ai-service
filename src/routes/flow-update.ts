@@ -1,24 +1,21 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { openai } from '../services/openai';
 import { modifyWorkflowPrompt } from '../utils/prompts';
 import { logger } from '../utils/log';
 import { validateWorkflow, validateWorkflowUpdate } from '../services/validator';
 import { db } from '../services/database';
 import { metricsService } from '../services/metrics';
+import { validate } from '../middleware/validation.middleware';
+import { flowUpdateSchema } from '../validation/flow.validation';
+import { standardRateLimit } from '../middleware/express-rate-limit.middleware';
 
 const router = Router();
 
-router.post('/flow-update', async (req: any, res: any) => {
+router.post('/flow-update', standardRateLimit, validate(flowUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const { workflowId, changes, description } = req.body;
   
   try {
-    // Validar entrada
-    if (!workflowId || (!changes && !description)) {
-      return res.status(400).json({ 
-        error: 'workflowId and either changes or description are required' 
-      });
-    }
 
     // Obtener workflow existente
     const existingWorkflow = await db.getWorkflow(workflowId);

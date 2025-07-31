@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import { AuthService, AuthTokens } from '../../services/auth/auth.service';
 import { authMiddleware, AuthRequest } from '../../middleware/auth.middleware';
@@ -46,7 +46,7 @@ export function createAuthRoutes(pool: Pool): Router {
       body('email').isEmail().normalizeEmail(),
       body('password').notEmpty().trim()
     ],
-    async (req: Request, res: Response) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
         // Validate input
         const errors = validationResult(req);
@@ -125,7 +125,7 @@ export function createAuthRoutes(pool: Pool): Router {
   router.post(
     '/refresh',
     [body('refreshToken').notEmpty()],
-    async (req: Request, res: Response) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -185,7 +185,7 @@ export function createAuthRoutes(pool: Pool): Router {
         body('password').isLength({ min: 8 }).trim(),
         body('fullName').notEmpty().trim()
       ],
-      async (req: Request, res: Response) => {
+      async (req: Request, res: Response, next: NextFunction) => {
         try {
           const errors = validationResult(req);
           if (!errors.isEmpty()) {
