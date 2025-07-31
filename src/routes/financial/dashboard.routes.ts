@@ -1,12 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { FinancialDatabaseService } from '../../services/financial/database.service';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { createRateLimiter } from '../../middleware/rate-limit.middleware';
+import { databaseRateLimit } from '../../middleware/express-rate-limit.middleware';
 
 const router = Router();
 
-// Create database rate limiter for dashboard endpoints
-const databaseRateLimit = createRateLimiter('database');
+// Database rate limiter is now imported directly from express-rate-limit.middleware
 
 // Database service instance
 let databaseService: FinancialDatabaseService;

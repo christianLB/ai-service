@@ -4,7 +4,7 @@ import {
   standardRateLimit, 
   aiRateLimit, 
   batchRateLimit 
-} from '../../middleware/rate-limit.middleware';
+} from '../../middleware/express-rate-limit.middleware';
 import { getEntityTaggingService } from '../../services/tagging';
 import {
   EntityTypeEnum,

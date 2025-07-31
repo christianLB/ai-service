@@ -16,7 +16,7 @@ import invoicesRoutes from './financial/invoices.routes';
 import invoiceTemplatesRoutes from './financial/invoice-templates.routes';
 import dashboardRoutes from './financial/dashboard.routes';
 import multer from 'multer';
-import { createRateLimiter } from '../middleware/rate-limit.middleware';
+import { standardRateLimit, databaseRateLimit } from '../middleware/express-rate-limit.middleware';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -35,9 +35,7 @@ const upload = multer({
 
 const router = Router();
 
-// Create rate limiters
-const standardRateLimit = createRateLimiter('standard');
-const databaseRateLimit = createRateLimiter('database');
+// Rate limiters are now imported directly from express-rate-limit.middleware
 
 // Initialize services (these would be injected in a real app)
 let goCardlessService: GoCardlessService;
