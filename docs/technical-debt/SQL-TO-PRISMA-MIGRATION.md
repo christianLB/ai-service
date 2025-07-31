@@ -473,9 +473,32 @@ Create a standard migration approach:
 - **Better Maintainability**: Single data access pattern
 - **Improved Onboarding**: Clearer codebase for new developers
 
+## 📊 Live Status Tracking
+
+A live status document is maintained at [MIGRATION-STATUS.md](./MIGRATION-STATUS.md) with:
+- Real-time migration progress
+- Performance metrics
+- Validation results
+- Current sprint status
+- Automated updates via CI/CD
+
+### Update Commands
+```bash
+# Update migration status manually
+npm run migration:status
+
+# Verify data integrity
+npm run migration:verify
+
+# Rollback if needed
+npm run migration:rollback:dry  # Dry run first
+npm run migration:rollback      # Execute rollback
+```
+
 ## 📝 References
 
 ### Related Documentation
+- [Migration Status (Live)](./MIGRATION-STATUS.md)
 - [Prisma Schema](/prisma/schema.prisma)
 - [Database Architecture](/docs/development/architecture/database-schema-architecture.md)
 - [Service Development Guide](/docs/development/guides/service-development.md)
