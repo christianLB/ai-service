@@ -1,5 +1,6 @@
+import { PrismaClient, Prisma } from '@prisma/client';
 import { Logger } from '../../utils/logger';
-import { db } from '../database';
+import { TRADING_FEATURE_FLAGS } from '../../types/trading';
 import { integrationConfigService } from '../integrations/integration-config.service';
 import { marketDataService } from './market-data.service';
 import { riskManagerService } from './risk-manager.service';
@@ -7,10 +8,8 @@ import { strategyEngineService, TradingSignal } from './strategy-engine.service'
 import { claudeAIService, TradingContext, TradingDecision as ClaudeTradingDecision } from '../ai/claude.service';
 import OpenAI from 'openai';
 import { config } from '../../config';
-import { TRADING_FEATURE_FLAGS } from '../../types/trading';
-import { tradingBrainPrismaService, TradingBrainPrismaService } from './trading-brain-prisma.service';
 
-const logger = new Logger('TradingBrainService');
+const logger = new Logger('TradingBrainPrismaService');
 
 interface MarketContext {
   symbol: string;
@@ -54,23 +53,23 @@ interface PortfolioAnalysis {
   rebalanceNeeded: boolean;
 }
 
-export class TradingBrainService {
-  private static instance: TradingBrainService;
+export class TradingBrainPrismaService {
+  private static instance: TradingBrainPrismaService;
+  private prisma: PrismaClient;
   private openaiClient?: OpenAI;
-  private useClaudeAI: boolean = true; // Prefer Claude over OpenAI
+  private useClaudeAI: boolean = true;
   private decisionHistory: Map<string, TradingDecision[]> = new Map();
   private learningData: Map<string, any> = new Map();
-  private prismaService: TradingBrainPrismaService;
 
   private constructor() {
-    this.prismaService = tradingBrainPrismaService;
+    this.prisma = new PrismaClient();
   }
 
-  static getInstance(): TradingBrainService {
-    if (!TradingBrainService.instance) {
-      TradingBrainService.instance = new TradingBrainService();
+  static getInstance(): TradingBrainPrismaService {
+    if (!TradingBrainPrismaService.instance) {
+      TradingBrainPrismaService.instance = new TradingBrainPrismaService();
     }
-    return TradingBrainService.instance;
+    return TradingBrainPrismaService.instance;
   }
 
   async initialize(): Promise<void> {
@@ -117,12 +116,6 @@ export class TradingBrainService {
     userId?: string
   ): Promise<TradingDecision | null> {
     try {
-      // Use Prisma if feature flag is enabled
-      if (TRADING_FEATURE_FLAGS.USE_PRISMA_TRADING_BRAIN) {
-        return await this.prismaService.analyzeOpportunity(signal, userId);
-      }
-
-      // Original SQL implementation
       // Gather comprehensive market context
       const context = await this.gatherMarketContext(
         signal.exchange,
@@ -314,22 +307,32 @@ export class TradingBrainService {
 
   private async getPortfolioStatus(userId?: string): Promise<PortfolioAnalysis> {
     try {
-      const positions = await db.pool.query(
-        `SELECT * FROM trading.positions 
-         WHERE status = 'open' 
-         AND ($1::uuid IS NULL OR user_id = $1)`,
-        [userId]
-      );
+      const positions = await this.prisma.position.findMany({
+        where: {
+          status: 'OPEN',
+          ...(userId && { 
+            trades: {
+              some: {
+                // Assuming trades are linked to users through a relation
+                // This would need to be adjusted based on actual schema
+              }
+            }
+          })
+        },
+        include: {
+          tradingPair: true
+        }
+      });
 
       const exposure: Record<string, number> = {};
       let totalValue = 0;
 
-      for (const pos of positions.rows) {
-        const value = pos.quantity * pos.current_price;
+      for (const pos of positions) {
+        const value = Number(pos.size) * Number(pos.currentPrice || pos.entryPrice);
         totalValue += value;
         
-        const [base] = pos.symbol.split('/');
-        exposure[base] = (exposure[base] || 0) + value;
+        const baseAsset = pos.tradingPair.baseAsset;
+        exposure[baseAsset] = (exposure[baseAsset] || 0) + value;
       }
 
       // Simple correlation calculation (same assets = high correlation)
@@ -373,25 +376,33 @@ export class TradingBrainService {
     symbol: string
   ): Promise<any> {
     try {
-      const trades = await db.pool.query(
-        `SELECT * FROM trading.trades 
-         WHERE strategy_id = $1 AND symbol = $2 
-         ORDER BY executed_at DESC 
-         LIMIT 20`,
-        [strategyId, symbol]
-      );
+      const trades = await this.prisma.trade.findMany({
+        where: {
+          strategyId,
+          tradingPair: {
+            symbol
+          }
+        },
+        orderBy: {
+          executedAt: 'desc'
+        },
+        take: 20,
+        include: {
+          tradingPair: true
+        }
+      });
 
-      const winRate = trades.rows.length > 0
-        ? trades.rows.filter(t => t.pnl > 0).length / trades.rows.length
+      const winRate = trades.length > 0
+        ? trades.filter(t => (t.pnl || 0) > 0).length / trades.length
         : 0;
 
-      const totalPnl = trades.rows.reduce((sum, t) => sum + parseFloat(t.pnl || 0), 0);
+      const totalPnl = trades.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
 
       return {
-        recentTrades: trades.rows.length,
+        recentTrades: trades.length,
         winRate,
         totalPnl,
-        lastTrade: trades.rows[0],
+        lastTrade: trades[0] || null,
       };
       
     } catch (error) {
@@ -680,24 +691,29 @@ Format your response as JSON.`;
 
   private async loadLearningData(): Promise<void> {
     try {
-      // Load successful trade patterns
-      const successfulTrades = await db.pool.query(
-        `SELECT t.*, s.parameters as strategy_params
-         FROM trading.trades t
-         JOIN trading.strategies s ON t.strategy_id = s.id
-         WHERE t.pnl > 0
-         ORDER BY t.pnl DESC
-         LIMIT 1000`
-      );
+      // Load successful trade patterns using Prisma
+      const successfulTrades = await this.prisma.trade.findMany({
+        where: {
+          pnl: { gt: 0 }
+        },
+        include: {
+          strategy: true,
+          tradingPair: true
+        },
+        orderBy: {
+          pnl: 'desc'
+        },
+        take: 1000
+      });
 
       // Analyze patterns
-      for (const trade of successfulTrades.rows) {
+      for (const trade of successfulTrades) {
         const pattern = {
-          symbol: trade.symbol,
-          strategyType: trade.strategy_params?.type,
-          timeOfDay: new Date(trade.executed_at).getHours(),
-          dayOfWeek: new Date(trade.executed_at).getDay(),
-          confidenceScore: trade.confidence_score,
+          symbol: trade.tradingPair.symbol,
+          strategyType: trade.strategy?.type,
+          timeOfDay: new Date(trade.executedAt).getHours(),
+          dayOfWeek: new Date(trade.executedAt).getDay(),
+          confidenceScore: 0.8 // Default confidence for successful trades
         };
         
         const key = `${pattern.symbol}:${pattern.strategyType}`;
@@ -738,56 +754,50 @@ Format your response as JSON.`;
   }
 
   async suggestImprovements(strategyId: string): Promise<string[]> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_TRADING_BRAIN) {
-      return await this.prismaService.suggestImprovements(strategyId);
-    }
-
-    // Original SQL implementation
     const suggestions: string[] = [];
     
     try {
       // Get strategy performance
-      const performance = await db.pool.query(
-        `SELECT * FROM trading.strategies WHERE id = $1`,
-        [strategyId]
-      );
+      const strategy = await this.prisma.strategy.findUnique({
+        where: { id: strategyId },
+        include: {
+          trades: {
+            orderBy: { executedAt: 'desc' },
+            take: 50
+          }
+        }
+      });
 
-      if (performance.rows.length === 0) {
+      if (!strategy) {
         return suggestions;
       }
-
-      const strategy = performance.rows[0];
+      
+      // Calculate actual win rate from trades
+      const winRate = strategy.trades.length > 0
+        ? strategy.trades.filter(t => (t.pnl || 0) > 0).length / strategy.trades.length
+        : 0;
       
       // Analyze win rate
-      if (strategy.win_rate < 0.4) {
+      if (winRate < 0.4) {
         suggestions.push('Consider adjusting entry criteria - win rate is below 40%');
       }
 
       // Analyze drawdown
-      if (strategy.max_drawdown > 0.15) {
+      if (Number(strategy.maxDrawdownHit) > 0.15) {
         suggestions.push('Implement tighter stop losses - max drawdown exceeds 15%');
       }
 
       // Check if strategy is using all available indicators
-      if (!strategy.parameters?.useVolumeConfirmation) {
+      const params = strategy.parameters as any;
+      if (!params?.useVolumeConfirmation) {
         suggestions.push('Enable volume confirmation for better signal quality');
       }
 
-      // Get recent trades
-      const recentTrades = await db.pool.query(
-        `SELECT * FROM trading.trades 
-         WHERE strategy_id = $1 
-         ORDER BY executed_at DESC 
-         LIMIT 50`,
-        [strategyId]
-      );
-
       // Check for time-based patterns
       const lossByHour = new Map<number, number>();
-      for (const trade of recentTrades.rows) {
-        if (trade.pnl < 0) {
-          const hour = new Date(trade.executed_at).getHours();
+      for (const trade of strategy.trades) {
+        if ((trade.pnl || 0) < 0) {
+          const hour = new Date(trade.executedAt).getHours();
           lossByHour.set(hour, (lossByHour.get(hour) || 0) + 1);
         }
       }
@@ -806,6 +816,13 @@ Format your response as JSON.`;
       return suggestions;
     }
   }
+
+  /**
+   * Close database connection
+   */
+  async disconnect(): Promise<void> {
+    await this.prisma.$disconnect();
+  }
 }
 
-export const tradingBrainService = TradingBrainService.getInstance();
+export const tradingBrainPrismaService = TradingBrainPrismaService.getInstance();

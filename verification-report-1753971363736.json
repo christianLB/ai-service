@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-07-31T14:16:03.735Z",
+  "summary": {
+    "total": 8,
+    "passed": 0,
+    "failed": 8,
+    "warnings": 0,
+    "passRate": "0.00%"
+  },
+  "failedTests": [],
+  "environment": {
+    "nodeVersion": "v20.17.0",
+    "database": "ai_service",
+    "prismaVersion": "6.12.0"
+  }
+}

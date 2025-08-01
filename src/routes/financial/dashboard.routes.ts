@@ -4,9 +4,10 @@ import { FinancialDashboardPrismaService } from '../../services/financial/financ
 import { featureFlags } from '../../config/feature-flags';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { databaseRateLimit } from '../../middleware/express-rate-limit.middleware';
-import { logger } from '../../utils/logger';
+import { Logger } from '../../utils/logger';
 
 const router = Router();
+const logger = new Logger('FinancialDashboard');
 
 // Database rate limiter is now imported directly from express-rate-limit.middleware
 
@@ -142,22 +143,61 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
       
       const metrics = await dashboardPrismaService.getRevenueMetrics(timeRange, currency as string);
       
-      // Format response to match existing API
+      // Transform Prisma response to match expected API format
+      const transformedData = {
+        period: {
+          type: period,
+          current: {
+            start: timeRange.startDate.toISOString(),
+            end: timeRange.endDate.toISOString()
+          },
+          previous: {
+            start: new Date(timeRange.startDate.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+            end: new Date(timeRange.endDate.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        },
+        currentPeriod: {
+          totalRevenue: metrics[0]?.amount?.toString() || '0',
+          paidRevenue: metrics[0]?.amount?.toString() || '0',
+          pendingRevenue: '0',
+          overdueRevenue: '0',
+          totalInvoices: metrics[0]?.invoiceCount || 0,
+          paidInvoices: metrics[0]?.invoiceCount || 0,
+          averageInvoiceAmount: (metrics[0]?.amount && metrics[0]?.invoiceCount) 
+            ? (parseFloat(metrics[0].amount.toString()) / metrics[0].invoiceCount).toFixed(2)
+            : '0',
+          uniqueClients: metrics[0]?.uniqueClients || 0
+        },
+        previousPeriod: {
+          totalRevenue: '0',
+          paidRevenue: '0',
+          pendingRevenue: '0',
+          overdueRevenue: '0',
+          totalInvoices: 0,
+          paidInvoices: 0,
+          averageInvoiceAmount: '0',
+          uniqueClients: 0
+        },
+        growth: {
+          revenueGrowth: metrics[0]?.monthOverMonthGrowth || 0,
+          invoiceGrowth: 0
+        },
+        trends: {
+          monthlyRevenue: metrics.map(m => ({
+            month: m.month.toISOString(),
+            revenue: m.amount.toString(),
+            invoices: m.invoiceCount
+          }))
+        },
+        topClients: [],
+        currency,
+        generatedAt: new Date().toISOString(),
+        service: 'prisma'
+      };
+      
       res.json({
         success: true,
-        data: {
-          period: {
-            type: period,
-            current: {
-              start: timeRange.startDate.toISOString(),
-              end: timeRange.endDate.toISOString()
-            }
-          },
-          revenueMetrics: metrics,
-          currency,
-          generatedAt: new Date().toISOString(),
-          service: 'prisma'
-        }
+        data: transformedData
       });
       
       return;

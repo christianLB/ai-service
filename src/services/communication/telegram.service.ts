@@ -3,7 +3,7 @@ import { TelegramConfig, FinancialAlert, TelegramCommand, SystemStatus, Financia
 import { FinancialDatabaseService } from '../financial/database.service';
 import { TelegramDocumentService } from '../document-intelligence/telegram-document.service';
 import { InvoiceManagementService } from '../financial/invoice-management.service';
-import { ClientManagementService } from '../financial/client-management.service';
+import { clientPrismaService } from '../financial/client-prisma.service';
 // import { financialReportingPrismaService } from '../financial/reporting-prisma.service'; // TEMPORARILY DISABLED
 import { logger } from '../../utils/log';
 import { auditCatch } from '../../utils/forensic-logger';
@@ -15,7 +15,7 @@ export class TelegramService {
   private financialService: FinancialDatabaseService;
   private documentService: TelegramDocumentService | null = null;
   private invoiceService: InvoiceManagementService;
-  private clientService: ClientManagementService;
+  // Client service is now using Prisma singleton
   // Prisma-based reporting service is used as singleton
   private isInitialized: boolean = false;
 
@@ -25,7 +25,7 @@ export class TelegramService {
     
     // Initialize additional services
     this.invoiceService = new InvoiceManagementService();
-    this.clientService = new ClientManagementService();
+    // Client service is imported as singleton
     // Reporting service is now a Prisma-based singleton
     
     // Initialize bot asynchronously
@@ -939,11 +939,11 @@ Ejemplo:
       }
 
       // Find or create client
-      let client = await this.clientService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
+      let client = await clientPrismaService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
       
       if (!client) {
         // Create basic client
-        client = await this.clientService.createClient({
+        client = await clientPrismaService.createClient({
           name: clientName,
           businessName: clientName,
           taxId: `TEMP-${Date.now()}`,
@@ -1015,7 +1015,7 @@ Ejemplo:
       let clientId: string | undefined;
 
       if (clientFilter) {
-        const client = await this.clientService.getClientByTaxId(clientFilter);
+        const client = await clientPrismaService.getClientByTaxId(clientFilter);
         if (client) {
           clientId = client.id;
         }
@@ -1302,7 +1302,7 @@ Usa /invoice create para crear nuevas facturas.
         return;
       }
 
-      const client = await this.clientService.getClientByTaxId(clientName);
+      const client = await clientPrismaService.getClientByTaxId(clientName);
       if (!client) {
         await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
         return;
@@ -1373,14 +1373,14 @@ Comandos disponibles:
     try {
       const clientName = params.join(' ');
       
-      const client = await this.clientService.getClientByTaxId(clientName);
+      const client = await clientPrismaService.getClientByTaxId(clientName);
       if (!client) {
         await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
         return;
       }
 
       const stats = await this.invoiceService.getClientInvoiceStats(client.id);
-      const transactions = await this.clientService.getClientTransactions(client.id, { limit: 5 });
+      const transactions = await clientPrismaService.getClientTransactions(client.id, { limit: 5 });
 
       let message = `👤 <b>Balance de ${client.name}</b>\n\n`;
 
@@ -1422,7 +1422,7 @@ Comandos disponibles:
 
   private async handleClientList(chatId: string): Promise<void> {
     try {
-      const { clients, total } = await this.clientService.listClients({
+      const { clients, total } = await clientPrismaService.listClients({
         status: 'active',
         limit: 10,
         sortBy: 'total_revenue',
@@ -1510,7 +1510,7 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
         return;
       }
 
-      const client = await this.clientService.getClientByTaxId(clientName);
+      const client = await clientPrismaService.getClientByTaxId(clientName);
       if (!client) {
         await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
         return;

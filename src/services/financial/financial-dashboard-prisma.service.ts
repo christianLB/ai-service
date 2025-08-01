@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { logger } from '../../utils/logger';
+import { Logger } from '../../utils/logger';
 import { 
   DashboardMetrics, 
   RevenueMetric, 
@@ -12,10 +12,18 @@ import {
 export class FinancialDashboardPrismaService {
   private prisma: PrismaClient;
   private enableValidation: boolean;
+  private logger: Logger;
 
   constructor(prisma?: PrismaClient) {
     this.prisma = prisma || new PrismaClient();
     this.enableValidation = process.env.ENABLE_SQL_VALIDATION === 'true';
+    this.logger = new Logger('FinancialDashboardPrisma');
+  }
+
+  private calculateDateRange(timeRange: TimeRange): { startDate: Date; endDate: Date } {
+    const endDate = timeRange.endDate || new Date();
+    const startDate = timeRange.startDate || new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000); // Default 30 days
+    return { startDate, endDate };
   }
 
   // ============================================================================
@@ -35,8 +43,8 @@ export class FinancialDashboardPrismaService {
           }
         },
         _count: { id: true },
-        _sum: { totalAmount: true },
-        _avg: { totalAmount: true }
+        _sum: { total: true },
+        _avg: { total: true }
       }),
 
       // Paid invoices
@@ -49,7 +57,7 @@ export class FinancialDashboardPrismaService {
           }
         },
         _count: { id: true },
-        _sum: { totalAmount: true }
+        _sum: { total: true }
       }),
 
       // Overdue invoices
@@ -61,18 +69,18 @@ export class FinancialDashboardPrismaService {
           }
         },
         _count: { id: true },
-        _sum: { totalAmount: true }
+        _sum: { total: true }
       })
     ]);
 
     return {
       total: totalStats._count.id || 0,
-      totalAmount: totalStats._sum.totalAmount?.toNumber() || 0,
-      averageAmount: totalStats._avg.totalAmount?.toNumber() || 0,
-      paid: paidStats._count.id || 0,
-      paidAmount: paidStats._sum.totalAmount?.toNumber() || 0,
-      overdue: overdueStats._count.id || 0,
-      overdueAmount: overdueStats._sum.totalAmount?.toNumber() || 0,
+      totalAmount: totalStats._sum?.total?.toNumber() || 0,
+      averageAmount: totalStats._avg?.total?.toNumber() || 0,
+      paid: paidStats._count?.id || 0,
+      paidAmount: paidStats._sum?.total?.toNumber() || 0,
+      overdue: overdueStats._count?.id || 0,
+      overdueAmount: overdueStats._sum?.total?.toNumber() || 0,
       pending: 0, // Will be calculated separately
       pendingAmount: 0
     };
@@ -123,16 +131,16 @@ export class FinancialDashboardPrismaService {
     const result = await this.prisma.$queryRaw<RevenueMetric[]>`
       WITH monthly_revenue AS (
         SELECT 
-          DATE_TRUNC('month', i."issueDate") as month,
-          SUM(i."totalAmount") as revenue,
-          COUNT(DISTINCT i."clientId") as unique_clients,
+          DATE_TRUNC('month', i.issue_date) as month,
+          SUM(i.total) as revenue,
+          COUNT(DISTINCT i.client_id) as unique_clients,
           COUNT(i.id) as invoice_count
         FROM financial.invoices i
-        WHERE i."issueDate" >= ${startDate}
-          AND i."issueDate" <= ${endDate}
-          AND i."currencyCode" = ${currency}
+        WHERE i.issue_date >= ${startDate}
+          AND i.issue_date <= ${endDate}
+          AND i.currency = ${currency}
           AND i.status IN ('PAID', 'PARTIALLY_PAID')
-        GROUP BY DATE_TRUNC('month', i."issueDate")
+        GROUP BY DATE_TRUNC('month', i.issue_date)
       ),
       revenue_with_growth AS (
         SELECT 
@@ -167,47 +175,45 @@ export class FinancialDashboardPrismaService {
   }
 
   async getCategoryBreakdown(timeRange: TimeRange): Promise<CategoryBreakdown[]> {
-    const { startDate, endDate } = timeRange;
-
-    // Complex aggregation with joins
+    const { startDate, endDate } = this.calculateDateRange(timeRange);
+    
+    // Use transaction_categorizations table which links transactions to categories
     const result = await this.prisma.$queryRaw<CategoryBreakdown[]>`
       SELECT 
-        c.name as category,
+        c.id,
+        c.name,
+        c.type,
         c.color,
-        COUNT(DISTINCT t.id) as "transactionCount",
-        SUM(ABS(t.amount))::DECIMAL as "totalAmount",
-        AVG(ABS(t.amount))::DECIMAL as "averageAmount",
-        ROUND(
-          SUM(ABS(t.amount)) * 100.0 / 
-          NULLIF(SUM(SUM(ABS(t.amount))) OVER (), 0), 
-          2
-        )::DECIMAL as percentage
-      FROM financial.transactions t
-      INNER JOIN financial.categories c ON t."categoryId" = c.id
-      WHERE t.date >= ${startDate}
+        COALESCE(SUM(ABS(t.amount))::float, 0) as amount,
+        COUNT(DISTINCT tc.transaction_id)::int as count
+      FROM financial.categories c
+      LEFT JOIN financial.transaction_categorizations tc ON tc.category_id = c.id
+      LEFT JOIN financial.transactions t ON t.id = tc.transaction_id
+        AND t.date >= ${startDate}
         AND t.date <= ${endDate}
-        AND t.type = 'EXPENSE'
-      GROUP BY c.id, c.name, c.color
-      ORDER BY "totalAmount" DESC
+      WHERE c.parent_id IS NULL
+      GROUP BY c.id, c.name, c.type, c.color
+      HAVING COUNT(tc.transaction_id) > 0
+      ORDER BY amount DESC
     `;
-
+    
     return result;
   }
 
   async getTopClients(limit: number = 10): Promise<any[]> {
     // Complex query with aggregations and window functions
-    const result = await this.prisma.$queryRaw`
+    const result = await this.prisma.$queryRaw<any[]>`
       WITH client_revenue AS (
         SELECT 
           c.id,
           c.name,
           c.email,
           COUNT(i.id) as invoice_count,
-          SUM(i."totalAmount") as total_revenue,
-          MAX(i."issueDate") as last_invoice_date,
-          MIN(i."issueDate") as first_invoice_date
+          SUM(i.total) as total_revenue,
+          MAX(i.issue_date) as last_invoice_date,
+          MIN(i.issue_date) as first_invoice_date
         FROM financial.clients c
-        INNER JOIN financial.invoices i ON c.id = i."clientId"
+        INNER JOIN financial.invoices i ON c.id = i.client_id
         WHERE i.status IN ('PAID', 'PARTIALLY_PAID')
         GROUP BY c.id, c.name, c.email
       ),
@@ -215,7 +221,7 @@ export class FinancialDashboardPrismaService {
         SELECT 
           *,
           DENSE_RANK() OVER (ORDER BY total_revenue DESC) as revenue_rank,
-          EXTRACT(EPOCH FROM (last_invoice_date - first_invoice_date)) / 86400 as customer_lifetime_days
+          (last_invoice_date - first_invoice_date) as customer_lifetime_days
         FROM client_revenue
       )
       SELECT 
@@ -255,7 +261,7 @@ export class FinancialDashboardPrismaService {
       const sqlJson = JSON.stringify(sqlResult, null, 2);
 
       if (prismaJson !== sqlJson) {
-        logger.error('Data validation failed', {
+        this.logger.error('Data validation failed', {
           operation,
           prismaResult: prismaResult,
           sqlResult: sqlResult,
@@ -264,17 +270,17 @@ export class FinancialDashboardPrismaService {
         
         // In production, we might want to use SQL result as fallback
         if (process.env.NODE_ENV === 'production') {
-          logger.warn('Using SQL result due to validation failure');
+          this.logger.warn('Using SQL result due to validation failure');
           return false;
         }
         
         throw new Error(`Data validation failed for operation: ${operation}`);
       }
 
-      logger.info('Data validation passed', { operation });
+      this.logger.info('Data validation passed', { operation });
       return true;
     } catch (error) {
-      logger.error('Validation error', { operation, error });
+      this.logger.error('Validation error', { operation, error });
       throw error;
     }
   }
@@ -363,11 +369,11 @@ export class FinancialDashboardPrismaService {
           }
         },
         _count: { id: true },
-        _sum: { totalAmount: true }
+        _sum: { total: true }
       });
 
-      invoiceStats.pending = pendingStats._count.id || 0;
-      invoiceStats.pendingAmount = pendingStats._sum.totalAmount?.toNumber() || 0;
+      invoiceStats.pending = pendingStats._count?.id || 0;
+      invoiceStats.pendingAmount = pendingStats._sum?.total?.toNumber() || 0;
 
       return {
         invoiceStats,
@@ -378,7 +384,7 @@ export class FinancialDashboardPrismaService {
         lastUpdated: new Date()
       };
     } catch (error) {
-      logger.error('Failed to get dashboard metrics', { error });
+      this.logger.error('Failed to get dashboard metrics', { error });
       throw error;
     }
   }
@@ -398,7 +404,7 @@ export class FinancialDashboardPrismaService {
       const endTime = process.hrtime.bigint();
       const duration = Number(endTime - startTime) / 1_000_000; // Convert to milliseconds
 
-      logger.info('Query performance', {
+      this.logger.info('Query performance', {
         query: queryName,
         duration: `${duration.toFixed(2)}ms`,
         timestamp: new Date().toISOString()
@@ -406,7 +412,7 @@ export class FinancialDashboardPrismaService {
 
       // Alert if query is slow
       if (duration > 1000) {
-        logger.warn('Slow query detected', {
+        this.logger.warn('Slow query detected', {
           query: queryName,
           duration: `${duration.toFixed(2)}ms`,
           threshold: '1000ms'
@@ -418,7 +424,7 @@ export class FinancialDashboardPrismaService {
       const endTime = process.hrtime.bigint();
       const duration = Number(endTime - startTime) / 1_000_000;
 
-      logger.error('Query failed', {
+      this.logger.error('Query failed', {
         query: queryName,
         duration: `${duration.toFixed(2)}ms`,
         error

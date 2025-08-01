@@ -15,11 +15,11 @@ const fs = require('fs').promises;
 // Initialize connections
 const prisma = new PrismaClient();
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'ai_service',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD
+  host: process.env.POSTGRES_HOST || 'localhost',
+  port: process.env.POSTGRES_PORT || 5432,
+  database: process.env.POSTGRES_DB || 'ai_service',
+  user: process.env.POSTGRES_USER || 'ai_user',
+  password: process.env.POSTGRES_PASSWORD || 'ultra_secure_password_2025'
 });
 
 // Color codes for output

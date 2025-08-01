@@ -3,6 +3,8 @@ import { db } from '../database';
 import { TradingSignal } from './strategy-engine.service';
 import { marketDataService } from './market-data.service';
 import { tradingConnectorService } from './trading-connector.service';
+import { TRADING_FEATURE_FLAGS } from '../../types/trading';
+import { riskManagerPrismaService, RiskManagerPrismaService } from './risk-manager-prisma.service';
 
 const logger = new Logger('RiskManagerService');
 
@@ -50,8 +52,10 @@ export class RiskManagerService {
   private defaultParams: RiskParameters;
   private dailyPnL: Map<string, number> = new Map();
   private peakBalance: number = 0;
+  private prismaService: RiskManagerPrismaService;
 
   private constructor() {
+    this.prismaService = riskManagerPrismaService;
     this.defaultParams = {
       maxPositionSizeUSD: 1000,
       maxOpenPositions: 5,
@@ -111,6 +115,12 @@ export class RiskManagerService {
   }
 
   async validateTrade(signal: TradingSignal, userId?: string): Promise<TradeValidation> {
+    // Use Prisma if feature flag is enabled
+    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
+      return await this.prismaService.validateTrade(signal, userId);
+    }
+
+    // Original SQL implementation
     const warnings: string[] = [];
     let riskScore = 0;
 
@@ -227,6 +237,14 @@ export class RiskManagerService {
     availableCapital: number,
     userId?: string
   ): Promise<PositionSizeCalculation> {
+    // Use Prisma if feature flag is enabled
+    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
+      // Note: Prisma version has slightly different signature, adapting here
+      const accountBalance = availableCapital;
+      return await this.prismaService.calculatePositionSize(signal, accountBalance, params);
+    }
+
+    // Original SQL implementation
     try {
       // Get current price
       const currentPrice = await marketDataService.getLatestPrice(
@@ -283,6 +301,12 @@ export class RiskManagerService {
   }
 
   async getCurrentRiskMetrics(userId?: string): Promise<RiskMetrics> {
+    // Use Prisma if feature flag is enabled
+    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
+      return await this.prismaService.getCurrentRiskMetrics(userId);
+    }
+
+    // Original SQL implementation
     try {
       // Get open positions
       const positions = await db.pool.query(
@@ -457,6 +481,12 @@ export class RiskManagerService {
   }
 
   async updatePositionRisk(positionId: string): Promise<void> {
+    // Use Prisma if feature flag is enabled
+    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
+      return await this.prismaService.updatePositionRisk(positionId);
+    }
+
+    // Original SQL implementation
     try {
       // Get position details
       const position = await db.pool.query(
@@ -529,6 +559,12 @@ export class RiskManagerService {
   }
 
   async emergencyStopAllTrading(reason: string): Promise<void> {
+    // Use Prisma if feature flag is enabled
+    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
+      return await this.prismaService.emergencyStopAllTrading(reason);
+    }
+
+    // Original SQL implementation
     logger.error('EMERGENCY STOP triggered', { reason });
     
     try {
