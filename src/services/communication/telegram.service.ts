@@ -943,7 +943,7 @@ Ejemplo:
       
       if (!client) {
         // Create basic client
-        client = await clientPrismaService.createClient({
+        const clientData = {
           name: clientName,
           businessName: clientName,
           taxId: `TEMP-${Date.now()}`,
@@ -951,12 +951,17 @@ Ejemplo:
           email: '',
           clientType: 'business',
           currency: 'EUR',
-          status: 'active',
-          createdBy: `telegram-${chatId}`
-        });
+          status: 'active'
+        };
+        const userId = `telegram-${chatId}`;
+        client = await clientPrismaService.createClient(clientData, userId);
       }
 
       // Create invoice
+      if (!client) {
+        throw new Error('Failed to create or find client');
+      }
+      
       const invoice = await this.invoiceService.createInvoice({
         clientId: client.id,
         type: 'invoice',
@@ -1422,12 +1427,15 @@ Comandos disponibles:
 
   private async handleClientList(chatId: string): Promise<void> {
     try {
-      const { clients, total } = await clientPrismaService.listClients({
+      const result = await clientPrismaService.listClients({
         status: 'active',
         limit: 10,
-        sortBy: 'total_revenue',
-        sortOrder: 'DESC'
+        sortBy: 'createdAt',
+        sortOrder: 'DESC',
+        userId: 'telegram-system' // System user for telegram
       });
+      const clients = result.data.clients;
+      const total = result.data.total;
 
       if (clients.length === 0) {
         await this.sendMessage(chatId, `
@@ -1442,36 +1450,32 @@ Usa /invoice create para crear tu primera factura.
 
       let message = `👥 <b>Listado de Clientes</b>\n\n`;
 
-      clients.forEach((client, index) => {
+      clients.forEach((client: any, index: number) => {
         const emoji = index < 3 ? ['🥇', '🥈', '🥉'][index] : '👤';
         message += `${emoji} <b>${client.name}</b>\n`;
         
-        if (client.totalRevenue > 0) {
-          message += `   💰 €${client.totalRevenue.toFixed(2)}`;
+        // Show basic client info
+        if (client.email) {
+          message += `   📧 ${client.email}\n`;
         }
         
-        if (client.totalInvoices > 0) {
-          message += ` (${client.totalInvoices} facturas)`;
+        if (client.taxId) {
+          message += `   🆔 ${client.taxId}\n`;
         }
         
-        if (client.outstandingBalance > 0) {
-          message += `\n   ⏳ Pendiente: €${client.outstandingBalance.toFixed(2)}`;
+        if (client.status) {
+          message += `   📌 ${client.status}\n`;
         }
         
-        message += '\n\n';
+        message += '\n';
       });
 
       if (total > 10) {
         message += `<i>Mostrando 10 de ${total} clientes</i>\n`;
       }
 
-      // Calculate totals
-      const totalRevenue = clients.reduce((sum, c) => sum + (c.totalRevenue || 0), 0);
-      const totalOutstanding = clients.reduce((sum, c) => sum + (c.outstandingBalance || 0), 0);
-
-      message += `\n<b>📊 Totales:</b>\n`;
-      message += `💵 Facturado: €${totalRevenue.toFixed(2)}\n`;
-      message += `⏳ Pendiente: €${totalOutstanding.toFixed(2)}`;
+      // Show total count
+      message += `\n<b>📊 Total clientes: ${total}</b>`;
 
       await this.sendMessage(chatId, message);
     } catch (error) {
