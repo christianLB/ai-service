@@ -4,9 +4,13 @@ import { invoicePrismaService } from '../../services/financial/invoice-prisma.se
 import { clientPrismaService } from '../../services/financial/client-prisma.service';
 import { InvoiceGenerationService } from '../../services/financial/invoice-generation.service';
 import { InvoiceStorageService } from '../../services/financial/invoice-storage.service';
+import { InvoiceStoragePrismaService } from '../../services/financial/invoice-storage-prisma.service';
+import { InvoiceNumberingService } from '../../services/financial/invoice-numbering.service';
+import { InvoiceNumberingPrismaService } from '../../services/financial/invoice-numbering-prisma.service';
 import { getInvoiceEmailService } from '../../services/financial/invoice-email.service';
 import { logger } from '../../utils/log';
 import { db } from '../../services/database';
+import { PrismaClient } from '@prisma/client';
 import type { Prisma, Invoice, Client } from '../../lib/prisma';
 import type { InvoiceFormData } from '../../types/financial/index';
 import { DEFAULT_COMPANY_CONFIG } from '../../models/financial/company.model';
@@ -25,16 +29,37 @@ export class InvoicesController {
   private invoiceService = invoicePrismaService;
   private clientService = clientPrismaService;
   private invoiceGenerationService: InvoiceGenerationService;
-  private invoiceStorageService: InvoiceStorageService;
+  private invoiceStorageService: InvoiceStorageService | InvoiceStoragePrismaService;
+  private invoiceNumberingService: InvoiceNumberingService | InvoiceNumberingPrismaService;
   private invoiceEmailService: ReturnType<typeof getInvoiceEmailService>;
   private schemasInitialized = false;
+  private prisma: PrismaClient;
+
+  // Feature flags
+  private readonly USE_PRISMA_INVOICE_STORAGE = process.env.USE_PRISMA_INVOICE_STORAGE === 'true';
+  private readonly USE_PRISMA_INVOICE_NUMBERING = process.env.USE_PRISMA_INVOICE_NUMBERING === 'true';
 
   constructor() {
     this.invoiceGenerationService = new InvoiceGenerationService();
     this.invoiceEmailService = getInvoiceEmailService();
+    this.prisma = new PrismaClient();
     
-    // Use the existing database pool instead of creating a new one
-    this.invoiceStorageService = new InvoiceStorageService(db.pool);
+    // Use either SQL or Prisma version based on feature flags
+    if (this.USE_PRISMA_INVOICE_STORAGE) {
+      logger.info('Using Prisma version of InvoiceStorageService');
+      this.invoiceStorageService = new InvoiceStoragePrismaService(this.prisma);
+    } else {
+      logger.info('Using SQL version of InvoiceStorageService');
+      this.invoiceStorageService = new InvoiceStorageService(db.pool);
+    }
+
+    if (this.USE_PRISMA_INVOICE_NUMBERING) {
+      logger.info('Using Prisma version of InvoiceNumberingService');
+      this.invoiceNumberingService = new InvoiceNumberingPrismaService(this.prisma);
+    } else {
+      logger.info('Using SQL version of InvoiceNumberingService');
+      this.invoiceNumberingService = new InvoiceNumberingService(db.pool);
+    }
   }
 
   // Helper to convert Decimal to number for JSON serialization
@@ -51,9 +76,14 @@ export class InvoicesController {
     
     try {
       logger.info('Initializing invoice schemas...');
-      // Initialize schemas if needed
+      // Initialize schemas if needed (only for SQL version)
       // await this.invoiceGenerationService.initializeSchema();
-      await this.invoiceStorageService.initializeSchema();
+      if (!this.USE_PRISMA_INVOICE_STORAGE && 'initializeSchema' in this.invoiceStorageService) {
+        await this.invoiceStorageService.initializeSchema();
+      }
+      if (!this.USE_PRISMA_INVOICE_NUMBERING && 'initializeSchema' in this.invoiceNumberingService) {
+        await this.invoiceNumberingService.initializeSchema();
+      }
       this.schemasInitialized = true;
       logger.info('Invoice schemas initialized successfully');
     } catch (error) {
@@ -1153,14 +1183,12 @@ export class InvoicesController {
       
       const { series, prefix, format, year } = req.query;
 
-      // TODO: getNextInvoiceNumber method needs to be implemented in InvoiceGenerationService
-      // const nextNumber = await this.invoiceGenerationService.getNextInvoiceNumber({
-      //   series: series as string,
-      //   prefix: prefix as string,
-      //   format: format as string,
-      //   year: year ? parseInt(year as string) : undefined
-      // });
-      const nextNumber = 'INV-2024-0001'; // Placeholder
+      const nextNumber = await this.invoiceNumberingService.getNextInvoiceNumber({
+        series: series as string,
+        prefix: prefix as string,
+        format: format as string,
+        year: year ? parseInt(year as string) : undefined
+      });
 
       res.json({
         success: true,
@@ -1188,9 +1216,8 @@ export class InvoicesController {
       // Ensure schemas are initialized
       await this.ensureSchemasInitialized();
       
-      // TODO: Implement sequences and statistics
-      const sequences: any[] = [];
-      const stats = { totalSequences: 0, totalInvoices: 0 };
+      const sequences = await this.invoiceNumberingService.getAllSequences();
+      const stats = await this.invoiceNumberingService.getStatistics();
 
       res.json({
         success: true,

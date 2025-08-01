@@ -1,6 +1,8 @@
 import { BaseStrategy, TradingSignal, StrategyConfig } from '../../strategy-engine.service';
 import { marketDataService } from '../../market-data.service';
 import { db } from '../../../database';
+import { TRADING_FEATURE_FLAGS } from '../../../../types/trading';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 interface MACrossoverParams {
   fastPeriod: number; // Fast MA period (e.g., 10)
@@ -26,9 +28,11 @@ export class TrendFollowingStrategy extends BaseStrategy {
   private params: MACrossoverParams;
   private lastSignals: Map<string, 'buy' | 'sell' | null> = new Map();
   private indicators: Map<string, TechnicalIndicators> = new Map();
+  private prisma: PrismaClient;
 
   constructor(config: StrategyConfig) {
     super(config);
+    this.prisma = new PrismaClient();
     
     // Default parameters
     this.params = {
@@ -307,29 +311,76 @@ export class TrendFollowingStrategy extends BaseStrategy {
     signal: TradingSignal
   ): Promise<void> {
     try {
-      await db.pool.query(
-        `INSERT INTO trading.positions 
-         (user_id, exchange, symbol, side, quantity, entry_price, stop_loss, take_profit,
-          strategy_id, strategy_name, confidence_score, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [
-          null, // User ID from strategy config if needed
-          exchange,
-          symbol,
-          signal.action === 'buy' ? 'long' : 'short',
-          0, // Quantity will be determined by risk manager
-          signal.analysis.entryPrice,
-          signal.analysis.stopLoss,
-          signal.analysis.takeProfit,
-          this.config.id,
-          this.config.name,
-          signal.strength,
-          JSON.stringify({
-            indicators: signal.analysis.indicators,
-            timeframe: signal.analysis.timeframe,
-          }),
-        ]
-      );
+      // Use Prisma if feature flag is enabled
+      if (TRADING_FEATURE_FLAGS.USE_PRISMA_STRATEGY_ENGINE) {
+        // First, get the exchange and trading pair records
+        const exchangeRecord = await this.prisma.exchange.findUnique({
+          where: { name: exchange }
+        });
+
+        if (!exchangeRecord) {
+          this.logger.error(`Exchange ${exchange} not found`);
+          return;
+        }
+
+        const tradingPair = await this.prisma.tradingPair.findFirst({
+          where: {
+            exchangeId: exchangeRecord.id,
+            symbol: symbol
+          }
+        });
+
+        if (!tradingPair) {
+          this.logger.error(`Trading pair ${symbol} not found on ${exchange}`);
+          return;
+        }
+
+        await this.prisma.position.create({
+          data: {
+            exchangeId: exchangeRecord.id,
+            tradingPairId: tradingPair.id,
+            strategyId: this.config.id,
+            side: signal.action === 'buy' ? 'LONG' : 'SHORT',
+            quantity: new Prisma.Decimal(0), // Quantity will be determined by risk manager
+            entryPrice: new Prisma.Decimal(signal.analysis.entryPrice),
+            currentPrice: new Prisma.Decimal(signal.analysis.entryPrice),
+            stopLoss: signal.analysis.stopLoss ? new Prisma.Decimal(signal.analysis.stopLoss) : null,
+            takeProfit: signal.analysis.takeProfit ? new Prisma.Decimal(signal.analysis.takeProfit) : null,
+            status: 'PENDING', // Will be updated when order is filled
+            confidenceScore: new Prisma.Decimal(signal.strength),
+            metadata: {
+              indicators: signal.analysis.indicators,
+              timeframe: signal.analysis.timeframe,
+              strategyName: this.config.name
+            }
+          }
+        });
+      } else {
+        // Original SQL implementation
+        await db.pool.query(
+          `INSERT INTO trading.positions 
+           (user_id, exchange, symbol, side, quantity, entry_price, stop_loss, take_profit,
+            strategy_id, strategy_name, confidence_score, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          [
+            null, // User ID from strategy config if needed
+            exchange,
+            symbol,
+            signal.action === 'buy' ? 'long' : 'short',
+            0, // Quantity will be determined by risk manager
+            signal.analysis.entryPrice,
+            signal.analysis.stopLoss,
+            signal.analysis.takeProfit,
+            this.config.id,
+            this.config.name,
+            signal.strength,
+            JSON.stringify({
+              indicators: signal.analysis.indicators,
+              timeframe: signal.analysis.timeframe,
+            }),
+          ]
+        );
+      }
     } catch (error) {
       this.logger.error('Failed to record position entry', error);
     }

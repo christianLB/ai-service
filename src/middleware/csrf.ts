@@ -21,6 +21,12 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     return;
   }
 
+  // Skip CSRF for auth endpoints (login, register, etc.)
+  if (req.path.startsWith('/api/auth/')) {
+    next();
+    return;
+  }
+
   // Get token from cookie
   const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
   

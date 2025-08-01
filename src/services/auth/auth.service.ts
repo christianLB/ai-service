@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import { createHash } from 'crypto';
 import { Pool } from 'pg';
 import { config } from '../../config';
+import { FEATURE_FLAGS } from '../../types';
+import { authPrismaService, AuthPrismaService } from './auth-prisma.service';
 
 export interface User {
   id: string;
@@ -27,9 +29,11 @@ export class AuthService {
   private jwtSecret: string;
   private jwtExpiresIn: string;
   private refreshTokenExpiresIn: string;
+  private prismaService: AuthPrismaService;
 
   constructor(pool: Pool) {
     this.pool = pool;
+    this.prismaService = authPrismaService;
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
       throw new Error('JWT_SECRET environment variable is required');
@@ -63,6 +67,12 @@ export class AuthService {
   }
 
   async login(credentials: LoginCredentials): Promise<AuthTokens> {
+    // Use Prisma if feature flag is enabled
+    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
+      return await this.prismaService.login(credentials);
+    }
+
+    // Original SQL implementation
     const { email, password } = credentials;
 
     // Get user from database
@@ -104,6 +114,12 @@ export class AuthService {
   }
 
   async logout(userId: string, refreshToken: string): Promise<void> {
+    // Use Prisma if feature flag is enabled
+    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
+      return await this.prismaService.logout(userId, refreshToken);
+    }
+
+    // Original SQL implementation
     // Revoke refresh token
     const tokenHash = this.hashToken(refreshToken);
     await this.pool.query(
@@ -113,6 +129,12 @@ export class AuthService {
   }
 
   async refreshAccessToken(refreshToken: string): Promise<AuthTokens> {
+    // Use Prisma if feature flag is enabled
+    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
+      return await this.prismaService.refreshAccessToken(refreshToken);
+    }
+
+    // Original SQL implementation
     // Verify refresh token
     const decoded = jwt.verify(refreshToken, this.jwtSecret) as any;
     const userId = decoded.userId;
@@ -153,6 +175,12 @@ export class AuthService {
   }
 
   async getCurrentUser(userId: string): Promise<User> {
+    // Use Prisma if feature flag is enabled
+    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
+      return await this.prismaService.getCurrentUser(userId);
+    }
+
+    // Original SQL implementation
     const query = 'SELECT id, email, full_name, role, is_active FROM users WHERE id = $1';
     const result = await this.pool.query(query, [userId]);
 
@@ -164,6 +192,12 @@ export class AuthService {
   }
 
   async createUser(email: string, password: string, fullName: string, role: string = 'user'): Promise<User> {
+    // Use Prisma if feature flag is enabled
+    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
+      return await this.prismaService.createUser(email, password, fullName, role);
+    }
+
+    // Original SQL implementation
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 

@@ -57,7 +57,13 @@
     "generate:crud": "plop crud",
     "generate:crud:auto": "node scripts/generate-crud.mjs",
     "generate:service": "plop service",
-    "generate:hook": "plop hook"
+    "generate:hook": "plop hook",
+    "migration:status": "node scripts/migration/update-migration-status.js",
+    "migration:verify": "node scripts/migration/verify-financial-dashboard.js",
+    "migration:rollback": "node scripts/migration/financial-dashboard-rollback.js",
+    "migration:rollback:dry": "node scripts/migration/financial-dashboard-rollback.js --dry-run",
+    "migration:test": "./test-prisma-dashboard.sh",
+    "migration:monitor": "node scripts/migration/monitor-performance.js"
   },
   "keywords": [],
   "author": "",

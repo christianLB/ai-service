@@ -36,3 +36,4 @@ export class Logger {
 // Create a default logger instance
 const logger = new Logger('App');
 export default logger;
+export { logger };

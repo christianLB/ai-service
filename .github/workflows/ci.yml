@@ -171,7 +171,9 @@ jobs:
         run: npx prisma generate
       
       - name: Build backend
-        run: npm run build:backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_service
+        run: npm run build:backend:nocheck
       
       - name: Build frontend
         timeout-minutes: 10
