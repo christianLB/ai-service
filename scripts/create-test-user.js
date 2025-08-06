@@ -9,7 +9,7 @@ async function createTestUser() {
 
   try {
     // Hash the password
-    const hashedPassword = await bcrypt.hash('testpassword123', 10);
+    const hashedPassword = await bcrypt.hash('testPassword123', 10);
     
     // Create the user
     const query = `
@@ -34,7 +34,7 @@ async function createTestUser() {
     // Test credentials
     console.log('\nTest credentials:');
     console.log('Email: test@example.com');
-    console.log('Password: testpassword123');
+    console.log('Password: testPassword123');
     
   } catch (error) {
     console.error('Error creating test user:', error);

@@ -374,6 +374,69 @@ auth-status: ## Ver intentos recientes de login
 auth-unblock: ## Desbloquear IP específica
 	@$(MAKE) -f Makefile.development dev-auth-unblock-ip
 
+.PHONY: auth-diagnose
+auth-diagnose: ## 🔍 Quick authentication diagnostics (token validation, middleware checks)
+	@echo "$(BLUE)🔍 Running authentication diagnostics...$(NC)"
+	@echo "1. Testing token generation..."
+	@node scripts/test-auth.js
+	@echo "\n2. Testing login endpoint..."
+	@./scripts/quick-auth-test.sh
+	@echo "\n3. Checking token payload structure..."
+	@node scripts/diagnose-auth-tokens.js
+
+.PHONY: auth-monitor
+auth-monitor: ## 📊 Monitor authentication metrics (login attempts, failures, token expiry)
+	@echo "$(BLUE)📊 Authentication Monitoring$(NC)"
+	@echo "Recent login attempts:"
+	@docker exec -t ai-service-postgres psql -U ai_user -d ai_service -c \
+		"SELECT email, ip_address, success, created_at FROM login_attempts ORDER BY created_at DESC LIMIT 10;" 2>/dev/null || \
+		echo "No login attempts table found"
+	@echo "\nActive sessions:"
+	@docker exec -t ai-service-postgres psql -U ai_user -d ai_service -c \
+		"SELECT user_id, expires_at, created_at FROM refresh_tokens WHERE revoked_at IS NULL ORDER BY created_at DESC LIMIT 10;" 2>/dev/null || \
+		echo "No refresh tokens table found"
+
+.PHONY: auth-test-complete
+auth-test-complete: ## 🧪 Run complete auth test suite (unit + integration + e2e)
+	@echo "$(BLUE)🧪 Running complete authentication test suite...$(NC)"
+	@echo "\n$(YELLOW)1. Unit Tests$(NC)"
+	@node scripts/test-auth.js
+	@echo "\n$(YELLOW)2. Integration Tests$(NC)"
+	@./scripts/test-auth-docker.sh
+	@echo "\n$(YELLOW)3. Health Check Tests$(NC)"
+	@./scripts/check-auth.sh
+
+.PHONY: auth-fix-common
+auth-fix-common: ## 🔧 Fix common auth issues (token mismatch, expired tokens, etc.)
+	@echo "$(BLUE)🔧 Checking for common auth issues...$(NC)"
+	@./scripts/fix-auth-issues.sh
+
+.PHONY: auth-dev-reset
+auth-dev-reset: ## 🔄 Reset auth system for development (recreate test user, clear tokens)
+	@echo "$(BLUE)🔄 Resetting authentication system for development...$(NC)"
+	@echo "1. Clearing expired tokens..."
+	@docker exec -t ai-service-postgres psql -U ai_user -d ai_service -c \
+		"DELETE FROM refresh_tokens WHERE expires_at < NOW();" 2>/dev/null || echo "No tokens to clear"
+	@echo "2. Recreating test user..."
+	@node scripts/create-test-user.js
+	@echo "$(GREEN)✅ Test user recreated with standard credentials$(NC)"
+	@echo "   Email: test@example.com"
+	@echo "   Password: testPassword123"
+
+.PHONY: auth-validate-middleware  
+auth-validate-middleware: ## 🛡️ Validate auth middleware configuration
+	@echo "$(BLUE)🛡️ Validating authentication middleware...$(NC)"
+	@echo "1. Checking middleware file..."
+	@if [ -f src/middleware/auth.middleware.ts ]; then \
+		echo "$(GREEN)✅ Auth middleware found$(NC)"; \
+		echo "\n2. Checking token validation logic..."; \
+		grep -n "decoded.type" src/middleware/auth.middleware.ts || echo "$(YELLOW)⚠️  No type checking found$(NC)"; \
+		echo "\n3. Checking required fields..."; \
+		grep -n "userId.*email.*role" src/middleware/auth.middleware.ts || echo "$(YELLOW)⚠️  Field validation not found$(NC)"; \
+	else \
+		echo "$(RED)❌ Auth middleware not found$(NC)"; \
+	fi
+
 # =============================================================================
 # 🚨 COMANDOS DE EMERGENCIA (recuperación < 30 segundos)
 # =============================================================================

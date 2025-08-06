@@ -398,13 +398,14 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       role: user.role,
+      type: 'access'
     };
 
     return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn } as any);
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {
-    const token = jwt.sign({ userId }, this.jwtSecret, { expiresIn: this.refreshTokenExpiresIn } as any);
+    const token = jwt.sign({ userId, type: 'refresh' }, this.jwtSecret, { expiresIn: this.refreshTokenExpiresIn } as any);
     const tokenHash = this.hashToken(token);
     const expiresAt = new Date(Date.now() + this.parseDuration(this.refreshTokenExpiresIn));
 
