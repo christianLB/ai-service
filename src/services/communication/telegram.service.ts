@@ -3,8 +3,8 @@ import { TelegramConfig, FinancialAlert, TelegramCommand, SystemStatus, Financia
 import { FinancialDatabaseService } from '../financial/database.service';
 import { TelegramDocumentService } from '../document-intelligence/telegram-document.service';
 import { InvoiceManagementService } from '../financial/invoice-management.service';
-import { clientPrismaService } from '../financial/client-prisma.service';
-// import { financialReportingPrismaService } from '../financial/reporting-prisma.service'; // TEMPORARILY DISABLED
+import { clientService } from '../financial/client.service';
+// import { financialReportingService } from '../financial/reporting.service'; // TEMPORARILY DISABLED
 import { logger } from '../../utils/log';
 import { auditCatch } from '../../utils/forensic-logger';
 import { integrationConfigService } from '../integrations';
@@ -939,7 +939,7 @@ Ejemplo:
       }
 
       // Find or create client
-      let clientData = await clientPrismaService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
+      let clientData = await clientService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
       let client = clientData ? { id: clientData.id, name: clientData.name } : null;
       
       if (!client) {
@@ -955,7 +955,7 @@ Ejemplo:
           status: 'active'
         };
         const userId = `telegram-${chatId}`;
-        const result = await clientPrismaService.createClient(clientData, userId);
+        const result = await clientService.createClient(clientData, userId);
         client = { id: result.data.client.id, name: result.data.client.name };
       }
 
@@ -1022,7 +1022,7 @@ Ejemplo:
       let clientId: string | undefined;
 
       if (clientFilter) {
-        const client = await clientPrismaService.getClientByTaxId(clientFilter);
+        const client = await clientService.getClientByTaxId(clientFilter);
         if (client) {
           clientId = client.id;
         }
@@ -1309,7 +1309,7 @@ Usa /invoice create para crear nuevas facturas.
         return;
       }
 
-      const client = await clientPrismaService.getClientByTaxId(clientName);
+      const client = await clientService.getClientByTaxId(clientName);
       if (!client) {
         await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
         return;
@@ -1380,14 +1380,14 @@ Comandos disponibles:
     try {
       const clientName = params.join(' ');
       
-      const client = await clientPrismaService.getClientByTaxId(clientName);
+      const client = await clientService.getClientByTaxId(clientName);
       if (!client) {
         await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
         return;
       }
 
       const stats = await this.invoiceService.getClientInvoiceStats(client.id);
-      const transactions = await clientPrismaService.getClientTransactions(client.id, { limit: 5 });
+      const transactions = await clientService.getClientTransactions(client.id, { limit: 5 });
 
       let message = `👤 <b>Balance de ${client.name}</b>\n\n`;
 
@@ -1429,7 +1429,7 @@ Comandos disponibles:
 
   private async handleClientList(chatId: string): Promise<void> {
     try {
-      const result = await clientPrismaService.listClients({
+      const result = await clientService.listClients({
         status: 'active',
         limit: 10,
         sortBy: 'createdAt',
@@ -1516,7 +1516,7 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
         return;
       }
 
-      const client = await clientPrismaService.getClientByTaxId(clientName);
+      const client = await clientService.getClientByTaxId(clientName);
       if (!client) {
         await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
         return;

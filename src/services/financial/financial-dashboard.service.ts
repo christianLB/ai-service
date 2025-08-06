@@ -9,7 +9,7 @@ import {
   CategoryBreakdown
 } from '../../types/financial/dashboard.types';
 
-export class FinancialDashboardPrismaService {
+export class FinancialDashboardService {
   private prisma: PrismaClient;
   private enableValidation: boolean;
   private logger: Logger;
@@ -17,7 +17,7 @@ export class FinancialDashboardPrismaService {
   constructor(prisma?: PrismaClient) {
     this.prisma = prisma || new PrismaClient();
     this.enableValidation = process.env.ENABLE_SQL_VALIDATION === 'true';
-    this.logger = new Logger('FinancialDashboardPrisma');
+    this.logger = new Logger('FinancialDashboard');
   }
 
   private calculateDateRange(timeRange: TimeRange): { startDate: Date; endDate: Date } {
@@ -444,4 +444,4 @@ export class FinancialDashboardPrismaService {
 }
 
 // Export singleton instance
-export const financialDashboardPrismaService = new FinancialDashboardPrismaService();
+export const financialDashboardService = new FinancialDashboardService();

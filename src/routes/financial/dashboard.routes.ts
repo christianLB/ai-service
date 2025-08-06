@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { FinancialDatabaseService } from '../../services/financial/database.service';
-import { FinancialDashboardPrismaService } from '../../services/financial/financial-dashboard-prisma.service';
+import { FinancialDashboardService } from '../../services/financial/financial-dashboard.service';
 import { featureFlags } from '../../config/feature-flags';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { databaseRateLimit } from '../../middleware/express-rate-limit.middleware';
@@ -13,7 +13,7 @@ const logger = new Logger('FinancialDashboard');
 
 // Database service instances
 let databaseService: FinancialDatabaseService;
-let dashboardPrismaService: FinancialDashboardPrismaService;
+let dashboardPrismaService: FinancialDashboardService;
 
 // Initialize database services
 const initializeServices = () => {
@@ -29,7 +29,7 @@ const initializeServices = () => {
   }
   
   if (!dashboardPrismaService && featureFlags.isEnabled('USE_PRISMA_DASHBOARD')) {
-    dashboardPrismaService = new FinancialDashboardPrismaService();
+    dashboardPrismaService = new FinancialDashboardService();
   }
 };
 

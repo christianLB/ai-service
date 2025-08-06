@@ -1,10 +1,8 @@
+import { PrismaClient, Prisma } from '@prisma/client';
 import { Logger } from '../../utils/logger';
-import { db } from '../database';
 import { BaseStrategy, StrategyConfig } from './strategy-engine.service';
 import { marketDataService, OHLCVData } from './market-data.service';
 import { riskManagerService } from './risk-manager.service';
-import { TRADING_FEATURE_FLAGS } from '../../types/trading';
-import { backtestPrismaService, BacktestPrismaService } from './backtest-prisma.service';
 
 const logger = new Logger('BacktestService');
 
@@ -67,11 +65,11 @@ export interface BacktestResult {
 
 export class BacktestService {
   private static instance: BacktestService;
+  private prisma: PrismaClient;
   private runningBacktests: Map<string, boolean> = new Map();
-  private prismaService: BacktestPrismaService;
 
   private constructor() {
-    this.prismaService = backtestPrismaService;
+    this.prisma = new PrismaClient();
   }
 
   static getInstance(): BacktestService {
@@ -82,20 +80,13 @@ export class BacktestService {
   }
 
   async runBacktest(config: BacktestConfig): Promise<BacktestResult> {
+    const startTime = Date.now();
     const backtestId = `bt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
+    logger.info('Starting backtest', { backtestId, config });
+    this.runningBacktests.set(backtestId, true);
+
     try {
-      // Use Prisma if feature flag is enabled
-      if (TRADING_FEATURE_FLAGS.USE_PRISMA_BACKTEST) {
-        return await this.prismaService.runBacktest(config);
-      }
-
-      // Original SQL implementation
-      const startTime = Date.now();
-      
-      logger.info('Starting backtest', { backtestId, config });
-      this.runningBacktests.set(backtestId, true);
-
       // Load strategy
       const strategy = await this.loadStrategy(config.strategyId);
       if (!strategy) {
@@ -278,22 +269,32 @@ export class BacktestService {
 
   private async loadStrategy(strategyId: string): Promise<BaseStrategy | null> {
     try {
-      const result = await db.pool.query(
-        `SELECT * FROM trading.strategies WHERE id = $1`,
-        [strategyId]
-      );
+      const strategyRecord = await this.prisma.strategy.findUnique({
+        where: { id: strategyId },
+        include: {
+          StrategyTradingPair: {
+            include: {
+              tradingPair: true
+            }
+          }
+        }
+      });
 
-      if (result.rows.length === 0) {
+      if (!strategyRecord) {
         return null;
       }
 
-      const row = result.rows[0];
       const config: StrategyConfig = {
-        id: row.id,
-        name: row.name,
-        type: row.type,
-        parameters: row.parameters,
-        riskParameters: row.risk_parameters,
+        id: strategyRecord.id,
+        name: strategyRecord.name,
+        type: strategyRecord.type,
+        parameters: (strategyRecord.config as Record<string, any>) || {},
+        riskParameters: {
+          maxPositionSize: Number((strategyRecord.metadata as any)?.risk || 0.02),
+          maxDrawdown: Number((strategyRecord.metadata as any)?.maxDrawdown || 0.1),
+          stopLoss: 0.02, // Default 2%
+          takeProfit: 0.05, // Default 5%
+        },
         isActive: false, // Always inactive for backtesting
         isPaperTrading: true, // Always paper trading for backtesting
       };
@@ -313,6 +314,7 @@ export class BacktestService {
           break;
           
         case 'trend_following':
+        case 'MA_CROSSOVER':
           const { TrendFollowingStrategy } = await import('./strategies/trend-following/ma-crossover.strategy');
           StrategyClass = TrendFollowingStrategy;
           break;
@@ -338,25 +340,25 @@ export class BacktestService {
     endDate: Date
   ): Promise<OHLCVData[]> {
     try {
-      // First try to get from cache
-      const cached = await db.pool.query(
-        `SELECT timestamp, open, high, low, close, volume
-         FROM trading.market_data_cache
-         WHERE exchange = $1 AND symbol = $2 AND timeframe = $3
-         AND timestamp >= $4 AND timestamp <= $5
-         ORDER BY timestamp ASC`,
-        [exchange, symbol, timeframe, startDate, endDate]
-      );
+      // First try to get from Prisma cache
+      const marketData = await this.prisma.marketData.findMany({
+        where: {
+          exchange: { name: exchange },
+          tradingPair: { symbol },
+          timestamp: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        orderBy: { timestamp: 'asc' },
+        include: {
+          tradingPair: true
+        }
+      });
 
-      if (cached.rows.length > 0) {
-        return cached.rows.map(row => ({
-          timestamp: row.timestamp,
-          open: parseFloat(row.open),
-          high: parseFloat(row.high),
-          low: parseFloat(row.low),
-          close: parseFloat(row.close),
-          volume: parseFloat(row.volume),
-        }));
+      if (marketData.length > 0) {
+        // Group by timeframe and convert to OHLCV
+        return this.convertToOHLCV(marketData, timeframe);
       }
 
       // If not in cache, fetch from market data service
@@ -372,6 +374,24 @@ export class BacktestService {
       logger.error('Failed to get historical data', error);
       return [];
     }
+  }
+
+  private convertToOHLCV(marketData: any[], timeframe: string): OHLCVData[] {
+    // Simple conversion - in production, would group by timeframe
+    const ohlcv: OHLCVData[] = [];
+    
+    for (const data of marketData) {
+      ohlcv.push({
+        timestamp: data.timestamp,
+        open: Number(data.price), // Simplified - would use actual OHLCV calculation
+        high: Number(data.high24h || data.price),
+        low: Number(data.low24h || data.price),
+        close: Number(data.price),
+        volume: Number(data.volume)
+      });
+    }
+    
+    return ohlcv;
   }
 
   private async checkExitConditions(
@@ -703,39 +723,36 @@ export class BacktestService {
 
   private async saveBacktestResult(result: BacktestResult): Promise<void> {
     try {
-      await db.pool.query(
-        `INSERT INTO trading.backtest_results
-         (id, strategy_id, start_date, end_date, initial_capital, final_capital,
-          total_return, total_trades, winning_trades, losing_trades,
-          sharpe_ratio, sortino_ratio, max_drawdown, win_rate, profit_factor,
-          trades, equity_curve, metadata, completed_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-        [
-          result.id,
-          result.strategyId,
-          result.config.startDate,
-          result.config.endDate,
-          result.config.initialCapital,
-          result.trades[result.trades.length - 1]?.balance || result.config.initialCapital,
-          result.metrics.totalReturn,
-          result.metrics.totalTrades,
-          result.metrics.winningTrades,
-          result.metrics.losingTrades,
-          result.metrics.sharpeRatio,
-          result.metrics.sortinoRatio,
-          result.metrics.maxDrawdown,
-          result.metrics.winRate,
-          result.metrics.profitFactor,
-          JSON.stringify(result.trades),
-          JSON.stringify(result.equityCurve),
-          JSON.stringify({
+      await this.prisma.backtestResult.create({
+        data: {
+          id: result.id,
+          strategyId: result.strategyId,
+          name: `Backtest ${result.config.symbols.join(',')} ${result.config.startDate.toISOString().split('T')[0]}`,
+          startDate: result.config.startDate,
+          endDate: result.config.endDate,
+          initialCapital: new Prisma.Decimal(result.config.initialCapital),
+          finalCapital: new Prisma.Decimal(result.trades[result.trades.length - 1]?.balance || result.config.initialCapital),
+          totalReturn: new Prisma.Decimal(result.metrics.totalReturn),
+          totalTrades: result.metrics.totalTrades,
+          winningTrades: result.metrics.winningTrades,
+          losingTrades: result.metrics.losingTrades,
+          winRate: new Prisma.Decimal(result.metrics.winRate),
+          sharpeRatio: result.metrics.sharpeRatio ? new Prisma.Decimal(result.metrics.sharpeRatio) : null,
+          sortinoRatio: result.metrics.sortinoRatio ? new Prisma.Decimal(result.metrics.sortinoRatio) : null,
+          maxDrawdown: new Prisma.Decimal(result.metrics.maxDrawdown),
+          profitFactor: result.metrics.profitFactor ? new Prisma.Decimal(result.metrics.profitFactor) : null,
+          parameters: result.config as any,
+          metadata: {
             config: result.config,
             metrics: result.metrics,
+            trades: result.trades,
+            equityCurve: result.equityCurve,
             drawdownCurve: result.drawdownCurve,
-          }),
-          result.completedAt,
-        ]
-      );
+            duration: result.duration
+          } as any,
+          completedAt: result.completedAt
+        }
+      });
       
       logger.info('Backtest result saved', { backtestId: result.id });
     } catch (error) {
@@ -746,20 +763,21 @@ export class BacktestService {
 
   async getBacktestResults(strategyId?: string): Promise<any[]> {
     try {
-      // Use Prisma if feature flag is enabled
-      if (TRADING_FEATURE_FLAGS.USE_PRISMA_BACKTEST) {
-        return await this.prismaService.getBacktestResults(strategyId);
-      }
-
-      // Original SQL implementation
-      const query = strategyId
-        ? `SELECT * FROM trading.backtest_results WHERE strategy_id = $1 ORDER BY completed_at DESC`
-        : `SELECT * FROM trading.backtest_results ORDER BY completed_at DESC LIMIT 50`;
-        
-      const params = strategyId ? [strategyId] : [];
-      const result = await db.pool.query(query, params);
+      const results = await this.prisma.backtestResult.findMany({
+        where: strategyId ? { strategyId } : undefined,
+        orderBy: { createdAt: 'desc' },
+        take: strategyId ? undefined : 50,
+        include: {
+          strategy: {
+            select: {
+              name: true,
+              type: true
+            }
+          }
+        }
+      });
       
-      return result.rows;
+      return results;
     } catch (error) {
       logger.error('Failed to get backtest results', error);
       return [];
@@ -767,14 +785,15 @@ export class BacktestService {
   }
 
   async cancelBacktest(backtestId: string): Promise<void> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_BACKTEST) {
-      return await this.prismaService.cancelBacktest(backtestId);
-    }
-
-    // Original SQL implementation
     this.runningBacktests.set(backtestId, false);
     logger.info('Backtest cancelled', { backtestId });
+  }
+
+  /**
+   * Close database connection
+   */
+  async disconnect(): Promise<void> {
+    await this.prisma.$disconnect();
   }
 }
 

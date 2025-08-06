@@ -1,10 +1,8 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { createHash } from 'crypto';
-import { Pool } from 'pg';
+import { PrismaClient } from '@prisma/client';
 import { config } from '../../config';
-import { FEATURE_FLAGS } from '../../types';
-import { authPrismaService, AuthPrismaService } from './auth-prisma.service';
 
 export interface User {
   id: string;
@@ -25,15 +23,13 @@ export interface AuthTokens {
 }
 
 export class AuthService {
-  private pool: Pool;
+  private prisma: PrismaClient;
   private jwtSecret: string;
   private jwtExpiresIn: string;
   private refreshTokenExpiresIn: string;
-  private prismaService: AuthPrismaService;
 
-  constructor(pool: Pool) {
-    this.pool = pool;
-    this.prismaService = authPrismaService;
+  constructor() {
+    this.prisma = new PrismaClient();
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
       throw new Error('JWT_SECRET environment variable is required');
@@ -52,59 +48,55 @@ export class AuthService {
     if (!match) return 0;
     const value = parseInt(match[1], 10);
     const unit = match[2];
+
     switch (unit) {
-      case 's':
-        return value * 1000;
-      case 'm':
-        return value * 60 * 1000;
-      case 'h':
-        return value * 60 * 60 * 1000;
-      case 'd':
-        return value * 24 * 60 * 60 * 1000;
-      default:
-        return 0;
+      case 's': return value * 1000;
+      case 'm': return value * 60 * 1000;
+      case 'h': return value * 60 * 60 * 1000;
+      case 'd': return value * 24 * 60 * 60 * 1000;
+      default: return 0;
     }
   }
 
+  /**
+   * Login user and generate tokens
+   */
   async login(credentials: LoginCredentials): Promise<AuthTokens> {
-    // Use Prisma if feature flag is enabled
-    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
-      return await this.prismaService.login(credentials);
-    }
-
-    // Original SQL implementation
     const { email, password } = credentials;
 
     // Get user from database
-    const userQuery = `
-      SELECT id, email, password_hash, full_name, role, is_active
-      FROM users
-      WHERE email = $1
-    `;
-    const result = await this.pool.query(userQuery, [email]);
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        password_hash: true,
+        full_name: true,
+        role: true,
+        is_active: true
+      }
+    });
 
-    if (result.rows.length === 0) {
+    if (!user) {
       throw new Error('Invalid credentials');
     }
 
-    const user = result.rows[0];
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      throw new Error('Invalid credentials');
+    }
 
     // Check if user is active
     if (!user.is_active) {
       throw new Error('Account is disabled');
     }
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
-      throw new Error('Invalid credentials');
-    }
-
     // Update last login
-    await this.pool.query(
-      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
-      [user.id]
-    );
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { last_login: new Date() }
+    });
 
     // Generate tokens
     const accessToken = this.generateAccessToken(user);
@@ -113,133 +105,341 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  /**
+   * Logout user and revoke refresh token
+   */
   async logout(userId: string, refreshToken: string): Promise<void> {
-    // Use Prisma if feature flag is enabled
-    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
-      return await this.prismaService.logout(userId, refreshToken);
-    }
-
-    // Original SQL implementation
     // Revoke refresh token
     const tokenHash = this.hashToken(refreshToken);
-    await this.pool.query(
-      'UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND token_hash = $2',
-      [userId, tokenHash]
-    );
+    
+    await this.prisma.refresh_tokens.updateMany({
+      where: {
+        user_id: userId,
+        token_hash: tokenHash,
+        revoked_at: null
+      },
+      data: {
+        revoked_at: new Date()
+      }
+    });
   }
 
+  /**
+   * Refresh access token using refresh token
+   */
   async refreshAccessToken(refreshToken: string): Promise<AuthTokens> {
-    // Use Prisma if feature flag is enabled
-    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
-      return await this.prismaService.refreshAccessToken(refreshToken);
-    }
-
-    // Original SQL implementation
-    // Verify refresh token
+    // Verify the refresh token
     const decoded = jwt.verify(refreshToken, this.jwtSecret) as any;
     const userId = decoded.userId;
-
-    // Check if token exists and is not revoked
     const tokenHash = this.hashToken(refreshToken);
-    const tokenQuery = `
-      SELECT * FROM refresh_tokens
-      WHERE user_id = $1 AND token_hash = $2 AND revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP
-    `;
-    const tokenResult = await this.pool.query(tokenQuery, [userId, tokenHash]);
 
-    if (tokenResult.rows.length === 0) {
+    // Check if refresh token exists and is valid
+    const storedToken = await this.prisma.refresh_tokens.findFirst({
+      where: {
+        user_id: userId,
+        token_hash: tokenHash,
+        revoked_at: null,
+        expires_at: {
+          gt: new Date()
+        }
+      }
+    });
+
+    if (!storedToken) {
       throw new Error('Invalid refresh token');
     }
 
     // Get user
-    const userQuery = 'SELECT id, email, full_name, role, is_active FROM users WHERE id = $1';
-    const userResult = await this.pool.query(userQuery, [userId]);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        role: true,
+        is_active: true
+      }
+    });
 
-    if (userResult.rows.length === 0 || !userResult.rows[0].is_active) {
+    if (!user || !user.is_active) {
       throw new Error('User not found or inactive');
     }
 
-    const user = userResult.rows[0];
-
     // Revoke old refresh token
-    await this.pool.query(
-      'UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [tokenResult.rows[0].id]
-    );
+    await this.prisma.refresh_tokens.update({
+      where: { id: storedToken.id },
+      data: { revoked_at: new Date() }
+    });
 
     // Generate new tokens
-    const newAccessToken = this.generateAccessToken(user);
+    const accessToken = this.generateAccessToken(user);
     const newRefreshToken = await this.generateRefreshToken(user.id);
 
-    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    return { accessToken, refreshToken: newRefreshToken };
   }
 
+  /**
+   * Get current user
+   */
   async getCurrentUser(userId: string): Promise<User> {
-    // Use Prisma if feature flag is enabled
-    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
-      return await this.prismaService.getCurrentUser(userId);
-    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        role: true,
+        is_active: true
+      }
+    });
 
-    // Original SQL implementation
-    const query = 'SELECT id, email, full_name, role, is_active FROM users WHERE id = $1';
-    const result = await this.pool.query(query, [userId]);
-
-    if (result.rows.length === 0) {
+    if (!user) {
       throw new Error('User not found');
     }
 
-    return result.rows[0];
+    return {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name || '',
+      role: user.role || 'user',
+      is_active: user.is_active || false
+    };
   }
 
+  /**
+   * Create a new user
+   */
   async createUser(email: string, password: string, fullName: string, role: string = 'user'): Promise<User> {
-    // Use Prisma if feature flag is enabled
-    if (FEATURE_FLAGS.USE_PRISMA_AUTH) {
-      return await this.prismaService.createUser(email, password, fullName, role);
+    // Check if user already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (existingUser) {
+      throw new Error('User already exists');
     }
 
-    // Original SQL implementation
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Insert user
-    const query = `
-      INSERT INTO users (email, password_hash, full_name, role)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, email, full_name, role, is_active
-    `;
-    const result = await this.pool.query(query, [email, passwordHash, fullName, role]);
+    // Create user
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        password_hash: passwordHash,
+        full_name: fullName,
+        role,
+        is_active: true
+      },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        role: true,
+        is_active: true
+      }
+    });
 
-    return result.rows[0];
+    return {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name || '',
+      role: user.role || 'user',
+      is_active: user.is_active || false
+    };
+  }
+
+  /**
+   * Update user password
+   */
+  async updatePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        password_hash: true
+      }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verify old password
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password_hash);
+    if (!isPasswordValid) {
+      throw new Error('Invalid old password');
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password_hash: newPasswordHash }
+    });
+
+    // Revoke all refresh tokens for security
+    await this.prisma.refresh_tokens.updateMany({
+      where: { 
+        user_id: userId,
+        revoked_at: null
+      },
+      data: { revoked_at: new Date() }
+    });
+  }
+
+  /**
+   * Reset user password (admin function)
+   */
+  async resetPassword(userId: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password_hash: passwordHash }
+    });
+
+    // Revoke all refresh tokens
+    await this.prisma.refresh_tokens.updateMany({
+      where: { 
+        user_id: userId,
+        revoked_at: null
+      },
+      data: { revoked_at: new Date() }
+    });
+  }
+
+  /**
+   * Activate or deactivate user
+   */
+  async setUserActive(userId: string, isActive: boolean): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { is_active: isActive }
+    });
+
+    // If deactivating, revoke all refresh tokens
+    if (!isActive) {
+      await this.prisma.refresh_tokens.updateMany({
+        where: { 
+          user_id: userId,
+          revoked_at: null
+        },
+        data: { revoked_at: new Date() }
+      });
+    }
+  }
+
+  /**
+   * List all users (admin function)
+   */
+  async listUsers(options?: {
+    skip?: number;
+    take?: number;
+    role?: string;
+    isActive?: boolean;
+  }): Promise<{ users: User[]; total: number }> {
+    const where: any = {};
+    
+    if (options?.role) {
+      where.role = options.role;
+    }
+    
+    if (options?.isActive !== undefined) {
+      where.is_active = options.isActive;
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip: options?.skip || 0,
+        take: options?.take || 20,
+        select: {
+          id: true,
+          email: true,
+          full_name: true,
+          role: true,
+          is_active: true,
+          created_at: true,
+          last_login: true
+        },
+        orderBy: {
+          created_at: 'desc'
+        }
+      }),
+      this.prisma.user.count({ where })
+    ]);
+
+    return {
+      users: users.map(user => ({
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name || '',
+        role: user.role || 'user',
+        is_active: user.is_active || false
+      })),
+      total
+    };
   }
 
   private generateAccessToken(user: any): string {
-    console.log('Generating access token for user:', user);
     const payload = {
       userId: user.id,
       email: user.email,
       role: user.role,
-      type: 'access'
     };
-    console.log('Token payload:', payload);
 
     return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn } as any);
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {
-    const payload = { userId, type: 'refresh' };
-    const token = jwt.sign(payload, this.jwtSecret, { expiresIn: this.refreshTokenExpiresIn } as any);
-    
-    // Store token hash in database
+    const token = jwt.sign({ userId }, this.jwtSecret, { expiresIn: this.refreshTokenExpiresIn } as any);
     const tokenHash = this.hashToken(token);
     const expiresAt = new Date(Date.now() + this.parseDuration(this.refreshTokenExpiresIn));
 
-    await this.pool.query(
-      'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
-      [userId, tokenHash, expiresAt]
-    );
+    await this.prisma.refresh_tokens.create({
+      data: {
+        user_id: userId,
+        token_hash: tokenHash,
+        expires_at: expiresAt
+      }
+    });
 
     return token;
   }
 
-  // AUTH_BYPASS removed - development now requires a real user
+  /**
+   * Clean up expired refresh tokens
+   */
+  async cleanupExpiredTokens(): Promise<void> {
+    await this.prisma.refresh_tokens.deleteMany({
+      where: {
+        OR: [
+          { expires_at: { lt: new Date() } },
+          { revoked_at: { not: null } }
+        ]
+      }
+    });
+  }
+
+  /**
+   * Close database connection
+   */
+  async disconnect(): Promise<void> {
+    await this.prisma.$disconnect();
+  }
 }
+
+// Export singleton instance
+export const authService = new AuthService();

@@ -4,7 +4,7 @@ import type { InvoiceFormData } from '../../types/financial/index';
 import { AppError } from '../../utils/errors';
 import logger from '../../utils/logger';
 
-export class InvoicePrismaService {
+export class InvoiceService {
   /**
    * Get all invoices with pagination and filtering
    */
@@ -515,4 +515,4 @@ export class InvoicePrismaService {
 }
 
 // Export singleton instance
-export const invoicePrismaService = new InvoicePrismaService();
+export const invoiceService = new InvoiceService();

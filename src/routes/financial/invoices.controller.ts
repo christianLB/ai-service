@@ -1,15 +1,12 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../middleware/auth.middleware';
-import { invoicePrismaService } from '../../services/financial/invoice-prisma.service';
-import { clientPrismaService } from '../../services/financial/client-prisma.service';
+import { invoiceService } from '../../services/financial/invoice.service';
+import { clientService } from '../../services/financial/client.service';
 import { InvoiceGenerationService } from '../../services/financial/invoice-generation.service';
-import { InvoiceStorageService } from '../../services/financial/invoice-storage.service';
-import { InvoiceStoragePrismaService } from '../../services/financial/invoice-storage-prisma.service';
+import { InvoiceStoragePrismaService } from '../../services/financial/invoice-storage.service';
 import { InvoiceNumberingService } from '../../services/financial/invoice-numbering.service';
-import { InvoiceNumberingPrismaService } from '../../services/financial/invoice-numbering-prisma.service';
 import { getInvoiceEmailService } from '../../services/financial/invoice-email.service';
 import { logger } from '../../utils/log';
-import { db } from '../../services/database';
 import { PrismaClient } from '@prisma/client';
 import type { Prisma, Invoice, Client } from '../../lib/prisma';
 import type { InvoiceFormData } from '../../types/financial/index';
@@ -26,40 +23,24 @@ interface InvoiceItem {
 // Default company configuration is imported from company.model.ts
 
 export class InvoicesController {
-  private invoiceService = invoicePrismaService;
-  private clientService = clientPrismaService;
+  private invoiceService = invoiceService;
+  private clientService = clientService;
   private invoiceGenerationService: InvoiceGenerationService;
-  private invoiceStorageService: InvoiceStorageService | InvoiceStoragePrismaService;
-  private invoiceNumberingService: InvoiceNumberingService | InvoiceNumberingPrismaService;
+  private invoiceStorageService: InvoiceStoragePrismaService;
+  private invoiceNumberingService: InvoiceNumberingService;
   private invoiceEmailService: ReturnType<typeof getInvoiceEmailService>;
   private schemasInitialized = false;
   private prisma: PrismaClient;
 
-  // Feature flags
-  private readonly USE_PRISMA_INVOICE_STORAGE = process.env.USE_PRISMA_INVOICE_STORAGE === 'true';
-  private readonly USE_PRISMA_INVOICE_NUMBERING = process.env.USE_PRISMA_INVOICE_NUMBERING === 'true';
 
   constructor() {
     this.invoiceGenerationService = new InvoiceGenerationService();
     this.invoiceEmailService = getInvoiceEmailService();
     this.prisma = new PrismaClient();
     
-    // Use either SQL or Prisma version based on feature flags
-    if (this.USE_PRISMA_INVOICE_STORAGE) {
-      logger.info('Using Prisma version of InvoiceStorageService');
-      this.invoiceStorageService = new InvoiceStoragePrismaService(this.prisma);
-    } else {
-      logger.info('Using SQL version of InvoiceStorageService');
-      this.invoiceStorageService = new InvoiceStorageService(db.pool);
-    }
-
-    if (this.USE_PRISMA_INVOICE_NUMBERING) {
-      logger.info('Using Prisma version of InvoiceNumberingService');
-      this.invoiceNumberingService = new InvoiceNumberingPrismaService(this.prisma);
-    } else {
-      logger.info('Using SQL version of InvoiceNumberingService');
-      this.invoiceNumberingService = new InvoiceNumberingService(db.pool);
-    }
+    // Initialize services
+    this.invoiceStorageService = new InvoiceStoragePrismaService(this.prisma);
+    this.invoiceNumberingService = new InvoiceNumberingService(this.prisma);
   }
 
   // Helper to convert Decimal to number for JSON serialization
@@ -71,25 +52,8 @@ export class InvoicesController {
   }
 
   private async ensureSchemasInitialized(): Promise<void> {
-    // Avoid multiple initialization attempts
-    if (this.schemasInitialized) return;
-    
-    try {
-      logger.info('Initializing invoice schemas...');
-      // Initialize schemas if needed (only for SQL version)
-      // await this.invoiceGenerationService.initializeSchema();
-      if (!this.USE_PRISMA_INVOICE_STORAGE && 'initializeSchema' in this.invoiceStorageService) {
-        await this.invoiceStorageService.initializeSchema();
-      }
-      if (!this.USE_PRISMA_INVOICE_NUMBERING && 'initializeSchema' in this.invoiceNumberingService) {
-        await this.invoiceNumberingService.initializeSchema();
-      }
-      this.schemasInitialized = true;
-      logger.info('Invoice schemas initialized successfully');
-    } catch (error) {
-      logger.error('Error initializing invoice schemas:', error);
-      throw error; // Let the caller handle the error
-    }
+    // No schema initialization needed for Prisma - schemas are managed by migrations
+    this.schemasInitialized = true;
   }
 
 

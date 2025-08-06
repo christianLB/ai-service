@@ -4,7 +4,7 @@ import type { ClientFormData } from '../../types/financial/index';
 import { AppError } from '../../utils/errors';
 import logger from '../../utils/logger';
 
-export class ClientPrismaService {
+export class ClientService {
   /**
    * Get all clients with pagination and filtering
    */
@@ -480,4 +480,4 @@ export class ClientPrismaService {
 }
 
 // Export singleton instance
-export const clientPrismaService = new ClientPrismaService();
+export const clientService = new ClientService();

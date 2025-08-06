@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { FinancialDashboardPrismaService } from '../financial-dashboard-prisma.service';
+import { FinancialDashboardService } from '../financial-dashboard.service';
 import { TimeRange } from '../../../types/financial/dashboard.types';
 
 // Mock Prisma Client
@@ -27,8 +27,8 @@ jest.mock('@prisma/client', () => {
   };
 });
 
-describe('FinancialDashboardPrismaService', () => {
-  let service: FinancialDashboardPrismaService;
+describe('FinancialDashboardService', () => {
+  let service: FinancialDashboardService;
   let prisma: any;
   
   const mockTimeRange: TimeRange = {
@@ -39,7 +39,7 @@ describe('FinancialDashboardPrismaService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     prisma = new PrismaClient();
-    service = new FinancialDashboardPrismaService(prisma);
+    service = new FinancialDashboardService(prisma);
   });
 
   afterEach(async () => {
@@ -275,7 +275,7 @@ describe('FinancialDashboardPrismaService', () => {
 
       // Test with validation enabled
       process.env.ENABLE_SQL_VALIDATION = 'true';
-      const validationService = new FinancialDashboardPrismaService(prisma);
+      const validationService = new FinancialDashboardService(prisma);
 
       const isValid = await validationService['validateResults'](
         operation,
@@ -294,7 +294,7 @@ describe('FinancialDashboardPrismaService', () => {
       process.env.ENABLE_SQL_VALIDATION = 'true';
       process.env.NODE_ENV = 'test';
       
-      const validationService = new FinancialDashboardPrismaService(prisma);
+      const validationService = new FinancialDashboardService(prisma);
 
       await expect(
         validationService['validateResults'](operation, prismaData, sqlData)

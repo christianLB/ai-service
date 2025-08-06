@@ -1,12 +1,10 @@
+import { PrismaClient, Prisma } from '@prisma/client';
 import { InfluxDB, Point, QueryApi, WriteApi } from '@influxdata/influxdb-client';
 import { Logger } from '../../utils/logger';
-import { db } from '../database';
 import { BinanceConnector, CoinbaseConnector } from './connectors';
 import * as ccxt from 'ccxt';
 import type { Ticker } from 'ccxt';
 import * as cron from 'node-cron';
-import { TRADING_FEATURE_FLAGS } from '../../types/trading';
-import { marketDataPrismaService, MarketDataPrismaService } from './market-data-prisma.service';
 
 const logger = new Logger('MarketDataService');
 
@@ -42,16 +40,16 @@ export interface OHLCVData {
 
 export class MarketDataService {
   private static instance: MarketDataService;
+  private prisma: PrismaClient;
   private influxDB?: InfluxDB;
   private writeApi?: WriteApi;
   private queryApi?: QueryApi;
   private connectors: Map<string, BinanceConnector | CoinbaseConnector> = new Map();
   private subscriptions: Map<string, cron.ScheduledTask> = new Map();
   private config?: MarketDataConfig;
-  private prismaService: MarketDataPrismaService;
 
   private constructor() {
-    this.prismaService = marketDataPrismaService;
+    this.prisma = new PrismaClient();
   }
 
   static getInstance(): MarketDataService {
@@ -63,15 +61,9 @@ export class MarketDataService {
 
   async initialize(config: MarketDataConfig): Promise<void> {
     try {
-      // Use Prisma if feature flag is enabled
-      if (TRADING_FEATURE_FLAGS.USE_PRISMA_MARKET_DATA) {
-        return await this.prismaService.initialize(config);
-      }
-
-      // Original SQL implementation
       this.config = config;
       
-      // Initialize InfluxDB connection
+      // Initialize InfluxDB connection for time-series data
       this.influxDB = new InfluxDB({
         url: config.influxUrl,
         token: config.influxToken,
@@ -83,9 +75,9 @@ export class MarketDataService {
       // Test connection
       await this.testInfluxConnection();
       
-      logger.info('MarketDataService initialized successfully');
+      logger.info('MarketDataPrismaService initialized successfully');
     } catch (error) {
-      logger.error('Failed to initialize MarketDataService', error);
+      logger.error('Failed to initialize MarketDataPrismaService', error);
       throw error;
     }
   }
@@ -114,13 +106,16 @@ export class MarketDataService {
     interval: string = '1m',
     userId?: string
   ): Promise<void> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_MARKET_DATA) {
-      return await this.prismaService.startDataCollection(exchange, symbols, interval, userId);
-    }
-
-    // Original SQL implementation
     try {
+      // Get or create exchange record
+      const exchangeRecord = await this.prisma.exchange.findUnique({
+        where: { name: exchange }
+      });
+
+      if (!exchangeRecord || !exchangeRecord.isActive) {
+        throw new Error(`Exchange ${exchange} not configured or inactive`);
+      }
+
       // Initialize exchange connector
       let connector: BinanceConnector | CoinbaseConnector;
       
@@ -138,19 +133,35 @@ export class MarketDataService {
       await connector.connect();
       this.connectors.set(`${exchange}:${userId || 'global'}`, connector);
 
+      // Verify trading pairs exist
+      const tradingPairs = await this.prisma.tradingPair.findMany({
+        where: {
+          exchangeId: exchangeRecord.id,
+          symbol: { in: symbols },
+          isActive: true
+        }
+      });
+
+      if (tradingPairs.length !== symbols.length) {
+        const missingSymbols = symbols.filter(s => 
+          !tradingPairs.find(tp => tp.symbol === s)
+        );
+        logger.warn(`Missing trading pairs: ${missingSymbols.join(', ')}`);
+      }
+
       // Convert interval to cron expression
       const cronExpression = this.intervalToCron(interval);
       
       // Create scheduled task for data collection
       const task = cron.schedule(cronExpression, async () => {
-        await this.collectMarketData(exchange, symbols, connector);
+        await this.collectMarketData(exchangeRecord.id, exchange, symbols, connector);
       });
 
       task.start();
       this.subscriptions.set(`${exchange}:${symbols.join(',')}`, task);
       
       // Collect initial data
-      await this.collectMarketData(exchange, symbols, connector);
+      await this.collectMarketData(exchangeRecord.id, exchange, symbols, connector);
       
       logger.info(`Started data collection for ${exchange} - ${symbols.join(', ')}`);
     } catch (error) {
@@ -174,35 +185,80 @@ export class MarketDataService {
   }
 
   private async collectMarketData(
-    exchange: string,
+    exchangeId: string,
+    exchangeName: string,
     symbols: string[],
     connector: BinanceConnector | CoinbaseConnector
   ): Promise<void> {
+    const marketDataBatch = [];
+
     for (const symbol of symbols) {
       try {
         // Fetch ticker data
         const ticker = await connector.getTicker(symbol);
         
-        // Store in InfluxDB
-        await this.storeMarketSnapshot({
-          exchange,
-          symbol,
-          timestamp: new Date(ticker.timestamp || Date.now()),
-          price: ticker.last || 0,
-          bid: ticker.bid || 0,
-          ask: ticker.ask || 0,
-          volume24h: ticker.baseVolume || 0,
-          high24h: ticker.high || 0,
-          low24h: ticker.low || 0,
-          change24h: ticker.change || 0,
-          changePercent24h: ticker.percentage || 0,
+        // Get trading pair
+        const tradingPair = await this.prisma.tradingPair.findFirst({
+          where: {
+            exchangeId,
+            symbol,
+            isActive: true
+          }
         });
 
-        // Also store in PostgreSQL cache for quick access
-        await this.cacheMarketData(exchange, symbol, ticker);
+        if (!tradingPair) {
+          logger.warn(`Trading pair ${symbol} not found for exchange ${exchangeName}`);
+          continue;
+        }
+
+        const marketData = {
+          exchangeId,
+          tradingPairId: tradingPair.id,
+          price: new Prisma.Decimal(ticker.last || 0),
+          volume: new Prisma.Decimal(ticker.baseVolume || 0),
+          high24h: ticker.high ? new Prisma.Decimal(ticker.high) : null,
+          low24h: ticker.low ? new Prisma.Decimal(ticker.low) : null,
+          change24h: ticker.change ? new Prisma.Decimal(ticker.change) : null,
+          changePercent24h: ticker.percentage ? new Prisma.Decimal(ticker.percentage) : null,
+          bidPrice: ticker.bid ? new Prisma.Decimal(ticker.bid) : null,
+          askPrice: ticker.ask ? new Prisma.Decimal(ticker.ask) : null,
+          bidQuantity: null, // TODO: Get from order book
+          askQuantity: null, // TODO: Get from order book
+          timestamp: new Date(ticker.timestamp || Date.now())
+        };
+
+        marketDataBatch.push(marketData);
+
+        // Store in InfluxDB for time-series analysis
+        await this.storeMarketSnapshot({
+          exchange: exchangeName,
+          symbol,
+          timestamp: marketData.timestamp,
+          price: Number(marketData.price),
+          bid: Number(marketData.bidPrice || 0),
+          ask: Number(marketData.askPrice || 0),
+          volume24h: Number(marketData.volume),
+          high24h: Number(marketData.high24h || 0),
+          low24h: Number(marketData.low24h || 0),
+          change24h: Number(marketData.change24h || 0),
+          changePercent24h: Number(marketData.changePercent24h || 0),
+        });
         
       } catch (error) {
-        logger.error(`Failed to collect data for ${symbol} on ${exchange}`, error);
+        logger.error(`Failed to collect data for ${symbol} on ${exchangeName}`, error);
+      }
+    }
+
+    // Batch insert market data
+    if (marketDataBatch.length > 0) {
+      try {
+        await this.prisma.marketData.createMany({
+          data: marketDataBatch,
+          skipDuplicates: true
+        });
+        logger.debug(`Stored ${marketDataBatch.length} market data points`);
+      } catch (error) {
+        logger.error('Failed to batch insert market data', error);
       }
     }
   }
@@ -229,41 +285,6 @@ export class MarketDataService {
     await this.writeApi.flush();
   }
 
-  private async cacheMarketData(
-    exchange: string,
-    symbol: string,
-    ticker: Ticker
-  ): Promise<void> {
-    try {
-      await db.pool.query(
-        `INSERT INTO trading.market_data_cache 
-         (exchange, symbol, timeframe, timestamp, open, high, low, close, volume, indicators)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         ON CONFLICT (exchange, symbol, timeframe, timestamp)
-         DO UPDATE SET
-           open = EXCLUDED.open,
-           high = EXCLUDED.high,
-           low = EXCLUDED.low,
-           close = EXCLUDED.close,
-           volume = EXCLUDED.volume`,
-        [
-          exchange,
-          symbol,
-          '1m',
-          new Date(ticker.timestamp || Date.now()),
-          ticker.open || ticker.last || 0,
-          ticker.high || ticker.last || 0,
-          ticker.low || ticker.last || 0,
-          ticker.last || 0,
-          ticker.baseVolume || 0,
-          JSON.stringify({}),
-        ]
-      );
-    } catch (error) {
-      logger.error('Failed to cache market data', error);
-    }
-  }
-
   async getOHLCV(
     exchange: string,
     symbol: string,
@@ -272,12 +293,6 @@ export class MarketDataService {
     limit?: number,
     userId?: string
   ): Promise<OHLCVData[]> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_MARKET_DATA) {
-      return await this.prismaService.getOHLCV(exchange, symbol, timeframe, since, limit, userId);
-    }
-
-    // Original SQL implementation
     try {
       const connectorKey = `${exchange}:${userId || 'global'}`;
       const connector = this.connectors.get(connectorKey);
@@ -304,24 +319,20 @@ export class MarketDataService {
   }
 
   async getLatestPrice(exchange: string, symbol: string): Promise<number> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_MARKET_DATA) {
-      return await this.prismaService.getLatestPrice(exchange, symbol);
-    }
-
-    // Original SQL implementation
     try {
-      // First try to get from cache
-      const cached = await db.pool.query(
-        `SELECT close FROM trading.market_data_cache
-         WHERE exchange = $1 AND symbol = $2
-         ORDER BY timestamp DESC
-         LIMIT 1`,
-        [exchange, symbol]
-      );
+      // First try to get from Prisma cache
+      const latestData = await this.prisma.marketData.findFirst({
+        where: {
+          exchange: { name: exchange },
+          tradingPair: { symbol }
+        },
+        orderBy: {
+          timestamp: 'desc'
+        }
+      });
 
-      if (cached.rows[0]) {
-        return cached.rows[0].close;
+      if (latestData) {
+        return Number(latestData.price);
       }
 
       // If not in cache, fetch from exchange
@@ -346,12 +357,6 @@ export class MarketDataService {
     symbol: string,
     period: string = '24h'
   ): Promise<any> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_MARKET_DATA) {
-      return await this.prismaService.getMarketStats(exchange, symbol, period);
-    }
-
-    // Original SQL implementation
     if (!this.queryApi) {
       throw new Error('InfluxDB not initialized');
     }
@@ -370,7 +375,7 @@ export class MarketDataService {
       
       // Calculate statistics
       const prices = data.map((row: any) => row._value);
-      const stats = {
+      const stats: any = {
         exchange,
         symbol,
         period,
@@ -381,11 +386,47 @@ export class MarketDataService {
         lastUpdate: new Date(),
       };
 
+      // Also get recent data from Prisma for additional stats
+      const recentData = await this.prisma.marketData.findMany({
+        where: {
+          exchange: { name: exchange },
+          tradingPair: { symbol },
+          timestamp: {
+            gte: new Date(Date.now() - this.parsePeriod(period))
+          }
+        },
+        orderBy: { timestamp: 'desc' }
+      });
+
+      if (recentData.length > 0) {
+        const volumes = recentData.map(d => Number(d.volume));
+        stats.totalVolume = volumes.reduce((a, b) => a + b, 0);
+        stats.avgVolume = stats.totalVolume / volumes.length;
+      }
+
       return stats;
     } catch (error) {
       logger.error('Failed to get market stats', error);
       throw error;
     }
+  }
+
+  private parsePeriod(period: string): number {
+    const units: { [key: string]: number } = {
+      'h': 60 * 60 * 1000,
+      'd': 24 * 60 * 60 * 1000,
+      'w': 7 * 24 * 60 * 60 * 1000,
+      'm': 30 * 24 * 60 * 60 * 1000,
+    };
+
+    const match = period.match(/^(\d+)([hdwm])$/);
+    if (!match) {
+      return 24 * 60 * 60 * 1000; // Default to 24h
+    }
+
+    const value = parseInt(match[1]);
+    const unit = match[2];
+    return value * (units[unit] || units['h']);
   }
 
   async stopDataCollection(exchange: string, symbols: string[]): Promise<void> {
@@ -418,6 +459,67 @@ export class MarketDataService {
     
     if (this.writeApi) {
       await this.writeApi.close();
+    }
+
+    await this.prisma.$disconnect();
+  }
+
+  /**
+   * Get market data history for a specific period
+   */
+  async getMarketDataHistory(
+    exchangeName: string,
+    symbol: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<any[]> {
+    try {
+      const data = await this.prisma.marketData.findMany({
+        where: {
+          exchange: { name: exchangeName },
+          tradingPair: { symbol },
+          timestamp: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        orderBy: { timestamp: 'asc' },
+        include: {
+          tradingPair: {
+            select: {
+              symbol: true,
+              baseAsset: true,
+              quoteAsset: true
+            }
+          }
+        }
+      });
+
+      return data;
+    } catch (error) {
+      logger.error('Failed to get market data history', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clean up old market data
+   */
+  async cleanupOldData(daysToKeep: number = 30): Promise<void> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+
+      const result = await this.prisma.marketData.deleteMany({
+        where: {
+          timestamp: { lt: cutoffDate }
+        }
+      });
+
+      logger.info(`Cleaned up ${result.count} old market data records`);
+    } catch (error) {
+      logger.error('Failed to cleanup old market data', error);
+      throw error;
     }
   }
 }

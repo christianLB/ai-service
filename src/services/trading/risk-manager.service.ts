@@ -1,10 +1,8 @@
+import { PrismaClient, Prisma } from '@prisma/client';
 import { Logger } from '../../utils/logger';
-import { db } from '../database';
 import { TradingSignal } from './strategy-engine.service';
 import { marketDataService } from './market-data.service';
 import { tradingConnectorService } from './trading-connector.service';
-import { TRADING_FEATURE_FLAGS } from '../../types/trading';
-import { riskManagerPrismaService, RiskManagerPrismaService } from './risk-manager-prisma.service';
 
 const logger = new Logger('RiskManagerService');
 
@@ -49,13 +47,13 @@ export interface TradeValidation {
 
 export class RiskManagerService {
   private static instance: RiskManagerService;
+  private prisma: PrismaClient;
   private defaultParams: RiskParameters;
   private dailyPnL: Map<string, number> = new Map();
   private peakBalance: number = 0;
-  private prismaService: RiskManagerPrismaService;
 
   private constructor() {
-    this.prismaService = riskManagerPrismaService;
+    this.prisma = new PrismaClient();
     this.defaultParams = {
       maxPositionSizeUSD: 1000,
       maxOpenPositions: 5,
@@ -77,7 +75,7 @@ export class RiskManagerService {
   }
 
   async initialize(): Promise<void> {
-    logger.info('Initializing Risk Manager Service');
+    logger.info('Initializing Risk Manager Prisma Service');
     
     // Load user-specific risk parameters from database
     await this.loadRiskParameters();
@@ -91,23 +89,11 @@ export class RiskManagerService {
 
   private async loadRiskParameters(userId?: string): Promise<RiskParameters> {
     try {
-      const result = await db.pool.query(
-        `SELECT config_key, config_value FROM trading.config 
-         WHERE ($1::uuid IS NULL OR user_id = $1)
-         AND config_key LIKE 'risk.%'`,
-        [userId]
-      );
-
-      const params = { ...this.defaultParams };
+      // Note: This assumes a config table that might not exist in Prisma schema yet
+      // For now, we'll use default params
+      logger.warn('Using default risk parameters - config table not yet migrated');
+      return this.defaultParams;
       
-      for (const row of result.rows) {
-        const key = row.config_key.replace('risk.', '');
-        if (key in params) {
-          params[key as keyof RiskParameters] = parseFloat(row.config_value);
-        }
-      }
-
-      return params;
     } catch (error) {
       logger.error('Failed to load risk parameters', error);
       return this.defaultParams;
@@ -115,106 +101,90 @@ export class RiskManagerService {
   }
 
   async validateTrade(signal: TradingSignal, userId?: string): Promise<TradeValidation> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
-      return await this.prismaService.validateTrade(signal, userId);
-    }
-
-    // Original SQL implementation
     const warnings: string[] = [];
+    let approved = true;
+    let reason = '';
     let riskScore = 0;
-
+    
     try {
-      // Load user-specific parameters
-      const params = await this.loadRiskParameters(userId);
-      
       // Get current risk metrics
       const metrics = await this.getCurrentRiskMetrics(userId);
+      const params = await this.loadRiskParameters(userId);
       
-      // 1. Check confidence score
-      if (signal.strength < params.minConfidenceScore) {
-        return {
-          approved: false,
-          reason: `Confidence score too low: ${signal.strength.toFixed(2)} < ${params.minConfidenceScore}`,
-          riskScore: 0,
-          warnings,
-        };
-      }
-      riskScore += signal.strength * 20;
-
-      // 2. Check open positions limit
+      // Check 1: Max open positions
       if (metrics.openPositions >= params.maxOpenPositions) {
-        return {
-          approved: false,
-          reason: `Maximum open positions reached: ${metrics.openPositions}/${params.maxOpenPositions}`,
-          riskScore,
-          warnings,
-        };
-      }
-
-      // 3. Check daily loss limit
-      const dailyLossLimit = params.maxDailyLossPercentage;
-      const currentDailyLoss = (metrics.dailyPnL / metrics.availableCapital) * 100;
-      
-      if (currentDailyLoss <= -dailyLossLimit) {
-        return {
-          approved: false,
-          reason: `Daily loss limit reached: ${currentDailyLoss.toFixed(2)}%`,
-          riskScore,
-          warnings,
-        };
+        approved = false;
+        reason = `Maximum open positions (${params.maxOpenPositions}) reached`;
+        return { approved, reason, riskScore, warnings };
       }
       
-      if (currentDailyLoss <= -dailyLossLimit * 0.8) {
-        warnings.push(`Approaching daily loss limit: ${currentDailyLoss.toFixed(2)}%`);
-        riskScore -= 10;
-      }
-
-      // 4. Check drawdown
-      if (metrics.currentDrawdown > params.maxDrawdownPercentage) {
-        return {
-          approved: false,
-          reason: `Maximum drawdown exceeded: ${metrics.currentDrawdown.toFixed(2)}%`,
-          riskScore,
-          warnings,
-        };
+      // Check 2: Confidence score
+      if (signal.strength < params.minConfidenceScore) {
+        approved = false;
+        reason = `Confidence score ${signal.strength.toFixed(2)} below minimum ${params.minConfidenceScore}`;
+        return { approved, reason, riskScore, warnings };
       }
       
-      if (metrics.currentDrawdown > params.maxDrawdownPercentage * 0.8) {
-        warnings.push(`High drawdown warning: ${metrics.currentDrawdown.toFixed(2)}%`);
-        riskScore -= 15;
+      // Check 3: Daily loss limit
+      const dailyLossPercentage = (Math.abs(metrics.dailyPnL) / await this.getAccountBalance(userId)) * 100;
+      if (dailyLossPercentage >= params.maxDailyLossPercentage) {
+        approved = false;
+        reason = `Daily loss limit (${params.maxDailyLossPercentage}%) reached`;
+        return { approved, reason, riskScore, warnings };
       }
-
-      // 5. Calculate position size
-      const positionCalc = await this.calculatePositionSize(
-        signal,
-        params,
-        metrics.availableCapital,
-        userId
-      );
-
-      // 6. Check correlation with existing positions
+      
+      // Check 4: Drawdown limit
+      if (metrics.currentDrawdown >= params.maxDrawdownPercentage) {
+        approved = false;
+        reason = `Maximum drawdown (${params.maxDrawdownPercentage}%) reached`;
+        return { approved, reason, riskScore, warnings };
+      }
+      
+      // Check 5: Correlation with existing positions
       const correlation = await this.checkCorrelation(signal, userId);
       if (correlation > params.correlationLimit) {
-        warnings.push(`High correlation with existing positions: ${correlation.toFixed(2)}`);
-        riskScore -= 20;
+        warnings.push(`High correlation (${(correlation * 100).toFixed(1)}%) with existing positions`);
+        riskScore += 0.2;
       }
-
-      // 7. Volatility check
+      
+      // Check 6: Market volatility
       const volatility = await this.getMarketVolatility(signal.exchange, signal.symbol);
-      if (volatility > 5) { // 5% volatility threshold
-        warnings.push(`High market volatility: ${volatility.toFixed(2)}%`);
-        riskScore -= 10;
+      if (volatility > 3) { // 3% volatility threshold
+        warnings.push(`High market volatility (${volatility.toFixed(2)}%)`);
+        riskScore += 0.15;
       }
-
-      // 8. Final risk score calculation
-      riskScore = Math.max(0, Math.min(100, riskScore + 50)); // Base score 50
-
-      // Adjust position size based on risk score
-      const adjustedSize = positionCalc.positionSize * (riskScore / 100);
-
+      
+      // Check 7: Available capital
+      if (metrics.availableCapital < params.maxPositionSizeUSD) {
+        approved = false;
+        reason = 'Insufficient available capital';
+        return { approved, reason, riskScore, warnings };
+      }
+      
+      // Calculate risk score (0-1)
+      riskScore = Math.min(1, 
+        (1 - signal.strength) * 0.3 +
+        (metrics.riskUtilization) * 0.3 +
+        (correlation) * 0.2 +
+        (volatility / 10) * 0.2
+      );
+      
+      // Final approval based on risk score
+      if (riskScore > 0.8) {
+        approved = false;
+        reason = `Risk score too high (${(riskScore * 100).toFixed(1)}%)`;
+      }
+      
+      // Calculate adjusted position size if needed
+      let adjustedSize;
+      if (riskScore > 0.6) {
+        adjustedSize = params.maxPositionSizeUSD * (1 - riskScore);
+        warnings.push(`Position size reduced due to high risk`);
+      }
+      
       return {
-        approved: true,
+        approved,
+        reason,
         adjustedSize,
         riskScore,
         warnings,
@@ -225,7 +195,7 @@ export class RiskManagerService {
       return {
         approved: false,
         reason: 'Risk validation error',
-        riskScore: 0,
+        riskScore: 1,
         warnings: ['System error during validation'],
       };
     }
@@ -233,59 +203,51 @@ export class RiskManagerService {
 
   async calculatePositionSize(
     signal: TradingSignal,
-    params: RiskParameters,
-    availableCapital: number,
-    userId?: string
+    accountBalance: number,
+    riskParams?: RiskParameters
   ): Promise<PositionSizeCalculation> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
-      // Note: Prisma version has slightly different signature, adapting here
-      const accountBalance = availableCapital;
-      return await this.prismaService.calculatePositionSize(signal, accountBalance, params);
-    }
-
-    // Original SQL implementation
+    const params = riskParams || this.defaultParams;
+    
     try {
       // Get current price
       const currentPrice = await marketDataService.getLatestPrice(
         signal.exchange,
         signal.symbol
       );
-
-      // Calculate risk amount (percentage of capital)
-      const riskAmount = availableCapital * (params.riskPerTradePercentage / 100);
       
-      // Determine stop loss price
+      // Calculate risk amount
+      const riskAmount = accountBalance * (params.riskPerTradePercentage / 100);
+      
+      // Calculate stop loss price
       let stopLossPrice: number;
       if (signal.analysis?.stopLoss) {
         stopLossPrice = signal.analysis.stopLoss;
       } else {
-        // Default stop loss based on signal direction
-        if (signal.action === 'buy') {
-          stopLossPrice = currentPrice * (1 - params.stopLossPercentage / 100);
-        } else {
-          stopLossPrice = currentPrice * (1 + params.stopLossPercentage / 100);
-        }
+        stopLossPrice = currentPrice * (1 - params.stopLossPercentage / 100);
       }
-
+      
       // Calculate position size based on risk
       const riskPerUnit = Math.abs(currentPrice - stopLossPrice);
       let positionSize = riskAmount / riskPerUnit;
-
-      // Apply position size limits
+      
+      // Apply maximum position size limit
       const maxPositionValue = Math.min(
         params.maxPositionSizeUSD,
-        availableCapital * 0.2 // Max 20% of capital per position
+        accountBalance * params.marginOfSafety
       );
       
-      positionSize = Math.min(positionSize, maxPositionValue / currentPrice);
-
+      if (positionSize * currentPrice > maxPositionValue) {
+        positionSize = maxPositionValue / currentPrice;
+      }
+      
       // Calculate max loss amount
       const maxLossAmount = positionSize * riskPerUnit;
-
-      // Default leverage (spot trading)
-      const leverage = 1;
-
+      
+      // Determine leverage (simplified)
+      const leverage = (positionSize * currentPrice) > accountBalance 
+        ? (positionSize * currentPrice) / accountBalance 
+        : 1;
+      
       return {
         positionSize,
         riskAmount,
@@ -301,113 +263,118 @@ export class RiskManagerService {
   }
 
   async getCurrentRiskMetrics(userId?: string): Promise<RiskMetrics> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
-      return await this.prismaService.getCurrentRiskMetrics(userId);
-    }
-
-    // Original SQL implementation
     try {
-      // Get open positions
-      const positions = await db.pool.query(
-        `SELECT COUNT(*) as count, 
-                SUM(quantity * current_price) as total_exposure,
-                SUM(unrealized_pnl) as unrealized_pnl
-         FROM trading.positions
-         WHERE status = 'open'
-         AND ($1::uuid IS NULL OR user_id = $1)`,
-        [userId]
-      );
+      // Get open positions using Prisma
+      const positions = await this.prisma.position.findMany({
+        where: {
+          status: 'OPEN',
+          ...(userId && { userId })
+        },
+        include: {
+          TradingPair: true
+        }
+      });
 
-      // Get daily PnL
-      const dailyPnL = await this.getDailyPnL(userId);
+      let totalExposure = 0;
+      const symbolExposure: Map<string, number> = new Map();
+      
+      for (const position of positions) {
+        const value = Number(position.quantity) * Number(position.avgEntryPrice);
+        totalExposure += value;
+        
+        const baseAsset = position.TradingPair?.baseAsset || position.symbol;
+        symbolExposure.set(baseAsset, (symbolExposure.get(baseAsset) || 0) + value);
+      }
       
       // Get account balance
-      const balance = await this.getAccountBalance(userId);
+      const accountBalance = await this.getAccountBalance(userId);
       
-      // Calculate metrics
-      const openPositions = parseInt(positions.rows[0].count || 0);
-      const totalExposure = parseFloat(positions.rows[0].total_exposure || 0);
-      const unrealizedPnL = parseFloat(positions.rows[0].unrealized_pnl || 0);
+      // Calculate daily PnL
+      const dailyPnL = await this.getDailyPnL(userId);
       
-      // Calculate drawdown
-      const currentBalance = balance + unrealizedPnL;
+      // Calculate current drawdown
+      const currentValue = accountBalance + totalExposure;
       const drawdown = this.peakBalance > 0 
-        ? ((this.peakBalance - currentBalance) / this.peakBalance) * 100
+        ? ((this.peakBalance - currentValue) / this.peakBalance) * 100 
         : 0;
-
-      // Risk utilization (exposure / balance)
-      const riskUtilization = balance > 0 ? (totalExposure / balance) * 100 : 0;
-
+      
+      // Calculate risk utilization
+      const params = await this.loadRiskParameters(userId);
+      const riskUtilization = totalExposure / (accountBalance * params.maxOpenPositions);
+      
+      // Calculate correlation score (simplified)
+      const uniqueAssets = symbolExposure.size;
+      const correlationScore = uniqueAssets > 0 ? 1 / uniqueAssets : 0;
+      
+      // Calculate margin used
+      const marginUsed = totalExposure;
+      
+      // Calculate available capital
+      const availableCapital = accountBalance - marginUsed;
+      
       return {
         totalExposure,
-        openPositions,
+        openPositions: positions.length,
         dailyPnL,
         currentDrawdown: Math.max(0, drawdown),
-        riskUtilization,
-        correlationScore: 0, // TODO: Implement correlation calculation
-        marginUsed: totalExposure, // For spot trading
-        availableCapital: Math.max(0, balance - totalExposure),
+        riskUtilization: Math.min(1, riskUtilization),
+        correlationScore,
+        marginUsed,
+        availableCapital: Math.max(0, availableCapital),
       };
       
     } catch (error) {
-      logger.error('Failed to get risk metrics', error);
+      logger.error('Failed to get current risk metrics', error);
       throw error;
     }
   }
 
   private async getDailyPnL(userId?: string): Promise<number> {
-    const today = new Date().toISOString().split('T')[0];
-    const cached = this.dailyPnL.get(`${today}:${userId || 'global'}`);
-    
-    if (cached !== undefined) {
-      return cached;
-    }
-
     try {
-      const result = await db.pool.query(
-        `SELECT SUM(realized_pnl + fees) as daily_pnl
-         FROM trading.positions
-         WHERE DATE(closed_at) = CURRENT_DATE
-         AND status = 'closed'
-         AND ($1::uuid IS NULL OR user_id = $1)`,
-        [userId]
-      );
-
-      const pnl = parseFloat(result.rows[0]?.daily_pnl || 0);
-      this.dailyPnL.set(`${today}:${userId || 'global'}`, pnl);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       
-      return pnl;
+      // Get today's trades using Prisma
+      const trades = await this.prisma.trade.findMany({
+        where: {
+          executedAt: { gte: today },
+          ...(userId && { userId })
+        }
+      });
+
+      let dailyPnL = 0;
+      for (const trade of trades) {
+        if (trade.pnl) {
+          dailyPnL += Number(trade.pnl);
+        }
+      }
+      
+      return dailyPnL;
+      
     } catch (error) {
-      logger.error('Failed to calculate daily PnL', error);
+      logger.error('Failed to get daily PnL', error);
       return 0;
     }
   }
 
   private async getAccountBalance(userId?: string): Promise<number> {
-    // TODO: Integrate with actual exchange balances
-    // For now, return a default value
     try {
-      const config = await db.pool.query(
-        `SELECT config_value FROM trading.config
-         WHERE config_key = 'account.balance'
-         AND ($1::uuid IS NULL OR user_id = $1)
-         ORDER BY user_id DESC NULLS LAST LIMIT 1`,
-        [userId]
-      );
-
-      return parseFloat(config.rows[0]?.config_value || '10000');
+      // This would need to be implemented based on your account/balance model
+      // For now, return a default value
+      logger.warn('Account balance query not implemented for Prisma - using default');
+      return 10000; // Default $10,000
+      
     } catch (error) {
       logger.error('Failed to get account balance', error);
-      return 10000; // Default $10k
+      return 0;
     }
   }
 
   private async updatePeakBalance(): Promise<void> {
     try {
-      const balance = await this.getAccountBalance();
-      if (balance > this.peakBalance) {
-        this.peakBalance = balance;
+      const totalBalance = await this.getAccountBalance();
+      if (totalBalance > this.peakBalance) {
+        this.peakBalance = totalBalance;
       }
     } catch (error) {
       logger.error('Failed to update peak balance', error);
@@ -417,29 +384,34 @@ export class RiskManagerService {
   private async checkCorrelation(signal: TradingSignal, userId?: string): Promise<number> {
     try {
       // Get open positions
-      const positions = await db.pool.query(
-        `SELECT symbol FROM trading.positions
-         WHERE status = 'open'
-         AND ($1::uuid IS NULL OR user_id = $1)`,
-        [userId]
-      );
+      const positions = await this.prisma.position.findMany({
+        where: {
+          status: 'OPEN',
+          ...(userId && { userId })
+        },
+        include: {
+          TradingPair: true
+        }
+      });
 
-      if (positions.rows.length === 0) {
+      if (positions.length === 0) {
         return 0;
       }
-
-      // Simple correlation check based on base currency
+      
+      // Extract base asset from signal
       const [signalBase] = signal.symbol.split('/');
-      let correlationCount = 0;
-
-      for (const pos of positions.rows) {
-        const [posBase] = pos.symbol.split('/');
+      
+      // Count positions with same base asset
+      let correlatedPositions = 0;
+      for (const position of positions) {
+        const posBase = position.TradingPair?.baseAsset || position.symbol.split('/')[0];
         if (posBase === signalBase) {
-          correlationCount++;
+          correlatedPositions++;
         }
       }
-
-      return correlationCount / positions.rows.length;
+      
+      // Simple correlation score
+      return correlatedPositions / positions.length;
       
     } catch (error) {
       logger.error('Failed to check correlation', error);
@@ -449,146 +421,169 @@ export class RiskManagerService {
 
   private async getMarketVolatility(exchange: string, symbol: string): Promise<number> {
     try {
-      // Get recent price data
       const ohlcv = await marketDataService.getOHLCV(
         exchange,
         symbol,
         '1h',
-        new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+        new Date(Date.now() - 24 * 60 * 60 * 1000),
         24
       );
-
+      
       if (ohlcv.length < 2) {
         return 0;
       }
-
-      // Calculate volatility as standard deviation of returns
+      
+      // Calculate simple volatility (standard deviation of returns)
       const returns = [];
       for (let i = 1; i < ohlcv.length; i++) {
-        const returnPct = ((ohlcv[i].close - ohlcv[i-1].close) / ohlcv[i-1].close) * 100;
-        returns.push(returnPct);
+        const ret = (ohlcv[i].close - ohlcv[i-1].close) / ohlcv[i-1].close;
+        returns.push(ret);
       }
-
+      
       const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
       const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
+      const volatility = Math.sqrt(variance) * 100; // Convert to percentage
       
-      return Math.sqrt(variance);
+      return volatility;
       
     } catch (error) {
-      logger.error('Failed to calculate volatility', error);
+      logger.error('Failed to calculate market volatility', error);
       return 0;
     }
   }
 
   async updatePositionRisk(positionId: string): Promise<void> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
-      return await this.prismaService.updatePositionRisk(positionId);
-    }
-
-    // Original SQL implementation
     try {
-      // Get position details
-      const position = await db.pool.query(
-        `SELECT * FROM trading.positions WHERE id = $1`,
-        [positionId]
-      );
+      const position = await this.prisma.position.findUnique({
+        where: { id: positionId },
+        include: {
+          TradingPair: true
+        }
+      });
 
-      if (position.rows.length === 0) {
+      if (!position) {
+        logger.warn(`Position ${positionId} not found`);
         return;
       }
-
-      const pos = position.rows[0];
       
       // Get current price
       const currentPrice = await marketDataService.getLatestPrice(
-        pos.exchange,
-        pos.symbol
+        position.exchange,
+        position.TradingPair?.symbol || position.symbol
       );
-
-      // Calculate unrealized PnL
-      let unrealizedPnl: number;
-      if (pos.side === 'long' || pos.side === 'buy') {
-        unrealizedPnl = (currentPrice - pos.entry_price) * pos.quantity;
+      
+      // Calculate current value and PnL
+      const currentValue = Number(position.quantity) * currentPrice;
+      const entryValue = Number(position.quantity) * Number(position.avgEntryPrice);
+      
+      let pnl: number;
+      let pnlPercentage: number;
+      
+      if (position.side === 'LONG') {
+        pnl = currentValue - entryValue;
+        pnlPercentage = ((currentPrice - Number(position.avgEntryPrice)) / Number(position.avgEntryPrice)) * 100;
       } else {
-        unrealizedPnl = (pos.entry_price - currentPrice) * pos.quantity;
+        pnl = entryValue - currentValue;
+        pnlPercentage = ((Number(position.avgEntryPrice) - currentPrice) / Number(position.avgEntryPrice)) * 100;
       }
-
+      
       // Update position
-      await db.pool.query(
-        `UPDATE trading.positions
-         SET current_price = $1,
-             unrealized_pnl = $2,
-             updated_at = NOW()
-         WHERE id = $3`,
-        [currentPrice, unrealizedPnl, positionId]
-      );
-
-      // Check stop loss
-      if (pos.stop_loss) {
-        if ((pos.side === 'long' && currentPrice <= pos.stop_loss) ||
-            (pos.side === 'short' && currentPrice >= pos.stop_loss)) {
-          logger.warn('Stop loss triggered', { positionId, currentPrice, stopLoss: pos.stop_loss });
-          // TODO: Emit event to close position
+      await this.prisma.position.update({
+        where: { id: positionId },
+        data: {
+          unrealizedPnl: new Prisma.Decimal(pnl),
+          metadata: {
+            ...(position.metadata as any || {}),
+            currentPrice,
+            lastChecked: new Date().toISOString()
+          }
+        }
+      });
+      
+      // Check if stop loss is hit
+      const metadata = position.metadata as any || {};
+      if (metadata.stopLoss) {
+        const stopLoss = Number(metadata.stopLoss);
+        if ((position.side === 'LONG' && currentPrice <= stopLoss) ||
+            (position.side === 'SHORT' && currentPrice >= stopLoss)) {
+          logger.warn(`Stop loss hit for position ${positionId}`);
+          // Here you would trigger position closure
         }
       }
-
-      // Check take profit
-      if (pos.take_profit) {
-        if ((pos.side === 'long' && currentPrice >= pos.take_profit) ||
-            (pos.side === 'short' && currentPrice <= pos.take_profit)) {
-          logger.info('Take profit triggered', { positionId, currentPrice, takeProfit: pos.take_profit });
-          // TODO: Emit event to close position
+      
+      // Check if take profit is hit
+      if (metadata.takeProfit) {
+        const takeProfit = Number(metadata.takeProfit);
+        if ((position.side === 'LONG' && currentPrice >= takeProfit) ||
+            (position.side === 'SHORT' && currentPrice <= takeProfit)) {
+          logger.info(`Take profit hit for position ${positionId}`);
+          // Here you would trigger position closure
         }
       }
       
     } catch (error) {
-      logger.error('Failed to update position risk', error);
+      logger.error(`Failed to update position risk for ${positionId}`, error);
+    }
+  }
+
+  async emergencyStopAllTrading(reason: string): Promise<void> {
+    try {
+      logger.warn(`EMERGENCY STOP: ${reason}`);
+      
+      // Update all strategies to inactive
+      await this.prisma.strategy.updateMany({
+        where: { isActive: true },
+        data: { isActive: false }
+      });
+      
+      // Cancel all open orders
+      const openOrders = await this.prisma.order.findMany({
+        where: { status: 'PENDING' }
+      });
+
+      for (const order of openOrders) {
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: { 
+            status: 'CANCELLED',
+            metadata: {
+              ...(order.metadata as any || {}),
+              cancelReason: `Emergency stop: ${reason}`
+            }
+          }
+        });
+      }
+      
+      // Log emergency stop
+      logger.error('Emergency trading stop executed', { 
+        reason, 
+        strategiesDisabled: true,
+        ordersCancelled: openOrders.length 
+      });
+      
+    } catch (error) {
+      logger.error('Failed to execute emergency stop', error);
+      throw error;
     }
   }
 
   private startDailyTracking(): void {
     // Reset daily PnL at midnight
-    setInterval(() => {
+    setInterval(async () => {
       const now = new Date();
       if (now.getHours() === 0 && now.getMinutes() === 0) {
         this.dailyPnL.clear();
-        this.updatePeakBalance();
+        await this.updatePeakBalance();
+        logger.info('Daily risk metrics reset');
       }
     }, 60000); // Check every minute
   }
 
-  async emergencyStopAllTrading(reason: string): Promise<void> {
-    // Use Prisma if feature flag is enabled
-    if (TRADING_FEATURE_FLAGS.USE_PRISMA_RISK_MANAGER) {
-      return await this.prismaService.emergencyStopAllTrading(reason);
-    }
-
-    // Original SQL implementation
-    logger.error('EMERGENCY STOP triggered', { reason });
-    
-    try {
-      // Update all strategies to inactive
-      await db.pool.query(
-        `UPDATE trading.strategies SET is_active = false, status = 'failed'`
-      );
-
-      // Close all open positions
-      await db.pool.query(
-        `UPDATE trading.positions 
-         SET status = 'closed', 
-             closed_at = NOW(),
-             metadata = jsonb_set(metadata, '{emergency_stop}', 'true')
-         WHERE status = 'open'`
-      );
-
-      // TODO: Cancel all open orders on exchanges
-      
-      logger.info('Emergency stop completed');
-    } catch (error) {
-      logger.error('Emergency stop failed', error);
-      throw error;
-    }
+  /**
+   * Close database connection
+   */
+  async disconnect(): Promise<void> {
+    await this.prisma.$disconnect();
   }
 }
 

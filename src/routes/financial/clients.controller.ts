@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import { clientPrismaService } from '../../services/financial/client-prisma.service';
+import { clientService } from '../../services/financial/client.service';
 import { TransactionMatchingService } from '../../services/financial/transaction-matching.service';
 import { logger } from '../../utils/log';
 import type { Client, ClientFormData } from '../../types/financial';
 
 export class ClientsController {
-  private clientService = clientPrismaService;
+  private clientService = clientService;
   private transactionMatchingService: TransactionMatchingService | null = null;
 
   constructor() {

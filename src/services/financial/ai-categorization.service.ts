@@ -44,7 +44,7 @@ export interface AITag {
   updatedAt: Date;
 }
 
-export class AICategorizationPrismaService {
+export class AICategorizationService {
   // ============================================================================
   // AI CATEGORIZATION ENGINE
   // ============================================================================
@@ -652,4 +652,4 @@ export class AICategorizationPrismaService {
 }
 
 // Export singleton instance
-export const aiCategorizationPrismaService = new AICategorizationPrismaService();
+export const aiCategorizationService = new AICategorizationService();
