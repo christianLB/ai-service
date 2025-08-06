@@ -337,18 +337,21 @@ export class TrendFollowingStrategy extends BaseStrategy {
 
         await this.prisma.position.create({
           data: {
+            userId: '00000000-0000-0000-0000-000000000000', // TODO: Get actual user ID
+            symbol: symbol,
+            exchange: exchange,
             exchangeId: exchangeRecord.id,
             tradingPairId: tradingPair.id,
             strategyId: this.config.id,
             side: signal.action === 'buy' ? 'LONG' : 'SHORT',
             quantity: new Prisma.Decimal(0), // Quantity will be determined by risk manager
-            entryPrice: new Prisma.Decimal(signal.analysis.entryPrice),
-            currentPrice: new Prisma.Decimal(signal.analysis.entryPrice),
-            stopLoss: signal.analysis.stopLoss ? new Prisma.Decimal(signal.analysis.stopLoss) : null,
-            takeProfit: signal.analysis.takeProfit ? new Prisma.Decimal(signal.analysis.takeProfit) : null,
+            avgEntryPrice: new Prisma.Decimal(signal.analysis.entryPrice),
             status: 'PENDING', // Will be updated when order is filled
-            confidenceScore: new Prisma.Decimal(signal.strength),
             metadata: {
+              currentPrice: signal.analysis.entryPrice,
+              stopLoss: signal.analysis.stopLoss || null,
+              takeProfit: signal.analysis.takeProfit || null,
+              confidenceScore: signal.strength,
               indicators: signal.analysis.indicators,
               timeframe: signal.analysis.timeframe,
               strategyName: this.config.name

@@ -376,7 +376,7 @@ export class MarketDataPrismaService {
       
       // Calculate statistics
       const prices = data.map((row: any) => row._value);
-      const stats = {
+      const stats: any = {
         exchange,
         symbol,
         period,
@@ -401,8 +401,8 @@ export class MarketDataPrismaService {
 
       if (recentData.length > 0) {
         const volumes = recentData.map(d => Number(d.volume));
-        stats['totalVolume'] = volumes.reduce((a, b) => a + b, 0);
-        stats['avgVolume'] = stats['totalVolume'] / volumes.length;
+        stats.totalVolume = volumes.reduce((a, b) => a + b, 0);
+        stats.avgVolume = stats.totalVolume / volumes.length;
       }
 
       return stats;

@@ -9,7 +9,7 @@ export interface NumberingSequence {
   currentYear: number;
   format: string;
   yearlyReset: boolean;
-  lastUsed: Date;
+  lastUsed: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -300,7 +300,7 @@ export class InvoiceNumberingPrismaService {
       // Use upsert to create or update
       await this.prisma.invoiceNumberingSequence.upsert({
         where: {
-          series_prefix_year: {
+          series_prefix_currentYear: {
             series,
             prefix,
             currentYear: currentYear

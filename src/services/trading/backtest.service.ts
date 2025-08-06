@@ -82,6 +82,8 @@ export class BacktestService {
   }
 
   async runBacktest(config: BacktestConfig): Promise<BacktestResult> {
+    const backtestId = `bt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     try {
       // Use Prisma if feature flag is enabled
       if (TRADING_FEATURE_FLAGS.USE_PRISMA_BACKTEST) {
@@ -90,7 +92,6 @@ export class BacktestService {
 
       // Original SQL implementation
       const startTime = Date.now();
-      const backtestId = `bt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       logger.info('Starting backtest', { backtestId, config });
       this.runningBacktests.set(backtestId, true);

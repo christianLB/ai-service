@@ -939,7 +939,8 @@ Ejemplo:
       }
 
       // Find or create client
-      let client = await clientPrismaService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
+      let clientData = await clientPrismaService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
+      let client = clientData ? { id: clientData.id, name: clientData.name } : null;
       
       if (!client) {
         // Create basic client
@@ -954,7 +955,8 @@ Ejemplo:
           status: 'active'
         };
         const userId = `telegram-${chatId}`;
-        client = await clientPrismaService.createClient(clientData, userId);
+        const result = await clientPrismaService.createClient(clientData, userId);
+        client = { id: result.data.client.id, name: result.data.client.name };
       }
 
       // Create invoice

@@ -273,7 +273,7 @@ export class BacktestPrismaService {
       const strategyRecord = await this.prisma.strategy.findUnique({
         where: { id: strategyId },
         include: {
-          tradingPairs: {
+          StrategyTradingPair: {
             include: {
               tradingPair: true
             }
@@ -289,10 +289,10 @@ export class BacktestPrismaService {
         id: strategyRecord.id,
         name: strategyRecord.name,
         type: strategyRecord.type,
-        parameters: strategyRecord.parameters as Record<string, any>,
+        parameters: (strategyRecord.config as Record<string, any>) || {},
         riskParameters: {
-          maxPositionSize: Number(strategyRecord.risk),
-          maxDrawdown: Number(strategyRecord.maxDrawdown),
+          maxPositionSize: Number((strategyRecord.metadata as any)?.risk || 0.02),
+          maxDrawdown: Number((strategyRecord.metadata as any)?.maxDrawdown || 0.1),
           stopLoss: 0.02, // Default 2%
           takeProfit: 0.05, // Default 5%
         },
@@ -734,10 +734,13 @@ export class BacktestPrismaService {
           initialCapital: new Prisma.Decimal(result.config.initialCapital),
           finalCapital: new Prisma.Decimal(result.trades[result.trades.length - 1]?.balance || result.config.initialCapital),
           totalReturn: new Prisma.Decimal(result.metrics.totalReturn),
-          sharpeRatio: result.metrics.sharpeRatio ? new Prisma.Decimal(result.metrics.sharpeRatio) : null,
-          maxDrawdown: new Prisma.Decimal(result.metrics.maxDrawdown),
           totalTrades: result.metrics.totalTrades,
+          winningTrades: result.metrics.winningTrades,
+          losingTrades: result.metrics.losingTrades,
           winRate: new Prisma.Decimal(result.metrics.winRate),
+          sharpeRatio: result.metrics.sharpeRatio ? new Prisma.Decimal(result.metrics.sharpeRatio) : null,
+          sortinoRatio: result.metrics.sortinoRatio ? new Prisma.Decimal(result.metrics.sortinoRatio) : null,
+          maxDrawdown: new Prisma.Decimal(result.metrics.maxDrawdown),
           profitFactor: result.metrics.profitFactor ? new Prisma.Decimal(result.metrics.profitFactor) : null,
           parameters: result.config as any,
           metadata: {
@@ -747,7 +750,8 @@ export class BacktestPrismaService {
             equityCurve: result.equityCurve,
             drawdownCurve: result.drawdownCurve,
             duration: result.duration
-          } as any
+          } as any,
+          completedAt: result.completedAt
         }
       });
       

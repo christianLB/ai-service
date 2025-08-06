@@ -122,7 +122,7 @@ export class InvoiceStoragePrismaService {
         invoiceNumber: storedInvoice.invoiceNumber,
         fileName: storedInvoice.fileName,
         filePath: storedInvoice.filePath,
-        fileSize: storedInvoice.fileSize,
+        fileSize: Number(storedInvoice.fileSize),
         mimeType: storedInvoice.mimeType,
         storageType: storedInvoice.storageType as 'local' | 's3' | 'gcs',
         url: storedInvoice.url || undefined,
@@ -175,7 +175,7 @@ export class InvoiceStoragePrismaService {
         invoiceNumber: storedInvoice.invoiceNumber,
         fileName: storedInvoice.fileName,
         filePath: storedInvoice.filePath,
-        fileSize: storedInvoice.fileSize,
+        fileSize: Number(storedInvoice.fileSize),
         mimeType: storedInvoice.mimeType,
         storageType: storedInvoice.storageType as 'local' | 's3' | 'gcs',
         url: storedInvoice.url || undefined,
@@ -225,7 +225,7 @@ export class InvoiceStoragePrismaService {
         invoiceNumber: storedInvoice.invoiceNumber,
         fileName: storedInvoice.fileName,
         filePath: storedInvoice.filePath,
-        fileSize: storedInvoice.fileSize,
+        fileSize: Number(storedInvoice.fileSize),
         mimeType: storedInvoice.mimeType,
         storageType: storedInvoice.storageType as 'local' | 's3' | 'gcs',
         url: storedInvoice.url || undefined,
@@ -282,7 +282,7 @@ export class InvoiceStoragePrismaService {
         invoiceNumber: invoice.invoiceNumber,
         fileName: invoice.fileName,
         filePath: invoice.filePath,
-        fileSize: invoice.fileSize,
+        fileSize: Number(invoice.fileSize),
         mimeType: invoice.mimeType,
         storageType: invoice.storageType as 'local' | 's3' | 'gcs',
         url: invoice.url || undefined,
@@ -424,8 +424,8 @@ export class InvoiceStoragePrismaService {
 
       return {
         totalInvoices: aggregateStats._count || 0,
-        totalSize: aggregateStats._sum.fileSize || 0,
-        averageSize: aggregateStats._avg.fileSize || 0,
+        totalSize: Number(aggregateStats._sum.fileSize) || 0,
+        averageSize: Number(aggregateStats._avg.fileSize) || 0,
         oldestInvoice: aggregateStats._min.createdAt || undefined,
         newestInvoice: aggregateStats._max.createdAt || undefined,
         invoicesByMonth: monthlyStats.map(stat => ({
@@ -499,8 +499,7 @@ export class InvoiceStoragePrismaService {
           invoiceId: invoiceId
         },
         data: {
-          metadata,
-          updatedAt: new Date()
+          metadata
         }
       });
 

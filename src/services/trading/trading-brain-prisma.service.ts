@@ -320,7 +320,7 @@ export class TradingBrainPrismaService {
           })
         },
         include: {
-          tradingPair: true
+          TradingPair: true
         }
       });
 
@@ -328,10 +328,10 @@ export class TradingBrainPrismaService {
       let totalValue = 0;
 
       for (const pos of positions) {
-        const value = Number(pos.size) * Number(pos.currentPrice || pos.entryPrice);
+        const value = Number(pos.quantity) * Number(pos.avgEntryPrice);
         totalValue += value;
         
-        const baseAsset = pos.tradingPair.baseAsset;
+        const baseAsset = pos.TradingPair?.baseAsset || pos.symbol.split('/')[0];
         exposure[baseAsset] = (exposure[baseAsset] || 0) + value;
       }
 
@@ -379,21 +379,16 @@ export class TradingBrainPrismaService {
       const trades = await this.prisma.trade.findMany({
         where: {
           strategyId,
-          tradingPair: {
-            symbol
-          }
+          symbol
         },
         orderBy: {
           executedAt: 'desc'
         },
-        take: 20,
-        include: {
-          tradingPair: true
-        }
+        take: 20
       });
 
       const winRate = trades.length > 0
-        ? trades.filter(t => (t.pnl || 0) > 0).length / trades.length
+        ? trades.filter(t => Number(t.pnl || 0) > 0).length / trades.length
         : 0;
 
       const totalPnl = trades.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
@@ -696,10 +691,7 @@ Format your response as JSON.`;
         where: {
           pnl: { gt: 0 }
         },
-        include: {
-          strategy: true,
-          tradingPair: true
-        },
+        // No direct relations in Trade model
         orderBy: {
           pnl: 'desc'
         },
@@ -709,10 +701,10 @@ Format your response as JSON.`;
       // Analyze patterns
       for (const trade of successfulTrades) {
         const pattern = {
-          symbol: trade.tradingPair.symbol,
-          strategyType: trade.strategy?.type,
-          timeOfDay: new Date(trade.executedAt).getHours(),
-          dayOfWeek: new Date(trade.executedAt).getDay(),
+          symbol: trade.symbol,
+          strategyType: (trade.metadata as any)?.strategyType || 'unknown',
+          timeOfDay: trade.executedAt ? new Date(trade.executedAt).getHours() : 0,
+          dayOfWeek: trade.executedAt ? new Date(trade.executedAt).getDay() : 0,
           confidenceScore: 0.8 // Default confidence for successful trades
         };
         
@@ -774,7 +766,7 @@ Format your response as JSON.`;
       
       // Calculate actual win rate from trades
       const winRate = strategy.trades.length > 0
-        ? strategy.trades.filter(t => (t.pnl || 0) > 0).length / strategy.trades.length
+        ? strategy.trades.filter(t => Number(t.pnl || 0) > 0).length / strategy.trades.length
         : 0;
       
       // Analyze win rate
@@ -783,12 +775,13 @@ Format your response as JSON.`;
       }
 
       // Analyze drawdown
-      if (Number(strategy.maxDrawdownHit) > 0.15) {
+      const strategyMetadata = strategy.metadata as any || {};
+      if (Number(strategyMetadata.maxDrawdownHit || 0) > 0.15) {
         suggestions.push('Implement tighter stop losses - max drawdown exceeds 15%');
       }
 
       // Check if strategy is using all available indicators
-      const params = strategy.parameters as any;
+      const params = strategy.config as any;
       if (!params?.useVolumeConfirmation) {
         suggestions.push('Enable volume confirmation for better signal quality');
       }
@@ -796,8 +789,8 @@ Format your response as JSON.`;
       // Check for time-based patterns
       const lossByHour = new Map<number, number>();
       for (const trade of strategy.trades) {
-        if ((trade.pnl || 0) < 0) {
-          const hour = new Date(trade.executedAt).getHours();
+        if (Number(trade.pnl || 0) < 0) {
+          const hour = trade.executedAt ? new Date(trade.executedAt).getHours() : 0;
           lossByHour.set(hour, (lossByHour.get(hour) || 0) + 1);
         }
       }

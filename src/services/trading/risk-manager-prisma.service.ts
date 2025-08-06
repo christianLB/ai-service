@@ -272,7 +272,7 @@ export class RiskManagerPrismaService {
           ...(userId && { userId })
         },
         include: {
-          tradingPair: true
+          TradingPair: true
         }
       });
 
@@ -280,10 +280,10 @@ export class RiskManagerPrismaService {
       const symbolExposure: Map<string, number> = new Map();
       
       for (const position of positions) {
-        const value = Number(position.quantity) * Number(position.currentPrice || position.entryPrice);
+        const value = Number(position.quantity) * Number(position.avgEntryPrice);
         totalExposure += value;
         
-        const baseAsset = position.tradingPair.baseAsset;
+        const baseAsset = position.TradingPair?.baseAsset || position.symbol;
         symbolExposure.set(baseAsset, (symbolExposure.get(baseAsset) || 0) + value);
       }
       
@@ -391,7 +391,7 @@ export class RiskManagerPrismaService {
           ...(userId && { userId })
         },
         include: {
-          tradingPair: true
+          TradingPair: true
         }
       });
 
@@ -405,7 +405,7 @@ export class RiskManagerPrismaService {
       // Count positions with same base asset
       let correlatedPositions = 0;
       for (const position of positions) {
-        const posBase = position.tradingPair.baseAsset;
+        const posBase = position.TradingPair?.baseAsset || position.symbol.split('/')[0];
         if (posBase === signalBase) {
           correlatedPositions++;
         }
@@ -458,8 +458,7 @@ export class RiskManagerPrismaService {
       const position = await this.prisma.position.findUnique({
         where: { id: positionId },
         include: {
-          tradingPair: true,
-          exchange: true
+          TradingPair: true
         }
       });
 
@@ -470,38 +469,42 @@ export class RiskManagerPrismaService {
       
       // Get current price
       const currentPrice = await marketDataService.getLatestPrice(
-        position.exchange.name,
-        position.tradingPair.symbol
+        position.exchange,
+        position.TradingPair?.symbol || position.symbol
       );
       
       // Calculate current value and PnL
       const currentValue = Number(position.quantity) * currentPrice;
-      const entryValue = Number(position.quantity) * Number(position.entryPrice);
+      const entryValue = Number(position.quantity) * Number(position.avgEntryPrice);
       
       let pnl: number;
       let pnlPercentage: number;
       
       if (position.side === 'LONG') {
         pnl = currentValue - entryValue;
-        pnlPercentage = ((currentPrice - Number(position.entryPrice)) / Number(position.entryPrice)) * 100;
+        pnlPercentage = ((currentPrice - Number(position.avgEntryPrice)) / Number(position.avgEntryPrice)) * 100;
       } else {
         pnl = entryValue - currentValue;
-        pnlPercentage = ((Number(position.entryPrice) - currentPrice) / Number(position.entryPrice)) * 100;
+        pnlPercentage = ((Number(position.avgEntryPrice) - currentPrice) / Number(position.avgEntryPrice)) * 100;
       }
       
       // Update position
       await this.prisma.position.update({
         where: { id: positionId },
         data: {
-          currentPrice: new Prisma.Decimal(currentPrice),
           unrealizedPnl: new Prisma.Decimal(pnl),
-          lastChecked: new Date()
+          metadata: {
+            ...(position.metadata as any || {}),
+            currentPrice,
+            lastChecked: new Date().toISOString()
+          }
         }
       });
       
       // Check if stop loss is hit
-      if (position.stopLoss) {
-        const stopLoss = Number(position.stopLoss);
+      const metadata = position.metadata as any || {};
+      if (metadata.stopLoss) {
+        const stopLoss = Number(metadata.stopLoss);
         if ((position.side === 'LONG' && currentPrice <= stopLoss) ||
             (position.side === 'SHORT' && currentPrice >= stopLoss)) {
           logger.warn(`Stop loss hit for position ${positionId}`);
@@ -510,8 +513,8 @@ export class RiskManagerPrismaService {
       }
       
       // Check if take profit is hit
-      if (position.takeProfit) {
-        const takeProfit = Number(position.takeProfit);
+      if (metadata.takeProfit) {
+        const takeProfit = Number(metadata.takeProfit);
         if ((position.side === 'LONG' && currentPrice >= takeProfit) ||
             (position.side === 'SHORT' && currentPrice <= takeProfit)) {
           logger.info(`Take profit hit for position ${positionId}`);
