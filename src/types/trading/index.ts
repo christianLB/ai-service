@@ -10,3 +10,6 @@
 // export * from './connector';
 // export * from './backtest';
 // export * from './risk';
+
+// Placeholder export to make this a module
+export {};

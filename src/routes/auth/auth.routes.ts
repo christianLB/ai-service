@@ -27,7 +27,7 @@ const loginLimiter = rateLimit({
 
 export function createAuthRoutes(pool: Pool): Router {
   const router = Router();
-  const authService = new AuthService(pool);
+  const authService = new AuthService();
   const securityLogger = new SecurityLoggerService(pool);
   
   // Brute force protection
