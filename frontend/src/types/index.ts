@@ -129,11 +129,15 @@ export interface RelatedDocument {
 
 export interface InvoiceAttachment {
   id: string;
+  invoiceId: string;
   fileName: string;
   fileType: string;
   fileSize: number;
-  url: string;
+  filePath?: string;
+  description?: string;
   uploadedAt: string;
+  uploadedBy: string;
+  originalFileName?: string;
 }
 
 // Dashboard Types

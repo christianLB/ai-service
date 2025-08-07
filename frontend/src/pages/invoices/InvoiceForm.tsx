@@ -28,6 +28,7 @@ import invoiceService from '../../services/invoiceService';
 import clientService from '../../services/clientService';
 import { invoiceNumberingService } from '../../services/invoiceNumberingService';
 import { useInvoiceTemplates } from '../../hooks/use-invoice-template';
+import { InvoiceAttachments } from '../../components/invoices/InvoiceAttachments';
 import type { InvoiceFormData, InvoiceItem, Client } from '../../types';
 import dayjs from 'dayjs';
 
@@ -806,6 +807,20 @@ const InvoiceForm: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
+
+          {isEdit && id && (
+            <>
+              <Divider />
+              <Row gutter={16}>
+                <Col span={24}>
+                  <Title level={5}>Archivos Adjuntos</Title>
+                  <InvoiceAttachments invoiceId={id} />
+                </Col>
+              </Row>
+            </>
+          )}
+
+          <Divider />
 
           <Form.Item>
             <Space>

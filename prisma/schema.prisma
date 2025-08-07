@@ -220,9 +220,10 @@ model Invoice {
   templateId            String?   @map("template_id") @db.Uuid
 
   // Relations
-  user     User             @relation(fields: [userId], references: [id])
-  client   Client?          @relation(fields: [clientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  template InvoiceTemplate? @relation(fields: [templateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user               User                @relation(fields: [userId], references: [id])
+  client             Client?             @relation(fields: [clientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  template           InvoiceTemplate?    @relation(fields: [templateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  invoiceAttachments InvoiceAttachment[]
 
   @@index([clientId], map: "idx_invoices_client_id")
   @@index([invoiceNumber], map: "idx_invoices_invoice_number")
@@ -469,6 +470,7 @@ model User {
   reviews             StrategyReview[]
   payments            Payment[]
   Order               Order[]
+  invoiceAttachments  InvoiceAttachment[]
 
   @@index([email], map: "idx_users_email")
   @@map("users")
@@ -612,6 +614,27 @@ model InvoiceNumberingSequence {
   @@index([series])
   @@index([currentYear])
   @@map("invoice_numbering_sequences")
+  @@schema("financial")
+}
+
+model InvoiceAttachment {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId    String   @map("invoice_id") @db.VarChar(255)
+  fileName     String   @map("file_name") @db.VarChar(255)
+  fileType     String   @map("file_type") @db.VarChar(100)
+  fileSize     BigInt   @map("file_size")
+  filePath     String   @map("file_path") @db.VarChar(500)
+  description  String?  @db.Text
+  uploadedAt   DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  uploadedBy   String   @map("uploaded_by") @db.Uuid
+  
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [uploadedBy], references: [id])
+  
+  @@index([invoiceId])
+  @@index([uploadedAt])
+  @@map("invoice_attachments")
   @@schema("financial")
 }
 
