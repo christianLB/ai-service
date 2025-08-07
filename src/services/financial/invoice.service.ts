@@ -3,8 +3,18 @@ import type { Prisma, Invoice } from '../../lib/prisma';
 import type { InvoiceFormData } from '../../types/financial/index';
 import { AppError } from '../../utils/errors';
 import logger from '../../utils/logger';
+import { InvoiceNumberingService } from './invoice-numbering.service';
 
 export class InvoiceService {
+  private numberingService: InvoiceNumberingService;
+
+  constructor() {
+    this.numberingService = new InvoiceNumberingService(prisma, {
+      defaultPrefix: 'INV',
+      defaultFormat: 'PREFIX-YYYY-0000',
+      yearlyReset: true
+    });
+  }
   /**
    * Get all invoices with pagination and filtering
    */
@@ -153,30 +163,36 @@ export class InvoiceService {
    */
   async createInvoice(data: InvoiceFormData, userId: string) {
     try {
-      // Generate invoice number if not provided
-      let invoiceNumber = data.invoiceNumber;
-      if (!invoiceNumber) {
-        // Get the latest invoice number
-        const lastInvoice = await prisma.invoice.findFirst({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          select: { invoiceNumber: true },
-        });
+      // Use transaction to ensure atomicity
+      const result = await prisma.$transaction(async (tx) => {
+        // Generate invoice number if not provided
+        let invoiceNumber = data.invoiceNumber;
+        
+        if (!invoiceNumber) {
+          // Use the advanced numbering service
+          const series = data.type?.toUpperCase() || 'INVOICE';
+          const prefix = this.getInvoicePrefixByType(data.type);
+          
+          invoiceNumber = await this.numberingService.getNextInvoiceNumber({
+            series,
+            prefix,
+            format: 'PREFIX-YYYY-0000', // Can be made configurable later
+          });
+        } else {
+          // Validate manual invoice number
+          const isValid = await this.numberingService.validateInvoiceNumber(invoiceNumber);
+          if (!isValid) {
+            throw new AppError(`Invoice number ${invoiceNumber} already exists`, 400);
+          }
+        }
 
-        // Generate new number
-        const year = new Date().getFullYear();
-        const lastNumber = lastInvoice?.invoiceNumber 
-          ? parseInt(lastInvoice.invoiceNumber.split('-').pop() || '0')
-          : 0;
-        invoiceNumber = `INV-${year}-${String(lastNumber + 1).padStart(5, '0')}`;
-      }
+        // Calculate totals if not provided
+        const subtotal = data.subtotal || (data.items?.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0) || 0);
+        const taxAmount = data.taxAmount || (subtotal * ((data.taxRate || 0) / 100));
+        const total = data.total || (subtotal + taxAmount - (data.discount || 0));
 
-      // Calculate totals if not provided
-      const subtotal = data.subtotal || (data.items?.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0) || 0);
-      const taxAmount = data.taxAmount || (subtotal * ((data.taxRate || 0) / 100));
-      const total = data.total || (subtotal + taxAmount - (data.discount || 0));
-
-      const invoice = await prisma.invoice.create({
+        // Create invoice within transaction
+        const invoice = await tx.invoice.create({
         data: {
           userId,
           invoiceNumber,
@@ -213,12 +229,14 @@ export class InvoiceService {
         },
       });
 
-      logger.info(`Invoice created: ${invoice.invoiceNumber} for client ${invoice.clientName}`);
+        logger.info(`Invoice created: ${invoice.invoiceNumber} for client ${invoice.clientName}`);
+        return invoice;
+      });
       
       return {
         success: true,
         data: {
-          invoice,
+          invoice: result,
         },
       };
     } catch (error) {
@@ -511,6 +529,19 @@ export class InvoiceService {
       'client_name': 'clientName',
     };
     return fieldMap[field] || field;
+  }
+
+  /**
+   * Get invoice prefix based on type
+   */
+  private getInvoicePrefixByType(type?: string): string {
+    const prefixMap: Record<string, string> = {
+      'invoice': 'FAC',
+      'credit_note': 'NC',
+      'proforma': 'PRO',
+      'receipt': 'REC',
+    };
+    return prefixMap[type || 'invoice'] || 'INV';
   }
 }
 

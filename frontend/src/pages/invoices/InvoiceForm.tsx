@@ -26,6 +26,7 @@ import {
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import invoiceService from '../../services/invoiceService';
 import clientService from '../../services/clientService';
+import { invoiceNumberingService } from '../../services/invoiceNumberingService';
 import { useInvoiceTemplates } from '../../hooks/use-invoice-template';
 import type { InvoiceFormData, InvoiceItem, Client } from '../../types';
 import dayjs from 'dayjs';
@@ -77,6 +78,7 @@ const InvoiceForm: React.FC = () => {
     total: 0,
   });
   const [lineItemErrors, setLineItemErrors] = useState<LineItemErrors>({});
+  const [checkingInvoiceNumber, setCheckingInvoiceNumber] = useState(false);
   
   // Invoice templates
   const { data: templatesData, isLoading: loadingTemplates } = useInvoiceTemplates({
@@ -109,6 +111,7 @@ const InvoiceForm: React.FC = () => {
         
         // Set form values
         form.setFieldsValue({
+          invoiceNumber: invoice.invoiceNumber,
           clientId: invoice.clientId,
           type: invoice.type,
           issueDate: dayjs(invoice.issueDate),
@@ -292,7 +295,25 @@ const InvoiceForm: React.FC = () => {
     return !hasErrors;
   };
 
-  const onFinish = async (values: { clientId: string; type: string; issueDate: dayjs.Dayjs; dueDate: dayjs.Dayjs; paymentTerms: number; currency: string; taxRate: number; taxType: string; notes?: string; termsAndConditions?: string; templateId?: string }) => {
+  const validateInvoiceNumber = async (value: string) => {
+    if (!value) return; // Empty is valid (will auto-generate)
+    
+    try {
+      setCheckingInvoiceNumber(true);
+      const response = await invoiceNumberingService.validateInvoiceNumber(value);
+      
+      if (!response.data.isValid) {
+        return Promise.reject('Este número de factura ya existe');
+      }
+    } catch (error) {
+      console.error('Error validating invoice number:', error);
+      return Promise.reject('Error al validar el número de factura');
+    } finally {
+      setCheckingInvoiceNumber(false);
+    }
+  };
+
+  const onFinish = async (values: { invoiceNumber?: string; clientId: string; type: string; issueDate: dayjs.Dayjs; dueDate: dayjs.Dayjs; paymentTerms: number; currency: string; taxRate: number; taxType: string; notes?: string; termsAndConditions?: string; templateId?: string }) => {
     // Validate all line items first
     const isValid = validateAllLineItems();
     
@@ -318,6 +339,7 @@ const InvoiceForm: React.FC = () => {
 
       // Build invoice data
       const invoiceData: InvoiceFormData = {
+        invoiceNumber: values.invoiceNumber, // Include invoice number if provided
         clientId: values.clientId,
         clientName: client.name,
         clientTaxId: client.taxId,
@@ -600,6 +622,30 @@ const InvoiceForm: React.FC = () => {
           </Row>
 
           <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Número de Factura"
+                name="invoiceNumber"
+                tooltip="Dejar vacío para generar automáticamente o introducir número personalizado"
+                hasFeedback
+                validateStatus={checkingInvoiceNumber ? 'validating' : undefined}
+                rules={[
+                  {
+                    validator: async (_, value) => {
+                      if (value && !isEdit) {
+                        await validateInvoiceNumber(value);
+                      }
+                    },
+                  },
+                ]}
+              >
+                <Input 
+                  placeholder="Auto-generar o introducir personalizado" 
+                  prefix={<FileTextOutlined />}
+                  disabled={checkingInvoiceNumber}
+                />
+              </Form.Item>
+            </Col>
             <Col span={12}>
               <Form.Item 
                 label="Plantilla de Factura" 

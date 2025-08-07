@@ -236,6 +236,7 @@ export interface ClientFormData {
 }
 
 export interface InvoiceFormData {
+  invoiceNumber?: string;
   clientId: string;
   clientName: string;
   clientTaxId: string;

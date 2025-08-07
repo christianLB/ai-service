@@ -14,6 +14,7 @@ import { transactionImportFileSchema } from '../types/transaction-import.types';
 import clientsRoutes from './financial/clients.routes';
 import invoicesRoutes from './financial/invoices.routes';
 import invoiceTemplatesRoutes from './financial/invoice-templates.routes';
+import invoiceNumberingRoutes from './financial/invoice-numbering.routes';
 import dashboardRoutes from './financial/dashboard.routes';
 import multer from 'multer';
 import { standardRateLimit, databaseRateLimit } from '../middleware/express-rate-limit.middleware';
@@ -2517,6 +2518,9 @@ router.use('/invoices', invoicesRoutes);
 
 // Mount invoice template routes
 router.use('/invoice-templates', invoiceTemplatesRoutes);
+
+// Mount invoice numbering routes
+router.use('/invoice-numbering', invoiceNumberingRoutes);
 
 // Mount transaction management routes
 // Note: transactionsRoutes needs a pool, we'll initialize it after databaseService is created
