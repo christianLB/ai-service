@@ -148,21 +148,25 @@ const InvoiceForm: React.FC = () => {
     }
   }, [id, form, navigate, message]);
 
-  const handleClientChange = useCallback(async (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    if (client) {
-      form.setFieldsValue({
-        currency: client.currency,
-        paymentTerms: client.paymentTerms,
-      });
-      
-      // Calculate due date based on payment terms
-      const issueDate = form.getFieldValue('issueDate') || dayjs();
-      const dueDate = issueDate.add(client.paymentTerms, 'days');
-      // Clone the dayjs object to avoid circular references
-      form.setFieldValue('dueDate', dueDate.clone());
-    }
-  }, [clients, form]);
+  const handleClientChange = useCallback((clientId: string) => {
+    // Use clients from closure to avoid dependency
+    setClients(currentClients => {
+      const client = currentClients.find(c => c.id === clientId);
+      if (client) {
+        form.setFieldsValue({
+          currency: client.currency,
+          paymentTerms: client.paymentTerms,
+        });
+        
+        // Calculate due date based on payment terms
+        const issueDate = form.getFieldValue('issueDate') || dayjs();
+        const dueDate = issueDate.add(client.paymentTerms, 'days');
+        // Clone the dayjs object to avoid circular references
+        form.setFieldValue('dueDate', dueDate.clone());
+      }
+      return currentClients; // Return unchanged clients
+    });
+  }, [form]);
 
   const calculateLineItemTotal = (item: LineItem) => {
     const amount = item.quantity * item.unitPrice;
@@ -220,15 +224,37 @@ const InvoiceForm: React.FC = () => {
     setTotals({ subtotal, taxAmount, total });
   }, [lineItems]);
 
+  // Load clients on mount
   useEffect(() => {
     loadClients();
+  }, [loadClients]);
+
+  // Load invoice when editing
+  useEffect(() => {
     if (isEdit && id) {
       loadInvoice();
-    } else if (preselectedClientId) {
-      form.setFieldsValue({ clientId: preselectedClientId });
-      handleClientChange(preselectedClientId);
     }
-  }, [id, isEdit, preselectedClientId, handleClientChange, loadClients, loadInvoice, form]);
+  }, [isEdit, id, loadInvoice]);
+
+  // Handle preselected client
+  useEffect(() => {
+    if (preselectedClientId && clients.length > 0) {
+      form.setFieldsValue({ clientId: preselectedClientId });
+      // Apply client defaults inline to avoid circular dependency
+      const client = clients.find(c => c.id === preselectedClientId);
+      if (client) {
+        form.setFieldsValue({
+          currency: client.currency,
+          paymentTerms: client.paymentTerms,
+        });
+        
+        // Calculate due date based on payment terms
+        const issueDate = form.getFieldValue('issueDate') || dayjs();
+        const dueDate = issueDate.add(client.paymentTerms, 'days');
+        form.setFieldValue('dueDate', dueDate.clone());
+      }
+    }
+  }, [preselectedClientId, clients, form]);
 
   useEffect(() => {
     calculateTotals();

@@ -8,7 +8,46 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Enable sending cookies with requests
 });
+
+// CSRF token management
+let csrfToken: string | null = null;
+
+// Function to fetch CSRF token
+const fetchCSRFToken = async (): Promise<string> => {
+  try {
+    const response = await axios.get(`${api.defaults.baseURL}/csrf-token`, {
+      withCredentials: true,
+    });
+    const token = response.data.csrfToken;
+    if (!token) {
+      throw new Error('No CSRF token received');
+    }
+    csrfToken = token;
+    return token;
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+    throw error;
+  }
+};
+
+// Function to get CSRF token from cookie
+const getCSRFTokenFromCookie = (): string | null => {
+  const name = 'x-csrf-token=';
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const ca = decodedCookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) === 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return null;
+};
 
 // Token refresh logic
 let isRefreshing = false;
@@ -30,12 +69,36 @@ const processQueue = (error: Error | AxiosError | null, token: string | null = n
 
 // Request interceptor
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Add auth token if needed
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Add CSRF token for state-changing requests
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
+      // Skip CSRF for auth endpoints as they're excluded in backend
+      if (!config.url?.includes('/auth/')) {
+        // First try to get token from cookie
+        let token = getCSRFTokenFromCookie();
+        
+        // If not in cookie or expired, fetch new token
+        if (!token) {
+          try {
+            token = await fetchCSRFToken();
+          } catch (error) {
+            console.error('Failed to get CSRF token:', error);
+            // Continue without CSRF token - let backend handle the error
+          }
+        }
+        
+        if (token) {
+          config.headers['x-csrf-token'] = token;
+        }
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -49,7 +112,33 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean; _csrfRetry?: boolean };
+
+    // Handle CSRF token errors
+    if (error.response?.status === 403 && 
+        error.response?.data && 
+        typeof error.response.data === 'object' &&
+        'code' in error.response.data &&
+        error.response.data.code === 'CSRF_VALIDATION_FAILED' &&
+        !originalRequest._csrfRetry) {
+      
+      originalRequest._csrfRetry = true;
+      
+      try {
+        // Fetch new CSRF token
+        await fetchCSRFToken();
+        
+        // Retry the request with new token
+        if (csrfToken && originalRequest.headers) {
+          originalRequest.headers['x-csrf-token'] = csrfToken;
+        }
+        
+        return api(originalRequest);
+      } catch (csrfError) {
+        console.error('Failed to refresh CSRF token:', csrfError);
+        return Promise.reject(error);
+      }
+    }
 
     // Handle 401 errors (unauthorized)
     // Don't intercept auth endpoints - let them handle their own errors
