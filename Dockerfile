@@ -52,8 +52,8 @@ COPY . .
 
 # Instalar dependencias del frontend y construir
 RUN cd frontend && npm ci && cd ..
-# Build backend without TypeScript checking
-RUN npm run build:backend:nocheck
+# Build backend (stable scope)
+RUN npm run build:stable
 # Build frontend
 RUN cd frontend && npm run build
 

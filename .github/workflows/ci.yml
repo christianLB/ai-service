@@ -173,7 +173,7 @@ jobs:
       - name: Build backend
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_service
-        run: npm run build:backend:nocheck
+        run: npm run build:stable
       
       - name: Build frontend
         timeout-minutes: 10
