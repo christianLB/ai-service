@@ -9,10 +9,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
+COPY tsconfig.build.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
+# Install full deps for build, then prune later
+RUN npm ci && npm cache clean --force
 
 # Copy Prisma schema for generation
 COPY prisma/ ./prisma/
@@ -23,10 +23,9 @@ COPY migrations/ ./migrations/
 COPY scripts/ ./scripts/
 COPY config/ ./config/
 
-# Build TypeScript and generate Prisma client (skip errors temporarily)
-RUN npm install -D typescript @types/node && \
-    npx prisma generate && \
-    (npx tsc --skipLibCheck || echo "TypeScript build completed with warnings") && \
+# Generate Prisma client (if used) and run stable build
+RUN npx prisma generate || echo "Prisma generate skipped" && \
+    npm run build:stable && \
     npm prune --production
 
 # Production stage
@@ -88,4 +87,4 @@ ENTRYPOINT ["/sbin/tini", "--"]
 
 # Start the API server
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/index.stable.js"]

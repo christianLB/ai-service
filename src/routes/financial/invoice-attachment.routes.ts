@@ -215,10 +215,12 @@ router.get('/:attachmentId/download', authMiddleware, async (req: AuthRequest, r
 
     const { attachment, buffer } = result;
 
-    // Set headers for file download
-    res.setHeader('Content-Type', attachment.fileType);
-    res.setHeader('Content-Disposition', `attachment; filename="${attachment.fileName}"`);
-    res.setHeader('Content-Length', buffer.length.toString());
+    // Set headers for file download (ensure defined string values)
+    const contentType = attachment.fileType || 'application/octet-stream';
+    const fileName = attachment.fileName || 'attachment';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', String(buffer.length));
 
     res.send(buffer);
   } catch (error: any) {

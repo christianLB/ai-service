@@ -10,8 +10,17 @@
     "strict": true,
     "skipLibCheck": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "@contracts/*": ["packages/contracts/src/*"],
+      "@clients/financial/*": ["packages/clients/financial/src/*"]
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["tests/**/*", "node_modules", "dist", "frontend/**/*"]
+  "exclude": ["tests/**/*", "node_modules", "dist", "frontend/**/*"],
+  "references": [
+    { "path": "packages/contracts" },
+    { "path": "packages/clients/financial" }
+  ]
 }
