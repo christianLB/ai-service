@@ -3,12 +3,13 @@ import 'reflect-metadata';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import { logger } from './utils/log';
 
 if (process.env.NODE_ENV !== 'production') {
   const envLocalPath = path.join(__dirname, '../.env.local');
   if (fs.existsSync(envLocalPath)) {
     dotenv.config({ path: envLocalPath });
-    console.log('📁 Environment variables loaded from .env.local');
+    logger.info('📁 Environment variables loaded from .env.local');
   }
 }
 
@@ -33,7 +34,9 @@ import telegramRoutes from './routes/telegram';
 import documentRoutes from './routes/documents';
 import realEstateRoutes from './routes/real-estate';
 import integrationRoutes from './routes/integrations';
-import { logger } from './utils/log';
+import { createAttachmentsRouter } from './routes/financial/attachments.router';
+import financialRoutes from './routes/financial';
+import dashboardRoutes from './routes/dashboard';
 import { db } from './services/database';
 import { metricsService } from './services/metrics';
 import { neuralOrchestrator } from './services/neural-orchestrator';
@@ -46,15 +49,15 @@ app.set('trust proxy', true);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"]
+      defaultSrc: ['\'self\''],
+      scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''],
+      styleSrc: ['\'self\'', '\'unsafe-inline\''],
+      imgSrc: ['\'self\'', 'data:', 'https:'],
+      connectSrc: ['\'self\''],
+      fontSrc: ['\'self\''],
+      objectSrc: ['\'none\''],
+      mediaSrc: ['\'self\''],
+      frameSrc: ['\'none\'']
     }
   },
   hsts: { maxAge: 31536000, includeSubDomains: true, preload: true }
@@ -148,6 +151,9 @@ app.use('/api/real-estate', realEstateRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/integrations', integrationRoutes);
+app.use('/api/financial/attachments', createAttachmentsRouter());
+app.use('/api/financial', financialRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Static frontend
 const frontendPath = process.env.NODE_ENV === 'production'

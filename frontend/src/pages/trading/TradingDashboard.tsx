@@ -129,7 +129,7 @@ export const TradingDashboard: React.FC = () => {
           <Card>
             <Statistic
               title="Valor Total Portfolio"
-              value={dashboard?.portfolio.totalValue || 0}
+              value={dashboard?.portfolio?.totalValue || 0}
               prefix={<DollarOutlined />}
               formatter={(value) => formatCurrency(Number(value))}
             />
@@ -139,13 +139,13 @@ export const TradingDashboard: React.FC = () => {
           <Card>
             <Statistic
               title="P&L Diario"
-              value={dashboard?.portfolio.dailyPnL || 0}
-              prefix={getPnLIcon(dashboard?.portfolio.dailyPnL || 0)}
-              valueStyle={{ color: getPnLColor(dashboard?.portfolio.dailyPnL || 0) }}
+              value={dashboard?.portfolio?.dailyPnL || 0}
+              prefix={getPnLIcon(dashboard?.portfolio?.dailyPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.portfolio?.dailyPnL || 0) }}
               formatter={(value) => formatCurrency(Number(value))}
               suffix={
                 <Text type="secondary" style={{ fontSize: 14 }}>
-                  ({formatPercentage((dashboard?.portfolio.dailyPnL || 0) / (dashboard?.portfolio.totalValue || 1))})
+                  ({formatPercentage((dashboard?.portfolio?.dailyPnL || 0) / (dashboard?.portfolio?.totalValue || 1))})
                 </Text>
               }
             />
@@ -155,9 +155,9 @@ export const TradingDashboard: React.FC = () => {
           <Card>
             <Statistic
               title="P&L Semanal"
-              value={dashboard?.portfolio.weeklyPnL || 0}
-              prefix={getPnLIcon(dashboard?.portfolio.weeklyPnL || 0)}
-              valueStyle={{ color: getPnLColor(dashboard?.portfolio.weeklyPnL || 0) }}
+              value={dashboard?.portfolio?.weeklyPnL || 0}
+              prefix={getPnLIcon(dashboard?.portfolio?.weeklyPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.portfolio?.weeklyPnL || 0) }}
               formatter={(value) => formatCurrency(Number(value))}
             />
           </Card>

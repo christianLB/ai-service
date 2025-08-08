@@ -217,12 +217,34 @@ model Invoice {
   templateId            String?   @map("template_id") @db.Uuid
   client                Client?   @relation(fields: [clientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user                  User      @relation(fields: [userId], references: [id])
+  invoiceAttachments    InvoiceAttachment[]
 
   @@index([clientId], map: "idx_invoices_client_id")
   @@index([invoiceNumber], map: "idx_invoices_invoice_number")
   @@index([issueDate(sort: Desc)], map: "idx_invoices_issue_date")
   @@index([status], map: "idx_invoices_status")
   @@map("invoices")
+  @@schema("financial")
+}
+
+model InvoiceAttachment {
+  id          String   @id @default(uuid()) @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.Uuid
+  fileName    String   @map("file_name") @db.VarChar(255)
+  filePath    String   @map("file_path")
+  fileSize    BigInt   @map("file_size")
+  fileType    String   @map("file_type") @db.VarChar(100)
+  description String?
+  uploadedBy  String   @map("uploaded_by") @db.VarChar(255)
+  uploadedAt  DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy   String?  @map("deleted_by") @db.VarChar(255)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([invoiceId], map: "idx_invoice_attachments_invoice_id")
+  @@map("invoice_attachments")
   @@schema("financial")
 }
 

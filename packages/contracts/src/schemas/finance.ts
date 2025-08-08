@@ -37,3 +37,28 @@ export const TransactionsResponse = z.object({
 // Tipos útiles para consumidores (evita inferencias raras)
 export type Account = z.infer<typeof Account>;
 export type Transaction = z.infer<typeof Transaction>;
+
+// Attachments
+export const Attachment = z.object({
+  id: UUID,
+  invoiceId: UUID,
+  fileName: z.string(),
+  fileType: z.string(),
+  fileSize: z.number().int().nonnegative(),
+  description: z.string().optional().nullable(),
+  uploadedBy: z.string(),
+  uploadedAt: z.string().datetime(),
+});
+
+export const AttachmentListResponse = z.object({
+  attachments: z.array(Attachment),
+  total: z.number(),
+});
+
+export const AttachmentUploadResponse = z.object({
+  attachment: Attachment,
+});
+
+export type Attachment = z.infer<typeof Attachment>;
+export type AttachmentListResponse = z.infer<typeof AttachmentListResponse>;
+export type AttachmentUploadResponse = z.infer<typeof AttachmentUploadResponse>;

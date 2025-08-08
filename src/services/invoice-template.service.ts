@@ -78,7 +78,7 @@ export class InvoiceTemplateService {
         throw new AppError('InvoiceTemplate not found', 404);
       }
 
-      return invoiceTemplate;
+      return invoiceTemplate as any;
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error('Error in InvoiceTemplateService.getById:', error);

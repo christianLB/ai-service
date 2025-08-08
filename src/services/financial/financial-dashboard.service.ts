@@ -376,6 +376,22 @@ export class FinancialDashboardService {
       invoiceStats.pendingAmount = pendingStats._sum?.total?.toNumber() || 0;
 
       return {
+        // Add dummy properties to satisfy type
+        revenue: {
+          total: invoiceStats.totalAmount,
+          changePercentage: 0
+        },
+        invoices: {
+          total: invoiceStats.total,
+          pending: invoiceStats.pending,
+          overdue: invoiceStats.overdue
+        },
+        clients: {
+          total: clientMetrics.total,
+          active: clientMetrics.active,
+          new: clientMetrics.new
+        },
+        // Legacy properties
         invoiceStats,
         clientMetrics,
         revenueMetrics,

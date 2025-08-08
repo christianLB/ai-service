@@ -26,7 +26,6 @@
     "scripts/**",
     "src/services/trading/**",
     "src/services/tagging/**",
-    "src/services/financial/invoice-attachment.service.ts",
     "src/routes/financial/invoice-attachment.routes.ts"
   ]
 }
