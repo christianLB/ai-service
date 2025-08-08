@@ -199,3 +199,5 @@ export declare const TransactionsResponse: z.ZodObject<{
     page: number;
     limit: number;
 }>;
+export type Account = z.infer<typeof Account>;
+export type Transaction = z.infer<typeof Transaction>;

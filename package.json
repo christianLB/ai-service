@@ -16,6 +16,8 @@
     "test:generator:regression": "node tests/generator/regression.test.mjs",
     "test:generator:all": "npm run test:generator && npm run test:generator:templates && npm run test:generator:regression",
     "build": "npm run build:frontend && npm run build:backend",
+    "build:stable": "tsc -p tsconfig.build.json",
+    "typecheck:packages": "pnpm -w tsc -b",
     "build:backend": "tsc",
     "build:backend:nocheck": "tsc --noEmit false || echo 'TypeScript errors ignored'",
     "build:frontend": "cd frontend && npm run build",
@@ -166,5 +168,6 @@
     "undici": "^6.21.3",
     "upper-case": "^2.0.2",
     "zod-prisma-types": "^3.2.4"
-  }
+  },
+  "packageManager": "pnpm@10.12.1+sha1.4bd977ce548dc9fcd1ca0c62838c55646cea6847"
 }

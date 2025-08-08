@@ -33,3 +33,7 @@ export const TransactionsResponse = z.object({
   page: z.number(),
   limit: z.number(),
 });
+
+// Tipos útiles para consumidores (evita inferencias raras)
+export type Account = z.infer<typeof Account>;
+export type Transaction = z.infer<typeof Transaction>;
