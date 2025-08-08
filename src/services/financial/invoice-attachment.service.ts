@@ -1,4 +1,23 @@
-import { PrismaClient, InvoiceAttachment, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+
+// TODO: InvoiceAttachment model needs to be created in Prisma schema
+interface InvoiceAttachment {
+  id: string;
+  invoiceId: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
+  fileType?: string; // Alias for mimeType
+  uploadedBy: string;
+  uploadedAt: Date;
+  description?: string | null;
+  metadata?: any;
+  checksum?: string | null;
+  isDeleted: boolean;
+  deletedAt?: Date | null;
+  deletedBy?: string | null;
+}
 import { promises as fs } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';

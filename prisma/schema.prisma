@@ -7,7 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["financial", "public", "trading", "tagging"]
+  schemas  = ["financial", "public", "tagging", "trading"]
 }
 
 model accounts {
@@ -50,7 +50,6 @@ model categories {
   categories                  categories?                   @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   other_categories            categories[]                  @relation("categoriesTocategories")
   transaction_categorizations transaction_categorizations[]
-  ai_tags                     ai_tags[]
 
   @@schema("financial")
 }
@@ -81,7 +80,6 @@ model client_transaction_links {
 
 model Client {
   id                   String    @id @default(uuid()) @db.VarChar(255)
-  userId               String    @map("user_id") @db.Uuid
   name                 String    @db.VarChar(255)
   businessName         String?   @map("business_name") @db.VarChar(255)
   taxId                String    @map("tax_id") @db.VarChar(100)
@@ -110,10 +108,9 @@ model Client {
   updatedAt            DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
   createdBy            String?   @map("created_by") @db.VarChar(255)
   lastContactDate      DateTime? @map("last_contact_date") @db.Timestamp(6)
-
-  // Relations
-  user     User      @relation(fields: [userId], references: [id])
-  invoices Invoice[]
+  userId               String    @map("user_id") @db.Uuid
+  user                 User      @relation(fields: [userId], references: [id])
+  invoices             Invoice[]
 
   @@index([email], map: "idx_clients_email")
   @@index([status], map: "idx_clients_status")
@@ -174,7 +171,6 @@ model invoice_sequences {
 
 model Invoice {
   id                    String    @id @default(uuid()) @db.VarChar(255)
-  userId                String    @map("user_id") @db.Uuid
   invoiceNumber         String    @unique @map("invoice_number") @db.VarChar(50)
   clientId              String?   @map("client_id") @db.VarChar(255)
   clientName            String    @map("client_name") @db.VarChar(255)
@@ -217,13 +213,10 @@ model Invoice {
   isDeductible          Boolean?  @default(false) @map("is_deductible")
   deductibleCategory    String?   @map("deductible_category") @db.VarChar(100)
   deductiblePercentage  Decimal?  @map("deductible_percentage") @db.Decimal(5, 2)
+  userId                String    @map("user_id") @db.Uuid
   templateId            String?   @map("template_id") @db.Uuid
-
-  // Relations
-  user               User                @relation(fields: [userId], references: [id])
-  client             Client?             @relation(fields: [clientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  template           InvoiceTemplate?    @relation(fields: [templateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  invoiceAttachments InvoiceAttachment[]
+  client                Client?   @relation(fields: [clientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user                  User      @relation(fields: [userId], references: [id])
 
   @@index([clientId], map: "idx_invoices_client_id")
   @@index([invoiceNumber], map: "idx_invoices_invoice_number")
@@ -237,18 +230,15 @@ model InvoiceTemplate {
   id           String   @id @default(uuid()) @db.Uuid
   userId       String   @map("user_id") @db.Uuid
   name         String   @db.VarChar(255)
-  description  String?  @db.Text
+  description  String?
   isDefault    Boolean  @default(false) @map("is_default")
   templateType String   @default("invoice") @map("template_type") @db.VarChar(50)
-  htmlContent  String   @map("html_content") @db.Text
-  variables    Json     @default("[]") // Available template variables
-  metadata     Json? // Additional settings
+  htmlContent  String   @map("html_content")
+  variables    Json     @default("[]")
+  metadata     Json?
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
-
-  // Relations
-  user     User      @relation(fields: [userId], references: [id])
-  invoices Invoice[] // Templates used by invoices
+  user         User     @relation(fields: [userId], references: [id])
 
   @@index([userId], map: "idx_invoice_templates_user_id")
   @@index([templateType], map: "idx_invoice_templates_type")
@@ -263,34 +253,14 @@ model transaction_categorizations {
   category_id    String?       @db.Uuid
   confidence     Decimal?      @default(1.00) @db.Decimal(3, 2)
   method         String?       @default("manual") @db.VarChar(50)
+  created_at     DateTime?     @default(now()) @db.Timestamptz(6)
   ai_tag_id      String?       @db.Uuid
   user_confirmed Boolean?      @default(false)
-  created_at     DateTime?     @default(now()) @db.Timestamptz(6)
   categories     categories?   @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   transactions   transactions? @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  ai_tags        ai_tags?      @relation(fields: [ai_tag_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([category_id], map: "idx_transaction_categorizations_category_id")
   @@index([transaction_id], map: "idx_transaction_categorizations_transaction_id")
-  @@index([ai_tag_id], map: "idx_transaction_categorizations_ai_tag_id")
-  @@schema("financial")
-}
-
-model ai_tags {
-  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tag_name                    String                        @unique @db.VarChar(100)
-  description                 String?
-  confidence_threshold        Decimal?                      @default(0.75) @db.Decimal(3, 2)
-  category_id                 String?                       @db.Uuid
-  is_active                   Boolean?                      @default(true)
-  created_at                  DateTime?                     @default(now()) @db.Timestamptz(6)
-  updated_at                  DateTime?                     @default(now()) @db.Timestamptz(6)
-  categories                  categories?                   @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  transaction_categorizations transaction_categorizations[]
-
-  @@index([tag_name], map: "idx_ai_tags_tag_name")
-  @@index([category_id], map: "idx_ai_tags_category_id")
-  @@index([is_active], map: "idx_ai_tags_is_active")
   @@schema("financial")
 }
 
@@ -455,22 +425,18 @@ model User {
   last_login          DateTime?              @db.Timestamptz(6)
   created_at          DateTime?              @default(now()) @db.Timestamptz(6)
   updated_at          DateTime?              @default(now()) @db.Timestamptz(6)
+  clients             Client[]
   integration_configs integration_configs[]
+  invoiceTemplates    InvoiceTemplate[]
+  invoices            Invoice[]
   refresh_tokens      refresh_tokens[]
   security_logs       security_logs[]
-  clients             Client[]
-  invoices            Invoice[]
-  invoiceTemplates    InvoiceTemplate[]
-  trades              Trade[]
-  strategies          Strategy[]
-  positions           Position[]
-  alerts              Alert[]
-  marketplaceListings StrategyMarketplace[]
-  subscriptions       StrategySubscription[]
-  reviews             StrategyReview[]
   payments            Payment[]
-  Order               Order[]
-  invoiceAttachments  InvoiceAttachment[]
+  marketplaceListings StrategyMarketplace[]
+  reviews             StrategyReview[]
+  subscriptions       StrategySubscription[]
+  alerts              Alert[]
+  orders              Order[]
 
   @@index([email], map: "idx_users_email")
   @@map("users")
@@ -496,232 +462,116 @@ model workflows {
   @@schema("public")
 }
 
-// Trading Models
 model Trade {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id") @db.Uuid
-  strategyId      String?   @map("strategy_id") @db.Uuid
-  positionId      String?   @map("position_id") @db.Uuid
-  symbol          String    @db.VarChar(50)
-  side            String    @db.VarChar(10) // buy, sell
-  type            String    @db.VarChar(20) // market, limit, stop, etc
-  quantity        Decimal   @db.Decimal(20, 8)
-  price           Decimal   @db.Decimal(20, 8)
-  avgFillPrice    Decimal?  @map("avg_fill_price") @db.Decimal(20, 8)
-  fees            Decimal?  @default(0) @db.Decimal(20, 8)
-  pnl             Decimal?  @db.Decimal(20, 8) // profit and loss
-  status          String    @default("pending") @db.VarChar(20) // pending, filled, cancelled, rejected
-  exchange        String    @db.VarChar(50)
-  exchangeOrderId String?   @map("exchange_order_id") @db.VarChar(255)
-  metadata        Json?     @default("{}")
-  executedAt      DateTime? @map("executed_at") @db.Timestamptz(6)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  positionId       String?  @map("position_id") @db.Uuid
+  userId           String?  @map("user_id") @db.Uuid
+  strategyId       String?  @map("strategy_id") @db.Uuid
+  exchange         String   @db.VarChar(50)
+  symbol           String   @db.VarChar(50)
+  side             String   @db.VarChar(10)
+  type             String   @default("market") @db.VarChar(20)
+  quantity         Decimal  @db.Decimal(20, 8)
+  price            Decimal  @db.Decimal(20, 8)
+  fee              Decimal? @default(0) @db.Decimal(20, 8)
+  fee_currency     String?  @db.VarChar(10)
+  exchangeOrderId  String?  @map("exchange_order_id") @db.VarChar(255)
+  status           String   @default("executed") @db.VarChar(20)
+  ai_analysis      Json?
+  confidence_score Decimal? @db.Decimal(5, 4)
+  executedAt       DateTime @default(now()) @map("executed_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  metadata         Json?    @default("{}")
+  strategy         Strategy? @relation(fields: [strategyId], references: [id])
 
-  user     User      @relation(fields: [userId], references: [id])
-  strategy Strategy? @relation(fields: [strategyId], references: [id])
-  position Position? @relation(fields: [positionId], references: [id])
-
-  @@index([userId, createdAt(sort: Desc)])
-  @@index([symbol, exchange])
-  @@index([status])
-  @@index([strategyId])
   @@map("trades")
   @@schema("trading")
 }
 
 model Strategy {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id") @db.Uuid
-  name        String   @db.VarChar(255)
-  description String?
-  type        String   @db.VarChar(50) // dca, grid, arbitrage, etc
-  status      String   @default("active") @db.VarChar(20) // active, paused, stopped
-  config      Json // Strategy-specific configuration
-  metadata    Json?    @default("{}")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String?               @map("user_id") @db.Uuid
+  name             String                @db.VarChar(100)
+  type             String                @db.VarChar(50)
+  status           String                @default("inactive") @db.VarChar(20)
+  parameters       Json                  @default("{}")
+  risk_parameters  Json?                 @default("{}")
+  total_trades     Int?                  @default(0)
+  winning_trades   Int?                  @default(0)
+  losing_trades    Int?                  @default(0)
+  total_pnl        Decimal?              @default(0) @db.Decimal(20, 8)
+  sharpe_ratio     Decimal?              @db.Decimal(10, 4)
+  max_drawdown     Decimal?              @db.Decimal(10, 4)
+  win_rate         Decimal?              @db.Decimal(5, 4)
+  is_paper_trading Boolean?              @default(true)
+  isActive         Boolean?              @default(false) @map("is_active")
+  last_execution   DateTime?             @db.Timestamptz(6)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  metadata         Json?                 @default("{}")
+  marketplace      StrategyMarketplace[]
+  trades           Trade[]
+  positions        Position[]
+  alerts           Alert[]
+  strategyTradingPairs StrategyTradingPair[]
+  orders           Order[]
 
-  user                User                  @relation(fields: [userId], references: [id])
-  trades              Trade[]
-  positions           Position[]
-  alerts              Alert[]
-  marketplace         StrategyMarketplace[]
-  StrategyTradingPair StrategyTradingPair[]
-  Order               Order[]
-  BacktestResult      BacktestResult[]
-
-  @@index([userId])
-  @@index([status])
+  @@index([userId], map: "idx_trading_strategies_user")
   @@map("strategies")
   @@schema("trading")
-}
-
-// ============================================================================
-// INVOICE STORAGE MODELS
-// ============================================================================
-
-model StoredInvoice {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceId     String    @map("invoice_id") @db.VarChar(255)
-  invoiceNumber String    @map("invoice_number") @db.VarChar(100)
-  fileName      String    @map("file_name") @db.VarChar(255)
-  filePath      String    @map("file_path") @db.Text
-  fileSize      BigInt    @map("file_size")
-  mimeType      String    @default("application/pdf") @map("mime_type") @db.VarChar(100)
-  storageType   String    @default("local") @map("storage_type") @db.VarChar(20)
-  url           String?   @db.Text
-  metadata      Json?     @db.Json
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  expiresAt     DateTime? @map("expires_at") @db.Timestamptz(6)
-
-  @@unique([invoiceId, fileName])
-  @@index([invoiceId])
-  @@index([invoiceNumber])
-  @@index([createdAt])
-  @@index([expiresAt])
-  @@map("stored_invoices")
-  @@schema("financial")
-}
-
-model InvoiceDownloadToken {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  token     String   @unique @db.VarChar(255)
-  invoiceId String   @map("invoice_id") @db.VarChar(255)
-  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  @@index([token])
-  @@index([expiresAt])
-  @@map("invoice_download_tokens")
-  @@schema("financial")
-}
-
-model InvoiceNumberingSequence {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  series        String    @default("DEFAULT") @db.VarChar(50)
-  prefix        String    @db.VarChar(20)
-  currentNumber Int       @default(0) @map("current_number")
-  currentYear   Int       @map("current_year")
-  format        String    @db.VarChar(50)
-  yearlyReset   Boolean   @default(true) @map("yearly_reset")
-  lastUsed      DateTime? @map("last_used") @db.Timestamptz(6)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  @@unique([series, prefix, currentYear], map: "series_prefix_year")
-  @@index([series])
-  @@index([currentYear])
-  @@map("invoice_numbering_sequences")
-  @@schema("financial")
-}
-
-model InvoiceAttachment {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceId    String   @map("invoice_id") @db.VarChar(255)
-  fileName     String   @map("file_name") @db.VarChar(255)
-  fileType     String   @map("file_type") @db.VarChar(100)
-  fileSize     BigInt   @map("file_size")
-  filePath     String   @map("file_path") @db.VarChar(500)
-  description  String?  @db.Text
-  uploadedAt   DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
-  uploadedBy   String   @map("uploaded_by") @db.Uuid
-  
-  // Relations
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [uploadedBy], references: [id])
-  
-  @@index([invoiceId])
-  @@index([uploadedAt])
-  @@map("invoice_attachments")
-  @@schema("financial")
 }
 
 model Position {
   id            String    @id @default(uuid())
   userId        String    @map("user_id") @db.Uuid
-  strategyId    String?   @map("strategy_id") @db.Uuid
+  exchange      String    @db.VarChar(50)
   symbol        String    @db.VarChar(50)
-  side          String    @db.VarChar(10) // long, short
+  side          String    @db.VarChar(10)
+  status        String    @default("open") @db.VarChar(20)
   quantity      Decimal   @db.Decimal(20, 8)
-  avgEntryPrice Decimal   @map("avg_entry_price") @db.Decimal(20, 8)
-  avgExitPrice  Decimal?  @map("avg_exit_price") @db.Decimal(20, 8)
   realizedPnl   Decimal?  @default(0) @map("realized_pnl") @db.Decimal(20, 8)
   unrealizedPnl Decimal?  @default(0) @map("unrealized_pnl") @db.Decimal(20, 8)
   fees          Decimal?  @default(0) @db.Decimal(20, 8)
-  status        String    @default("open") @db.VarChar(20) // open, closed
-  exchange      String    @db.VarChar(50)
+  strategyId    String?   @map("strategy_id") @db.Uuid
   openedAt      DateTime  @default(now()) @map("opened_at") @db.Timestamptz(6)
   closedAt      DateTime? @map("closed_at") @db.Timestamptz(6)
-  metadata      Json?     @default("{}")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  user          User         @relation(fields: [userId], references: [id])
-  strategy      Strategy?    @relation(fields: [strategyId], references: [id])
-  trades        Trade[]
-  Exchange      Exchange?    @relation(fields: [exchangeId], references: [id])
+  metadata      Json?     @default("{}")
+  avgEntryPrice Decimal   @map("avg_entry_price") @db.Decimal(20, 8)
+  avgExitPrice  Decimal?  @map("avg_exit_price") @db.Decimal(20, 8)
   exchangeId    String?
-  TradingPair   TradingPair? @relation(fields: [tradingPairId], references: [id])
   tradingPairId String?
-  Order         Order[]
+  strategy      Strategy? @relation(fields: [strategyId], references: [id])
 
-  @@index([userId, status])
-  @@index([symbol, exchange])
-  @@index([strategyId])
+  @@index([strategyId], map: "idx_trading_positions_strategy")
+  @@index([userId, status], map: "idx_trading_positions_user_status")
   @@map("positions")
   @@schema("trading")
 }
 
-model Alert {
-  id         String    @id @default(uuid())
-  userId     String    @map("user_id") @db.Uuid
-  strategyId String?   @map("strategy_id") @db.Uuid
-  type       String    @db.VarChar(50) // price_alert, strategy_alert, system_alert
-  severity   String    @default("info") @db.VarChar(20) // info, warning, error, critical
-  title      String    @db.VarChar(255)
-  message    String
-  data       Json?     @default("{}")
-  isRead     Boolean   @default(false) @map("is_read")
-  readAt     DateTime? @map("read_at") @db.Timestamptz(6)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  user     User      @relation(fields: [userId], references: [id])
-  strategy Strategy? @relation(fields: [strategyId], references: [id])
-
-  @@index([userId, isRead, createdAt(sort: Desc)])
-  @@index([type])
-  @@index([severity])
-  @@map("alerts")
-  @@schema("trading")
-}
-
-// Strategy Marketplace Models
 model StrategyMarketplace {
-  id               String   @id @default(uuid())
-  strategyId       String   @map("strategy_id") @db.Uuid
-  userId           String   @map("user_id") @db.Uuid
-  name             String   @db.VarChar(255)
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  strategyId       String                 @map("strategy_id") @db.Uuid
+  userId           String                 @map("user_id") @db.Uuid
+  name             String                 @db.VarChar(255)
   description      String?
-  price            Decimal  @db.Decimal(10, 2)
-  subscriptionType String   @map("subscription_type") @db.VarChar(20) // one-time, monthly, yearly
-  performanceData  Json     @default("{}") @map("performance_data") // Historical performance metrics
-  isVerified       Boolean  @default(false) @map("is_verified")
-  rating           Decimal? @db.Decimal(3, 2)
-  totalSubscribers Int      @default(0) @map("total_subscribers")
-  totalRevenue     Decimal  @default(0) @map("total_revenue") @db.Decimal(20, 2)
-  status           String   @default("active") @db.VarChar(20) // active, paused, archived
-  tags             String[] @default([])
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  strategy      Strategy               @relation(fields: [strategyId], references: [id])
-  user          User                   @relation(fields: [userId], references: [id])
-  subscriptions StrategySubscription[]
-  reviews       StrategyReview[]
-  performance   StrategyPerformance[]
+  price            Decimal                @db.Decimal(10, 2)
+  subscriptionType String                 @map("subscription_type") @db.VarChar(20)
+  performanceData  Json                   @default("{}") @map("performance_data")
+  isVerified       Boolean                @default(false) @map("is_verified")
+  rating           Decimal?               @db.Decimal(3, 2)
+  totalSubscribers Int                    @default(0) @map("total_subscribers")
+  totalRevenue     Decimal                @default(0) @map("total_revenue") @db.Decimal(20, 2)
+  status           String                 @default("active") @db.VarChar(20)
+  tags             String[]               @default([])
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  strategy         Strategy               @relation(fields: [strategyId], references: [id])
+  user             User                   @relation(fields: [userId], references: [id])
+  performance      StrategyPerformance[]
+  reviews          StrategyReview[]
+  subscriptions    StrategySubscription[]
 
   @@index([status, rating])
   @@index([userId])
@@ -731,26 +581,25 @@ model StrategyMarketplace {
 }
 
 model StrategySubscription {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id") @db.Uuid
-  marketplaceId   String    @map("marketplace_id") @db.Uuid
-  tier            String    @db.VarChar(20) // basic, pro, institutional
-  status          String    @default("active") @db.VarChar(20) // active, cancelled, expired
-  startDate       DateTime  @default(now()) @map("start_date") @db.Timestamptz(6)
-  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
-  autoRenew       Boolean   @default(true) @map("auto_renew")
-  paymentMethod   String?   @map("payment_method") @db.VarChar(50)
-  amount          Decimal   @db.Decimal(10, 2)
-  currency        String    @default("USD") @db.VarChar(3)
-  lastPaymentDate DateTime? @map("last_payment_date") @db.Timestamptz(6)
-  nextPaymentDate DateTime? @map("next_payment_date") @db.Timestamptz(6)
-  metadata        Json?     @default("{}")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  user        User                @relation(fields: [userId], references: [id])
-  marketplace StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
-  payments    Payment[]
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  marketplaceId   String              @map("marketplace_id") @db.Uuid
+  tier            String              @db.VarChar(20)
+  status          String              @default("active") @db.VarChar(20)
+  startDate       DateTime            @default(now()) @map("start_date") @db.Timestamptz(6)
+  expiresAt       DateTime            @map("expires_at") @db.Timestamptz(6)
+  autoRenew       Boolean             @default(true) @map("auto_renew")
+  paymentMethod   String?             @map("payment_method") @db.VarChar(50)
+  amount          Decimal             @db.Decimal(10, 2)
+  currency        String              @default("USD") @db.VarChar(3)
+  lastPaymentDate DateTime?           @map("last_payment_date") @db.Timestamptz(6)
+  nextPaymentDate DateTime?           @map("next_payment_date") @db.Timestamptz(6)
+  metadata        Json?               @default("{}")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  payments        Payment[]
+  marketplace     StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+  user            User                @relation(fields: [userId], references: [id])
 
   @@index([userId, status])
   @@index([expiresAt])
@@ -760,21 +609,20 @@ model StrategySubscription {
 }
 
 model StrategyPerformance {
-  id             String   @id @default(uuid())
-  marketplaceId  String   @map("marketplace_id") @db.Uuid
-  period         String   @db.VarChar(20) // daily, weekly, monthly
-  startDate      DateTime @map("start_date") @db.Timestamptz(6)
-  endDate        DateTime @map("end_date") @db.Timestamptz(6)
-  totalTrades    Int      @default(0) @map("total_trades")
-  winRate        Decimal  @default(0) @map("win_rate") @db.Decimal(5, 2)
-  totalPnl       Decimal  @default(0) @map("total_pnl") @db.Decimal(20, 2)
-  sharpeRatio    Decimal? @map("sharpe_ratio") @db.Decimal(10, 4)
-  maxDrawdown    Decimal? @map("max_drawdown") @db.Decimal(10, 4)
-  avgTradeReturn Decimal? @map("avg_trade_return") @db.Decimal(10, 4)
-  metadata       Json?    @default("{}")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  marketplace StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  marketplaceId  String              @map("marketplace_id") @db.Uuid
+  period         String              @db.VarChar(20)
+  startDate      DateTime            @map("start_date") @db.Timestamptz(6)
+  endDate        DateTime            @map("end_date") @db.Timestamptz(6)
+  totalTrades    Int                 @default(0) @map("total_trades")
+  winRate        Decimal             @default(0) @map("win_rate") @db.Decimal(5, 2)
+  totalPnl       Decimal             @default(0) @map("total_pnl") @db.Decimal(20, 2)
+  sharpeRatio    Decimal?            @map("sharpe_ratio") @db.Decimal(10, 4)
+  maxDrawdown    Decimal?            @map("max_drawdown") @db.Decimal(10, 4)
+  avgTradeReturn Decimal?            @map("avg_trade_return") @db.Decimal(10, 4)
+  metadata       Json?               @default("{}")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  marketplace    StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
 
   @@index([marketplaceId, period])
   @@index([startDate, endDate])
@@ -783,20 +631,19 @@ model StrategyPerformance {
 }
 
 model StrategyReview {
-  id            String   @id @default(uuid())
-  marketplaceId String   @map("marketplace_id") @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  rating        Int // 1-5 stars
-  title         String?  @db.VarChar(255)
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  marketplaceId String              @map("marketplace_id") @db.Uuid
+  userId        String              @map("user_id") @db.Uuid
+  rating        Int
+  title         String?             @db.VarChar(255)
   comment       String?
-  isVerified    Boolean  @default(false) @map("is_verified") // Verified purchase
-  helpful       Int      @default(0) // Helpful votes
-  unhelpful     Int      @default(0) // Unhelpful votes
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  marketplace StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
-  user        User                @relation(fields: [userId], references: [id])
+  isVerified    Boolean             @default(false) @map("is_verified")
+  helpful       Int                 @default(0)
+  unhelpful     Int                 @default(0)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  marketplace   StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+  user          User                @relation(fields: [userId], references: [id])
 
   @@unique([marketplaceId, userId])
   @@index([marketplaceId, rating])
@@ -805,23 +652,22 @@ model StrategyReview {
 }
 
 model Payment {
-  id              String    @id @default(uuid())
-  userId          String    @map("user_id") @db.Uuid
-  subscriptionId  String?   @map("subscription_id") @db.Uuid
-  amount          Decimal   @db.Decimal(10, 2)
-  currency        String    @default("USD") @db.VarChar(3)
-  status          String    @db.VarChar(20) // pending, completed, failed, refunded
-  paymentMethod   String    @map("payment_method") @db.VarChar(50) // stripe, crypto, etc
-  transactionId   String?   @map("transaction_id") @db.VarChar(255)
-  paymentProvider String?   @map("payment_provider") @db.VarChar(50)
+  id              String                @id @default(uuid())
+  userId          String                @map("user_id") @db.Uuid
+  subscriptionId  String?               @map("subscription_id") @db.Uuid
+  amount          Decimal               @db.Decimal(10, 2)
+  currency        String                @default("USD") @db.VarChar(3)
+  status          String                @db.VarChar(20)
+  paymentMethod   String                @map("payment_method") @db.VarChar(50)
+  transactionId   String?               @map("transaction_id") @db.VarChar(255)
+  paymentProvider String?               @map("payment_provider") @db.VarChar(50)
   description     String?
-  metadata        Json?     @default("{}")
-  processedAt     DateTime? @map("processed_at") @db.Timestamptz(6)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  user         User                  @relation(fields: [userId], references: [id])
-  subscription StrategySubscription? @relation(fields: [subscriptionId], references: [id])
+  metadata        Json?                 @default("{}")
+  processedAt     DateTime?             @map("processed_at") @db.Timestamptz(6)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  subscription    StrategySubscription? @relation(fields: [subscriptionId], references: [id])
+  user            User                  @relation(fields: [userId], references: [id])
 
   @@index([userId, status])
   @@index([subscriptionId])
@@ -830,56 +676,188 @@ model Payment {
   @@schema("trading")
 }
 
-// ==========================================
-// UNIVERSAL AI TAGGING SYSTEM SCHEMA
-// ==========================================
+// Missing Trading Models
+model Alert {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id") @db.Uuid
+  strategyId String?   @map("strategy_id") @db.Uuid
+  type       String    @db.VarChar(50) // price_alert, strategy_trigger, risk_warning, etc
+  severity   String    @default("info") @db.VarChar(20) // info, warning, critical
+  title      String    @db.VarChar(255)
+  message    String
+  data       Json?     @default("{}")
+  isRead     Boolean   @default(false) @map("is_read")
+  readAt     DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user       User      @relation(fields: [userId], references: [id])
+  strategy   Strategy? @relation(fields: [strategyId], references: [id])
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@index([type])
+  @@index([severity])
+  @@map("alerts")
+  @@schema("trading")
+}
+
+model Exchange {
+  id              String        @id @default(uuid())
+  name            String        @unique @db.VarChar(50)
+  displayName     String        @map("display_name") @db.VarChar(100)
+  exchangeType    String        @map("exchange_type") @db.VarChar(20) // spot, futures, options
+  isActive        Boolean       @default(true) @map("is_active")
+  supportedAssets String[]      @default([]) @map("supported_assets")
+  tradingFees     Json          @default("{}") @map("trading_fees") // maker/taker fees
+  metadata        Json?         @default("{}")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tradingPairs    TradingPair[]
+  orders          Order[]
+  marketData      MarketData[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("exchanges")
+  @@schema("trading")
+}
+
+model TradingPair {
+  id                  String                @id @default(uuid())
+  exchangeId          String                @map("exchange_id") @db.Uuid
+  symbol              String                @db.VarChar(50)
+  baseAsset           String                @map("base_asset") @db.VarChar(20)
+  quoteAsset          String                @map("quote_asset") @db.VarChar(20)
+  isActive            Boolean               @default(true) @map("is_active")
+  minOrderSize        Decimal               @map("min_order_size") @db.Decimal(20, 8)
+  maxOrderSize        Decimal?              @map("max_order_size") @db.Decimal(20, 8)
+  tickSize            Decimal               @map("tick_size") @db.Decimal(20, 8)
+  pricePrecision      Int                   @map("price_precision")
+  quantityPrecision   Int                   @map("quantity_precision")
+  metadata            Json?                 @default("{}")
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  exchange            Exchange              @relation(fields: [exchangeId], references: [id])
+  strategyTradingPair StrategyTradingPair[]
+  orders              Order[]
+  marketData          MarketData[]
+
+  @@unique([exchangeId, symbol])
+  @@index([exchangeId])
+  @@index([symbol])
+  @@index([baseAsset, quoteAsset])
+  @@map("trading_pairs")
+  @@schema("trading")
+}
+
+model StrategyTradingPair {
+  id              String      @id @default(uuid())
+  strategyId      String      @map("strategy_id") @db.Uuid
+  tradingPairId   String      @map("trading_pair_id") @db.Uuid
+  isActive        Boolean     @default(true) @map("is_active")
+  allocation      Decimal     @db.Decimal(5, 4) // Percentage allocation
+  maxPositionSize Decimal?    @map("max_position_size") @db.Decimal(20, 8)
+  metadata        Json?       @default("{}")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  strategy        Strategy    @relation(fields: [strategyId], references: [id])
+  tradingPair     TradingPair @relation(fields: [tradingPairId], references: [id])
+
+  @@unique([strategyId, tradingPairId])
+  @@index([strategyId])
+  @@index([tradingPairId])
+  @@map("strategy_trading_pairs")
+  @@schema("trading")
+}
+
+model Order {
+  id                String       @id @default(uuid())
+  userId            String?      @map("user_id") @db.Uuid
+  strategyId        String?      @map("strategy_id") @db.Uuid
+  exchangeId        String       @map("exchange_id") @db.Uuid
+  tradingPairId     String       @map("trading_pair_id") @db.Uuid
+  exchangeOrderId   String?      @map("exchange_order_id") @db.VarChar(255)
+  clientOrderId     String?      @map("client_order_id") @db.VarChar(255)
+  type              String       @db.VarChar(20) // market, limit, stop, stop_limit
+  side              String       @db.VarChar(10) // buy, sell
+  status            String       @default("pending") @db.VarChar(20) // pending, open, filled, cancelled, rejected
+  price             Decimal?     @db.Decimal(20, 8)
+  stopPrice         Decimal?     @map("stop_price") @db.Decimal(20, 8)
+  quantity          Decimal      @db.Decimal(20, 8)
+  filledQuantity    Decimal      @default(0) @map("filled_quantity") @db.Decimal(20, 8)
+  avgFillPrice      Decimal?     @map("avg_fill_price") @db.Decimal(20, 8)
+  fee               Decimal?     @default(0) @db.Decimal(20, 8)
+  feeCurrency       String?      @map("fee_currency") @db.VarChar(10)
+  timeInForce       String?      @map("time_in_force") @db.VarChar(10) // GTC, IOC, FOK
+  postOnly          Boolean      @default(false) @map("post_only")
+  reduceOnly        Boolean      @default(false) @map("reduce_only")
+  metadata          Json?        @default("{}")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  filledAt          DateTime?    @map("filled_at") @db.Timestamptz(6)
+  cancelledAt       DateTime?    @map("cancelled_at") @db.Timestamptz(6)
+  user              User?        @relation(fields: [userId], references: [id])
+  strategy          Strategy?    @relation(fields: [strategyId], references: [id])
+  exchange          Exchange     @relation(fields: [exchangeId], references: [id])
+  tradingPair       TradingPair  @relation(fields: [tradingPairId], references: [id])
+
+  @@index([userId])
+  @@index([strategyId])
+  @@index([exchangeId])
+  @@index([tradingPairId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+  @@schema("trading")
+}
+
+model MarketData {
+  id            String      @id @default(uuid())
+  exchangeId    String      @map("exchange_id") @db.Uuid
+  tradingPairId String      @map("trading_pair_id") @db.Uuid
+  timestamp     DateTime    @db.Timestamptz(6)
+  open          Decimal     @db.Decimal(20, 8)
+  high          Decimal     @db.Decimal(20, 8)
+  low           Decimal     @db.Decimal(20, 8)
+  close         Decimal     @db.Decimal(20, 8)
+  volume        Decimal     @db.Decimal(20, 8)
+  quoteVolume   Decimal?    @map("quote_volume") @db.Decimal(20, 8)
+  trades        Int?
+  timeframe     String      @db.VarChar(10) // 1m, 5m, 15m, 1h, 4h, 1d
+  metadata      Json?       @default("{}")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  exchange      Exchange    @relation(fields: [exchangeId], references: [id])
+  tradingPair   TradingPair @relation(fields: [tradingPairId], references: [id])
+
+  @@index([exchangeId, tradingPairId, timestamp])
+  @@index([timestamp])
+  @@map("market_data")
+  @@schema("trading")
+}
 
 model UniversalTag {
-  id          String   @id @default(uuid())
-  code        String   @unique @db.VarChar(100)
-  name        String   @db.VarChar(255)
-  description String?
-  entityTypes String[] @map("entity_types")
-
-  // Flexible pattern storage
-  patterns Json?
-  rules    Json?
-
-  // AI/ML fields
-  confidence     Float   @default(0.5)
-  embeddingModel String? @map("embedding_model") @db.VarChar(50)
-
-  // Hierarchy
-  parentId String? @map("parent_id") @db.Uuid
-  path     String  @db.Text
-  level    Int     @default(0)
-
-  // Metadata
-  color    String? @db.VarChar(7)
-  icon     String? @db.VarChar(50)
-  isActive Boolean @default(true) @map("is_active")
-  isSystem Boolean @default(false) @map("is_system")
-  metadata Json?
-
-  // Usage tracking
-  usageCount  Int       @default(0) @map("usage_count")
-  successRate Float     @default(0.0) @map("success_rate")
-  lastUsed    DateTime? @map("last_used") @db.Timestamptz(6)
-
-  // Timestamps
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  parent      UniversalTag?  @relation("TagHierarchy", fields: [parentId], references: [id])
-  children    UniversalTag[] @relation("TagHierarchy")
-  entityTags  EntityTag[]
-  tagPatterns TagPattern[]
-  aiModels    TagAIModel[]
-  metrics     TagMetrics[]
+  id             String    @id @default(uuid())
+  code           String    @unique @db.VarChar(100)
+  name           String    @db.VarChar(255)
+  description    String?
+  entityTypes    String[]  @map("entity_types")
+  patterns       Json?
+  rules          Json?
+  confidence     Float     @default(0.5)
+  embeddingModel String?   @map("embedding_model") @db.VarChar(50)
+  path           String
+  level          Int       @default(0)
+  color          String?   @db.VarChar(7)
+  icon           String?   @db.VarChar(50)
+  isActive       Boolean   @default(true) @map("is_active")
+  isSystem       Boolean   @default(false) @map("is_system")
+  metadata       Json?
+  usageCount     Int       @default(0) @map("usage_count")
+  successRate    Float     @default(0.0) @map("success_rate")
+  lastUsed       DateTime? @map("last_used") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  parentId       String?   @map("parent_id") @db.Uuid
 
   @@index([code])
-  @@index([parentId])
   @@index([path])
   @@index([isActive])
   @@map("universal_tags")
@@ -887,45 +865,29 @@ model UniversalTag {
 }
 
 model EntityTag {
-  id         String @id @default(uuid())
-  tagId      String @map("tag_id") @db.Uuid
-  entityType String @map("entity_type") @db.VarChar(50)
-  entityId   String @map("entity_id") @db.VarChar(255)
+  id               String    @id @default(uuid())
+  entityType       String    @map("entity_type") @db.VarChar(50)
+  entityId         String    @map("entity_id") @db.VarChar(255)
+  method           String    @db.VarChar(20)
+  confidence       Float     @default(0.5)
+  appliedBy        String?   @map("applied_by") @db.VarChar(255)
+  aiProvider       String?   @map("ai_provider") @db.VarChar(50)
+  aiModel          String?   @map("ai_model") @db.VarChar(100)
+  aiResponse       Json?     @map("ai_response")
+  aiReasoning      String?   @map("ai_reasoning")
+  isVerified       Boolean   @default(false) @map("is_verified")
+  verifiedBy       String?   @map("verified_by") @db.VarChar(255)
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(6)
+  feedback         String?
+  isCorrect        Boolean?  @map("is_correct")
+  sourceEntityType String?   @map("source_entity_type") @db.VarChar(50)
+  sourceEntityId   String?   @map("source_entity_id") @db.VarChar(255)
+  relationshipType String?   @map("relationship_type") @db.VarChar(50)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tagId            String    @map("tag_id") @db.Uuid
 
-  // Tagging metadata
-  method     String  @db.VarChar(20) // AI, PATTERN, RULE, MANUAL, INFERRED
-  confidence Float   @default(0.5)
-  appliedBy  String? @map("applied_by") @db.VarChar(255)
-
-  // AI analysis results
-  aiProvider  String? @map("ai_provider") @db.VarChar(50)
-  aiModel     String? @map("ai_model") @db.VarChar(100)
-  aiResponse  Json?   @map("ai_response")
-  aiReasoning String? @map("ai_reasoning") @db.Text
-
-  // User feedback
-  isVerified Boolean   @default(false) @map("is_verified")
-  verifiedBy String?   @map("verified_by") @db.VarChar(255)
-  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
-  feedback   String?   @db.Text
-  isCorrect  Boolean?  @map("is_correct")
-
-  // Cross-entity relationships
-  sourceEntityType String? @map("source_entity_type") @db.VarChar(50)
-  sourceEntityId   String? @map("source_entity_id") @db.VarChar(255)
-  relationshipType String? @map("relationship_type") @db.VarChar(50)
-
-  // Timestamps
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  tag       UniversalTag      @relation(fields: [tagId], references: [id])
-  auditLogs TaggingAuditLog[]
-
-  @@unique([entityType, entityId, tagId])
   @@index([entityType, entityId])
-  @@index([tagId])
   @@index([confidence])
   @@index([method])
   @@index([isVerified])
@@ -935,52 +897,37 @@ model EntityTag {
 }
 
 model TagPattern {
-  id    String @id @default(uuid())
-  tagId String @map("tag_id") @db.Uuid
-
-  patternType   String @map("pattern_type") @db.VarChar(20) // KEYWORD, REGEX, SEMANTIC, NUMERIC, DATE, COMPOSITE
+  id            String   @id @default(uuid())
+  patternType   String   @map("pattern_type") @db.VarChar(20)
   pattern       Json
-  weight        Float  @default(1.0)
-  minConfidence Float  @default(0.5) @map("min_confidence")
+  weight        Float    @default(1.0)
+  minConfidence Float    @default(0.5) @map("min_confidence")
+  matchCount    Int      @default(0) @map("match_count")
+  successCount  Int      @default(0) @map("success_count")
+  accuracy      Float    @default(0.0)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tagId         String   @map("tag_id") @db.Uuid
 
-  // Performance tracking
-  matchCount   Int   @default(0) @map("match_count")
-  successCount Int   @default(0) @map("success_count")
-  accuracy     Float @default(0.0)
-
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  tag UniversalTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@index([tagId, patternType])
   @@index([isActive])
   @@map("tag_patterns")
   @@schema("tagging")
 }
 
 model EntityRelationship {
-  id String @id @default(uuid())
-
-  // Source entity
-  sourceType String @map("source_type") @db.VarChar(50)
-  sourceId   String @map("source_id") @db.VarChar(255)
-
-  // Target entity
-  targetType String @map("target_type") @db.VarChar(50)
-  targetId   String @map("target_id") @db.VarChar(255)
-
-  // Relationship details
-  relationshipType String @map("relationship_type") @db.VarChar(50)
+  id               String   @id @default(uuid())
+  sourceType       String   @map("source_type") @db.VarChar(50)
+  sourceId         String   @map("source_id") @db.VarChar(255)
+  targetType       String   @map("target_type") @db.VarChar(50)
+  targetId         String   @map("target_id") @db.VarChar(255)
+  relationshipType String   @map("relationship_type") @db.VarChar(50)
   confidence       Float
-  discoveredBy     String @map("discovered_by") @db.VarChar(20) // AI, PATTERN, USER, SYSTEM
+  discoveredBy     String   @map("discovered_by") @db.VarChar(20)
   metadata         Json?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  @@unique([sourceType, sourceId, targetType, targetId, relationshipType])
+  @@unique([sourceType, sourceId, targetType, targetId, relationshipType], map: "entity_relationships_source_type_source_id_target_type_tar_key")
   @@index([sourceType, sourceId])
   @@index([targetType, targetId])
   @@index([relationshipType])
@@ -989,35 +936,23 @@ model EntityRelationship {
 }
 
 model TaggingAuditLog {
-  id String @id @default(uuid())
-
-  // Operation details
-  operation   String  @db.VarChar(50)
-  entityType  String  @map("entity_type") @db.VarChar(50)
-  entityId    String  @map("entity_id") @db.VarChar(255)
-  entityTagId String? @map("entity_tag_id") @db.Uuid
-
-  // Change details
-  previousTags Json? @map("previous_tags")
-  newTags      Json? @map("new_tags")
-  changes      Json?
-
-  // Context
-  method    String? @db.VarChar(20)
-  userId    String? @map("user_id") @db.VarChar(255)
-  userEmail String? @map("user_email") @db.VarChar(255)
-  ipAddress String? @map("ip_address") @db.Inet
-  userAgent String? @map("user_agent") @db.Text
-
-  // Results
+  id               String   @id @default(uuid())
+  operation        String   @db.VarChar(50)
+  entityType       String   @map("entity_type") @db.VarChar(50)
+  entityId         String   @map("entity_id") @db.VarChar(255)
+  previousTags     Json?    @map("previous_tags")
+  newTags          Json?    @map("new_tags")
+  changes          Json?
+  method           String?  @db.VarChar(20)
+  userId           String?  @map("user_id") @db.VarChar(255)
+  userEmail        String?  @map("user_email") @db.VarChar(255)
+  ipAddress        String?  @map("ip_address") @db.Inet
+  userAgent        String?  @map("user_agent")
   success          Boolean
-  errorMessage     String? @map("error_message") @db.Text
-  processingTimeMs Int?    @map("processing_time_ms")
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  // Relations
-  entityTag EntityTag? @relation(fields: [entityTagId], references: [id], onDelete: SetNull)
+  errorMessage     String?  @map("error_message")
+  processingTimeMs Int?     @map("processing_time_ms")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  entityTagId      String?  @map("entity_tag_id") @db.Uuid
 
   @@index([entityType, entityId])
   @@index([operation])
@@ -1028,30 +963,21 @@ model TaggingAuditLog {
 }
 
 model TagLearningFeedback {
-  id String @id @default(uuid())
-
-  // Entity reference
-  entityType  String  @map("entity_type") @db.VarChar(50)
-  entityId    String  @map("entity_id") @db.VarChar(255)
-  entityTagId String? @map("entity_tag_id") @db.Uuid
-
-  // Feedback details
-  originalTagId    String? @map("original_tag_id") @db.Uuid
-  suggestedTagId   String? @map("suggested_tag_id") @db.Uuid
-  isCorrect        Boolean @map("is_correct")
-  confidenceImpact Float?  @map("confidence_impact")
-
-  // User info
-  userId       String  @map("user_id") @db.VarChar(255)
-  userRole     String? @map("user_role") @db.VarChar(50)
-  feedbackText String? @map("feedback_text") @db.Text
-
-  // Processing
-  isProcessed    Boolean   @default(false) @map("is_processed")
-  processedAt    DateTime? @map("processed_at") @db.Timestamptz(6)
-  appliedChanges Json?     @map("applied_changes")
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id               String    @id @default(uuid())
+  entityType       String    @map("entity_type") @db.VarChar(50)
+  entityId         String    @map("entity_id") @db.VarChar(255)
+  isCorrect        Boolean   @map("is_correct")
+  confidenceImpact Float?    @map("confidence_impact")
+  userId           String    @map("user_id") @db.VarChar(255)
+  userRole         String?   @map("user_role") @db.VarChar(50)
+  feedbackText     String?   @map("feedback_text")
+  isProcessed      Boolean   @default(false) @map("is_processed")
+  processedAt      DateTime? @map("processed_at") @db.Timestamptz(6)
+  appliedChanges   Json?     @map("applied_changes")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  entityTagId      String?   @map("entity_tag_id") @db.Uuid
+  originalTagId    String?   @map("original_tag_id") @db.Uuid
+  suggestedTagId   String?   @map("suggested_tag_id") @db.Uuid
 
   @@index([entityType, entityId])
   @@index([isProcessed])
@@ -1061,69 +987,43 @@ model TagLearningFeedback {
 }
 
 model TagMetrics {
-  id    String @id @default(uuid())
-  tagId String @map("tag_id") @db.Uuid
+  id              String   @id @default(uuid())
+  periodStart     DateTime @map("period_start") @db.Date
+  periodEnd       DateTime @map("period_end") @db.Date
+  periodType      String   @map("period_type") @db.VarChar(20)
+  usageCount      Int      @default(0) @map("usage_count")
+  uniqueEntities  Int      @default(0) @map("unique_entities")
+  verifiedCount   Int      @default(0) @map("verified_count")
+  correctCount    Int      @default(0) @map("correct_count")
+  accuracyRate    Float?   @map("accuracy_rate")
+  avgConfidence   Float?   @map("avg_confidence")
+  avgProcessingMs Float?   @map("avg_processing_time_ms")
+  aiCount         Int      @default(0) @map("ai_count")
+  patternCount    Int      @default(0) @map("pattern_count")
+  manualCount     Int      @default(0) @map("manual_count")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  tagId           String   @map("tag_id") @db.Uuid
 
-  // Time period
-  periodStart DateTime @map("period_start") @db.Date
-  periodEnd   DateTime @map("period_end") @db.Date
-  periodType  String   @map("period_type") @db.VarChar(20) // DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
-
-  // Usage metrics
-  usageCount     Int @default(0) @map("usage_count")
-  uniqueEntities Int @default(0) @map("unique_entities")
-
-  // Accuracy metrics
-  verifiedCount Int    @default(0) @map("verified_count")
-  correctCount  Int    @default(0) @map("correct_count")
-  accuracyRate  Float? @map("accuracy_rate")
-
-  // Performance metrics
-  avgConfidence   Float? @map("avg_confidence")
-  avgProcessingMs Float? @map("avg_processing_time_ms")
-
-  // Method breakdown
-  aiCount      Int @default(0) @map("ai_count")
-  patternCount Int @default(0) @map("pattern_count")
-  manualCount  Int @default(0) @map("manual_count")
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  // Relations
-  tag UniversalTag @relation(fields: [tagId], references: [id])
-
-  @@unique([tagId, periodStart, periodType])
-  @@index([tagId])
   @@index([periodStart, periodType])
   @@map("tag_metrics")
   @@schema("tagging")
 }
 
 model TagAIModel {
-  id    String @id @default(uuid())
-  tagId String @map("tag_id") @db.Uuid
+  id               String   @id @default(uuid())
+  provider         String   @db.VarChar(50)
+  modelName        String   @map("model_name") @db.VarChar(100)
+  modelVersion     String   @map("model_version") @db.VarChar(50)
+  config           Json?
+  minConfidence    Float    @default(0.7) @map("min_confidence")
+  totalPredictions Int      @default(0) @map("total_predictions")
+  successRate      Float    @default(0.0) @map("success_rate")
+  avgLatencyMs     Float?   @map("avg_latency_ms")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tagId            String   @map("tag_id") @db.Uuid
 
-  provider     String @db.VarChar(50) // openai, anthropic, local
-  modelName    String @map("model_name") @db.VarChar(100)
-  modelVersion String @map("model_version") @db.VarChar(50)
-
-  // Configuration
-  config        Json?
-  minConfidence Float @default(0.7) @map("min_confidence")
-
-  // Performance tracking
-  totalPredictions Int    @default(0) @map("total_predictions")
-  successRate      Float  @default(0.0) @map("success_rate")
-  avgLatencyMs     Float? @map("avg_latency_ms")
-
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  tag UniversalTag @relation(fields: [tagId], references: [id])
-
-  @@index([tagId])
   @@index([provider])
   @@index([isActive])
   @@map("tag_ai_models")
@@ -1132,8 +1032,8 @@ model TagAIModel {
 
 model TagImportJob {
   id               String    @id @default(uuid())
-  jobType          String    @map("job_type") @db.VarChar(20) // csv, api, migration
-  status           String    @default("pending") @db.VarChar(20) // pending, processing, completed, failed
+  jobType          String    @map("job_type") @db.VarChar(20)
+  status           String    @default("pending") @db.VarChar(20)
   config           Json
   totalRecords     Int?      @map("total_records")
   processedRecords Int       @default(0) @map("processed_records")
@@ -1152,195 +1052,170 @@ model TagImportJob {
   @@schema("tagging")
 }
 
-// ============================================================================
-// TRADING MODULE - Additional Models
-// ============================================================================
-
-model Exchange {
-  id           String   @id @default(uuid())
-  name         String   @unique @db.VarChar(50)
-  displayName  String   @map("display_name") @db.VarChar(100)
-  apiKey       String?  @map("api_key") @db.Text
-  apiSecret    String?  @map("api_secret") @db.Text
-  testnet      Boolean  @default(true)
-  isActive     Boolean  @default(true) @map("is_active")
-  maxPositions Int?     @default(10) @map("max_positions")
-  riskLimit    Decimal? @default(0.02) @map("risk_limit") @db.Decimal(5, 4)
-  metadata     Json?    @default("{}")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  tradingPairs TradingPair[]
-  positions    Position[]
-  orders       Order[]
-  marketData   MarketData[]
-
-  @@index([name])
-  @@index([isActive])
-  @@map("exchanges")
-  @@schema("trading")
-}
-
-model TradingPair {
-  id                String   @id @default(uuid())
-  exchangeId        String   @map("exchange_id") @db.Uuid
-  symbol            String   @db.VarChar(50)
-  baseAsset         String   @map("base_asset") @db.VarChar(20)
-  quoteAsset        String   @map("quote_asset") @db.VarChar(20)
-  isActive          Boolean  @default(true) @map("is_active")
-  minQuantity       Decimal  @map("min_quantity") @db.Decimal(20, 8)
-  maxQuantity       Decimal  @map("max_quantity") @db.Decimal(20, 8)
-  stepSize          Decimal  @map("step_size") @db.Decimal(20, 8)
-  minNotional       Decimal  @map("min_notional") @db.Decimal(20, 8)
-  pricePrecision    Int      @map("price_precision")
-  quantityPrecision Int      @map("quantity_precision")
-  metadata          Json?    @default("{}")
-  lastUpdated       DateTime @default(now()) @map("last_updated") @db.Timestamptz(6)
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  // Relations
-  exchange   Exchange              @relation(fields: [exchangeId], references: [id])
-  strategies StrategyTradingPair[]
-  positions  Position[]
-  orders     Order[]
-  marketData MarketData[]
-
-  @@unique([exchangeId, symbol])
-  @@index([exchangeId])
-  @@index([symbol])
-  @@index([baseAsset, quoteAsset])
-  @@map("trading_pairs")
-  @@schema("trading")
-}
-
-model StrategyTradingPair {
-  id              String   @id @default(uuid())
-  strategyId      String   @map("strategy_id") @db.Uuid
-  tradingPairId   String   @map("trading_pair_id") @db.Uuid
-  isActive        Boolean  @default(true) @map("is_active")
-  allocation      Decimal  @db.Decimal(5, 4) // Percentage allocation
-  maxPositionSize Decimal? @map("max_position_size") @db.Decimal(20, 8)
-  metadata        Json?    @default("{}")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  // Relations
-  strategy    Strategy    @relation(fields: [strategyId], references: [id])
-  tradingPair TradingPair @relation(fields: [tradingPairId], references: [id])
-
-  @@unique([strategyId, tradingPairId])
-  @@index([strategyId])
-  @@index([tradingPairId])
-  @@map("strategy_trading_pairs")
-  @@schema("trading")
-}
-
-model Order {
-  id            String  @id @default(uuid())
-  userId        String? @map("user_id") @db.Uuid
-  exchangeId    String  @map("exchange_id") @db.Uuid
-  tradingPairId String  @map("trading_pair_id") @db.Uuid
-  strategyId    String? @map("strategy_id") @db.Uuid
-  positionId    String? @map("position_id") @db.Uuid
-
-  exchangeOrderId String? @map("exchange_order_id") @db.VarChar(255)
-  side            String  @db.VarChar(10) // BUY, SELL
-  type            String  @db.VarChar(20) // MARKET, LIMIT, STOP, STOP_LIMIT
-  status          String  @default("PENDING") @db.VarChar(20) // PENDING, FILLED, PARTIALLY_FILLED, CANCELLED, REJECTED
-
-  quantity       Decimal  @db.Decimal(20, 8)
-  price          Decimal  @db.Decimal(20, 8)
-  avgFillPrice   Decimal? @map("avg_fill_price") @db.Decimal(20, 8)
-  filledQuantity Decimal  @default(0) @map("filled_quantity") @db.Decimal(20, 8)
-  fees           Decimal  @default(0) @db.Decimal(20, 8)
-
-  stopPrice   Decimal? @map("stop_price") @db.Decimal(20, 8)
-  timeInForce String   @default("GTC") @map("time_in_force") @db.VarChar(10) // GTC, IOC, FOK
-
-  metadata   Json?     @default("{}")
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  executedAt DateTime? @map("executed_at") @db.Timestamptz(6)
-
-  // Relations
-  user        User?       @relation(fields: [userId], references: [id])
-  exchange    Exchange    @relation(fields: [exchangeId], references: [id])
-  tradingPair TradingPair @relation(fields: [tradingPairId], references: [id])
-  strategy    Strategy?   @relation(fields: [strategyId], references: [id])
-  position    Position?   @relation(fields: [positionId], references: [id])
-
-  @@index([userId])
-  @@index([exchangeId])
-  @@index([tradingPairId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("orders")
-  @@schema("trading")
-}
-
-model MarketData {
-  id            String @id @default(uuid())
-  exchangeId    String @map("exchange_id") @db.Uuid
-  tradingPairId String @map("trading_pair_id") @db.Uuid
-
-  price            Decimal  @db.Decimal(20, 8)
-  volume           Decimal  @db.Decimal(20, 8)
-  high24h          Decimal? @map("high_24h") @db.Decimal(20, 8)
-  low24h           Decimal? @map("low_24h") @db.Decimal(20, 8)
-  change24h        Decimal? @map("change_24h") @db.Decimal(20, 8)
-  changePercent24h Decimal? @map("change_percent_24h") @db.Decimal(10, 4)
-
-  bidPrice    Decimal? @map("bid_price") @db.Decimal(20, 8)
-  bidQuantity Decimal? @map("bid_quantity") @db.Decimal(20, 8)
-  askPrice    Decimal? @map("ask_price") @db.Decimal(20, 8)
-  askQuantity Decimal? @map("ask_quantity") @db.Decimal(20, 8)
-
-  timestamp DateTime @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  // Relations
-  exchange    Exchange    @relation(fields: [exchangeId], references: [id])
-  tradingPair TradingPair @relation(fields: [tradingPairId], references: [id])
-
-  @@index([exchangeId, tradingPairId, timestamp])
-  @@index([timestamp])
-  @@map("market_data")
-  @@schema("trading")
-}
-
 model BacktestResult {
-  id         String @id @default(uuid())
-  strategyId String @map("strategy_id") @db.Uuid
-  name       String @db.VarChar(255)
-
+  id             String   @id @default(uuid())
+  strategyId     String   @map("strategy_id") @db.Uuid
   startDate      DateTime @map("start_date") @db.Timestamptz(6)
   endDate        DateTime @map("end_date") @db.Timestamptz(6)
   initialCapital Decimal  @map("initial_capital") @db.Decimal(20, 8)
   finalCapital   Decimal  @map("final_capital") @db.Decimal(20, 8)
+  totalReturn    Decimal  @map("total_return") @db.Decimal(20, 8)
+  totalTrades    Int      @map("total_trades")
+  winningTrades  Int      @map("winning_trades")
+  losingTrades   Int      @map("losing_trades")
+  sharpeRatio    Decimal? @map("sharpe_ratio") @db.Decimal(10, 4)
+  sortinoRatio   Decimal? @map("sortino_ratio") @db.Decimal(10, 4)
+  maxDrawdown    Decimal  @map("max_drawdown") @db.Decimal(20, 8)
+  winRate        Decimal  @map("win_rate") @db.Decimal(5, 4)
+  profitFactor   Decimal? @map("profit_factor") @db.Decimal(10, 4)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt    DateTime @map("completed_at") @db.Timestamptz(6)
+  metadata       Json?
+  name           String   @db.VarChar(255)
+  parameters     Json
 
-  totalReturn   Decimal @map("total_return") @db.Decimal(20, 8)
-  totalTrades   Int     @map("total_trades")
-  winningTrades Int     @map("winning_trades")
-  losingTrades  Int     @map("losing_trades")
-  winRate       Decimal @map("win_rate") @db.Decimal(5, 4)
-
-  sharpeRatio  Decimal? @map("sharpe_ratio") @db.Decimal(10, 4)
-  sortinoRatio Decimal? @map("sortino_ratio") @db.Decimal(10, 4)
-  maxDrawdown  Decimal  @map("max_drawdown") @db.Decimal(20, 8)
-  profitFactor Decimal? @map("profit_factor") @db.Decimal(10, 4)
-
-  parameters Json // Backtest configuration
-  metadata   Json? // Detailed results including trades, equity curve, etc.
-
-  completedAt DateTime @map("completed_at") @db.Timestamptz(6)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  // Relations
-  strategy Strategy @relation(fields: [strategyId], references: [id])
-
-  @@index([strategyId])
-  @@index([createdAt])
   @@map("backtest_results")
+  @@schema("trading")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sync_logs {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id             String?
+  accounts_synced        Int       @default(0)
+  transactions_synced    Int       @default(0)
+  status                 String?
+  synced_transactions    Int?      @default(0)
+  message                String?
+  operation_type         String?   @default("full")
+  success                Boolean   @default(false)
+  attempts               Int       @default(1)
+  error                  String?
+  sync_duration_ms       Int?
+  created_at             DateTime? @default(now()) @db.Timestamptz(6)
+  rate_limited_endpoints Json?
+  rate_limit_resets      Json?
+
+  @@index([account_id], map: "idx_sync_logs_account_id")
+  @@index([created_at(sort: Desc)], map: "idx_sync_logs_created_at")
+  @@index([operation_type], map: "idx_sync_logs_operation_type")
+  @@index([success], map: "idx_sync_logs_success")
+  @@schema("financial")
+}
+
+model invoice_numbering_sequences {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  series         String    @default("DEFAULT") @db.VarChar(50)
+  prefix         String    @db.VarChar(20)
+  current_number Int       @default(0)
+  current_year   Int
+  format         String    @db.VarChar(50)
+  yearly_reset   Boolean   @default(true)
+  last_used      DateTime? @db.Timestamptz(6)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([series, prefix, current_year])
+  @@index([series], map: "idx_invoice_numbering_series")
+  @@index([current_year], map: "idx_invoice_numbering_year")
+  @@schema("public")
+}
+
+model memories {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type        String    @db.VarChar(50)
+  content     Json
+  embedding   Float[]   @default([]) @db.Real
+  metadata    Json?     @default("{}")
+  connections String[]  @default([]) @db.Uuid
+  user_id     String?   @db.Uuid
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at(sort: Desc)], map: "idx_memories_created_at")
+  @@index([type], map: "idx_memories_type")
+  @@index([user_id], map: "idx_memories_user_id")
+  @@schema("public")
+}
+
+model stored_invoices {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id     String    @db.VarChar(255)
+  invoice_number String    @db.VarChar(100)
+  file_name      String    @db.VarChar(255)
+  file_path      String
+  file_size      BigInt
+  mime_type      String    @default("application/pdf") @db.VarChar(100)
+  storage_type   String    @default("local") @db.VarChar(20)
+  url            String?
+  metadata       Json?
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  expires_at     DateTime? @db.Timestamptz(6)
+
+  @@unique([invoice_id, file_name])
+  @@index([created_at], map: "idx_stored_invoices_created_at")
+  @@index([expires_at], map: "idx_stored_invoices_expires_at")
+  @@index([invoice_id], map: "idx_stored_invoices_invoice_id")
+  @@index([invoice_number], map: "idx_stored_invoices_invoice_number")
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model config {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String?  @db.Uuid
+  config_key   String   @db.VarChar(100)
+  config_value Json
+  description  String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([user_id, config_key])
+  @@schema("trading")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model market_data_cache {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exchange   String   @db.VarChar(50)
+  symbol     String   @db.VarChar(50)
+  timeframe  String   @db.VarChar(10)
+  timestamp  DateTime @db.Timestamptz(6)
+  open       Decimal  @db.Decimal(20, 8)
+  high       Decimal  @db.Decimal(20, 8)
+  low        Decimal  @db.Decimal(20, 8)
+  close      Decimal  @db.Decimal(20, 8)
+  volume     Decimal  @db.Decimal(20, 8)
+  indicators Json?    @default("{}")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([exchange, symbol, timeframe, timestamp])
+  @@index([exchange, symbol, timeframe, timestamp(sort: Desc)], map: "idx_market_data_lookup")
+  @@index([timestamp(sort: Desc)], map: "idx_market_data_timestamp")
+  @@schema("trading")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model signals {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  strategy_id     String?   @db.Uuid
+  exchange        String    @db.VarChar(50)
+  symbol          String    @db.VarChar(50)
+  action          String    @db.VarChar(20)
+  strength        Decimal   @db.Decimal(5, 4)
+  analysis        Json
+  indicators_used Json?     @default("[]")
+  is_executed     Boolean?  @default(false)
+  position_id     String?   @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at      DateTime? @db.Timestamptz(6)
+  executed_at     DateTime? @db.Timestamptz(6)
+  metadata        Json?     @default("{}")
+
+  @@index([created_at(sort: Desc)], map: "idx_trading_signals_created")
+  @@index([strategy_id], map: "idx_trading_signals_strategy")
+  @@index([symbol], map: "idx_trading_signals_symbol")
   @@schema("trading")
 }

@@ -10,8 +10,8 @@ export interface NumberingSequence {
   format: string;
   yearlyReset: boolean;
   lastUsed: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export interface InvoiceNumberOptions {
@@ -65,13 +65,37 @@ export class InvoiceNumberingService {
       // Use Prisma transaction with explicit locking
       const result = await this.prisma.$transaction(async (tx) => {
         // First, try to find and lock the existing sequence
-        const existingSequence = await tx.$queryRaw<NumberingSequence[]>`
-          SELECT * FROM financial."InvoiceNumberingSequence"
+        const existingSequenceRaw = await tx.$queryRaw<Array<{
+          id: string;
+          series: string;
+          prefix: string;
+          current_number: number;
+          current_year: number;
+          format: string;
+          yearly_reset: boolean;
+          last_used: Date | null;
+          created_at: Date | null;
+          updated_at: Date | null;
+        }>>`
+          SELECT * FROM public."invoice_numbering_sequences"
           WHERE series = ${series} 
             AND prefix = ${prefix} 
-            AND currentYear = ${year}
+            AND current_year = ${year}
           FOR UPDATE
         `;
+        
+        const existingSequence: NumberingSequence[] = existingSequenceRaw.map(seq => ({
+          id: seq.id,
+          series: seq.series,
+          prefix: seq.prefix,
+          currentNumber: seq.current_number,
+          currentYear: seq.current_year,
+          format: seq.format,
+          yearlyReset: seq.yearly_reset,
+          lastUsed: seq.last_used,
+          createdAt: seq.created_at,
+          updatedAt: seq.updated_at
+        }));
 
         let sequence: NumberingSequence;
         let nextNumber: number;
@@ -80,61 +104,56 @@ export class InvoiceNumberingService {
           // Create new sequence
           nextNumber = 1;
           
-          const newSequence = await tx.invoiceNumberingSequence.create({
+          const newSequence = await tx.invoice_numbering_sequences.create({
             data: {
               series,
               prefix,
-              currentNumber: nextNumber,
-              currentYear: year,
+              current_number: nextNumber,
+              current_year: year,
               format,
-              yearlyReset: this.yearlyReset,
-              lastUsed: new Date()
+              yearly_reset: this.yearlyReset,
+              last_used: new Date()
             }
           });
           
           sequence = {
-            ...newSequence,
-            currentNumber: newSequence.currentNumber,
-            currentYear: newSequence.currentYear,
-            yearlyReset: newSequence.yearlyReset,
-            lastUsed: newSequence.lastUsed,
-            createdAt: newSequence.createdAt,
-            updatedAt: newSequence.updatedAt
+            id: newSequence.id,
+            series: newSequence.series,
+            prefix: newSequence.prefix,
+            currentNumber: newSequence.current_number,
+            currentYear: newSequence.current_year,
+            format: newSequence.format,
+            yearlyReset: newSequence.yearly_reset,
+            lastUsed: newSequence.last_used,
+            createdAt: newSequence.created_at,
+            updatedAt: newSequence.updated_at
           };
         } else {
           // Update existing sequence
-          sequence = {
-            ...existingSequence[0],
-            currentNumber: existingSequence[0].currentNumber,
-            currentYear: existingSequence[0].currentYear,
-            yearlyReset: existingSequence[0].yearlyReset,
-            lastUsed: existingSequence[0].lastUsed,
-            createdAt: existingSequence[0].createdAt,
-            updatedAt: existingSequence[0].updatedAt
-          };
+          sequence = existingSequence[0];
 
           // Check if we need to reset for new year
           if (this.yearlyReset && sequence.currentYear < year) {
             nextNumber = 1;
             
-            await tx.invoiceNumberingSequence.update({
+            await tx.invoice_numbering_sequences.update({
               where: { id: sequence.id },
               data: {
-                currentNumber: nextNumber,
-                currentYear: year,
-                lastUsed: new Date(),
-                updatedAt: new Date()
+                current_number: nextNumber,
+                current_year: year,
+                last_used: new Date(),
+                updated_at: new Date()
               }
             });
           } else {
             nextNumber = sequence.currentNumber + 1;
             
-            await tx.invoiceNumberingSequence.update({
+            await tx.invoice_numbering_sequences.update({
               where: { id: sequence.id },
               data: {
-                currentNumber: nextNumber,
-                lastUsed: new Date(),
-                updatedAt: new Date()
+                current_number: nextNumber,
+                last_used: new Date(),
+                updated_at: new Date()
               }
             });
           }
@@ -198,25 +217,25 @@ export class InvoiceNumberingService {
    */
   async getSequenceInfo(series: string = 'DEFAULT'): Promise<NumberingSequence[]> {
     try {
-      const sequences = await this.prisma.invoiceNumberingSequence.findMany({
+      const sequences = await this.prisma.invoice_numbering_sequences.findMany({
         where: { series },
         orderBy: [
-          { currentYear: 'desc' },
+          { current_year: 'desc' },
           { prefix: 'asc' }
         ]
       });
 
-      return sequences.map(seq => ({
+      return sequences.map((seq: any) => ({
         id: seq.id,
         series: seq.series,
         prefix: seq.prefix,
-        currentNumber: seq.currentNumber,
-        currentYear: seq.currentYear,
+        currentNumber: seq.current_number,
+        currentYear: seq.current_year,
         format: seq.format,
-        yearlyReset: seq.yearlyReset,
-        lastUsed: seq.lastUsed,
-        createdAt: seq.createdAt,
-        updatedAt: seq.updatedAt
+        yearlyReset: seq.yearly_reset,
+        lastUsed: seq.last_used,
+        createdAt: seq.created_at,
+        updatedAt: seq.updated_at
       }));
     } catch (error) {
       logger.error('Error getting sequence info:', error);
@@ -229,25 +248,25 @@ export class InvoiceNumberingService {
    */
   async getAllSequences(): Promise<NumberingSequence[]> {
     try {
-      const sequences = await this.prisma.invoiceNumberingSequence.findMany({
+      const sequences = await this.prisma.invoice_numbering_sequences.findMany({
         orderBy: [
           { series: 'asc' },
-          { currentYear: 'desc' },
+          { current_year: 'desc' },
           { prefix: 'asc' }
         ]
       });
 
-      return sequences.map(seq => ({
+      return sequences.map((seq: any) => ({
         id: seq.id,
         series: seq.series,
         prefix: seq.prefix,
-        currentNumber: seq.currentNumber,
-        currentYear: seq.currentYear,
+        currentNumber: seq.current_number,
+        currentYear: seq.current_year,
         format: seq.format,
-        yearlyReset: seq.yearlyReset,
-        lastUsed: seq.lastUsed,
-        createdAt: seq.createdAt,
-        updatedAt: seq.updatedAt
+        yearlyReset: seq.yearly_reset,
+        lastUsed: seq.last_used,
+        createdAt: seq.created_at,
+        updatedAt: seq.updated_at
       }));
     } catch (error) {
       logger.error('Error getting all sequences:', error);
@@ -263,15 +282,15 @@ export class InvoiceNumberingService {
     const currentYear = year || new Date().getFullYear();
     
     try {
-      await this.prisma.invoiceNumberingSequence.updateMany({
+      await this.prisma.invoice_numbering_sequences.updateMany({
         where: {
           series,
           prefix,
-          currentYear: currentYear
+          current_year: currentYear
         },
         data: {
-          currentNumber: 0,
-          updatedAt: new Date()
+          current_number: 0,
+          updated_at: new Date()
         }
       });
 
@@ -296,26 +315,26 @@ export class InvoiceNumberingService {
     
     try {
       // Use upsert to create or update
-      await this.prisma.invoiceNumberingSequence.upsert({
+      await this.prisma.invoice_numbering_sequences.upsert({
         where: {
-          series_prefix_currentYear: {
+          series_prefix_current_year: {
             series,
             prefix,
-            currentYear: currentYear
+            current_year: currentYear
           }
         },
         update: {
-          currentNumber: nextNumber - 1, // Subtract 1 because getNextInvoiceNumber will increment
-          updatedAt: new Date()
+          current_number: nextNumber - 1, // Subtract 1 because getNextInvoiceNumber will increment
+          updated_at: new Date()
         },
         create: {
           series,
           prefix,
-          currentNumber: nextNumber - 1,
-          currentYear: currentYear,
+          current_number: nextNumber - 1,
+          current_year: currentYear,
           format: this.defaultFormat,
-          yearlyReset: this.yearlyReset,
-          lastUsed: new Date()
+          yearly_reset: this.yearlyReset,
+          last_used: new Date()
         }
       });
 
@@ -355,24 +374,24 @@ export class InvoiceNumberingService {
   }> {
     try {
       // Get total sequences
-      const totalSequences = await this.prisma.invoiceNumberingSequence.count();
+      const totalSequences = await this.prisma.invoice_numbering_sequences.count();
 
       // Get sequences by year using raw query for aggregation
       const yearStats = await this.prisma.$queryRaw<Array<{ year: number; count: bigint }>>`
         SELECT 
-          currentYear as year,
-          SUM(currentNumber)::bigint as count
-        FROM financial."InvoiceNumberingSequence"
-        GROUP BY currentYear
-        ORDER BY currentYear DESC
+          current_year as year,
+          SUM(current_number)::bigint as count
+        FROM public."invoice_numbering_sequences"
+        GROUP BY current_year
+        ORDER BY current_year DESC
       `;
 
       // Get most used series
       const seriesStats = await this.prisma.$queryRaw<Array<{ series: string; count: bigint }>>`
         SELECT 
           series,
-          SUM(currentNumber)::bigint as count
-        FROM financial."InvoiceNumberingSequence"
+          SUM(current_number)::bigint as count
+        FROM public."invoice_numbering_sequences"
         GROUP BY series
         ORDER BY count DESC
         LIMIT 10
@@ -407,27 +426,27 @@ export class InvoiceNumberingService {
       const currentYear = year || new Date().getFullYear();
       const where: any = {
         series,
-        currentYear: currentYear
+        current_year: currentYear
       };
 
       if (prefix) {
         where.prefix = prefix;
       }
 
-      const sequence = await this.prisma.invoiceNumberingSequence.findFirst({
+      const sequence = await this.prisma.invoice_numbering_sequences.findFirst({
         where,
         orderBy: {
-          lastUsed: 'desc'
+          last_used: 'desc'
         }
       });
 
-      if (!sequence || sequence.currentNumber === 0) {
+      if (!sequence || sequence.current_number === 0) {
         return null;
       }
 
       return this.formatInvoiceNumber(
-        sequence.currentNumber,
-        sequence.currentYear,
+        sequence.current_number,
+        sequence.current_year,
         sequence.prefix,
         sequence.format
       );

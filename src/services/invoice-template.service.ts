@@ -39,7 +39,7 @@ export class InvoiceTemplateService {
           orderBy: { [sortBy]: sortOrder },
           include: {
             user: true,
-            invoices: true,
+            // invoices: true, // TODO: Add Invoice relation to InvoiceTemplate model
           },
         }),
         prisma.invoiceTemplate.count({ where }),
@@ -70,7 +70,7 @@ export class InvoiceTemplateService {
         },
         include: {
           user: true,
-          invoices: true,
+          // invoices: true, // TODO: Add Invoice relation to InvoiceTemplate model
         },
       });
 
