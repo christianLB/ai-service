@@ -376,6 +376,8 @@ export class AICategorizationService {
       const accuracy = totalPredictions > 0 ? (correctPredictions / totalPredictions) * 100 : 0;
 
       // Get top performing tags with usage statistics
+      // TODO: ai_tags model needs to be created in Prisma schema
+      /*
       const tagStats = await prisma.ai_tags.findMany({
         where: { is_active: true },
         include: {
@@ -389,7 +391,9 @@ export class AICategorizationService {
         take: 5
       });
 
-      const topPerformingTags = tagStats.filter(tag => tag._count.transaction_categorizations > 5);
+      const topPerformingTags = tagStats.filter((tag: any) => tag._count.transaction_categorizations > 5);
+      */
+      const topPerformingTags: any[] = [];
 
       // Generate improvement suggestions
       const suggestions = await this.generateImprovementSuggestions(accuracy, topPerformingTags);
@@ -413,6 +417,8 @@ export class AICategorizationService {
 
   private async getActiveAITags(): Promise<AITag[]> {
     try {
+      // TODO: ai_tags model needs to be created in Prisma schema
+      /*
       const tags = await prisma.ai_tags.findMany({
         where: { is_active: true },
         orderBy: [
@@ -421,7 +427,7 @@ export class AICategorizationService {
         ]
       });
 
-      return tags.map(tag => ({
+      return tags.map((tag: any) => ({
         id: tag.id,
         name: tag.tag_name,
         description: tag.description || undefined,
@@ -438,6 +444,8 @@ export class AICategorizationService {
         createdAt: tag.created_at || new Date(),
         updatedAt: tag.updated_at || new Date()
       }));
+      */
+      return [];
     } catch (error) {
       logger.error('Failed to get active AI tags:', error);
       return [];
@@ -479,6 +487,8 @@ export class AICategorizationService {
       });
 
       if (categorization && categorization.ai_tag_id) {
+        // TODO: ai_tags model needs to be created in Prisma schema
+        /*
         await prisma.ai_tags.update({
           where: { id: categorization.ai_tag_id },
           data: {
@@ -487,6 +497,7 @@ export class AICategorizationService {
             updated_at: new Date()
           }
         });
+        */
       }
     }
   }
@@ -506,6 +517,8 @@ export class AICategorizationService {
         transaction.counterparty_name || ''
       );
       
+      // TODO: ai_tags model needs to be created in Prisma schema
+      /*
       await prisma.ai_tags.create({
         data: {
           tag_name: `Learned: ${transaction.counterparty_name || 'Unknown'}`,
@@ -517,6 +530,7 @@ export class AICategorizationService {
           is_active: true
         }
       });
+      */
     } catch (error) {
       logger.error('Failed to create learning tag:', error);
     }
@@ -576,6 +590,8 @@ export class AICategorizationService {
     confidenceScore?: number;
   }): Promise<AITag> {
     try {
+      // TODO: ai_tags model needs to be created in Prisma schema
+      /*
       const tag = await prisma.ai_tags.create({
         data: {
           tag_name: data.name,
@@ -589,6 +605,8 @@ export class AICategorizationService {
       });
 
       return this.mapAITagFromPrisma(tag);
+      */
+      throw new AppError('AI tags not implemented', 501);
     } catch (error) {
       logger.error('Failed to create AI tag:', error);
       throw new AppError('Failed to create AI tag', 500);
@@ -611,6 +629,8 @@ export class AICategorizationService {
     }>
   ): Promise<AITag> {
     try {
+      // TODO: ai_tags model needs to be created in Prisma schema
+      /*
       const tag = await prisma.ai_tags.update({
         where: { id },
         data: {
@@ -624,6 +644,8 @@ export class AICategorizationService {
       });
 
       return this.mapAITagFromPrisma(tag);
+      */
+      throw new AppError('AI tags not implemented', 501);
     } catch (error) {
       logger.error('Failed to update AI tag:', error);
       throw new AppError('Failed to update AI tag', 500);

@@ -89,24 +89,24 @@ export class InvoiceStoragePrismaService {
       }
 
       // Calculate expiration date
-      let expiresAt: Date | undefined;
+      let expires_at: Date | undefined;
       if (expirationDays) {
-        expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + expirationDays);
+        expires_at = new Date();
+        expires_at.setDate(expires_at.getDate() + expirationDays);
       }
 
       // Store metadata in database using Prisma
-      const storedInvoice = await this.prisma.storedInvoice.create({
+      const stored_invoices = await this.prisma.stored_invoices.create({
         data: {
-          invoiceId: invoiceId,
-          invoiceNumber: invoiceNumber,
-          fileName: uniqueFileName,
-          filePath: relativePath,
-          fileSize: fileSize,
-          mimeType: 'application/pdf',
-          storageType: storageType,
+          invoice_id: invoiceId,
+          invoice_number: invoiceNumber,
+          file_name: uniqueFileName,
+          file_path: relativePath,
+          file_size: fileSize,
+          mime_type: 'application/pdf',
+          storage_type: storageType,
           url,
-          expiresAt: expiresAt,
+          expires_at: expires_at,
           metadata: {}
         }
       });
@@ -114,18 +114,18 @@ export class InvoiceStoragePrismaService {
       logger.info(`Invoice stored successfully: ${uniqueFileName}`);
       
       return {
-        id: storedInvoice.id,
-        invoiceId: storedInvoice.invoiceId,
-        invoiceNumber: storedInvoice.invoiceNumber,
-        fileName: storedInvoice.fileName,
-        filePath: storedInvoice.filePath,
-        fileSize: Number(storedInvoice.fileSize),
-        mimeType: storedInvoice.mimeType,
-        storageType: storedInvoice.storageType as 'local' | 's3' | 'gcs',
-        url: storedInvoice.url || undefined,
-        metadata: storedInvoice.metadata as Record<string, any> | undefined,
-        createdAt: storedInvoice.createdAt,
-        expiresAt: storedInvoice.expiresAt || undefined
+        id: stored_invoices.id,
+        invoiceId: stored_invoices.invoice_id,
+        invoiceNumber: stored_invoices.invoice_number,
+        fileName: stored_invoices.file_name,
+        filePath: stored_invoices.file_path,
+        fileSize: Number(stored_invoices.file_size),
+        mimeType: stored_invoices.mime_type,
+        storageType: stored_invoices.storage_type as 'local' | 's3' | 'gcs',
+        url: stored_invoices.url || undefined,
+        metadata: stored_invoices.metadata as Record<string, any> | undefined,
+        createdAt: stored_invoices.created_at || new Date(),
+        expiresAt: stored_invoices.expires_at || undefined
       };
 
     } catch (error) {
@@ -143,42 +143,42 @@ export class InvoiceStoragePrismaService {
   } | null> {
     try {
       // Get metadata from database
-      const storedInvoice = await this.prisma.storedInvoice.findFirst({
+      const stored_invoices = await this.prisma.stored_invoices.findFirst({
         where: {
-          invoiceId: invoiceId
+          invoice_id: invoiceId
         },
         orderBy: {
-          createdAt: 'desc'
+          created_at: 'desc'
         }
       });
 
-      if (!storedInvoice) {
+      if (!stored_invoices) {
         return null;
       }
 
       // Check if expired
-      if (storedInvoice.expiresAt && new Date(storedInvoice.expiresAt) < new Date()) {
+      if (stored_invoices.expires_at && new Date(stored_invoices.expires_at) < new Date()) {
         logger.warn(`Invoice ${invoiceId} has expired`);
         return null;
       }
 
       // Read file
-      const fullPath = path.join(this.baseDir, storedInvoice.filePath);
+      const fullPath = path.join(this.baseDir, stored_invoices.file_path);
       const buffer = await fs.readFile(fullPath);
 
       const metadata: StoredInvoice = {
-        id: storedInvoice.id,
-        invoiceId: storedInvoice.invoiceId,
-        invoiceNumber: storedInvoice.invoiceNumber,
-        fileName: storedInvoice.fileName,
-        filePath: storedInvoice.filePath,
-        fileSize: Number(storedInvoice.fileSize),
-        mimeType: storedInvoice.mimeType,
-        storageType: storedInvoice.storageType as 'local' | 's3' | 'gcs',
-        url: storedInvoice.url || undefined,
-        metadata: storedInvoice.metadata as Record<string, any> | undefined,
-        createdAt: storedInvoice.createdAt,
-        expiresAt: storedInvoice.expiresAt || undefined
+        id: stored_invoices.id,
+        invoiceId: stored_invoices.invoice_id,
+        invoiceNumber: stored_invoices.invoice_number,
+        fileName: stored_invoices.file_name,
+        filePath: stored_invoices.file_path,
+        fileSize: Number(stored_invoices.file_size),
+        mimeType: stored_invoices.mime_type,
+        storageType: stored_invoices.storage_type as 'local' | 's3' | 'gcs',
+        url: stored_invoices.url || undefined,
+        metadata: stored_invoices.metadata as Record<string, any> | undefined,
+        createdAt: stored_invoices.created_at || new Date(),
+        expiresAt: stored_invoices.expires_at || undefined
       };
 
       return {
@@ -200,35 +200,35 @@ export class InvoiceStoragePrismaService {
     buffer: Buffer;
   } | null> {
     try {
-      const storedInvoice = await this.prisma.storedInvoice.findFirst({
+      const stored_invoices = await this.prisma.stored_invoices.findFirst({
         where: {
-          invoiceNumber: invoiceNumber
+          invoice_number: invoiceNumber
         },
         orderBy: {
-          createdAt: 'desc'
+          created_at: 'desc'
         }
       });
 
-      if (!storedInvoice) {
+      if (!stored_invoices) {
         return null;
       }
 
-      const fullPath = path.join(this.baseDir, storedInvoice.filePath);
+      const fullPath = path.join(this.baseDir, stored_invoices.file_path);
       const buffer = await fs.readFile(fullPath);
 
       const metadata: StoredInvoice = {
-        id: storedInvoice.id,
-        invoiceId: storedInvoice.invoiceId,
-        invoiceNumber: storedInvoice.invoiceNumber,
-        fileName: storedInvoice.fileName,
-        filePath: storedInvoice.filePath,
-        fileSize: Number(storedInvoice.fileSize),
-        mimeType: storedInvoice.mimeType,
-        storageType: storedInvoice.storageType as 'local' | 's3' | 'gcs',
-        url: storedInvoice.url || undefined,
-        metadata: storedInvoice.metadata as Record<string, any> | undefined,
-        createdAt: storedInvoice.createdAt,
-        expiresAt: storedInvoice.expiresAt || undefined
+        id: stored_invoices.id,
+        invoiceId: stored_invoices.invoice_id,
+        invoiceNumber: stored_invoices.invoice_number,
+        fileName: stored_invoices.file_name,
+        filePath: stored_invoices.file_path,
+        fileSize: Number(stored_invoices.file_size),
+        mimeType: stored_invoices.mime_type,
+        storageType: stored_invoices.storage_type as 'local' | 's3' | 'gcs',
+        url: stored_invoices.url || undefined,
+        metadata: stored_invoices.metadata as Record<string, any> | undefined,
+        createdAt: stored_invoices.created_at || new Date(),
+        expiresAt: stored_invoices.expires_at || undefined
       };
 
       return {
@@ -264,28 +264,28 @@ export class InvoiceStoragePrismaService {
         }
       }
 
-      const storedInvoices = await this.prisma.storedInvoice.findMany({
+      const stored_invoices = await this.prisma.stored_invoices.findMany({
         where,
         orderBy: {
-          createdAt: 'desc'
+          created_at: 'desc'
         },
         skip: filters?.offset,
         take: filters?.limit
       });
 
-      return storedInvoices.map(invoice => ({
+      return stored_invoices.map((invoice: any) => ({
         id: invoice.id,
-        invoiceId: invoice.invoiceId,
-        invoiceNumber: invoice.invoiceNumber,
-        fileName: invoice.fileName,
-        filePath: invoice.filePath,
-        fileSize: Number(invoice.fileSize),
-        mimeType: invoice.mimeType,
-        storageType: invoice.storageType as 'local' | 's3' | 'gcs',
+        invoiceId: invoice.invoice_id,
+        invoiceNumber: invoice.invoice_number,
+        fileName: invoice.file_name,
+        filePath: invoice.file_path,
+        fileSize: Number(invoice.file_size),
+        mimeType: invoice.mime_type,
+        storageType: invoice.storage_type as 'local' | 's3' | 'gcs',
         url: invoice.url || undefined,
         metadata: invoice.metadata as Record<string, any> | undefined,
-        createdAt: invoice.createdAt,
-        expiresAt: invoice.expiresAt || undefined
+        createdAt: invoice.created_at || new Date(),
+        expiresAt: invoice.expires_at || undefined
       }));
 
     } catch (error) {
@@ -315,9 +315,9 @@ export class InvoiceStoragePrismaService {
       }
 
       // Delete from database
-      await this.prisma.storedInvoice.deleteMany({
+      await this.prisma.stored_invoices.deleteMany({
         where: {
-          invoiceId: invoiceId
+          invoice_id: invoiceId
         }
       });
 
@@ -336,9 +336,9 @@ export class InvoiceStoragePrismaService {
   async cleanupExpiredInvoices(): Promise<number> {
     try {
       // Get expired invoices
-      const expiredInvoices = await this.prisma.storedInvoice.findMany({
+      const expiredInvoices = await this.prisma.stored_invoices.findMany({
         where: {
-          expiresAt: {
+          expires_at: {
             not: null,
             lt: new Date()
           }
@@ -350,19 +350,19 @@ export class InvoiceStoragePrismaService {
       for (const invoice of expiredInvoices) {
         try {
           // Delete physical file
-          const fullPath = path.join(this.baseDir, invoice.filePath);
+          const fullPath = path.join(this.baseDir, invoice.file_path);
           await fs.unlink(fullPath);
           deletedCount++;
         } catch (error) {
-          logger.error(`Error deleting file ${invoice.filePath}:`, error);
+          logger.error(`Error deleting file ${invoice.file_path}:`, error);
         }
       }
 
       // Delete from database
       if (expiredInvoices.length > 0) {
-        await this.prisma.storedInvoice.deleteMany({
+        await this.prisma.stored_invoices.deleteMany({
           where: {
-            expiresAt: {
+            expires_at: {
               not: null,
               lt: new Date()
             }
@@ -392,19 +392,19 @@ export class InvoiceStoragePrismaService {
   }> {
     try {
       // Get aggregate statistics
-      const aggregateStats = await this.prisma.storedInvoice.aggregate({
+      const aggregateStats = await this.prisma.stored_invoices.aggregate({
         _count: true,
         _sum: {
-          fileSize: true
+          file_size: true
         },
         _avg: {
-          fileSize: true
+          file_size: true
         },
         _min: {
-          createdAt: true
+          created_at: true
         },
         _max: {
-          createdAt: true
+          created_at: true
         }
       });
 
@@ -420,11 +420,11 @@ export class InvoiceStoragePrismaService {
       `;
 
       return {
-        totalInvoices: aggregateStats._count || 0,
-        totalSize: Number(aggregateStats._sum.fileSize) || 0,
-        averageSize: Number(aggregateStats._avg.fileSize) || 0,
-        oldestInvoice: aggregateStats._min.createdAt || undefined,
-        newestInvoice: aggregateStats._max.createdAt || undefined,
+        totalInvoices: typeof aggregateStats._count === 'number' ? aggregateStats._count : 0,
+        totalSize: Number(aggregateStats._sum?.file_size) || 0,
+        averageSize: Number(aggregateStats._avg?.file_size) || 0,
+        oldestInvoice: aggregateStats._min?.created_at || undefined,
+        newestInvoice: aggregateStats._max?.created_at || undefined,
         invoicesByMonth: monthlyStats.map(stat => ({
           month: stat.month,
           count: Number(stat.count)
@@ -446,7 +446,7 @@ export class InvoiceStoragePrismaService {
   ): Promise<{
     url: string;
     token: string;
-    expiresAt: Date;
+    expires_at: Date;
   } | null> {
     try {
       const invoice = await this.retrieveInvoice(invoiceId);
@@ -460,13 +460,16 @@ export class InvoiceStoragePrismaService {
       expiresAt.setMinutes(expiresAt.getMinutes() + expirationMinutes);
 
       // Store token in database
+      // TODO: invoiceDownloadToken table needs to be created
+      /*
       await this.prisma.invoiceDownloadToken.create({
         data: {
           token,
-          invoiceId: invoiceId,
-          expiresAt: expiresAt
+          invoice_id: invoiceId,
+          expires_at: expiresAt
         }
       });
+      */
 
       // Generate URL
       const url = `${this.publicBaseUrl}/invoices/download/${token}`;
@@ -474,7 +477,7 @@ export class InvoiceStoragePrismaService {
       return {
         url,
         token,
-        expiresAt
+        expires_at: expiresAt
       };
 
     } catch (error) {
@@ -491,9 +494,9 @@ export class InvoiceStoragePrismaService {
     metadata: Record<string, any>
   ): Promise<boolean> {
     try {
-      const result = await this.prisma.storedInvoice.updateMany({
+      const result = await this.prisma.stored_invoices.updateMany({
         where: {
-          invoiceId: invoiceId
+          invoice_id: invoiceId
         },
         data: {
           metadata
