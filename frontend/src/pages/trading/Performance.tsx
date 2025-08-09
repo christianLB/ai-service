@@ -78,14 +78,14 @@ export default function Performance() {
   const renderPerformanceOverview = () => {
     if (!performanceMetrics) return null;
 
-    const isPositive = performanceMetrics.totalReturn >= 0;
+    const isPositive = (performanceMetrics?.totalReturn || 0) >= 0;
 
     return (
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={6}>
           {renderMetricCard(
             'Total Return',
-            formatCurrency(performanceMetrics.totalReturn),
+            formatCurrency(performanceMetrics?.totalReturn || 0),
             isPositive ? <RiseOutlined /> : <FallOutlined />,
             isPositive ? '#52c41a' : '#ff4d4f'
           )}
@@ -93,7 +93,7 @@ export default function Performance() {
         <Col xs={24} sm={12} md={6}>
           {renderMetricCard(
             'Return %',
-            formatPercentage(performanceMetrics.totalReturnPercent),
+            formatPercentage(performanceMetrics?.totalReturnPercent || 0),
             <BarChartOutlined />,
             isPositive ? '#52c41a' : '#ff4d4f'
           )}
@@ -101,15 +101,15 @@ export default function Performance() {
         <Col xs={24} sm={12} md={6}>
           {renderMetricCard(
             'Sharpe Ratio',
-            performanceMetrics.sharpeRatio.toFixed(2),
+            (performanceMetrics?.sharpeRatio || 0).toFixed(2),
             <InfoCircleOutlined />,
-            performanceMetrics.sharpeRatio >= 1 ? '#52c41a' : '#faad14'
+            (performanceMetrics?.sharpeRatio || 0) >= 1 ? '#52c41a' : '#faad14'
           )}
         </Col>
         <Col xs={24} sm={12} md={6}>
           {renderMetricCard(
             'Max Drawdown',
-            formatPercentage(performanceMetrics.maxDrawdown),
+            formatPercentage(performanceMetrics?.maxDrawdown || 0),
             <FallOutlined />,
             '#ff4d4f'
           )}
@@ -122,14 +122,14 @@ export default function Performance() {
     if (!performanceMetrics) return null;
 
     const data = [
-      { label: 'Total Trades', value: performanceMetrics.totalTrades },
-      { label: 'Winning Trades', value: performanceMetrics.winningTrades, color: '#52c41a' },
-      { label: 'Losing Trades', value: performanceMetrics.losingTrades, color: '#ff4d4f' },
-      { label: 'Win Rate', value: formatPercentage(performanceMetrics.winRate) },
-      { label: 'Profit Factor', value: performanceMetrics.profitFactor.toFixed(2) },
-      { label: 'Expectancy', value: formatCurrency(performanceMetrics.expectancy) },
-      { label: 'Average Win', value: formatCurrency(performanceMetrics.avgWin), color: '#52c41a' },
-      { label: 'Average Loss', value: formatCurrency(performanceMetrics.avgLoss), color: '#ff4d4f' }
+      { label: 'Total Trades', value: performanceMetrics?.totalTrades || 0 },
+      { label: 'Winning Trades', value: performanceMetrics?.winningTrades || 0, color: '#52c41a' },
+      { label: 'Losing Trades', value: performanceMetrics?.losingTrades || 0, color: '#ff4d4f' },
+      { label: 'Win Rate', value: formatPercentage(performanceMetrics?.winRate || 0) },
+      { label: 'Profit Factor', value: (performanceMetrics?.profitFactor || 0).toFixed(2) },
+      { label: 'Expectancy', value: formatCurrency(performanceMetrics?.expectancy || 0) },
+      { label: 'Average Win', value: formatCurrency(performanceMetrics?.avgWin || 0), color: '#52c41a' },
+      { label: 'Average Loss', value: formatCurrency(performanceMetrics?.avgLoss || 0), color: '#ff4d4f' }
     ];
 
     return (
@@ -197,7 +197,7 @@ export default function Performance() {
             <RechartsTooltip formatter={(value: number) => formatPercentage(value)} />
             <Bar dataKey="return">
               {performanceMetrics.monthlyReturns.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.return >= 0 ? '#52c41a' : '#ff4d4f'} />
+                <Cell key={`cell-${index}`} fill={(entry?.return || 0) >= 0 ? '#52c41a' : '#ff4d4f'} />
               ))}
             </Bar>
           </BarChart>

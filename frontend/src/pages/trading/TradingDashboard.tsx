@@ -129,7 +129,7 @@ export const TradingDashboard: React.FC = () => {
           <Card>
             <Statistic
               title="Valor Total Portfolio"
-              value={dashboard?.portfolio.totalValue || 0}
+              value={dashboard?.portfolio?.totalValue || 0}
               prefix={<DollarOutlined />}
               formatter={(value) => formatCurrency(Number(value))}
             />
@@ -139,13 +139,13 @@ export const TradingDashboard: React.FC = () => {
           <Card>
             <Statistic
               title="P&L Diario"
-              value={dashboard?.portfolio.dailyPnL || 0}
-              prefix={getPnLIcon(dashboard?.portfolio.dailyPnL || 0)}
-              valueStyle={{ color: getPnLColor(dashboard?.portfolio.dailyPnL || 0) }}
+              value={dashboard?.portfolio?.dailyPnL || 0}
+              prefix={getPnLIcon(dashboard?.portfolio?.dailyPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.portfolio?.dailyPnL || 0) }}
               formatter={(value) => formatCurrency(Number(value))}
               suffix={
                 <Text type="secondary" style={{ fontSize: 14 }}>
-                  ({formatPercentage((dashboard?.portfolio.dailyPnL || 0) / (dashboard?.portfolio.totalValue || 1))})
+                  ({formatPercentage((dashboard?.portfolio?.dailyPnL || 0) / (dashboard?.portfolio?.totalValue || 1))})
                 </Text>
               }
             />
@@ -155,9 +155,9 @@ export const TradingDashboard: React.FC = () => {
           <Card>
             <Statistic
               title="P&L Semanal"
-              value={dashboard?.portfolio.weeklyPnL || 0}
-              prefix={getPnLIcon(dashboard?.portfolio.weeklyPnL || 0)}
-              valueStyle={{ color: getPnLColor(dashboard?.portfolio.weeklyPnL || 0) }}
+              value={dashboard?.portfolio?.weeklyPnL || 0}
+              prefix={getPnLIcon(dashboard?.portfolio?.weeklyPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.portfolio?.weeklyPnL || 0) }}
               formatter={(value) => formatCurrency(Number(value))}
             />
           </Card>
@@ -166,9 +166,9 @@ export const TradingDashboard: React.FC = () => {
           <Card>
             <Statistic
               title="P&L Mensual"
-              value={dashboard?.portfolio.monthlyPnL || 0}
-              prefix={getPnLIcon(dashboard?.portfolio.monthlyPnL || 0)}
-              valueStyle={{ color: getPnLColor(dashboard?.portfolio.monthlyPnL || 0) }}
+              value={dashboard?.portfolio?.monthlyPnL || 0}
+              prefix={getPnLIcon(dashboard?.portfolio?.monthlyPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.portfolio?.monthlyPnL || 0) }}
               formatter={(value) => formatCurrency(Number(value))}
             />
           </Card>
@@ -184,20 +184,20 @@ export const TradingDashboard: React.FC = () => {
               <Col span={8}>
                 <Statistic
                   title="Posiciones Abiertas"
-                  value={dashboard?.positions.open || 0}
+                  value={dashboard?.positions?.open || 0}
                 />
               </Col>
               <Col span={8}>
                 <Statistic
                   title="En Ganancia"
-                  value={dashboard?.positions.profitable || 0}
+                  value={dashboard?.positions?.profitable || 0}
                   valueStyle={{ color: '#52c41a' }}
                 />
               </Col>
               <Col span={8}>
                 <Statistic
                   title="En Pérdida"
-                  value={dashboard?.positions.losing || 0}
+                  value={dashboard?.positions?.losing || 0}
                   valueStyle={{ color: '#ff4d4f' }}
                 />
               </Col>
@@ -205,9 +205,9 @@ export const TradingDashboard: React.FC = () => {
             <Divider />
             <Statistic
               title="P&L Total Abierto"
-              value={dashboard?.positions.totalPnL || 0}
-              prefix={getPnLIcon(dashboard?.positions.totalPnL || 0)}
-              valueStyle={{ color: getPnLColor(dashboard?.positions.totalPnL || 0) }}
+              value={dashboard?.positions?.totalPnL || 0}
+              prefix={getPnLIcon(dashboard?.positions?.totalPnL || 0)}
+              valueStyle={{ color: getPnLColor(dashboard?.positions?.totalPnL || 0) }}
               formatter={(value) => formatCurrency(Number(value))}
             />
           </Card>
@@ -218,19 +218,19 @@ export const TradingDashboard: React.FC = () => {
           <Card title="Estado de Estrategias">
             <Space size="middle" style={{ marginBottom: 16 }}>
               <Tag icon={<PlayCircleOutlined />} color="success">
-                {dashboard?.strategies.active || 0} Activas
+                {dashboard?.strategies?.active || 0} Activas
               </Tag>
               <Tag icon={<PauseCircleOutlined />} color="warning">
-                {dashboard?.strategies.paused || 0} Pausadas
+                {dashboard?.strategies?.paused || 0} Pausadas
               </Tag>
               <Tag icon={<StopOutlined />} color="default">
-                {dashboard?.strategies.stopped || 0} Detenidas
+                {dashboard?.strategies?.stopped || 0} Detenidas
               </Tag>
             </Space>
             <Divider />
             <Title level={5}>Rendimiento por Estrategia</Title>
-            {dashboard?.strategies.performance && 
-              Object.entries(dashboard.strategies.performance).map(([strategy, pnl]) => (
+            {dashboard?.strategies?.performance && 
+              Object.entries(dashboard.strategies?.performance || {}).map(([strategy, pnl]) => (
                 <div key={strategy} style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                     <Text>{strategy}</Text>
@@ -257,24 +257,24 @@ export const TradingDashboard: React.FC = () => {
               <Col xs={12} md={6}>
                 <Statistic
                   title="BTC/USDT"
-                  value={dashboard?.marketOverview.btcPrice || 0}
+                  value={dashboard?.marketOverview?.btcPrice || 0}
                   prefix={<DollarOutlined />}
                   formatter={(value) => formatCurrency(Number(value))}
                 />
                 <Space align="center" style={{ marginTop: 8 }}>
-                  {(dashboard?.marketOverview.btcChange24h || 0) > 0 ? 
+                  {(dashboard?.marketOverview?.btcChange24h || 0) > 0 ? 
                     <RiseOutlined style={{ color: '#52c41a' }} /> : 
                     <FallOutlined style={{ color: '#ff4d4f' }} />
                   }
-                  <Text style={{ color: getPnLColor(dashboard?.marketOverview.btcChange24h || 0) }}>
-                    {formatPercentage(dashboard?.marketOverview.btcChange24h || 0)}
+                  <Text style={{ color: getPnLColor(dashboard?.marketOverview?.btcChange24h || 0) }}>
+                    {formatPercentage(dashboard?.marketOverview?.btcChange24h || 0)}
                   </Text>
                 </Space>
               </Col>
               <Col xs={12} md={6}>
                 <Statistic
                   title="Market Cap Total"
-                  value={`${((dashboard?.marketOverview.marketCap || 0) / 1e9).toFixed(1)}B`}
+                  value={`${((dashboard?.marketOverview?.marketCap || 0) / 1e9).toFixed(1)}B`}
                   prefix="$"
                 />
               </Col>
@@ -283,17 +283,17 @@ export const TradingDashboard: React.FC = () => {
                   <Text type="secondary">Fear & Greed Index</Text>
                   <div style={{ marginTop: 8 }}>
                     <Badge
-                      count={dashboard?.marketOverview.fearGreedIndex || 0}
-                      style={{ backgroundColor: getFearGreedColor(dashboard?.marketOverview.fearGreedIndex || 0) }}
+                      count={dashboard?.marketOverview?.fearGreedIndex || 0}
+                      style={{ backgroundColor: getFearGreedColor(dashboard?.marketOverview?.fearGreedIndex || 0) }}
                       showZero
                     />
                     <Text style={{ marginLeft: 12 }}>
-                      {getFearGreedLabel(dashboard?.marketOverview.fearGreedIndex || 0)}
+                      {getFearGreedLabel(dashboard?.marketOverview?.fearGreedIndex || 0)}
                     </Text>
                   </div>
                   <Progress
-                    percent={dashboard?.marketOverview.fearGreedIndex || 0}
-                    strokeColor={getFearGreedColor(dashboard?.marketOverview.fearGreedIndex || 0)}
+                    percent={dashboard?.marketOverview?.fearGreedIndex || 0}
+                    strokeColor={getFearGreedColor(dashboard?.marketOverview?.fearGreedIndex || 0)}
                     showInfo={false}
                     style={{ marginTop: 8 }}
                   />

@@ -109,23 +109,23 @@ export default function Backtest() {
     const metrics = [
       {
         title: 'Total Return',
-        value: formatPercentage(result.metrics.totalReturn),
-        color: result.metrics.totalReturn >= 0 ? '#3f8600' : '#cf1322'
+        value: formatPercentage(result.metrics?.totalReturn || 0),
+        color: (result.metrics?.totalReturn || 0) >= 0 ? '#3f8600' : '#cf1322'
       },
       {
         title: 'Sharpe Ratio',
-        value: result.metrics.sharpeRatio.toFixed(2),
-        color: result.metrics.sharpeRatio >= 1 ? '#3f8600' : '#fa8c16'
+        value: (result.metrics?.sharpeRatio || 0).toFixed(2),
+        color: (result.metrics?.sharpeRatio || 0) >= 1 ? '#3f8600' : '#fa8c16'
       },
       {
         title: 'Max Drawdown',
-        value: formatPercentage(result.metrics.maxDrawdown),
+        value: formatPercentage(result.metrics?.maxDrawdown || 0),
         color: '#cf1322'
       },
       {
         title: 'Win Rate',
-        value: formatPercentage(result.metrics.winRate),
-        color: result.metrics.winRate >= 0.5 ? '#3f8600' : '#cf1322'
+        value: formatPercentage(result.metrics?.winRate || 0),
+        color: (result.metrics?.winRate || 0) >= 0.5 ? '#3f8600' : '#cf1322'
       }
     ];
 
@@ -310,7 +310,7 @@ export default function Backtest() {
                     
                     <Card title="Equity Curve">
                       <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={currentResult.equityCurve}>
+                        <LineChart data={currentResult.equityCurve || []}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" />
                           <YAxis />
@@ -344,12 +344,12 @@ export default function Backtest() {
                         <Space direction="vertical" style={{ width: '100%' }}>
                           <Statistic
                             title="Total Trades"
-                            value={currentResult.metrics.totalTrades}
+                            value={currentResult.metrics?.totalTrades || 0}
                           />
                           <Statistic
                             title="Winning Trades"
                             value={(currentResult.metrics as BacktestMetricsExtended).winningTrades || 0}
-                            suffix={`/ ${currentResult.metrics.totalTrades}`}
+                            suffix={`/ ${currentResult.metrics?.totalTrades || 0}`}
                           />
                           <Statistic
                             title="Average Win"
@@ -370,7 +370,7 @@ export default function Backtest() {
                         <Space direction="vertical" style={{ width: '100%' }}>
                           <Statistic
                             title="Profit Factor"
-                            value={currentResult.metrics.profitFactor.toFixed(2)}
+                            value={(currentResult.metrics?.profitFactor || 0).toFixed(2)}
                           />
                           <Statistic
                             title="Recovery Factor"

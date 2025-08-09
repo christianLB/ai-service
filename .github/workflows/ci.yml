@@ -186,7 +186,7 @@ jobs:
       - name: Build backend
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_service
-        run: npm run build:stable
+        run: npm run build
       
       - name: Build frontend (strict except stabilization branch)
         if: github.head_ref != 'fix/stabilize-pr1'

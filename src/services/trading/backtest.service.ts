@@ -272,7 +272,7 @@ export class BacktestService {
       const strategyRecord = await this.prisma.strategy.findUnique({
         where: { id: strategyId },
         include: {
-          StrategyTradingPair: {
+          strategyTradingPairs: {
             include: {
               tradingPair: true
             }
@@ -288,7 +288,7 @@ export class BacktestService {
         id: strategyRecord.id,
         name: strategyRecord.name,
         type: strategyRecord.type,
-        parameters: (strategyRecord.config as Record<string, any>) || {},
+        parameters: (strategyRecord.parameters as Record<string, any>) || {},
         riskParameters: {
           maxPositionSize: Number((strategyRecord.metadata as any)?.risk || 0.02),
           maxDrawdown: Number((strategyRecord.metadata as any)?.maxDrawdown || 0.1),

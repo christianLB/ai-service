@@ -145,13 +145,13 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
         <Col span={12}>
           <Statistic
             title="Trades"
-            value={strategy.performance.totalTrades}
+            value={strategy.performance?.totalTrades || 0}
           />
         </Col>
         <Col span={12}>
           <Statistic
             title="Win Rate"
-            value={strategy.performance.winRate * 100}
+            value={(strategy.performance?.winRate || 0) * 100}
             suffix="%"
             precision={1}
           />
@@ -159,25 +159,25 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
         <Col span={12}>
           <Statistic
             title="P&L Total"
-            value={strategy.performance.totalPnL}
-            valueStyle={{ color: strategy.performance.totalPnL > 0 ? '#52c41a' : '#ff4d4f' }}
+            value={strategy.performance?.totalPnL || 0}
+            valueStyle={{ color: (strategy.performance?.totalPnL || 0) > 0 ? '#52c41a' : '#ff4d4f' }}
             formatter={(value) => formatCurrency(Number(value))}
           />
         </Col>
         <Col span={12}>
           <Statistic
             title="Sharpe Ratio"
-            value={strategy.performance.sharpeRatio}
+            value={strategy.performance?.sharpeRatio || 0}
             precision={2}
           />
         </Col>
       </Row>
 
-      {strategy.performance.maxDrawdown && (
+      {strategy.performance?.maxDrawdown && (
         <div style={{ marginTop: 16 }}>
           <Text type="secondary">Max Drawdown</Text>
           <Progress
-            percent={Math.abs(strategy.performance.maxDrawdown)}
+            percent={Math.abs(strategy.performance?.maxDrawdown || 0)}
             strokeColor="#ff4d4f"
             format={(percent) => formatPercentage(-(percent || 0))}
           />
@@ -244,7 +244,7 @@ const ConfigureStrategyModal: React.FC<ConfigureStrategyModalProps> = ({
         <Title level={5}>Parámetros de la Estrategia</Title>
         
         <Row gutter={16}>
-          {Object.entries(strategy.parameterSchema).map(([key, schema]) => (
+          {Object.entries(strategy.parameterSchema || {}).map(([key, schema]) => (
             <Col span={12} key={key}>
               {schema.type === 'boolean' ? (
                 <Form.Item
@@ -458,7 +458,7 @@ export const Strategies: React.FC = () => {
   }
 
   const activeStrategies = strategies?.filter(s => s.status === 'active').length || 0;
-  const totalPnL = strategies?.reduce((sum, s) => sum + s.performance.totalPnL, 0) || 0;
+  const totalPnL = strategies?.reduce((sum, s) => sum + (s.performance?.totalPnL || 0), 0) || 0;
 
   return (
     <div>

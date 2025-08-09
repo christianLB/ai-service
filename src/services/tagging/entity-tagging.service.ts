@@ -135,7 +135,7 @@ export class EntityTaggingService implements IEntityTaggingService {
                 aiProvider: request.options?.aiProvider
               },
               include: {
-                tag: true
+                universalTag: true
               }
             });
 
@@ -159,7 +159,7 @@ export class EntityTaggingService implements IEntityTaggingService {
                   method: suggestion.method
                 },
                 include: {
-                  tag: true
+                  universalTag: true
                 }
               });
 
@@ -211,7 +211,7 @@ export class EntityTaggingService implements IEntityTaggingService {
 
       const entityTags = await prisma.entityTag.findMany({
         where: { entityType, entityId },
-        include: { tag: true },
+        include: { universalTag: true },
         orderBy: { confidence: 'desc' }
       });
 
@@ -305,7 +305,7 @@ export class EntityTaggingService implements IEntityTaggingService {
           verifiedBy: data.isVerified ? userId : entityTag.verifiedBy,
           verifiedAt: data.isVerified ? new Date() : entityTag.verifiedAt
         },
-        include: { tag: true }
+        include: { universalTag: true }
       });
 
       logger.info('Entity tag updated', {

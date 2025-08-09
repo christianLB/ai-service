@@ -6,8 +6,7 @@ interface InvoiceAttachment {
   invoiceId: string;
   fileName: string;
   filePath: string;
-  fileSize: number;
-  mimeType: string;
+  fileSize: bigint;
   fileType?: string; // Alias for mimeType
   uploadedBy: string;
   uploadedAt: Date;
@@ -20,7 +19,6 @@ interface InvoiceAttachment {
 }
 import { promises as fs } from 'fs';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { logger } from '../../utils/logger';
 import { AppError } from '../../utils/errors';
@@ -56,6 +54,18 @@ export interface AttachmentListOptions {
   uploadedBy?: string;
   limit?: number;
   offset?: number;
+}
+
+export interface AttachmentListItem {
+  id: string;
+  invoiceId: string;
+  fileName: string;
+  originalFileName: string;
+  fileType: string;
+  fileSize: number;
+  description: string;
+  uploadedBy: string;
+  uploadedAt: Date;
 }
 
 /**
@@ -224,7 +234,7 @@ export class InvoiceAttachmentService {
   /**
    * Get all attachments for an invoice with user authorization
    */
-  async getInvoiceAttachments(invoiceId: string, userId: string): Promise<any[]> {
+  async getInvoiceAttachments(invoiceId: string, userId: string): Promise<AttachmentListItem[]> {
     try {
       // Verify user has access to this invoice
       const invoice = await this.prisma.invoice.findFirst({
@@ -249,13 +259,12 @@ export class InvoiceAttachmentService {
           fileSize: true,
           description: true,
           uploadedBy: true,
-          uploadedAt: true,
-          // Exclude sensitive fields like filePath from general queries
+          uploadedAt: true
         }
       });
       
       // Parse and clean up response to remove sensitive metadata
-      const cleanAttachments = attachments.map(attachment => {
+      const cleanAttachments: AttachmentListItem[] = attachments.map((attachment) => {
         let userDescription = '';
         let originalFileName = attachment.fileName;
         
@@ -268,9 +277,15 @@ export class InvoiceAttachmentService {
         }
         
         return {
-          ...attachment,
+          id: attachment.id,
+          invoiceId: attachment.invoiceId,
+          fileName: attachment.fileName,
           originalFileName,
-          description: userDescription
+          fileType: attachment.fileType,
+          fileSize: Number(attachment.fileSize),
+          description: userDescription,
+          uploadedBy: attachment.uploadedBy,
+          uploadedAt: attachment.uploadedAt
         };
       });
       
@@ -302,15 +317,7 @@ export class InvoiceAttachmentService {
             userId: userId
           }
         },
-        include: {
-          invoice: {
-            select: {
-              id: true,
-              invoiceNumber: true,
-              userId: true
-            }
-          }
-        }
+        // No relations needed here for return type compatibility
       });
       
       if (!attachment) {
@@ -372,13 +379,13 @@ export class InvoiceAttachmentService {
           throw new AppError('File integrity check failed', 500);
         }
       }
-      
+
       logger.info(`Secure download for attachment ${attachmentId}`, {
         userId,
         fileName: attachment.fileName,
         fileSize: Number(attachment.fileSize)
       });
-      
+
       return {
         attachment,
         buffer
@@ -470,7 +477,7 @@ export class InvoiceAttachmentService {
    * List attachments with optional filters
    */
   async listAttachments(options: AttachmentListOptions = {}): Promise<{
-    attachments: InvoiceAttachment[];
+    attachments: AttachmentListItem[];
     total: number;
   }> {
     const { invoiceId, uploadedBy, limit = 50, offset = 0 } = options;
@@ -480,29 +487,48 @@ export class InvoiceAttachmentService {
       if (invoiceId) where.invoiceId = invoiceId;
       if (uploadedBy) where.uploadedBy = uploadedBy;
 
-      const [attachments, total] = await Promise.all([
+      const [rows, total] = await Promise.all([
         this.prisma.invoiceAttachment.findMany({
           where,
           orderBy: { uploadedAt: 'desc' },
           skip: offset,
           take: limit,
-          include: {
-            invoice: {
-              select: {
-                invoiceNumber: true,
-                clientName: true
-              }
-            },
-            user: {
-              select: {
-                full_name: true,
-                email: true
-              }
-            }
+          select: {
+            id: true,
+            invoiceId: true,
+            fileName: true,
+            fileType: true,
+            fileSize: true,
+            description: true,
+            uploadedBy: true,
+            uploadedAt: true
           }
         }),
         this.prisma.invoiceAttachment.count({ where })
       ]);
+
+      const attachments: AttachmentListItem[] = rows.map(row => {
+        let userDescription = '';
+        let originalFileName = row.fileName;
+        try {
+          const metadata = JSON.parse(row.description || '{}');
+          userDescription = metadata.userDescription || '';
+          originalFileName = metadata.originalFileName || row.fileName;
+        } catch {
+          userDescription = row.description || '';
+        }
+        return {
+          id: row.id,
+          invoiceId: row.invoiceId,
+          fileName: row.fileName,
+          originalFileName,
+          fileType: row.fileType,
+          fileSize: Number(row.fileSize),
+          description: userDescription,
+          uploadedBy: row.uploadedBy,
+          uploadedAt: row.uploadedAt
+        };
+      });
 
       return { attachments, total };
     } catch (error) {
@@ -541,7 +567,7 @@ export class InvoiceAttachmentService {
           file_type,
           COUNT(*)::bigint as count,
           SUM(file_size)::bigint as total_size
-        FROM financial."InvoiceAttachment"
+        FROM financial.invoice_attachments
         GROUP BY file_type
         ORDER BY total_size DESC
       `;

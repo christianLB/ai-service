@@ -1,0 +1,178 @@
+import { initContract } from '@ts-rest/core';
+import { z } from 'zod';
+import {
+  {{pascalCase model}}Schema,
+  {{pascalCase model}}CreateSchema,
+  {{pascalCase model}}UpdateSchema,
+  {{pascalCase model}}ResponseSchema,
+  {{pascalCase model}}QuerySchema,
+} from '../schemas/{{kebabCase model}}';
+
+const c = initContract();
+
+// Common response schemas
+const ErrorSchema = z.object({
+  success: z.literal(false),
+  error: z.string(),
+  details: z.any().optional(),
+});
+
+const SuccessSchema = z.object({
+  success: z.literal(true),
+  message: z.string().optional(),
+});
+
+const PaginatedResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
+  z.object({
+    success: z.literal(true),
+    data: z.array(dataSchema),
+    pagination: z.object({
+      total: z.number(),
+      page: z.number(),
+      limit: z.number(),
+      totalPages: z.number(),
+    }),
+  });
+
+// Contract definition
+export const {{camelCase model}}Contract = c.router({
+  // Get all {{camelCase model}}s with pagination and filtering
+  getAll: {
+    method: 'GET',
+    path: '/api{{#if schema}}/{{schema}}{{/if}}/{{kebabCase model}}s',
+    responses: {
+      200: PaginatedResponseSchema({{pascalCase model}}ResponseSchema),
+      400: ErrorSchema,
+      500: ErrorSchema,
+    },
+    query: {{pascalCase model}}QuerySchema,
+    summary: 'Get all {{lowerCase model}}s with optional filtering and pagination',
+  },
+
+  // Get a single {{camelCase model}} by ID
+  getById: {
+    method: 'GET',
+    path: '/api{{#if schema}}/{{schema}}{{/if}}/{{kebabCase model}}s/:id',
+    responses: {
+      200: z.object({
+        success: z.literal(true),
+        data: {{pascalCase model}}ResponseSchema,
+      }),
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    summary: 'Get a {{lowerCase model}} by ID',
+  },
+
+  // Create a new {{camelCase model}}
+  create: {
+    method: 'POST',
+    path: '/api{{#if schema}}/{{schema}}{{/if}}/{{kebabCase model}}s',
+    responses: {
+      201: z.object({
+        success: z.literal(true),
+        data: {{pascalCase model}}ResponseSchema,
+      }),
+      400: ErrorSchema,
+      500: ErrorSchema,
+    },
+    body: {{pascalCase model}}CreateSchema,
+    summary: 'Create a new {{lowerCase model}}',
+  },
+
+  // Update an existing {{camelCase model}}
+  update: {
+    method: 'PUT',
+    path: '/api{{#if schema}}/{{schema}}{{/if}}/{{kebabCase model}}s/:id',
+    responses: {
+      200: z.object({
+        success: z.literal(true),
+        data: {{pascalCase model}}ResponseSchema,
+      }),
+      404: ErrorSchema,
+      400: ErrorSchema,
+      500: ErrorSchema,
+    },
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: {{pascalCase model}}UpdateSchema,
+    summary: 'Update a {{lowerCase model}}',
+  },
+
+  // Delete a {{camelCase model}}
+  delete: {
+    method: 'DELETE',
+    path: '/api{{#if schema}}/{{schema}}{{/if}}/{{kebabCase model}}s/:id',
+    responses: {
+      200: SuccessSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    summary: 'Delete a {{lowerCase model}}',
+  },
+
+  {{#if hasBulkOperations}}
+  // Bulk create {{camelCase model}}s
+  bulkCreate: {
+    method: 'POST',
+    path: '/api{{#if schema}}/{{schema}}{{/if}}/{{kebabCase model}}s/bulk',
+    responses: {
+      201: z.object({
+        success: z.literal(true),
+        data: z.array({{pascalCase model}}ResponseSchema),
+        count: z.number(),
+      }),
+      400: ErrorSchema,
+      500: ErrorSchema,
+    },
+    body: z.object({
+      data: z.array({{pascalCase model}}CreateSchema).min(1).max(100),
+    }),
+    summary: 'Create multiple {{lowerCase model}}s',
+  },
+
+  // Bulk update {{camelCase model}}s
+  bulkUpdate: {
+    method: 'PUT',
+    path: '/api{{#if schema}}/{{schema}}{{/if}}/{{kebabCase model}}s/bulk',
+    responses: {
+      200: z.object({
+        success: z.literal(true),
+        count: z.number(),
+      }),
+      400: ErrorSchema,
+      500: ErrorSchema,
+    },
+    body: z.object({
+      where: {{pascalCase model}}QuerySchema,
+      data: {{pascalCase model}}UpdateSchema,
+    }),
+    summary: 'Update multiple {{lowerCase model}}s',
+  },
+
+  // Bulk delete {{camelCase model}}s
+  bulkDelete: {
+    method: 'DELETE',
+    path: '/api{{#if schema}}/{{schema}}{{/if}}/{{kebabCase model}}s/bulk',
+    responses: {
+      200: z.object({
+        success: z.literal(true),
+        count: z.number(),
+      }),
+      400: ErrorSchema,
+      500: ErrorSchema,
+    },
+    body: z.object({
+      ids: z.array(z.string().uuid()).min(1),
+    }),
+    summary: 'Delete multiple {{lowerCase model}}s',
+  },
+  {{/if}}
+});

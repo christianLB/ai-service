@@ -271,7 +271,7 @@ export class RiskManagerService {
           ...(userId && { userId })
         },
         include: {
-          TradingPair: true
+          tradingPair: true
         }
       });
 
@@ -282,7 +282,7 @@ export class RiskManagerService {
         const value = Number(position.quantity) * Number(position.avgEntryPrice);
         totalExposure += value;
         
-        const baseAsset = position.TradingPair?.baseAsset || position.symbol;
+        const baseAsset = position.tradingPair?.baseAsset || position.symbol;
         symbolExposure.set(baseAsset, (symbolExposure.get(baseAsset) || 0) + value);
       }
       
@@ -390,7 +390,7 @@ export class RiskManagerService {
           ...(userId && { userId })
         },
         include: {
-          TradingPair: true
+          tradingPair: true
         }
       });
 
@@ -404,7 +404,7 @@ export class RiskManagerService {
       // Count positions with same base asset
       let correlatedPositions = 0;
       for (const position of positions) {
-        const posBase = position.TradingPair?.baseAsset || position.symbol.split('/')[0];
+        const posBase = position.tradingPair?.baseAsset || position.symbol.split('/')[0];
         if (posBase === signalBase) {
           correlatedPositions++;
         }
@@ -457,7 +457,7 @@ export class RiskManagerService {
       const position = await this.prisma.position.findUnique({
         where: { id: positionId },
         include: {
-          TradingPair: true
+          tradingPair: true
         }
       });
 
@@ -469,7 +469,7 @@ export class RiskManagerService {
       // Get current price
       const currentPrice = await marketDataService.getLatestPrice(
         position.exchange,
-        position.TradingPair?.symbol || position.symbol
+        position.tradingPair?.symbol || position.symbol
       );
       
       // Calculate current value and PnL

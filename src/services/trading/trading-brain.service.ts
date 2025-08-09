@@ -179,7 +179,7 @@ export class TradingBrainService {
         : 0;
 
       // Volume calculation
-      const volume24h = ohlcv.reduce((sum, candle) => sum + candle.volume, 0);
+      const volume24h = ohlcv.reduce((sum: number, candle: any) => sum + candle.volume, 0);
 
       return {
         symbol,
@@ -319,7 +319,7 @@ export class TradingBrainService {
           })
         },
         include: {
-          TradingPair: true
+          tradingPair: true
         }
       });
 
@@ -330,7 +330,7 @@ export class TradingBrainService {
         const value = Number(pos.quantity) * Number(pos.avgEntryPrice);
         totalValue += value;
         
-        const baseAsset = pos.TradingPair?.baseAsset || pos.symbol.split('/')[0];
+        const baseAsset = pos.tradingPair?.baseAsset || pos.symbol.split('/')[0];
         exposure[baseAsset] = (exposure[baseAsset] || 0) + value;
       }
 
@@ -780,7 +780,7 @@ Format your response as JSON.`;
       }
 
       // Check if strategy is using all available indicators
-      const params = strategy.config as any;
+      const params = strategy.parameters as any;
       if (!params?.useVolumeConfirmation) {
         suggestions.push('Enable volume confirmation for better signal quality');
       }
