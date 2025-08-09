@@ -14,7 +14,7 @@
     "types": ["node"]
   },
   "include": [
-    "src/index.stable.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "**/node_modules/**",
@@ -23,9 +23,6 @@
     "tests/**",
     "migrations/**",
     "prisma/**",
-    "scripts/**",
-    "src/services/trading/**",
-    "src/services/tagging/**",
-    "src/routes/financial/invoice-attachment.routes.ts"
+    "scripts/**"
   ]
 }

@@ -154,36 +154,53 @@ class TradingService {
   private maxReconnectAttempts = 5;
 
   constructor() {
-    this.wsUrl = import.meta.env.VITE_WS_URL || 'wss://ai-service.anaxi.net';
+    // Use local WebSocket in development, production URL in production
+    const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
+    this.wsUrl = isDevelopment 
+      ? 'ws://localhost:3001' 
+      : (import.meta.env.VITE_WS_URL || 'wss://ai-service.anaxi.net');
   }
 
   // WebSocket Management
   connectWebSocket(): TradingWebSocket {
-    if (!this.socket || this.socket.disconnected) {
-      const token = localStorage.getItem('auth_token');
-      
-      this.socket = io(this.wsUrl, {
-        path: '/ws/trading',
-        auth: {
-          token: token || ''
-        },
-        transports: ['websocket'],
-        reconnection: true,
-        reconnectionAttempts: this.maxReconnectAttempts,
-        reconnectionDelay: 1000,
-      });
+    try {
+      if (!this.socket || this.socket.disconnected) {
+        const token = localStorage.getItem('auth_token');
+        
+        this.socket = io(this.wsUrl, {
+          path: '/ws/trading',
+          auth: {
+            token: token || ''
+          },
+          transports: ['websocket', 'polling'], // Add polling as fallback
+          reconnection: true,
+          reconnectionAttempts: this.maxReconnectAttempts,
+          reconnectionDelay: 1000,
+          timeout: 10000, // Add timeout
+        });
 
-      this.socket.on('connect', () => {
-        console.log('Trading WebSocket connected');
-      });
+        this.socket.on('connect', () => {
+          console.log('Trading WebSocket connected');
+        });
 
-      this.socket.on('disconnect', () => {
-        console.log('Trading WebSocket disconnected');
-      });
+        this.socket.on('disconnect', () => {
+          console.log('Trading WebSocket disconnected');
+        });
 
-      this.socket.on('error', (error) => {
-        console.error('Trading WebSocket error:', error);
-      });
+        this.socket.on('connect_error', (error) => {
+          console.warn('Trading WebSocket connection error:', error.message);
+          // Don't crash the app, just log the warning
+        });
+
+        this.socket.on('error', (error) => {
+          console.warn('Trading WebSocket error:', error);
+          // Don't crash the app, just log the warning
+        });
+      }
+    } catch (error) {
+      console.error('Failed to initialize WebSocket:', error);
+      // Return a mock object that won't crash the app
+      return this.getMockWebSocket();
     }
 
     return {
@@ -225,7 +242,8 @@ class TradingService {
     const response = await api.get('/trading/positions', {
       params: { status }
     });
-    return response.data;
+    // API returns { positions: [], summary: {...} }, we need just the array
+    return response.data.positions || response.data || [];
   }
 
   async getPosition(id: string): Promise<Position> {
@@ -252,7 +270,8 @@ class TradingService {
   // Strategies API
   async getStrategies(): Promise<Strategy[]> {
     const response = await api.get('/trading/strategies');
-    return response.data;
+    // API returns { strategies: [], total: 0 }, we need just the array
+    return response.data.strategies || response.data || [];
   }
 
   async getStrategy(id: string): Promise<Strategy> {
@@ -314,7 +333,8 @@ class TradingService {
     const response = await api.get('/trading/backtest/results', {
       params: { limit }
     });
-    return response.data;
+    // Ensure we return an array, handle both { results: [] } and direct array
+    return response.data.results || response.data || [];
   }
 
   async getBacktestResult(id: string): Promise<BacktestResult> {
@@ -393,6 +413,28 @@ class TradingService {
   async closeAllPositions() {
     const response = await api.post('/trading/positions/close-all');
     return response.data;
+  }
+
+  // Mock WebSocket for fallback when connection fails
+  private getMockWebSocket(): TradingWebSocket {
+    console.warn('Using mock WebSocket - real-time features disabled');
+    return {
+      subscribe: (channels: string[]) => {
+        console.log('Mock subscribe:', channels);
+      },
+      unsubscribe: (channels: string[]) => {
+        console.log('Mock unsubscribe:', channels);
+      },
+      on: (event: string, _callback: (data: unknown) => void) => {
+        console.log('Mock on:', event);
+      },
+      off: (event: string, _callback?: (data: unknown) => void) => {
+        console.log('Mock off:', event);
+      },
+      disconnect: () => {
+        console.log('Mock disconnect');
+      },
+    };
   }
 }
 

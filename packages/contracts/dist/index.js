@@ -33,8 +33,22 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.financialContract = exports.FinanceSchemas = exports.CommonSchemas = void 0;
+exports.apiContract = exports.dashboardContract = exports.financialContract = exports.DashboardSchemas = exports.FinanceSchemas = exports.CommonSchemas = void 0;
+// Schema exports
 exports.CommonSchemas = __importStar(require("./schemas/common"));
 exports.FinanceSchemas = __importStar(require("./schemas/finance"));
+exports.DashboardSchemas = __importStar(require("./schemas/dashboard"));
+// Contract exports
 var financial_1 = require("./contracts/financial");
 Object.defineProperty(exports, "financialContract", { enumerable: true, get: function () { return financial_1.financialContract; } });
+var dashboard_1 = require("./contracts/dashboard");
+Object.defineProperty(exports, "dashboardContract", { enumerable: true, get: function () { return dashboard_1.dashboardContract; } });
+// Combined contract for server implementation
+const core_1 = require("@ts-rest/core");
+const financial_2 = require("./contracts/financial");
+const dashboard_2 = require("./contracts/dashboard");
+const c = (0, core_1.initContract)();
+exports.apiContract = c.router({
+    financial: financial_2.financialContract,
+    dashboard: dashboard_2.dashboardContract,
+});

@@ -7,17 +7,17 @@ export declare const Account: z.ZodObject<{
     currency: z.ZodString;
     createdAt: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    currency: string;
     id: string;
-    provider: string;
     name: string;
+    currency: string;
+    provider: string;
     iban?: string | undefined;
     createdAt?: string | undefined;
 }, {
-    currency: string;
     id: string;
-    provider: string;
     name: string;
+    currency: string;
+    provider: string;
     iban?: string | undefined;
     createdAt?: string | undefined;
 }>;
@@ -31,37 +31,37 @@ export declare const Transaction: z.ZodObject<{
         amount: z.ZodString;
         currency: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        amount: string;
         currency: string;
+        amount: string;
     }, {
-        amount: string;
         currency: string;
+        amount: string;
     }>;
     raw: z.ZodOptional<z.ZodAny>;
     categoryId: z.ZodOptional<z.ZodString>;
     meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
 }, "strip", z.ZodTypeAny, {
-    amount: {
-        amount: string;
-        currency: string;
-    };
+    description: string;
     id: string;
     accountId: string;
     bookingDate: string;
-    description: string;
+    amount: {
+        currency: string;
+        amount: string;
+    };
     valueDate?: string | undefined;
     raw?: any;
     categoryId?: string | undefined;
     meta?: Record<string, any> | undefined;
 }, {
-    amount: {
-        amount: string;
-        currency: string;
-    };
+    description: string;
     id: string;
     accountId: string;
     bookingDate: string;
-    description: string;
+    amount: {
+        currency: string;
+        amount: string;
+    };
     valueDate?: string | undefined;
     raw?: any;
     categoryId?: string | undefined;
@@ -76,37 +76,37 @@ export declare const AccountsResponse: z.ZodObject<{
         currency: z.ZodString;
         createdAt: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        currency: string;
         id: string;
-        provider: string;
         name: string;
+        currency: string;
+        provider: string;
         iban?: string | undefined;
         createdAt?: string | undefined;
     }, {
-        currency: string;
         id: string;
-        provider: string;
         name: string;
+        currency: string;
+        provider: string;
         iban?: string | undefined;
         createdAt?: string | undefined;
     }>, "many">;
     total: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     accounts: {
-        currency: string;
         id: string;
-        provider: string;
         name: string;
+        currency: string;
+        provider: string;
         iban?: string | undefined;
         createdAt?: string | undefined;
     }[];
     total: number;
 }, {
     accounts: {
-        currency: string;
         id: string;
-        provider: string;
         name: string;
+        currency: string;
+        provider: string;
         iban?: string | undefined;
         createdAt?: string | undefined;
     }[];
@@ -123,37 +123,37 @@ export declare const TransactionsResponse: z.ZodObject<{
             amount: z.ZodString;
             currency: z.ZodString;
         }, "strip", z.ZodTypeAny, {
-            amount: string;
             currency: string;
+            amount: string;
         }, {
-            amount: string;
             currency: string;
+            amount: string;
         }>;
         raw: z.ZodOptional<z.ZodAny>;
         categoryId: z.ZodOptional<z.ZodString>;
         meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
     }, "strip", z.ZodTypeAny, {
-        amount: {
-            amount: string;
-            currency: string;
-        };
+        description: string;
         id: string;
         accountId: string;
         bookingDate: string;
-        description: string;
+        amount: {
+            currency: string;
+            amount: string;
+        };
         valueDate?: string | undefined;
         raw?: any;
         categoryId?: string | undefined;
         meta?: Record<string, any> | undefined;
     }, {
-        amount: {
-            amount: string;
-            currency: string;
-        };
+        description: string;
         id: string;
         accountId: string;
         bookingDate: string;
-        description: string;
+        amount: {
+            currency: string;
+            amount: string;
+        };
         valueDate?: string | undefined;
         raw?: any;
         categoryId?: string | undefined;
@@ -165,14 +165,14 @@ export declare const TransactionsResponse: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     total: number;
     transactions: {
-        amount: {
-            amount: string;
-            currency: string;
-        };
+        description: string;
         id: string;
         accountId: string;
         bookingDate: string;
-        description: string;
+        amount: {
+            currency: string;
+            amount: string;
+        };
         valueDate?: string | undefined;
         raw?: any;
         categoryId?: string | undefined;
@@ -183,14 +183,14 @@ export declare const TransactionsResponse: z.ZodObject<{
 }, {
     total: number;
     transactions: {
-        amount: {
-            amount: string;
-            currency: string;
-        };
+        description: string;
         id: string;
         accountId: string;
         bookingDate: string;
-        description: string;
+        amount: {
+            currency: string;
+            amount: string;
+        };
         valueDate?: string | undefined;
         raw?: any;
         categoryId?: string | undefined;
@@ -201,3 +201,141 @@ export declare const TransactionsResponse: z.ZodObject<{
 }>;
 export type Account = z.infer<typeof Account>;
 export type Transaction = z.infer<typeof Transaction>;
+export declare const Attachment: z.ZodObject<{
+    id: z.ZodString;
+    invoiceId: z.ZodString;
+    fileName: z.ZodString;
+    fileType: z.ZodString;
+    fileSize: z.ZodNumber;
+    description: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+    uploadedBy: z.ZodString;
+    uploadedAt: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    invoiceId: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    uploadedBy: string;
+    uploadedAt: string;
+    description?: string | null | undefined;
+}, {
+    id: string;
+    invoiceId: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    uploadedBy: string;
+    uploadedAt: string;
+    description?: string | null | undefined;
+}>;
+export declare const AttachmentListResponse: z.ZodObject<{
+    attachments: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        invoiceId: z.ZodString;
+        fileName: z.ZodString;
+        fileType: z.ZodString;
+        fileSize: z.ZodNumber;
+        description: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+        uploadedBy: z.ZodString;
+        uploadedAt: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        invoiceId: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        uploadedBy: string;
+        uploadedAt: string;
+        description?: string | null | undefined;
+    }, {
+        id: string;
+        invoiceId: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        uploadedBy: string;
+        uploadedAt: string;
+        description?: string | null | undefined;
+    }>, "many">;
+    total: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    total: number;
+    attachments: {
+        id: string;
+        invoiceId: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        uploadedBy: string;
+        uploadedAt: string;
+        description?: string | null | undefined;
+    }[];
+}, {
+    total: number;
+    attachments: {
+        id: string;
+        invoiceId: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        uploadedBy: string;
+        uploadedAt: string;
+        description?: string | null | undefined;
+    }[];
+}>;
+export declare const AttachmentUploadResponse: z.ZodObject<{
+    attachment: z.ZodObject<{
+        id: z.ZodString;
+        invoiceId: z.ZodString;
+        fileName: z.ZodString;
+        fileType: z.ZodString;
+        fileSize: z.ZodNumber;
+        description: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+        uploadedBy: z.ZodString;
+        uploadedAt: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        invoiceId: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        uploadedBy: string;
+        uploadedAt: string;
+        description?: string | null | undefined;
+    }, {
+        id: string;
+        invoiceId: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        uploadedBy: string;
+        uploadedAt: string;
+        description?: string | null | undefined;
+    }>;
+}, "strip", z.ZodTypeAny, {
+    attachment: {
+        id: string;
+        invoiceId: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        uploadedBy: string;
+        uploadedAt: string;
+        description?: string | null | undefined;
+    };
+}, {
+    attachment: {
+        id: string;
+        invoiceId: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        uploadedBy: string;
+        uploadedAt: string;
+        description?: string | null | undefined;
+    };
+}>;
+export type Attachment = z.infer<typeof Attachment>;
+export type AttachmentListResponse = z.infer<typeof AttachmentListResponse>;
+export type AttachmentUploadResponse = z.infer<typeof AttachmentUploadResponse>;

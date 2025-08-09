@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TransactionsResponse = exports.AccountsResponse = exports.Transaction = exports.Account = void 0;
+exports.AttachmentUploadResponse = exports.AttachmentListResponse = exports.Attachment = exports.TransactionsResponse = exports.AccountsResponse = exports.Transaction = exports.Account = void 0;
 const zod_1 = require("zod");
 const common_1 = require("./common");
 exports.Account = zod_1.z.object({
@@ -31,4 +31,22 @@ exports.TransactionsResponse = zod_1.z.object({
     total: zod_1.z.number(),
     page: zod_1.z.number(),
     limit: zod_1.z.number(),
+});
+// Attachments
+exports.Attachment = zod_1.z.object({
+    id: common_1.UUID,
+    invoiceId: common_1.UUID,
+    fileName: zod_1.z.string(),
+    fileType: zod_1.z.string(),
+    fileSize: zod_1.z.number().int().nonnegative(),
+    description: zod_1.z.string().optional().nullable(),
+    uploadedBy: zod_1.z.string(),
+    uploadedAt: zod_1.z.string().datetime(),
+});
+exports.AttachmentListResponse = zod_1.z.object({
+    attachments: zod_1.z.array(exports.Attachment),
+    total: zod_1.z.number(),
+});
+exports.AttachmentUploadResponse = zod_1.z.object({
+    attachment: exports.Attachment,
 });
