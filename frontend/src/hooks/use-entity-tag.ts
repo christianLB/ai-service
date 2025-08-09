@@ -2,23 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { 
-  Strategy, 
-  CreateStrategy, 
-  StrategyQuery 
-} from '../types/strategy.types';
+  EntityTag, 
+  CreateEntityTag, 
+  EntityTagQuery 
+} from '../types/entity-tag.types';
 
-const QUERY_KEY = 'strategys';
+const QUERY_KEY = 'entity-tags';
 
-interface StrategyResponse {
+interface EntityTagResponse {
   success: boolean;
-  data: Strategy;
+  data: EntityTag;
   message?: string;
 }
 
-interface StrategyListResponse {
+interface EntityTagListResponse {
   success: boolean;
   data: {
-    items: Strategy[];
+    items: EntityTag[];
     total: number;
     page: number;
     limit: number;
@@ -27,27 +27,27 @@ interface StrategyListResponse {
 }
 
 /**
- * Hook to fetch all strategys with pagination
+ * Hook to fetch all entitytags with pagination
  */
-export function useStrategys(params?: StrategyQuery) {
+export function useEntityTags(params?: EntityTagQuery) {
   return useQuery({
     queryKey: [QUERY_KEY, params],
     queryFn: async () => {
-      const response = await api.get<StrategyListResponse>('/strategys', { params });
+      const response = await api.get<EntityTagListResponse>('/entity-tags', { params });
       return response.data.data;
     },
   });
 }
 
 /**
- * Hook to fetch a single strategy by ID
+ * Hook to fetch a single entitytag by ID
  */
-export function useStrategy(id: string | undefined) {
+export function useEntityTag(id: string | undefined) {
   return useQuery({
     queryKey: [QUERY_KEY, id],
     queryFn: async () => {
       if (!id) throw new Error('ID is required');
-      const response = await api.get<StrategyResponse>(`/strategys/${id}`);
+      const response = await api.get<EntityTagResponse>(`/entity-tags/${id}`);
       return response.data.data;
     },
     enabled: !!id,
@@ -55,14 +55,14 @@ export function useStrategy(id: string | undefined) {
 }
 
 /**
- * Hook to search strategys
+ * Hook to search entitytags
  */
-export function useStrategySearch(query: string) {
+export function useEntityTagSearch(query: string) {
   return useQuery({
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: Strategy[] }>(
-        '/strategys/search',
+      const response = await api.get<{ success: boolean; data: EntityTag[] }>(
+        '/entity-tags/search',
         { params: { q: query } }
       );
       return response.data.data;
@@ -72,68 +72,68 @@ export function useStrategySearch(query: string) {
 }
 
 /**
- * Hook for strategy mutations (create, update, delete)
+ * Hook for entitytag mutations (create, update, delete)
  */
-export function useStrategyMutations() {
+export function useEntityTagMutations() {
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
-    mutationFn: async (data: CreateStrategy) => {
-      const response = await api.post<StrategyResponse>('/strategys', data);
+    mutationFn: async (data: CreateEntityTag) => {
+      const response = await api.post<EntityTagResponse>('/entity-tags', data);
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Strategy created successfully');
+      message.success(response.message || 'EntityTag created successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to create strategy');
+      message.error(error.response?.data?.message || 'Failed to create entitytag');
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Strategy> }) => {
-      const response = await api.put<StrategyResponse>(`/strategys/${id}`, data);
+    mutationFn: async ({ id, data }: { id: string; data: Partial<EntityTag> }) => {
+      const response = await api.put<EntityTagResponse>(`/entity-tags/${id}`, data);
       return response.data;
     },
     onSuccess: (response, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
-      message.success(response.message || 'Strategy updated successfully');
+      message.success(response.message || 'EntityTag updated successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to update strategy');
+      message.error(error.response?.data?.message || 'Failed to update entitytag');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/strategys/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(`/entity-tags/${id}`);
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Strategy deleted successfully');
+      message.success(response.message || 'EntityTag deleted successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete strategy');
+      message.error(error.response?.data?.message || 'Failed to delete entitytag');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/strategys/bulk',
+        '/entity-tags/bulk',
         { data: { ids } }
       );
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Strategys deleted successfully');
+      message.success(response.message || 'EntityTags deleted successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete strategys');
+      message.error(error.response?.data?.message || 'Failed to delete entitytags');
     },
   });
 
@@ -150,33 +150,33 @@ export function useStrategyMutations() {
 }
 
 /**
- * Hook to prefetch strategy data
+ * Hook to prefetch entitytag data
  */
-export function useStrategyPrefetch() {
+export function useEntityTagPrefetch() {
   const queryClient = useQueryClient();
 
-  const prefetchStrategy = async (id: string) => {
+  const prefetchEntityTag = async (id: string) => {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, id],
       queryFn: async () => {
-        const response = await api.get<StrategyResponse>(`/strategys/${id}`);
+        const response = await api.get<EntityTagResponse>(`/entity-tags/${id}`);
         return response.data.data;
       },
     });
   };
 
-  const prefetchStrategys = async (params?: StrategyQuery) => {
+  const prefetchEntityTags = async (params?: EntityTagQuery) => {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, params],
       queryFn: async () => {
-        const response = await api.get<StrategyListResponse>('/strategys', { params });
+        const response = await api.get<EntityTagListResponse>('/entity-tags', { params });
         return response.data.data;
       },
     });
   };
 
   return {
-    prefetchStrategy,
-    prefetchStrategys,
+    prefetchEntityTag,
+    prefetchEntityTags,
   };
 }

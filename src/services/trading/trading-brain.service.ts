@@ -179,7 +179,7 @@ export class TradingBrainService {
         : 0;
 
       // Volume calculation
-      const volume24h = ohlcv.reduce((sum, candle) => sum + candle.volume, 0);
+      const volume24h = ohlcv.reduce((sum: number, candle: any) => sum + candle.volume, 0);
 
       return {
         symbol,
@@ -780,7 +780,7 @@ Format your response as JSON.`;
       }
 
       // Check if strategy is using all available indicators
-      const params = strategy.config as any;
+      const params = strategy.parameters as any;
       if (!params?.useVolumeConfirmation) {
         suggestions.push('Enable volume confirmation for better signal quality');
       }

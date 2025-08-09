@@ -2,23 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { 
-  Strategy, 
-  CreateStrategy, 
-  StrategyQuery 
-} from '../types/strategy.types';
+  UniversalTag, 
+  CreateUniversalTag, 
+  UniversalTagQuery 
+} from '../types/universal-tag.types';
 
-const QUERY_KEY = 'strategys';
+const QUERY_KEY = 'universal-tags';
 
-interface StrategyResponse {
+interface UniversalTagResponse {
   success: boolean;
-  data: Strategy;
+  data: UniversalTag;
   message?: string;
 }
 
-interface StrategyListResponse {
+interface UniversalTagListResponse {
   success: boolean;
   data: {
-    items: Strategy[];
+    items: UniversalTag[];
     total: number;
     page: number;
     limit: number;
@@ -27,27 +27,27 @@ interface StrategyListResponse {
 }
 
 /**
- * Hook to fetch all strategys with pagination
+ * Hook to fetch all universaltags with pagination
  */
-export function useStrategys(params?: StrategyQuery) {
+export function useUniversalTags(params?: UniversalTagQuery) {
   return useQuery({
     queryKey: [QUERY_KEY, params],
     queryFn: async () => {
-      const response = await api.get<StrategyListResponse>('/strategys', { params });
+      const response = await api.get<UniversalTagListResponse>('/universal-tags', { params });
       return response.data.data;
     },
   });
 }
 
 /**
- * Hook to fetch a single strategy by ID
+ * Hook to fetch a single universaltag by ID
  */
-export function useStrategy(id: string | undefined) {
+export function useUniversalTag(id: string | undefined) {
   return useQuery({
     queryKey: [QUERY_KEY, id],
     queryFn: async () => {
       if (!id) throw new Error('ID is required');
-      const response = await api.get<StrategyResponse>(`/strategys/${id}`);
+      const response = await api.get<UniversalTagResponse>(`/universal-tags/${id}`);
       return response.data.data;
     },
     enabled: !!id,
@@ -55,14 +55,14 @@ export function useStrategy(id: string | undefined) {
 }
 
 /**
- * Hook to search strategys
+ * Hook to search universaltags
  */
-export function useStrategySearch(query: string) {
+export function useUniversalTagSearch(query: string) {
   return useQuery({
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: Strategy[] }>(
-        '/strategys/search',
+      const response = await api.get<{ success: boolean; data: UniversalTag[] }>(
+        '/universal-tags/search',
         { params: { q: query } }
       );
       return response.data.data;
@@ -72,68 +72,68 @@ export function useStrategySearch(query: string) {
 }
 
 /**
- * Hook for strategy mutations (create, update, delete)
+ * Hook for universaltag mutations (create, update, delete)
  */
-export function useStrategyMutations() {
+export function useUniversalTagMutations() {
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
-    mutationFn: async (data: CreateStrategy) => {
-      const response = await api.post<StrategyResponse>('/strategys', data);
+    mutationFn: async (data: CreateUniversalTag) => {
+      const response = await api.post<UniversalTagResponse>('/universal-tags', data);
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Strategy created successfully');
+      message.success(response.message || 'UniversalTag created successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to create strategy');
+      message.error(error.response?.data?.message || 'Failed to create universaltag');
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Strategy> }) => {
-      const response = await api.put<StrategyResponse>(`/strategys/${id}`, data);
+    mutationFn: async ({ id, data }: { id: string; data: Partial<UniversalTag> }) => {
+      const response = await api.put<UniversalTagResponse>(`/universal-tags/${id}`, data);
       return response.data;
     },
     onSuccess: (response, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
-      message.success(response.message || 'Strategy updated successfully');
+      message.success(response.message || 'UniversalTag updated successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to update strategy');
+      message.error(error.response?.data?.message || 'Failed to update universaltag');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/strategys/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(`/universal-tags/${id}`);
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Strategy deleted successfully');
+      message.success(response.message || 'UniversalTag deleted successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete strategy');
+      message.error(error.response?.data?.message || 'Failed to delete universaltag');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/strategys/bulk',
+        '/universal-tags/bulk',
         { data: { ids } }
       );
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success(response.message || 'Strategys deleted successfully');
+      message.success(response.message || 'UniversalTags deleted successfully');
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete strategys');
+      message.error(error.response?.data?.message || 'Failed to delete universaltags');
     },
   });
 
@@ -150,33 +150,33 @@ export function useStrategyMutations() {
 }
 
 /**
- * Hook to prefetch strategy data
+ * Hook to prefetch universaltag data
  */
-export function useStrategyPrefetch() {
+export function useUniversalTagPrefetch() {
   const queryClient = useQueryClient();
 
-  const prefetchStrategy = async (id: string) => {
+  const prefetchUniversalTag = async (id: string) => {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, id],
       queryFn: async () => {
-        const response = await api.get<StrategyResponse>(`/strategys/${id}`);
+        const response = await api.get<UniversalTagResponse>(`/universal-tags/${id}`);
         return response.data.data;
       },
     });
   };
 
-  const prefetchStrategys = async (params?: StrategyQuery) => {
+  const prefetchUniversalTags = async (params?: UniversalTagQuery) => {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, params],
       queryFn: async () => {
-        const response = await api.get<StrategyListResponse>('/strategys', { params });
+        const response = await api.get<UniversalTagListResponse>('/universal-tags', { params });
         return response.data.data;
       },
     });
   };
 
   return {
-    prefetchStrategy,
-    prefetchStrategys,
+    prefetchUniversalTag,
+    prefetchUniversalTags,
   };
 }

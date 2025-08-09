@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
-    "rootDir": "src",
+    "rootDir": "./",
     "moduleResolution": "node",
     "outDir": "dist",
     "esModuleInterop": true,
@@ -13,14 +13,10 @@
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
-      "@contracts/*": ["packages/contracts/src/*"],
-      "@clients/financial/*": ["packages/clients/financial/src/*"]
+      "@contracts/*": ["src/contracts/*"],
+      "@schemas/*": ["src/schemas/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["tests/**/*", "node_modules", "dist", "frontend/**/*"],
-  "references": [
-    { "path": "packages/contracts" },
-    { "path": "packages/clients/financial" }
-  ]
+  "include": ["src/**/*", "packages/**/*"],
+  "exclude": ["tests/**/*", "node_modules", "dist", "frontend/**/*"]
 }

@@ -881,6 +881,11 @@ model UniversalTag {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   parentId       String?   @map("parent_id") @db.Uuid
+  
+  // Relations
+  parent         UniversalTag?  @relation("TagHierarchy", fields: [parentId], references: [id])
+  children       UniversalTag[] @relation("TagHierarchy")
+  entityTags     EntityTag[]
 
   @@index([code])
   @@index([path])
@@ -911,6 +916,9 @@ model EntityTag {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   tagId            String    @map("tag_id") @db.Uuid
+  
+  // Relations
+  universalTag     UniversalTag @relation(fields: [tagId], references: [id])
 
   @@index([entityType, entityId])
   @@index([confidence])

@@ -13,11 +13,91 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
+import Handlebars from 'handlebars';
 
 const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = path.join(__dirname, '..');
+
+// Register Handlebars helpers
+Handlebars.registerHelper('eq', (a, b) => a === b);
+Handlebars.registerHelper('or', (...args) => args.slice(0, -1).some(v => v));
+Handlebars.registerHelper('not', (value) => !value);
+Handlebars.registerHelper('and', (a, b) => a && b);
+Handlebars.registerHelper('includes', (array, item) => {
+  if (typeof array === 'string') {
+    return array.includes(item);
+  }
+  return array?.includes(item);
+});
+
+// Case conversion helpers
+Handlebars.registerHelper('camelCase', (str) => str.charAt(0).toLowerCase() + str.slice(1));
+Handlebars.registerHelper('pascalCase', (str) => str.charAt(0).toUpperCase() + str.slice(1));
+Handlebars.registerHelper('kebabCase', (str) => str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase());
+Handlebars.registerHelper('snakeCase', (str) => str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase());
+Handlebars.registerHelper('upperCase', (str) => str.toUpperCase());
+Handlebars.registerHelper('lowerCase', (str) => str.toLowerCase());
+Handlebars.registerHelper('capitalize', (str) => str.charAt(0).toUpperCase() + str.slice(1));
+Handlebars.registerHelper('titleCase', (str) => str.split(/[\s-_]+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' '));
+
+// Prisma to Zod type helper
+Handlebars.registerHelper('prismaToZod', (field) => {
+  if (!field) return 'z.any()';
+  
+  let zodType = 'z.any()';
+  
+  const typeMap = {
+    'String': 'z.string()',
+    'Int': 'z.number().int()',
+    'Float': 'z.number()',
+    'Boolean': 'z.boolean()',
+    'DateTime': 'z.date()',
+    'Json': 'z.any()',
+    'Decimal': 'z.number()',
+    'BigInt': 'z.bigint()',
+    'Bytes': 'z.any()'
+  };
+  
+  zodType = typeMap[field.type] || 'z.string()';
+  
+  // Add UUID validation for ID fields
+  if (field.name.toLowerCase().includes('id') && field.type === 'String') {
+    zodType = 'z.string().uuid()';
+  }
+  
+  // Add email validation
+  if (field.name.toLowerCase() === 'email') {
+    zodType = 'z.string().email()';
+  }
+  
+  // Handle arrays
+  if (field.isArray) {
+    zodType = `z.array(${zodType})`;
+  }
+  
+  // Handle optional fields
+  if (field.isOptional) {
+    zodType += '.optional()';
+    if (!field.hasDefault) {
+      zodType += '.nullable()';
+    }
+  }
+  
+  // Handle defaults
+  if (field.hasDefault) {
+    if (field.defaultValue === 'false' || field.defaultValue === 'true') {
+      zodType += `.default(${field.defaultValue})`;
+    } else if (field.defaultValue && field.defaultValue.match(/^['"].*['"]$/)) {
+      zodType += `.default(${field.defaultValue})`;
+    } else if (field.defaultValue && !field.defaultValue.includes('(')) {
+      zodType += `.default(${field.defaultValue})`;
+    }
+  }
+  
+  return zodType;
+});
 
 // Parse command line arguments
 function parseArgs() {
@@ -178,31 +258,34 @@ async function generateFromTemplate(templatePath, outputPath, data, options) {
   // Read template
   const template = await fs.readFile(templatePath, 'utf-8');
   
-  // Simple template processing (replace Handlebars-like syntax)
-  let content = template;
+  // Compile template with Handlebars
+  const compiledTemplate = Handlebars.compile(template);
   
-  // Replace simple variables
-  content = content.replace(/\{\{pascalCase model\}\}/g, data.pascalCase);
-  content = content.replace(/\{\{camelCase model\}\}/g, data.camelCase);
-  content = content.replace(/\{\{kebabCase model\}\}/g, data.kebabCase);
-  content = content.replace(/\{\{lowerCase model\}\}/g, data.lowerCase);
-  content = content.replace(/\{\{upperCase model\}\}/g, data.upperCase);
+  // Prepare context with all necessary data
+  const context = {
+    ...data,
+    model: data.name,
+    modelInfo: data,
+    schema: data.schema,
+    hasBulkOperations: options.includeBulk,
+    hasRelations: data.hasRelations,
+    hasDateTime: data.hasDateTime,
+    hasDecimal: data.hasDecimal,
+    hasCommonTypes: data.hasCommonTypes,
+    // Add case variations
+    pascalCase: data.pascalCase,
+    camelCase: data.camelCase,
+    kebabCase: data.kebabCase,
+    lowerCase: data.lowerCase,
+    upperCase: data.upperCase,
+    // Model name variations for templates
+    modelLower: data.lowerCase,
+    modelPlural: data.pascalCase + 's',
+    modelPluralLower: data.lowerCase + 's'
+  };
   
-  // Handle conditionals
-  content = content.replace(/\{\{#if schema\}\}(.*?)\{\{\/if\}\}/gs, (match, inner) => {
-    return data.schema && data.schema !== 'public' ? inner : '';
-  });
-  
-  content = content.replace(/\{\{#if hasRelations\}\}(.*?)\{\{\/if\}\}/gs, (match, inner) => {
-    return data.hasRelations ? inner : '';
-  });
-  
-  content = content.replace(/\{\{#if hasBulkOperations\}\}(.*?)\{\{\/if\}\}/gs, (match, inner) => {
-    return options.includeBulk ? inner : '';
-  });
-  
-  // Replace schema variable
-  content = content.replace(/\{\{schema\}\}/g, data.schema);
+  // Generate content
+  const content = compiledTemplate(context);
   
   // Create directory if it doesn't exist
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
