@@ -1,29 +1,54 @@
-import { z } from 'zod';
+export interface Strategy {
+  id: string;
+  userId?: string | null;
+  name: string;
+  type: string;
+  status: string;
+  parameters: Record<string, any>;
+  risk_parameters?: Record<string, any> | null;
+  total_trades?: number | null;
+  winning_trades?: number | null;
+  losing_trades?: number | null;
+  total_pnl?: number | null;
+  sharpe_ratio?: number | null;
+  max_drawdown?: number | null;
+  win_rate?: number | null;
+  is_paper_trading?: boolean | null;
+  isActive?: boolean | null;
+  last_execution?: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  metadata?: Record<string, any> | null;
+  config?: Record<string, any>;
+  description?: string;
+}
 
-// Schema definitions
-export const strategySchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  type: z.string(),
-  config: z.record(z.any()),
-  isActive: z.boolean(),
-  createdAt: z.string(),
-  updatedAt: z.string()
-});
+export interface CreateStrategy {
+  name: string;
+  type: string;
+  status?: string;
+  parameters?: Record<string, any>;
+  config?: Record<string, any>;
+  description?: string;
+  isActive?: boolean;
+}
 
-// Types
-export type Strategy = z.infer<typeof strategySchema>;
-export type CreateStrategy = Omit<Strategy, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
-export type UpdateStrategy = Partial<CreateStrategy>;
+export interface UpdateStrategy {
+  name?: string;
+  type?: string;
+  status?: string;
+  parameters?: Record<string, any>;
+  risk_parameters?: Record<string, any> | null;
+  isActive?: boolean;
+  metadata?: Record<string, any> | null;
+  config?: Record<string, any>;
+  description?: string;
+}
 
-// Query types
-export const strategyQuerySchema = z.object({
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(10),
-  isActive: z.boolean().optional(),
-  type: z.string().optional()
-});
-
-export type StrategyQuery = z.infer<typeof strategyQuerySchema>;
+export interface StrategyQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: string;
+  isActive?: boolean;
+}
