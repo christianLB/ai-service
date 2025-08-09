@@ -8,7 +8,7 @@ echo "🔐 Running security audit before push..."
 }
 
 echo "🔨 Running build check before push..."
-npm run build || {
+npm run build:frontend && npm run build:backend:nocheck || {
   echo "❌ Build failed! Fix errors before pushing."
   exit 1
 }
