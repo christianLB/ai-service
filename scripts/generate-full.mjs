@@ -367,6 +367,13 @@ async function generateFullStack(options) {
     
     // Frontend files (if included)
     if (options.includeFrontend) {
+      // Frontend types should be generated FIRST
+      filesToGenerate.push({
+        template: path.join(projectRoot, 'plop-templates/types/model.types.frontend.ts.hbs'),
+        output: path.join(projectRoot, `frontend/src/types/${kebabCase(options.model)}.types.ts`),
+        type: 'Frontend Types',
+      });
+      
       filesToGenerate.push({
         template: path.join(projectRoot, 'plop-templates/hooks/use-model.ts.hbs'),
         output: path.join(projectRoot, `frontend/src/hooks/use-${kebabCase(options.model)}.ts`),
@@ -452,6 +459,7 @@ ${chalk.yellow('Backend:')}
 ${options.includeFrontend ? `
 ${chalk.yellow('Frontend:')}
   📁 frontend/src/
+    ├── types/${kebabCase(options.model)}.types.ts
     ├── hooks/use-${kebabCase(options.model)}.ts
     └── components/${kebabCase(options.model)}/
         ├── ${pascalCase(options.model)}List.tsx

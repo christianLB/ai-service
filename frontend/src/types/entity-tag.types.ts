@@ -1,23 +1,24 @@
+// EntityTag types for frontend
 export interface EntityTag {
   id: string;
   entityType: string;
   entityId: string;
-  tagId: string;
   method: string;
   confidence: number;
-  appliedBy?: string | null;
-  aiProvider?: string | null;
-  aiModel?: string | null;
-  aiResponse?: any | null;
-  aiReasoning?: string | null;
+  appliedBy?: string;
+  aiProvider?: string;
+  aiModel?: string;
+  aiResponse?: any;
+  aiReasoning?: string;
   isVerified: boolean;
-  verifiedBy?: string | null;
-  verifiedAt?: Date | string | null;
-  feedback?: string | null;
-  isCorrect?: boolean | null;
-  sourceEntityType?: string | null;
-  sourceEntityId?: string | null;
-  relationshipType?: string | null;
+  verifiedBy?: string;
+  verifiedAt?: Date | string;
+  feedback?: string;
+  isCorrect?: boolean;
+  sourceEntityType?: string;
+  sourceEntityId?: string;
+  relationshipType?: string;
+  tagId: string;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -25,38 +26,33 @@ export interface EntityTag {
 export interface CreateEntityTag {
   entityType: string;
   entityId: string;
-  tagId: string;
   method: string;
-  confidence?: number;
-  appliedBy?: string | null;
-  aiProvider?: string | null;
-  aiModel?: string | null;
-  aiResponse?: any | null;
-  aiReasoning?: string | null;
-  isVerified?: boolean;
-  verifiedBy?: string | null;
-  verifiedAt?: Date | string | null;
-  feedback?: string | null;
-  isCorrect?: boolean | null;
-  sourceEntityType?: string | null;
-  sourceEntityId?: string | null;
-  relationshipType?: string | null;
+  confidence: number;
+  appliedBy?: string;
+  aiProvider?: string;
+  aiModel?: string;
+  aiResponse?: any;
+  aiReasoning?: string;
+  isVerified: boolean;
+  verifiedBy?: string;
+  verifiedAt?: Date | string;
+  feedback?: string;
+  isCorrect?: boolean;
+  sourceEntityType?: string;
+  sourceEntityId?: string;
+  relationshipType?: string;
+  tagId: string;
 }
 
-export interface UpdateEntityTag {
-  method?: string;
-  confidence?: number;
-  appliedBy?: string | null;
-  aiProvider?: string | null;
-  aiModel?: string | null;
-  aiResponse?: any | null;
-  aiReasoning?: string | null;
-  isVerified?: boolean;
-  verifiedBy?: string | null;
-  verifiedAt?: Date | string | null;
-  feedback?: string | null;
-  isCorrect?: boolean | null;
-  sourceEntityType?: string | null;
-  sourceEntityId?: string | null;
-  relationshipType?: string | null;
+export interface UpdateEntityTag extends Partial<CreateEntityTag> {
+  id: string;
+}
+
+export interface EntityTagQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Add model-specific query filters based on your needs
 }

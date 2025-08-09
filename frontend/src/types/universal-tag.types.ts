@@ -1,65 +1,62 @@
+// UniversalTag types for frontend
 export interface UniversalTag {
   id: string;
   code: string;
   name: string;
-  description?: string | null;
-  entityTypes: string[];
-  patterns?: any | null;
-  rules?: any | null;
+  description?: string;
+  entityTypes: string;
+  patterns?: any;
+  rules?: any;
   confidence: number;
-  embeddingModel?: string | null;
+  embeddingModel?: string;
   path: string;
   level: number;
-  color?: string | null;
-  icon?: string | null;
+  color?: string;
+  icon?: string;
   isActive: boolean;
   isSystem: boolean;
-  metadata?: any | null;
+  metadata?: any;
   usageCount: number;
   successRate: number;
-  lastUsed?: Date | string | null;
+  lastUsed?: Date | string;
+  parentId?: string;
+  entityTags: string;
   createdAt: Date | string;
   updatedAt: Date | string;
-  parentId?: string | null;
 }
 
 export interface CreateUniversalTag {
   code: string;
   name: string;
-  description?: string | null;
-  entityTypes?: string[];
-  patterns?: any | null;
-  rules?: any | null;
-  confidence?: number;
-  embeddingModel?: string | null;
+  description?: string;
+  entityTypes: string;
+  patterns?: any;
+  rules?: any;
+  confidence: number;
+  embeddingModel?: string;
   path: string;
-  level?: number;
-  color?: string | null;
-  icon?: string | null;
-  isActive?: boolean;
-  isSystem?: boolean;
-  metadata?: any | null;
-  parentId?: string | null;
+  level: number;
+  color?: string;
+  icon?: string;
+  isActive: boolean;
+  isSystem: boolean;
+  metadata?: any;
+  usageCount: number;
+  successRate: number;
+  lastUsed?: Date | string;
+  parentId?: string;
+  entityTags: string;
 }
 
-export interface UpdateUniversalTag {
-  code?: string;
-  name?: string;
-  description?: string | null;
-  entityTypes?: string[];
-  patterns?: any | null;
-  rules?: any | null;
-  confidence?: number;
-  embeddingModel?: string | null;
-  path?: string;
-  level?: number;
-  color?: string | null;
-  icon?: string | null;
-  isActive?: boolean;
-  isSystem?: boolean;
-  metadata?: any | null;
-  parentId?: string | null;
-  usageCount?: number;
-  successRate?: number;
-  lastUsed?: Date | string | null;
+export interface UpdateUniversalTag extends Partial<CreateUniversalTag> {
+  id: string;
+}
+
+export interface UniversalTagQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Add model-specific query filters based on your needs
 }

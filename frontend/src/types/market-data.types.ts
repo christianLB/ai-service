@@ -1,3 +1,4 @@
+// MarketData types for frontend
 export interface MarketData {
   id: string;
   exchangeId: string;
@@ -8,11 +9,12 @@ export interface MarketData {
   low: number;
   close: number;
   volume: number;
-  quoteVolume?: number | null;
-  trades?: number | null;
+  quoteVolume?: number;
+  trades?: number;
   timeframe: string;
-  metadata?: any | null;
+  metadata?: any;
   createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface CreateMarketData {
@@ -24,20 +26,21 @@ export interface CreateMarketData {
   low: number;
   close: number;
   volume: number;
-  quoteVolume?: number | null;
-  trades?: number | null;
+  quoteVolume?: number;
+  trades?: number;
   timeframe: string;
-  metadata?: any | null;
+  metadata?: any;
 }
 
-export interface UpdateMarketData {
-  open?: number;
-  high?: number;
-  low?: number;
-  close?: number;
-  volume?: number;
-  quoteVolume?: number | null;
-  trades?: number | null;
-  timeframe?: string;
-  metadata?: any | null;
+export interface UpdateMarketData extends Partial<CreateMarketData> {
+  id: string;
+}
+
+export interface MarketDataQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Add model-specific query filters based on your needs
 }
