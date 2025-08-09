@@ -497,6 +497,7 @@ model Trade {
   price            Decimal  @db.Decimal(20, 8)
   fee              Decimal? @default(0) @db.Decimal(20, 8)
   fee_currency     String?  @db.VarChar(10)
+  pnl              Decimal? @default(0) @db.Decimal(20, 8)
   exchangeOrderId  String?  @map("exchange_order_id") @db.VarChar(255)
   status           String   @default("executed") @db.VarChar(20)
   ai_analysis      Json?
@@ -565,6 +566,7 @@ model Position {
   exchangeId    String?
   tradingPairId String?
   strategy      Strategy? @relation(fields: [strategyId], references: [id])
+  tradingPair   TradingPair? @relation(fields: [tradingPairId], references: [id])
 
   @@index([strategyId], map: "idx_trading_positions_strategy")
   @@index([userId, status], map: "idx_trading_positions_user_status")
@@ -761,6 +763,7 @@ model TradingPair {
   strategyTradingPair StrategyTradingPair[]
   orders              Order[]
   marketData          MarketData[]
+  positions           Position[]
 
   @@unique([exchangeId, symbol])
   @@index([exchangeId])

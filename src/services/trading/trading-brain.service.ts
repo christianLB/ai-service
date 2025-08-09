@@ -319,7 +319,7 @@ export class TradingBrainService {
           })
         },
         include: {
-          TradingPair: true
+          tradingPair: true
         }
       });
 
@@ -330,7 +330,7 @@ export class TradingBrainService {
         const value = Number(pos.quantity) * Number(pos.avgEntryPrice);
         totalValue += value;
         
-        const baseAsset = pos.TradingPair?.baseAsset || pos.symbol.split('/')[0];
+        const baseAsset = pos.tradingPair?.baseAsset || pos.symbol.split('/')[0];
         exposure[baseAsset] = (exposure[baseAsset] || 0) + value;
       }
 
