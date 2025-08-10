@@ -26,7 +26,7 @@ router.use(authMiddleware);
  * POST /api/tagging/batch
  * Batch tag multiple entities
  */
-router.post('/batch', batchRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/batch', batchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const request = batchTagRequestSchema.parse(req.body);
     const userId = (req as any).user.userId;
@@ -52,7 +52,7 @@ router.post('/batch', batchRateLimit, async (req: Request, res: Response, _next:
  * POST /api/tagging/retag
  * Re-tag entities based on filter criteria
  */
-router.post('/retag', batchRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/retag', batchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const request = reTagRequestSchema.parse(req.body);
     const userId = (req as any).user.userId;
@@ -78,7 +78,7 @@ router.post('/retag', batchRateLimit, async (req: Request, res: Response, _next:
  * POST /api/tagging/feedback
  * Submit feedback on tag accuracy
  */
-router.post('/feedback', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/feedback', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const feedback = tagFeedbackSchema.parse(req.body);
     const result = await getAITaggingService().learnFromFeedback(feedback);
@@ -102,7 +102,7 @@ router.post('/feedback', standardRateLimit, async (req: Request, res: Response, 
  * POST /api/tagging/learn
  * Learn from manual tag corrections
  */
-router.post('/learn', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/learn', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const learning = tagLearningSchema.parse(req.body);
     const result = await getAITaggingService().learnFromCorrection(learning);
@@ -126,7 +126,7 @@ router.post('/learn', standardRateLimit, async (req: Request, res: Response, _ne
  * GET /api/tagging/accuracy
  * Get system accuracy metrics
  */
-router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { period, entityType } = req.query;
 
@@ -264,7 +264,7 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, _
  * GET /api/tags/:id/metrics
  * Get metrics for a specific tag
  */
-router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { id: tagId } = req.params;
     const { period, startDate, endDate } = req.query;
@@ -385,7 +385,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
  * GET /api/relationships/:type/:id
  * Discover relationships for an entity
  */
-router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const entityType = EntityTypeEnum.parse(req.params.type);
     const { id: entityId } = req.params;
@@ -411,7 +411,7 @@ router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, r
  * POST /api/tagging/suggest
  * Get AI-powered tag suggestions for content
  */
-router.post('/suggest', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/suggest', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { content, entityType, metadata, options } = req.body;
 
@@ -451,7 +451,7 @@ router.post('/suggest', standardRateLimit, async (req: Request, res: Response, _
  * POST /api/tagging/categorize
  * Auto-categorize content using AI
  */
-router.post('/categorize', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/categorize', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { content, entityType, language, context } = req.body;
 
@@ -488,7 +488,7 @@ router.post('/categorize', standardRateLimit, async (req: Request, res: Response
  * POST /api/tagging/batch-ai
  * Batch process items for AI tagging
  */
-router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { items, options } = req.body;
 
@@ -536,7 +536,7 @@ router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, _ne
  * POST /api/tagging/multilingual
  * Get multi-language tag suggestions
  */
-router.post('/multilingual', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/multilingual', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { content, entityType, targetLanguages } = req.body;
 
@@ -575,7 +575,7 @@ router.post('/multilingual', standardRateLimit, async (req: Request, res: Respon
  * POST /api/tagging/contextual
  * Get contextual tag suggestions based on related entities
  */
-router.post('/contextual', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/contextual', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { content, entityType, context } = req.body;
 
@@ -614,7 +614,7 @@ router.post('/contextual', standardRateLimit, async (req: Request, res: Response
  * GET /api/tagging/analytics
  * Get AI tagging analytics
  */
-router.get('/analytics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/analytics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const analytics = await getAITaggingService().getTagAnalytics();
 
@@ -631,7 +631,7 @@ router.get('/analytics', standardRateLimit, async (req: Request, res: Response, 
  * POST /api/tagging/improve-patterns
  * Improve tag patterns based on examples
  */
-router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { tagId, successfulExamples, failedExamples } = req.body;
 

@@ -262,7 +262,7 @@ router.post('/test/:integrationType',
 );
 
 // GET /api/integrations/types - Get available integration types
-router.get('/types', async (req: Request, res: Response, _next: NextFunction => {
+router.get('/types', async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { category } = req.query;
 

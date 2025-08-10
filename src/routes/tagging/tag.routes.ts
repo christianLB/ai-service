@@ -27,7 +27,7 @@ router.use(authMiddleware);
  * GET /api/tags
  * List all tags with filtering and pagination
  */
-router.get('/', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagService = getTagService();
     const query = tagQuerySchema.parse(req.query);
@@ -52,7 +52,7 @@ router.get('/', standardRateLimit, async (req: Request, res: Response, _next: Ne
  * POST /api/tags
  * Create a new tag
  */
-router.post('/', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagService = getTagService();
     const data = createTagSchema.parse(req.body);
@@ -78,7 +78,7 @@ router.post('/', standardRateLimit, async (req: Request, res: Response, _next: N
  * GET /api/tags/search
  * Search tags
  */
-router.get('/search', searchRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/search', searchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagService = getTagService();
     const search = tagSearchSchema.parse(req.query);
@@ -103,7 +103,7 @@ router.get('/search', searchRateLimit, async (req: Request, res: Response, _next
  * GET /api/tags/hierarchy
  * Get tag hierarchy tree
  */
-router.get('/hierarchy', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/hierarchy', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagService = getTagService();
     const { parentId } = req.query;
@@ -121,7 +121,7 @@ router.get('/hierarchy', standardRateLimit, async (req: Request, res: Response, 
  * GET /api/tags/:id
  * Get a specific tag
  */
-router.get('/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagService = getTagService();
     const { id } = req.params;
@@ -136,7 +136,7 @@ router.get('/:id', standardRateLimit, async (req: Request, res: Response, _next:
  * PUT /api/tags/:id
  * Update a tag
  */
-router.put('/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.put('/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagService = getTagService();
     const { id } = req.params;
@@ -163,7 +163,7 @@ router.put('/:id', standardRateLimit, async (req: Request, res: Response, _next:
  * DELETE /api/tags/:id
  * Delete a tag
  */
-router.delete('/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.delete('/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagService = getTagService();
     const { id } = req.params;
@@ -193,7 +193,7 @@ router.delete('/:id', standardRateLimit, async (req: Request, res: Response, _ne
  * GET /api/tags/:id/path
  * Get tag path (breadcrumb)
  */
-router.get('/:id/path', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/:id/path', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagService = getTagService();
     const { id } = req.params;
@@ -214,7 +214,7 @@ router.get('/:id/path', standardRateLimit, async (req: Request, res: Response, _
  * POST /api/tags/bulk
  * Bulk create tags
  */
-router.post('/bulk', batchRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.post('/bulk', batchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { tags } = req.body;
 
@@ -258,7 +258,7 @@ router.post('/bulk', batchRateLimit, async (req: Request, res: Response, _next: 
  * PUT /api/tags/bulk
  * Bulk update tags
  */
-router.put('/bulk', batchRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.put('/bulk', batchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { updates } = req.body;
 
@@ -306,7 +306,7 @@ router.put('/bulk', batchRateLimit, async (req: Request, res: Response, _next: N
  * GET /api/tags/:id/metrics
  * Get metrics for a specific tag
  */
-router.get('/:id/metrics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
+router.get('/:id/metrics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const tagId = z.string().uuid().parse(req.params.id);
     const tagService = getTagService();

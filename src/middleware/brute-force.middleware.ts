@@ -10,7 +10,7 @@ interface BruteForceOptions {
 export function createBruteForceProtection(pool: Pool, options: BruteForceOptions) {
   const { maxAttempts, windowMs, blockDurationMs } = options;
 
-  return async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+  return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     const email = req.body.email;
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
 

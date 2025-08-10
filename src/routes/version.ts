@@ -18,7 +18,7 @@ function getTelegramService(): TelegramService | null {
 }
 
 // Get current version information
-router.get('/version', (req: Request, res: Response, _next: NextFunction => {
+router.get('/version', (req: Request, res: Response, _next: NextFunction) => {
   const versionInfo = {
     version: process.env.VERSION || 'development',
     buildDate: process.env.BUILD_DATE || 'unknown',
@@ -37,7 +37,7 @@ router.get('/version', (req: Request, res: Response, _next: NextFunction => {
 });
 
 // Watchtower deployment notification endpoint
-router.post('/watchtower/notify', async (req: Request, res: Response, _next: NextFunction => {
+router.post('/watchtower/notify', async (req: Request, res: Response, _next: NextFunction) => {
   try {
     // console.log('📦 Watchtower notification received:', req.body);
 
@@ -110,7 +110,7 @@ router.post('/watchtower/notify', async (req: Request, res: Response, _next: Nex
 });
 
 // Manual deployment test notification
-router.post('/test-notification', async (req: Request, res: Response, _next: NextFunction => {
+router.post('/test-notification', async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const telegramService = getTelegramService();
     if (!telegramService) {

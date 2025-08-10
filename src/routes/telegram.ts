@@ -30,7 +30,7 @@ function getTelegramService(): TelegramService | null {
 }
 
 // Webhook endpoint para recibir mensajes de Telegram
-router.post('/webhook', async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+router.post('/webhook', async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
   try {
     const service = getTelegramService();
     if (!service) {
@@ -51,7 +51,7 @@ router.post('/webhook', async (req: Request, res: Response, _next: NextFunction:
 });
 
 // Endpoint para enviar mensaje manual
-router.post('/send-message', async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+router.post('/send-message', async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
   try {
     const service = getTelegramService();
     if (!service) {
@@ -76,7 +76,7 @@ router.post('/send-message', async (req: Request, res: Response, _next: NextFunc
 });
 
 // Endpoint para enviar alerta
-router.post('/send-alert', async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+router.post('/send-alert', async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
   try {
     const service = getTelegramService();
     if (!service) {
@@ -109,7 +109,7 @@ router.post('/send-alert', async (req: Request, res: Response, _next: NextFuncti
 });
 
 // Endpoint para configurar webhook
-router.post('/setup-webhook', async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+router.post('/setup-webhook', async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
   try {
     const service = getTelegramService();
     if (!service) {
@@ -134,7 +134,7 @@ router.post('/setup-webhook', async (req: Request, res: Response, _next: NextFun
 });
 
 // Endpoint para obtener estado del servicio
-router.get('/status', async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+router.get('/status', async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
   try {
     const service = getTelegramService();
     const isConfigured = !!service;

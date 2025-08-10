@@ -72,7 +72,7 @@ export function createRateLimiter(type: keyof typeof rateLimitConfigs = 'standar
   const limiter = rateLimiters[type];
   const config = rateLimitConfigs[type];
 
-  return async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+  return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       // Use user ID if authenticated, otherwise use IP
       const key = (req as any).user?.userId || req.ip;

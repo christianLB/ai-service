@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+coverage/
+
+# Database
+prisma/migrations/
+
+# Environment files
+.env*
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# Generated files
+*.generated.*
+src/generated/
+frontend/src/generated/
+
+# Package files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Docker
+docker-compose*.yml
+
+# Frontend build
+frontend/dist/

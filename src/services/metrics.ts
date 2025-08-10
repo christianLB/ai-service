@@ -234,7 +234,7 @@ class MetricsService {
 
   // Middleware para Express
   createApiMetricsMiddleware() {
-    return (req: any, res: any, (_next: any) => {
+    return (req: any, res: any, _next: any) => {
       const startTime = Date.now();
 
       res.on('finish', () => {

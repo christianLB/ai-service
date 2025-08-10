@@ -1,5 +1,7 @@
 const js = require('@eslint/js');
 const tseslint = require('typescript-eslint');
+const prettierPlugin = require('eslint-plugin-prettier');
+const prettierConfig = require('eslint-config-prettier');
 
 module.exports = tseslint.config(
   js.configs.recommended,
@@ -27,7 +29,13 @@ module.exports = tseslint.config(
         project: './tsconfig.eslint.json',
       },
     },
+    plugins: {
+      prettier: prettierPlugin,
+    },
     rules: {
+      // Prettier integration
+      'prettier/prettier': 'error',
+      
       // TypeScript specific rules
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
@@ -39,17 +47,15 @@ module.exports = tseslint.config(
       '@typescript-eslint/no-var-requires': 'off', // Allow require() for Node.js
       '@typescript-eslint/no-require-imports': 'off', // Allow require() for Node.js
 
-      // General rules
+      // General rules (most formatting rules disabled in favor of Prettier)
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'prefer-const': 'error',
       'no-var': 'error',
       'eqeqeq': ['error', 'always'],
       'curly': ['error', 'all'],
-      'brace-style': ['error', '1tbs'],
-      'indent': ['error', 2, { SwitchCase: 1 }],
-      'quotes': ['error', 'single', { avoidEscape: true }],
-      'semi': ['error', 'always'],
-      'no-trailing-spaces': 'error',
+      
+      // Disable formatting rules that conflict with Prettier
+      ...prettierConfig.rules,
     },
   }
 );

@@ -12,7 +12,7 @@ export function createCryptoRoutes(pool: Pool): Router {
   const router = Router();
   const service = new CryptoConfigService(pool);
 
-  router.get('/crypto/config', standardRateLimit, async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+  router.get('/crypto/config', standardRateLimit, async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     const authReq = req as AuthRequest;
     try {
       if (!authReq.user) {
@@ -26,7 +26,7 @@ export function createCryptoRoutes(pool: Pool): Router {
     }
   });
 
-  router.post('/crypto/config', standardRateLimit, validate(cryptoConfigSchema), async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
+  router.post('/crypto/config', standardRateLimit, validate(cryptoConfigSchema), async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     const authReq = req as AuthRequest;
     try {
       if (!authReq.user) {
@@ -41,7 +41,7 @@ export function createCryptoRoutes(pool: Pool): Router {
     }
   });
 
-  router.post('/crypto/sync', standardRateLimit, async (_req: Request, res: Response, _next: NextFunction: Promise<void> => {
+  router.post('/crypto/sync', standardRateLimit, async (_req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       const orchestrator = createDefaultOrchestrator();
       await orchestrator.syncAll();

@@ -10,7 +10,7 @@ import { standardRateLimit } from '../middleware/express-rate-limit.middleware';
 
 const router = Router();
 
-router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (req: Request, res: Response, _next: NextFunction => {
+router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (req: Request, res: Response, _next: NextFunction) => {
   const startTime = Date.now();
   const { workflow, testData } = req.body;
 

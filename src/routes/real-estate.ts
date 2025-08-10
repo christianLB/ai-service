@@ -14,7 +14,7 @@ const pool = new Pool({
 
 const service = new RealEstateService(pool);
 
-router.get('/properties', async (_req: Request, res: Response, _next: NextFunction => {
+router.get('/properties', async (_req: Request, res: Response, _next: NextFunction) => {
   try {
     const properties = await service.listProperties();
     res.json({ success: true, data: properties });
@@ -23,7 +23,7 @@ router.get('/properties', async (_req: Request, res: Response, _next: NextFuncti
   }
 });
 
-router.post('/properties', async (req: Request, res: Response, _next: NextFunction => {
+router.post('/properties', async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const property = await service.createProperty(req.body);
     res.status(201).json({ success: true, data: property });

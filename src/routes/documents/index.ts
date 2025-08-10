@@ -125,7 +125,7 @@ router.get('/files/:filename/signed-url', async (req, res) => {
 // Duplicate health check endpoint removed (moved above)
 
 // Error handling middleware
-router.use((error: any, req: any, res: any, (_next: any) => {
+router.use((error: any, req: any, res: any, _next: any) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({

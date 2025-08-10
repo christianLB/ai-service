@@ -14,7 +14,7 @@ jest.mock('../../services/financial/transaction-import.service', () => ({
 
 // Mock authentication middleware
 jest.mock('../../middleware/auth', () => ({
-  authMiddleware: (req: any, res: any, (_next: any) => {
+  authMiddleware: (req: any, res: any, _next: any) => {
     req.user = { userId: 'test-user' };
     next();
   },

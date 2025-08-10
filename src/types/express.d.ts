@@ -17,7 +17,7 @@ declare global {
 export type AsyncRequestHandler = (
   req: Request,
   res: Response,
-  (_next: NextFunction
+  _next: NextFunction
 ) => Promise<void> | void;
 
 // Export empty object to make this a module
