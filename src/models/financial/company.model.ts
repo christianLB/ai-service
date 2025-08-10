@@ -4,12 +4,12 @@ export interface CompanyInfo {
   legalName: string; // Razón social
   taxId: string; // CIF/NIF
   taxIdType: 'CIF' | 'NIF' | 'VAT' | 'OTHER';
-  
+
   // Contact Information
   email: string;
   phone: string;
   website?: string;
-  
+
   // Address
   address: {
     street: string;
@@ -20,11 +20,11 @@ export interface CompanyInfo {
     country: string;
     postalCode: string;
   };
-  
+
   // Banking Information
   bankAccounts?: BankAccount[];
   defaultBankAccount?: string; // ID of default account
-  
+
   // Invoice Settings
   invoiceSettings: {
     numberPrefix: string; // 'FAC', 'INV', etc.
@@ -37,7 +37,7 @@ export interface CompanyInfo {
     defaultTaxType: 'IVA' | 'VAT' | 'GST' | 'NONE';
     defaultLanguage: 'es' | 'en';
   };
-  
+
   // Legal Requirements
   legalInfo: {
     registrationNumber?: string; // Registro Mercantil
@@ -45,7 +45,7 @@ export interface CompanyInfo {
     capitalStock?: string; // Capital social
     legalForm?: string; // S.L., S.A., etc.
   };
-  
+
   // Branding
   branding: {
     logoUrl?: string;
@@ -53,7 +53,7 @@ export interface CompanyInfo {
     secondaryColor?: string;
     fontFamily?: string;
   };
-  
+
   // Email Settings
   emailSettings?: {
     fromName: string;
@@ -61,13 +61,13 @@ export interface CompanyInfo {
     replyTo?: string;
     bccEmail?: string; // For keeping copies
   };
-  
+
   // Terms and Conditions
   defaultTerms?: {
     es?: string;
     en?: string;
   };
-  
+
   // Footer Text
   invoiceFooter?: {
     es?: string;

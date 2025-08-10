@@ -93,7 +93,9 @@ export class InvoiceEmailService {
     });
 
     Handlebars.registerHelper('formatDate', (date: Date | string) => {
-      if (!date) return '';
+      if (!date) {
+        return '';
+      }
       const dateObj = typeof date === 'string' ? new Date(date) : date;
       return dateObj.toLocaleDateString('es-ES', {
         year: 'numeric',
@@ -105,7 +107,7 @@ export class InvoiceEmailService {
 
   private async loadEmailTemplate(templateName: string, language: string): Promise<EmailTemplate> {
     const cacheKey = `${templateName}_${language}`;
-    
+
     // Default templates
     const defaultTemplates: { [key: string]: { [lang: string]: EmailTemplate } } = {
       'invoice': {
@@ -251,7 +253,7 @@ Best regards,
     };
 
     const template = defaultTemplates[templateName]?.[language] || defaultTemplates[templateName]?.['en'];
-    
+
     if (!template) {
       throw new Error(`Email template '${templateName}' not found`);
     }
@@ -317,7 +319,7 @@ Best regards,
 
       // Send email
       const info = await this.transporter.sendMail(mailOptions);
-      
+
       logger.info(`Invoice email sent successfully: ${info.messageId}`);
       return true;
 
@@ -328,14 +330,14 @@ Best regards,
   }
 
   async sendPaymentReminder(
-    invoice: Invoice, 
-    client: Client, 
+    invoice: Invoice,
+    client: Client,
     company: CompanyInfo,
     language?: string
   ): Promise<boolean> {
     try {
       const template = await this.loadEmailTemplate('reminder', language || client.language || 'es');
-      
+
       const templateData = {
         invoice,
         client,
@@ -358,7 +360,7 @@ Best regards,
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      
+
       logger.info(`Payment reminder sent successfully: ${info.messageId}`);
       return true;
 
@@ -377,7 +379,7 @@ Best regards,
   ): Promise<boolean> {
     try {
       const template = await this.loadEmailTemplate('receipt', language || client.language || 'es');
-      
+
       const templateData = {
         invoice,
         client,
@@ -408,7 +410,7 @@ Best regards,
       }
 
       const info = await this.transporter.sendMail(mailOptions);
-      
+
       logger.info(`Payment receipt sent successfully: ${info.messageId}`);
       return true;
 
@@ -433,10 +435,10 @@ Best regards,
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/\n\n/g, '</p><p>')
       .replace(/\n/g, '<br>');
-    
+
     // Wrap in paragraphs
     html = `<p>${html}</p>`;
-    
+
     // Add basic styling
     return `
       <html>

@@ -28,7 +28,7 @@ export default defineConfig({
     host: '0.0.0.0', // Listen on all interfaces for Docker
     proxy: {
       '/api': {
-        target: 'http://ai-service-api:3001', // Container-to-container communication
+        target: 'http://ai-service-api-dev:3001', // Container-to-container communication
         changeOrigin: true,
         secure: false,
       }

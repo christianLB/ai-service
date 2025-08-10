@@ -93,7 +93,7 @@ class StrategiesController {
   async getStrategy(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
+
       // Mock data (same as above but single)
       const strategy = {
         id,
@@ -126,7 +126,7 @@ class StrategiesController {
   async getStrategyPerformance(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
+
       const performance = {
         strategyId: id,
         metrics: {
@@ -151,7 +151,7 @@ class StrategiesController {
     try {
       const { id } = req.params;
       logger.info(`Starting strategy ${id}`);
-      
+
       res.json({ success: true, message: 'Strategy started successfully' });
     } catch (error) {
       logger.error('Failed to start strategy', error);
@@ -163,7 +163,7 @@ class StrategiesController {
     try {
       const { id } = req.params;
       logger.info(`Stopping strategy ${id}`);
-      
+
       res.json({ success: true, message: 'Strategy stopped successfully' });
     } catch (error) {
       logger.error('Failed to stop strategy', error);
@@ -175,7 +175,7 @@ class StrategiesController {
     try {
       const { id } = req.params;
       logger.info(`Pausing strategy ${id}`);
-      
+
       res.json({ success: true, message: 'Strategy paused successfully' });
     } catch (error) {
       logger.error('Failed to pause strategy', error);
@@ -187,9 +187,9 @@ class StrategiesController {
     try {
       const { id } = req.params;
       const params = req.body;
-      
+
       logger.info(`Updating strategy ${id} params:`, params);
-      
+
       res.json({ success: true, message: 'Strategy parameters updated successfully' });
     } catch (error) {
       logger.error('Failed to update strategy parameters', error);

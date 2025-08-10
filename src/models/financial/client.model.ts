@@ -5,24 +5,24 @@ export interface Client {
   businessName?: string; // Razón social
   taxId: string; // RFC, CIF, NIT, etc.
   taxIdType: 'RFC' | 'CIF' | 'NIT' | 'VAT' | 'OTHER';
-  
+
   // Contact Information
   email: string;
   phone?: string;
   address?: ClientAddress;
-  
+
   // Business Information
   clientType: 'individual' | 'business';
   currency: string; // EUR, USD, MXN, etc.
   language: string; // es, en, etc.
   timezone?: string;
-  
+
   // Payment & Billing
   paymentTerms: number; // Days (30, 60, 90)
   paymentMethod?: 'transfer' | 'cash' | 'card' | 'crypto' | 'other';
   bankAccount?: string; // For recurring payments
   creditLimit?: number;
-  
+
   // Status & Metrics
   status: 'active' | 'inactive' | 'suspended' | 'prospect';
   totalRevenue: number;
@@ -30,12 +30,12 @@ export interface Client {
   outstandingBalance: number;
   lastInvoiceDate?: Date;
   averageInvoiceAmount?: number;
-  
+
   // Custom Fields
   customFields?: Record<string, any>;
   tags?: string[];
   notes?: string;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;

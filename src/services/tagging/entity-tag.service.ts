@@ -1,28 +1,32 @@
-import { prisma } from '../lib/prisma';
-import { 
-  EntityTag, 
-  CreateEntityTag, 
+import { prisma } from '../../lib/prisma';
+import {
+  EntityTag,
+  CreateEntityTag,
   UpdateEntityTag,
   EntityTagQuery,
   EntityTagWithRelations
-} from '../types/entity-tag.types';
+} from '../../types/entity-tag.types';
 import { Prisma } from '@prisma/client';
-import { AppError } from '../utils/errors';
-import logger from '../utils/logger';
+import { AppError } from '../../utils/errors';
+import logger from '../../utils/logger';
 
 const MODEL_NAME = Prisma.ModelName.EntityTag;
 const TABLE_NAME = 'tagging.entity_tags';
 
 // Helper function to convert Decimal fields to numbers
 function convertDecimals(data: any): any {
-  if (!data) return data;
+  if (!data) {
+    return data;
+  }
   if (Array.isArray(data)) {
     return data.map(convertDecimals);
   }
-  if (typeof data !== 'object') return data;
-  
+  if (typeof data !== 'object') {
+    return data;
+  }
+
   const result = { ...data };
-  
+
   return result;
 }
 
@@ -39,9 +43,7 @@ export class EntityTagService {
       const where: Prisma.EntityTagWhereInput = {
         ...(search && {
           OR: [
-            { id: { contains: search, mode: 'insensitive' } },
             { entityType: { contains: search, mode: 'insensitive' } },
-            { entityId: { contains: search, mode: 'insensitive' } },
             { method: { contains: search, mode: 'insensitive' } },
             { appliedBy: { contains: search, mode: 'insensitive' } },
             { aiProvider: { contains: search, mode: 'insensitive' } },
@@ -50,9 +52,7 @@ export class EntityTagService {
             { verifiedBy: { contains: search, mode: 'insensitive' } },
             { feedback: { contains: search, mode: 'insensitive' } },
             { sourceEntityType: { contains: search, mode: 'insensitive' } },
-            { sourceEntityId: { contains: search, mode: 'insensitive' } },
             { relationshipType: { contains: search, mode: 'insensitive' } },
-            { tagId: { contains: search, mode: 'insensitive' } },
           ],
         }),
       };
@@ -90,7 +90,7 @@ export class EntityTagService {
   async getById(id: string, userId?: string): Promise<EntityTagWithRelations | null> {
     try {
       const entityTag = await prisma.entityTag.findFirst({
-        where: { 
+        where: {
           id,
         },
         include: {
@@ -104,7 +104,9 @@ export class EntityTagService {
 
       return convertDecimals(entityTag);
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error in EntityTagService.getById:', error);
       throw new AppError('Failed to fetch entitytag', 500);
     }
@@ -155,7 +157,9 @@ export class EntityTagService {
       logger.info(`EntityTag updated: ${id}`);
       return convertDecimals(entityTag);
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error in EntityTagService.update:', error);
       throw new AppError('Failed to update entitytag', 500);
     }
@@ -179,7 +183,9 @@ export class EntityTagService {
 
       logger.info(`EntityTag deleted: ${id}`);
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error in EntityTagService.delete:', error);
       throw new AppError('Failed to delete entitytag', 500);
     }

@@ -29,9 +29,9 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
 
   // Get token from cookie
   const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
-  
+
   // Get token from request (header or body)
-  const requestToken = req.headers[CSRF_HEADER_NAME] || 
+  const requestToken = req.headers[CSRF_HEADER_NAME] ||
                       req.headers['x-xsrf-token'] ||
                       req.body?._csrf ||
                       req.query?._csrf;
@@ -59,7 +59,7 @@ export const csrfErrorHandler = (err: any, req: Request, res: Response, next: Ne
 // Middleware to send CSRF token to client
 export const sendCSRFToken = (req: Request, res: Response): void => {
   const token = generateToken();
-  
+
   // Set cookie with secure options
   res.cookie(CSRF_COOKIE_NAME, token, {
     httpOnly: false, // Must be readable by JavaScript
@@ -68,7 +68,7 @@ export const sendCSRFToken = (req: Request, res: Response): void => {
     maxAge: 86400000, // 24 hours
     path: '/'
   });
-  
+
   res.json({
     success: true,
     csrfToken: token

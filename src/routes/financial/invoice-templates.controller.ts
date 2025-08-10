@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { invoiceTemplateService } from '../../services/invoice-template.service';
-import { 
-  createInvoiceTemplateSchema, 
+import {
+  createInvoiceTemplateSchema,
   updateInvoiceTemplateSchema,
-  invoiceTemplateQuerySchema 
+  invoiceTemplateQuerySchema
 } from '../../types/invoice-template.types';
 import logger from '../../utils/logger';
 
@@ -15,16 +15,16 @@ export class InvoiceTemplatesController {
     try {
       const query = invoiceTemplateQuerySchema.parse(req.query);
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: 'Authentication required',
         });
       }
-      
+
       const result = await invoiceTemplateService.getAll(query, userId);
-      
+
       res.json({
         success: true,
         data: result,
@@ -45,23 +45,23 @@ export class InvoiceTemplatesController {
     try {
       const { id } = req.params;
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: 'Authentication required',
         });
       }
-      
+
       const template = await invoiceTemplateService.getById(id, userId);
-      
+
       if (!template) {
         return res.status(404).json({
           success: false,
           message: 'Invoice template not found',
         });
       }
-      
+
       res.json({
         success: true,
         data: template,
@@ -81,25 +81,25 @@ export class InvoiceTemplatesController {
   async createInvoiceTemplate(req: Request, res: Response) {
     try {
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: 'Authentication required',
         });
       }
-      
+
       const bodyData = { ...req.body };
-      
+
       // Ensure userId is set
       if (!bodyData.userId && userId) {
         bodyData.userId = userId;
       }
-      
+
       const data = createInvoiceTemplateSchema.parse(bodyData);
-      
+
       const template = await invoiceTemplateService.create(data, userId);
-      
+
       res.status(201).json({
         success: true,
         data: template,
@@ -121,18 +121,18 @@ export class InvoiceTemplatesController {
     try {
       const { id } = req.params;
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: 'Authentication required',
         });
       }
-      
+
       const data = updateInvoiceTemplateSchema.parse({ id, ...req.body });
-      
+
       const template = await invoiceTemplateService.update(id, data, userId);
-      
+
       res.json({
         success: true,
         data: template,
@@ -154,16 +154,16 @@ export class InvoiceTemplatesController {
     try {
       const { id } = req.params;
       const userId = (req as any).user?.id;
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: 'Authentication required',
         });
       }
-      
+
       await invoiceTemplateService.delete(id, userId);
-      
+
       res.json({
         success: true,
         message: 'Invoice template deleted successfully',

@@ -72,8 +72,8 @@ export class FinancialReportingService {
    * Auto-categorize transactions using AI tags
    */
   async autoCategorizeTransactions(transactionIds?: string[]): Promise<number> {
-    const whereClause = transactionIds?.length 
-      ? `AND t.id = ANY($1)` 
+    const whereClause = transactionIds?.length
+      ? 'AND t.id = ANY($1)'
       : '';
     const params = transactionIds?.length ? [transactionIds] : [];
 
@@ -102,7 +102,7 @@ export class FinancialReportingService {
     // Process each uncategorized transaction
     for (const transaction of uncategorized.rows) {
       const match = this.findBestAIMatch(transaction, aiTags.rows);
-      
+
       if (match) {
         await this.categorizeTransaction(
           transaction.id,
@@ -129,7 +129,7 @@ export class FinancialReportingService {
 
     for (const tag of aiTags) {
       // Check keywords
-      const keywordMatch = tag.keywords?.some((keyword: string) => 
+      const keywordMatch = tag.keywords?.some((keyword: string) =>
         searchText.includes(keyword.toLowerCase())
       );
 
@@ -256,7 +256,7 @@ export class FinancialReportingService {
     const expenseCategories = new Map<string, any>();
     const monthlyIncomeTotals: Record<string, number> = {};
     const monthlyExpenseTotals: Record<string, number> = {};
-    
+
     // Initialize monthly totals
     for (let month = 1; month <= 12; month++) {
       const monthStr = month.toString();
@@ -270,7 +270,7 @@ export class FinancialReportingService {
       const amount = parseFloat(row.amount);
       const month = row.month;
       const isIncome = row.category_type === 'income';
-      
+
       // Get or create category
       const categories = isIncome ? incomeCategories : expenseCategories;
       if (!categories.has(categoryId)) {
@@ -281,17 +281,17 @@ export class FinancialReportingService {
           monthlyData: {},
           total: 0
         });
-        
+
         // Initialize all months with zero
         for (let m = 1; m <= 12; m++) {
           categories.get(categoryId).monthlyData[m.toString()] = '0.00';
         }
       }
-      
+
       const category = categories.get(categoryId);
       category.monthlyData[month] = Math.abs(amount).toFixed(2);
       category.total += Math.abs(amount);
-      
+
       // Update monthly totals
       if (isIncome) {
         monthlyIncomeTotals[month] += amount;
@@ -303,11 +303,11 @@ export class FinancialReportingService {
     // Calculate year totals
     let yearIncomeTotal = 0;
     let yearExpenseTotal = 0;
-    
+
     // Convert to arrays and calculate percentages
     const incomeCategoriesArray = Array.from(incomeCategories.values());
     const expenseCategoriesArray = Array.from(expenseCategories.values());
-    
+
     // Calculate total for percentages
     incomeCategoriesArray.forEach(cat => {
       yearIncomeTotal += cat.total;
@@ -315,7 +315,7 @@ export class FinancialReportingService {
     expenseCategoriesArray.forEach(cat => {
       yearExpenseTotal += cat.total;
     });
-    
+
     // Add percentages and format totals
     incomeCategoriesArray.forEach(cat => {
       cat.percentage = yearIncomeTotal > 0 ? (cat.total / yearIncomeTotal) * 100 : 0;
@@ -325,11 +325,11 @@ export class FinancialReportingService {
       cat.percentage = yearExpenseTotal > 0 ? (cat.total / yearExpenseTotal) * 100 : 0;
       cat.total = cat.total.toFixed(2);
     });
-    
+
     // Sort by total amount descending
     incomeCategoriesArray.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
     expenseCategoriesArray.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
-    
+
     // Calculate monthly balances
     const monthlyBalance: Record<string, string> = {};
     for (let month = 1; month <= 12; month++) {
@@ -337,11 +337,11 @@ export class FinancialReportingService {
       const balance = monthlyIncomeTotals[monthStr] - monthlyExpenseTotals[monthStr];
       monthlyBalance[monthStr] = balance.toFixed(2);
     }
-    
+
     // Format monthly totals
     const formattedMonthlyIncome: Record<string, string> = {};
     const formattedMonthlyExpense: Record<string, string> = {};
-    
+
     for (let month = 1; month <= 12; month++) {
       const monthStr = month.toString();
       formattedMonthlyIncome[monthStr] = monthlyIncomeTotals[monthStr].toFixed(2);
@@ -373,7 +373,7 @@ export class FinancialReportingService {
    */
   async generateReport(params: ReportQueryParams): Promise<FinancialReport> {
     const { startDate, endDate, currency = 'EUR' } = params;
-    
+
     // Default to current month if no dates provided
     const start = startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const end = endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
@@ -383,10 +383,10 @@ export class FinancialReportingService {
 
     // Get summary data
     const summary = await this.getReportSummary(start, end, currency);
-    
+
     // Get category breakdowns
     const byCategory = await this.getCategoryBreakdown(start, end, currency);
-    
+
     // Get trends
     const trends = await this.getTrends(start, end, currency);
 
@@ -409,7 +409,7 @@ export class FinancialReportingService {
    */
   async getRealtimeMetrics(params: MetricsQueryParams = {}): Promise<RealtimeMetrics> {
     const { currency = 'EUR', period = 'month' } = params;
-    
+
     const now = new Date();
     const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -418,19 +418,19 @@ export class FinancialReportingService {
 
     // Get current month metrics
     const currentMonth = await this.getPeriodMetrics(currentStart, currentEnd, currency);
-    
+
     // Get previous month metrics
     const previousMonth = await this.getPeriodMetrics(previousStart, previousEnd, currency);
-    
+
     // Calculate trends
     const trends = this.calculateTrends(currentMonth, previousMonth);
-    
+
     // Get top expense categories
     const topExpenseCategories = await this.getTopCategories(currentStart, currentEnd, 'expense', currency);
-    
+
     // Get recent transactions
     const recentTransactions = await this.getRecentCategorizedTransactions(10, currency);
-    
+
     // Get alerts
     const alerts = await this.getFinancialAlerts(currency);
 
@@ -463,7 +463,7 @@ export class FinancialReportingService {
       offset = 0
     } = params;
 
-    let whereConditions = ['1=1'];
+    const whereConditions = ['1=1'];
     const queryParams: any[] = [limit, offset];
     let paramIndex = 2;
 
@@ -566,7 +566,7 @@ export class FinancialReportingService {
     `;
 
     const result = await this.pool.query(query, [start, end, currency]);
-    
+
     let totalIncome = '0';
     let totalExpenses = '0';
     let totalTransactions = 0;
@@ -611,7 +611,7 @@ export class FinancialReportingService {
     `;
 
     const result = await this.pool.query(query, [start, end, currency]);
-    
+
     // Group by category type
     const income: CategoryReportItem[] = [];
     const expenses: CategoryReportItem[] = [];
@@ -660,13 +660,15 @@ export class FinancialReportingService {
     // Second pass: create category items
     const processedCategories = new Set<string>();
     for (const row of result.rows) {
-      if (processedCategories.has(row.category_id)) continue;
+      if (processedCategories.has(row.category_id)) {
+        continue;
+      }
       processedCategories.add(row.category_id);
 
       const categoryId = row.category_id;
       const totals = categoryTotals.get(categoryId)!;
       const typeTotal = typeTotals.get(row.category_type) || 1;
-      
+
       const categoryItem: CategoryReportItem = {
         categoryId: row.category_id,
         categoryName: row.category_name,
@@ -718,7 +720,7 @@ export class FinancialReportingService {
     `;
 
     const trendsResult = await this.pool.query(trendsQuery, [start, end, currency]);
-    
+
     const monthlyIncome: MonthlyTrend[] = [];
     const monthlyExpenses: MonthlyTrend[] = [];
 
@@ -747,9 +749,9 @@ export class FinancialReportingService {
   }
 
   private async getTopCategories(
-    start: Date, 
-    end: Date, 
-    type?: CategoryType, 
+    start: Date,
+    end: Date,
+    type?: CategoryType,
     currency = 'EUR',
     limit = 5
   ): Promise<TopCategoryItem[]> {
@@ -796,7 +798,7 @@ export class FinancialReportingService {
     `;
 
     const result = await this.pool.query(query, [start, end, currency]);
-    
+
     let income = '0';
     let expenses = '0';
     let transactionCount = 0;
@@ -822,7 +824,9 @@ export class FinancialReportingService {
 
   private calculateTrends(current: any, previous: any) {
     const calculateChange = (current: number, previous: number) => {
-      if (previous === 0) return current > 0 ? 100 : 0;
+      if (previous === 0) {
+        return current > 0 ? 100 : 0;
+      }
       return ((current - previous) / previous) * 100;
     };
 
@@ -855,9 +859,15 @@ export class FinancialReportingService {
     const diffMs = end.getTime() - start.getTime();
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-    if (diffDays <= 31) return 'month';
-    if (diffDays <= 93) return 'quarter';
-    if (diffDays <= 366) return 'year';
+    if (diffDays <= 31) {
+      return 'month';
+    }
+    if (diffDays <= 93) {
+      return 'quarter';
+    }
+    if (diffDays <= 366) {
+      return 'year';
+    }
     return 'custom';
   }
 

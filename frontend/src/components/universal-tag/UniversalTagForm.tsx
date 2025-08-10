@@ -3,7 +3,6 @@ import {
   Modal,
   Form,
   Input,
-  Select,
   DatePicker,
   InputNumber,
   Switch,
@@ -64,8 +63,8 @@ export const UniversalTagForm: React.FC<UniversalTagFormProps> = ({
   useEffect(() => {
     if (initialData) {
       reset({
-        ...initialData,
-      } as any);
+        ...(initialData as unknown as CreateUniversalTag),
+      });
     }
   }, [initialData, reset]);
 
@@ -78,7 +77,7 @@ export const UniversalTagForm: React.FC<UniversalTagFormProps> = ({
       }
       onSuccess();
       reset();
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -159,7 +158,7 @@ export const UniversalTagForm: React.FC<UniversalTagFormProps> = ({
             )}
           />
           {errors.patterns && (
-            <span style={{ color: 'red', fontSize: 12 }}>{errors.patterns.message}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.patterns.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Rules">
@@ -171,7 +170,7 @@ export const UniversalTagForm: React.FC<UniversalTagFormProps> = ({
             )}
           />
           {errors.rules && (
-            <span style={{ color: 'red', fontSize: 12 }}>{errors.rules.message}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.rules.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Confidence" required>
@@ -284,7 +283,7 @@ export const UniversalTagForm: React.FC<UniversalTagFormProps> = ({
             )}
           />
           {errors.metadata && (
-            <span style={{ color: 'red', fontSize: 12 }}>{errors.metadata.message}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.metadata.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Usagecount" required>

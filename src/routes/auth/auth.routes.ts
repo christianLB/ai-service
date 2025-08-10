@@ -29,7 +29,7 @@ export function createAuthRoutes(pool: Pool): Router {
   const router = Router();
   const authService = new AuthService();
   const securityLogger = new SecurityLoggerService(pool);
-  
+
   // Brute force protection
   const bruteForceProtection = createBruteForceProtection(pool, {
     maxAttempts: 5,

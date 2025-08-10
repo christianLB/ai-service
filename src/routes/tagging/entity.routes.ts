@@ -1,9 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { 
-  standardRateLimit, 
-  aiRateLimit, 
-  batchRateLimit 
+import {
+  standardRateLimit,
+  aiRateLimit,
+  batchRateLimit
 } from '../../middleware/express-rate-limit.middleware';
 import { getEntityTaggingService } from '../../services/tagging';
 import {

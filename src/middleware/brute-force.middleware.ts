@@ -44,7 +44,7 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
         `;
 
         const blockResult = await pool.query(blockCheckQuery, [email, ip, maxAttempts]);
-        
+
         if (blockResult.rows.length > 0) {
           // Log the blocked attempt
           await pool.query(
@@ -76,7 +76,7 @@ export async function cleanupLoginAttempts(pool: Pool, retentionDays: number = 7
       DELETE FROM login_attempts
       WHERE attempted_at < NOW() - INTERVAL '${retentionDays} days'
     `;
-    
+
     const result = await pool.query(query);
     console.log(`Cleaned up ${result.rowCount} old login attempts`);
   } catch (error) {

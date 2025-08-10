@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo } from "react";
 import {
   Table,
   Button,
@@ -13,7 +12,7 @@ import {
   Row,
   Col,
   Statistic,
-} from 'antd';
+} from "antd";
 import {
   PlusOutlined,
   EditOutlined,
@@ -21,21 +20,23 @@ import {
   SearchOutlined,
   ReloadOutlined,
   ExportOutlined,
-} from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
-import { useEntityTags, useEntityTagMutations } from '../../hooks/use-entity-tag';
-import { EntityTagForm } from './EntityTagForm';
-import type { EntityTag } from '../../types/entity-tag.types';
-import { formatDate } from '../../utils/format';
-import { useDebounce } from '../../hooks/useDebounce';
+} from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+import {
+  useEntityTags,
+  useEntityTagMutations,
+} from "../../hooks/use-entity-tag";
+import { EntityTagForm } from "./EntityTagForm";
+import type { EntityTag } from "../../types/entity-tag.types";
+import { formatDate } from "../../utils/format";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const { Search } = Input;
 
 export const EntityTagList: React.FC = () => {
-  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [formVisible, setFormVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<EntityTag | null>(null);
@@ -50,123 +51,124 @@ export const EntityTagList: React.FC = () => {
   });
 
   // Mutations
-  const { delete: deleteItem, bulkDelete, isDeleting, isBulkDeleting } = useEntityTagMutations();
+  const {
+    delete: deleteItem,
+    bulkDelete,
+    isDeleting,
+    isBulkDeleting,
+  } = useEntityTagMutations();
 
   // Dynamic columns based on model fields
   const columns: ColumnsType<EntityTag> = [
     {
-      title: 'Entitytype',
-      dataIndex: 'entityType',
-      key: 'entityType',
+      title: "Entitytype",
+      dataIndex: "entityType",
+      key: "entityType",
     },
     {
-      title: 'Entityid',
-      dataIndex: 'entityId',
-      key: 'entityId',
+      title: "Entityid",
+      dataIndex: "entityId",
+      key: "entityId",
     },
     {
-      title: 'Method',
-      dataIndex: 'method',
-      key: 'method',
+      title: "Method",
+      dataIndex: "method",
+      key: "method",
     },
     {
-      title: 'Confidence',
-      dataIndex: 'confidence',
-      key: 'confidence',
-      align: 'right',
-          },
-    {
-      title: 'Appliedby',
-      dataIndex: 'appliedBy',
-      key: 'appliedBy',
+      title: "Confidence",
+      dataIndex: "confidence",
+      key: "confidence",
+      align: "right",
     },
     {
-      title: 'Aiprovider',
-      dataIndex: 'aiProvider',
-      key: 'aiProvider',
+      title: "Appliedby",
+      dataIndex: "appliedBy",
+      key: "appliedBy",
     },
     {
-      title: 'Aimodel',
-      dataIndex: 'aiModel',
-      key: 'aiModel',
+      title: "Aiprovider",
+      dataIndex: "aiProvider",
+      key: "aiProvider",
     },
     {
-      title: 'Airesponse',
-      dataIndex: 'aiResponse',
-      key: 'aiResponse',
+      title: "Aimodel",
+      dataIndex: "aiModel",
+      key: "aiModel",
     },
     {
-      title: 'Aireasoning',
-      dataIndex: 'aiReasoning',
-      key: 'aiReasoning',
+      title: "Airesponse",
+      dataIndex: "aiResponse",
+      key: "aiResponse",
     },
     {
-      title: 'Isverified',
-      dataIndex: 'isVerified',
-      key: 'isVerified',
+      title: "Aireasoning",
+      dataIndex: "aiReasoning",
+      key: "aiReasoning",
+    },
+    {
+      title: "Isverified",
+      dataIndex: "isVerified",
+      key: "isVerified",
       render: (value) => (
-        <Tag color={value ? 'green' : 'red'}>
-          {value ? 'Yes' : 'No'}
-        </Tag>
+        <Tag color={value ? "green" : "red"}>{value ? "Yes" : "No"}</Tag>
       ),
     },
     {
-      title: 'Verifiedby',
-      dataIndex: 'verifiedBy',
-      key: 'verifiedBy',
+      title: "Verifiedby",
+      dataIndex: "verifiedBy",
+      key: "verifiedBy",
     },
     {
-      title: 'Verifiedat',
-      dataIndex: 'verifiedAt',
-      key: 'verifiedAt',
-      render: (date) => date ? formatDate(date) : '-',
+      title: "Verifiedat",
+      dataIndex: "verifiedAt",
+      key: "verifiedAt",
+      render: (date) => (date ? formatDate(date) : "-"),
     },
     {
-      title: 'Feedback',
-      dataIndex: 'feedback',
-      key: 'feedback',
+      title: "Feedback",
+      dataIndex: "feedback",
+      key: "feedback",
     },
     {
-      title: 'Iscorrect',
-      dataIndex: 'isCorrect',
-      key: 'isCorrect',
+      title: "Iscorrect",
+      dataIndex: "isCorrect",
+      key: "isCorrect",
       render: (value) => (
-        <Tag color={value ? 'green' : 'red'}>
-          {value ? 'Yes' : 'No'}
-        </Tag>
+        <Tag color={value ? "green" : "red"}>{value ? "Yes" : "No"}</Tag>
       ),
     },
     {
-      title: 'Sourceentitytype',
-      dataIndex: 'sourceEntityType',
-      key: 'sourceEntityType',
+      title: "Sourceentitytype",
+      dataIndex: "sourceEntityType",
+      key: "sourceEntityType",
     },
     {
-      title: 'Sourceentityid',
-      dataIndex: 'sourceEntityId',
-      key: 'sourceEntityId',
+      title: "Sourceentityid",
+      dataIndex: "sourceEntityId",
+      key: "sourceEntityId",
     },
     {
-      title: 'Relationshiptype',
-      dataIndex: 'relationshipType',
-      key: 'relationshipType',
+      title: "Relationshiptype",
+      dataIndex: "relationshipType",
+      key: "relationshipType",
     },
     {
-      title: 'Tagid',
-      dataIndex: 'tagId',
-      key: 'tagId',
+      title: "Tagid",
+      dataIndex: "tagId",
+      key: "tagId",
     },
     {
-      title: 'Created',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
+      title: "Created",
+      dataIndex: "createdAt",
+      key: "createdAt",
       sorter: true,
       render: (date) => formatDate(date),
     },
     {
-      title: 'Actions',
-      key: 'actions',
-      fixed: 'right',
+      title: "Actions",
+      key: "actions",
+      fixed: "right",
       width: 120,
       render: (_, record) => (
         <Space>
@@ -209,22 +211,22 @@ export const EntityTagList: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await deleteItem(id);
-      setSelectedRowKeys(selectedRowKeys.filter(key => key !== id));
-    } catch (error) {
+      setSelectedRowKeys(selectedRowKeys.filter((key) => key !== id));
+    } catch {
       // Error handled by mutation
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('Please select items to delete');
+      message.warning("Please select items to delete");
       return;
     }
 
     try {
       await bulkDelete(selectedRowKeys);
       setSelectedRowKeys([]);
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };

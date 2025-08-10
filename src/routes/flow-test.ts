@@ -13,16 +13,16 @@ const router = Router();
 router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const { workflow, testData } = req.body;
-  
+
   try {
 
     // Validar workflow antes de testear
     const validation = validateWorkflow(workflow);
     metricsService.recordWorkflowValidation(validation.isValid ? 'valid' : 'invalid', validation.errors[0]);
-    
+
     if (!validation.isValid) {
       logger.error('Workflow failed validation before testing:', validation.errors);
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Workflow failed validation',
         validation_errors: validation.errors,
         warnings: validation.warnings
@@ -30,8 +30,8 @@ router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (re
     }
 
     let testResult;
-    let executionSuccess = true;
-    
+    const executionSuccess = true;
+
     try {
       // Intentar testear con n8n real si está disponible
       const response = await n8nClient.post('/workflows/test', {
@@ -43,7 +43,7 @@ router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (re
     } catch (n8nError: any) {
       // Fallback a simulación si n8n no está disponible
       logger.warn('n8n not available, using simulation:', n8nError.message);
-      
+
       testResult = {
         executionId: `sim-${Date.now()}`,
         status: 'success',
@@ -79,7 +79,7 @@ router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (re
 
     const totalDuration = (Date.now() - startTime) / 1000;
     logger.info(`Workflow test completed in ${totalDuration}s`);
-    
+
     res.json({
       testResult: executionSuccess ? 'success' : 'error',
       executionData: testResult,
@@ -93,10 +93,10 @@ router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (re
         simulation_mode: !testResult.executionId || testResult.executionId.startsWith('sim-')
       }
     });
-    
+
   } catch (err: any) {
     logger.error('Workflow test failed:', err.message);
-    
+
     // Registrar fallo de test si tenemos un workflow ID
     if (workflow?.id) {
       try {
@@ -111,8 +111,8 @@ router.post('/flow-test', standardRateLimit, validate(flowTestSchema), async (re
         logger.warn('Could not save failed test execution to database:', dbError);
       }
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: 'Failed to test workflow',
       details: err.message,
       testResult: 'error'

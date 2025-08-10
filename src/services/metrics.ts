@@ -70,7 +70,9 @@ class MetricsService {
   }
 
   async initialize(): Promise<void> {
-    if (this.initialized) return;
+    if (this.initialized) {
+      return;
+    }
 
     try {
       // Inicializar métricas periódicas
@@ -100,7 +102,7 @@ class MetricsService {
     try {
       const stats = await db.getWorkflowStats();
       this.activeWorkflows.set(stats.active_workflows);
-      
+
       // Registrar en la base de datos para persistencia
       await db.recordMetric('active_workflows', stats.active_workflows, 'gauge');
       await db.recordMetric('total_workflows', stats.total_workflows, 'counter');
@@ -117,14 +119,14 @@ class MetricsService {
     this.memoryUsage.set({ type: 'heapTotal' }, memUsage.heapTotal);
     this.memoryUsage.set({ type: 'heapUsed' }, memUsage.heapUsed);
     this.memoryUsage.set({ type: 'external' }, memUsage.external);
-    
+
     // Verificar alertas de recursos
     this.checkResourceAlerts(memUsage);
   }
 
   private async checkResourceAlerts(memUsage: NodeJS.MemoryUsage): Promise<void> {
     const memoryUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
-    
+
     // Alerta si memoria supera 80%
     if (memoryUsagePercent > 80) {
       const alert = {
@@ -134,17 +136,17 @@ class MetricsService {
         current: memoryUsagePercent,
         message: `Memory usage at ${memoryUsagePercent.toFixed(1)}% (${(memUsage.heapUsed / 1024 / 1024).toFixed(1)}MB / ${(memUsage.heapTotal / 1024 / 1024).toFixed(1)}MB)`
       };
-      
+
       // Log alert
       logger.warn('Resource alert:', alert);
-      
+
       // Store alert in database
       await db.recordMetric('resource_alerts', 1, 'counter', alert)
         .catch(err => {
           logger.error('Error recording resource alert:', err);
           auditCatch('MetricsService.checkResourceAlerts', err, 'silenced');
         });
-      
+
       // Trigger notification if Telegram is configured
       try {
         const { TelegramService } = await import('./communication/telegram.service');
@@ -161,7 +163,7 @@ class MetricsService {
   // Métodos para registrar eventos
   recordWorkflowGeneration(status: 'success' | 'error', model: string, duration?: number): void {
     this.workflowGenerationCounter.inc({ status, model });
-    
+
     if (duration !== undefined) {
       this.workflowGenerationDuration.observe({ model }, duration);
     }
@@ -177,30 +179,30 @@ class MetricsService {
   }
 
   recordWorkflowValidation(status: 'valid' | 'invalid', errorType?: string): void {
-    this.workflowValidationCounter.inc({ 
-      status, 
-      error_type: errorType || 'none' 
+    this.workflowValidationCounter.inc({
+      status,
+      error_type: errorType || 'none'
     });
   }
 
   recordApiRequest(method: string, endpoint: string, statusCode: number, duration: number): void {
-    this.apiRequestCounter.inc({ 
-      method: method.toUpperCase(), 
-      endpoint, 
-      status_code: statusCode.toString() 
+    this.apiRequestCounter.inc({
+      method: method.toUpperCase(),
+      endpoint,
+      status_code: statusCode.toString()
     });
-    
-    this.apiResponseTime.observe({ 
-      method: method.toUpperCase(), 
-      endpoint 
+
+    this.apiResponseTime.observe({
+      method: method.toUpperCase(),
+      endpoint
     }, duration);
 
     // Registrar errores de API
     if (statusCode >= 400) {
-      db.recordMetric('api_errors', 1, 'counter', { 
-        method, 
-        endpoint, 
-        status_code: statusCode 
+      db.recordMetric('api_errors', 1, 'counter', {
+        method,
+        endpoint,
+        status_code: statusCode
       }).catch(err => {
         logger.error('Error recording API error metric:', err);
         auditCatch('MetricsService.recordApiRequest', err, 'silenced');
@@ -210,12 +212,12 @@ class MetricsService {
 
   recordLLMRequest(provider: string, model: string, duration: number, success: boolean): void {
     this.llmResponseTime.observe({ provider, model }, duration);
-    
+
     // Persistir métricas de LLM
-    db.recordMetric('llm_requests', 1, 'counter', { 
-      provider, 
-      model, 
-      success: success.toString() 
+    db.recordMetric('llm_requests', 1, 'counter', {
+      provider,
+      model,
+      success: success.toString()
     }).catch(err => {
       logger.error('Error recording LLM metric:', err);
       auditCatch('MetricsService.recordLLMRequest', err, 'silenced');
@@ -234,11 +236,11 @@ class MetricsService {
   createApiMetricsMiddleware() {
     return (req: any, res: any, next: any) => {
       const startTime = Date.now();
-      
+
       res.on('finish', () => {
         const duration = (Date.now() - startTime) / 1000;
         const endpoint = this.normalizeEndpoint(req.route?.path || req.path);
-        
+
         this.recordApiRequest(
           req.method,
           endpoint,
@@ -246,7 +248,7 @@ class MetricsService {
           duration
         );
       });
-      
+
       next();
     };
   }
@@ -267,7 +269,7 @@ class MetricsService {
   // Método para obtener métricas específicas en JSON
   async getMetricsJson(): Promise<any> {
     const metrics = await register.getMetricsAsJSON();
-    
+
     // Añadir métricas de la base de datos
     const dbStats = await db.getWorkflowStats();
     const recentMetrics = await Promise.all([
@@ -295,7 +297,7 @@ class MetricsService {
   // Alertas automáticas
   async checkAlerts(): Promise<any[]> {
     const alerts: any[] = [];
-    
+
     try {
       // Verificar errores recientes
       const [apiErrors, llmErrors, genErrors] = await Promise.all([
@@ -331,7 +333,7 @@ class MetricsService {
       // Verificar memoria
       const memUsage = process.memoryUsage();
       const memUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
-      
+
       if (memUsagePercent > 90) {
         alerts.push({
           level: 'critical',
@@ -371,7 +373,7 @@ class MetricsService {
       ]);
 
       const stats = await db.getWorkflowStats();
-      
+
       return {
         period_hours: hours,
         summary: {

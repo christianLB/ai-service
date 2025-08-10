@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { openai } from '../services/openai';
+import { getOpenAIClient } from '../services/openai';
 import { createWorkflowPrompt } from '../utils/prompts';
 import { logger } from '../utils/log';
 import { validateWorkflow } from '../services/validator';
@@ -14,30 +14,35 @@ const router = Router();
 router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const { description, save = true } = req.body;
-  
+
   try {
 
     // Generar workflow con IA
+    const openai = getOpenAIClient();
+    if (!openai) {
+      throw new Error('OpenAI client not configured');
+    }
+
     const prompt = createWorkflowPrompt(description);
     const llmStartTime = Date.now();
-    
+
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }]
     });
-    
+
     const llmDuration = (Date.now() - llmStartTime) / 1000;
     metricsService.recordLLMRequest('openai', 'gpt-4o', llmDuration, true);
-    
+
     const workflowContent = response.choices[0].message?.content || '{}';
     let workflow;
-    
+
     try {
       workflow = JSON.parse(workflowContent);
     } catch (parseError) {
       logger.error('Failed to parse LLM response as JSON:', parseError);
       metricsService.recordWorkflowGeneration('error', 'gpt-4o');
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to parse generated workflow',
         details: 'LLM response was not valid JSON'
       });
@@ -46,11 +51,11 @@ router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req:
     // Validar workflow generado
     const validation = validateWorkflow(workflow);
     metricsService.recordWorkflowValidation(validation.isValid ? 'valid' : 'invalid', validation.errors[0]);
-    
+
     if (!validation.isValid) {
       logger.error('Generated workflow failed validation:', validation.errors);
       metricsService.recordWorkflowGeneration('error', 'gpt-4o');
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Generated workflow failed validation',
         validation_errors: validation.errors,
         warnings: validation.warnings
@@ -69,7 +74,7 @@ router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req:
           created_by: 'ai-service',
           tags: ['ai-generated', 'auto-created']
         });
-        
+
         // Crear registro de ejecución
         await db.createExecution({
           workflow_id: workflowId,
@@ -77,7 +82,7 @@ router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req:
           input_data: { description },
           output_data: { workflow_generated: true }
         });
-        
+
         logger.info(`Workflow created and saved: ${workflowId}`);
       } catch (dbError: any) {
         logger.error('Failed to save workflow to database:', dbError.message);
@@ -87,9 +92,9 @@ router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req:
 
     const totalDuration = (Date.now() - startTime) / 1000;
     metricsService.recordWorkflowGeneration('success', 'gpt-4o', totalDuration);
-    
+
     logger.info(`Generated workflow from description in ${totalDuration}s`);
-    
+
     res.json({
       ...workflow,
       _metadata: {
@@ -102,16 +107,16 @@ router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req:
         }
       }
     });
-    
+
   } catch (err: any) {
     const totalDuration = (Date.now() - startTime) / 1000;
     metricsService.recordWorkflowGeneration('error', 'gpt-4o', totalDuration);
     metricsService.recordLLMRequest('openai', 'gpt-4o', totalDuration, false);
-    
+
     logger.error('Workflow generation failed:', err.message);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to generate workflow',
-      details: err.message 
+      details: err.message
     });
   }
 });
@@ -121,7 +126,7 @@ router.get('/flows', standardRateLimit, validate(getFlowsSchema), async (req: Re
   try {
     const { active } = req.query;
     const activeFilter = active === 'true' ? true : active === 'false' ? false : undefined;
-    
+
     const workflows = await db.getAllWorkflows(activeFilter);
     res.json({
       workflows,
@@ -139,14 +144,14 @@ router.get('/flows/:id', standardRateLimit, validate(getFlowByIdSchema), async (
   try {
     const { id } = req.params;
     const workflow = await db.getWorkflow(id);
-    
+
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
-    
+
     // Obtener ejecuciones recientes
     const executions = await db.getExecutionsForWorkflow(id, 10);
-    
+
     res.json({
       ...workflow,
       recent_executions: executions

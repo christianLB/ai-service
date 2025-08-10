@@ -22,9 +22,9 @@ router.get('/health', async (req, res) => {
     res.json(healthStatus);
   } catch (error) {
     logger.error('Health check failed', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Health check failed' 
+    res.status(500).json({
+      success: false,
+      error: 'Health check failed'
     });
   }
 });
@@ -36,9 +36,9 @@ router.get('/client-metrics', requireAuth, async (req, res) => {
     res.json(metrics);
   } catch (error) {
     logger.error('Failed to get client metrics', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get client metrics' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get client metrics'
     });
   }
 });
@@ -54,9 +54,9 @@ router.get('/revenue-metrics', requireAuth, async (req, res) => {
     res.json(metrics);
   } catch (error) {
     logger.error('Failed to get revenue metrics', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get revenue metrics' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get revenue metrics'
     });
   }
 });
@@ -72,9 +72,9 @@ router.get('/invoice-statistics', requireAuth, async (req, res) => {
     res.json(stats);
   } catch (error) {
     logger.error('Failed to get invoice statistics', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get invoice statistics' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get invoice statistics'
     });
   }
 });
@@ -93,9 +93,9 @@ router.get('/cash-flow-projections', requireAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get cash flow projections', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get cash flow projections' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get cash flow projections'
     });
   }
 });
@@ -127,9 +127,9 @@ router.get('/quick-stats', requireAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get quick stats', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get quick stats' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get quick stats'
     });
   }
 });

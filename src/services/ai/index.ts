@@ -1,7 +1,7 @@
 export { claudeAIService, ClaudeAIService } from './claude.service';
-export type { 
+export type {
   ClaudeConfig,
   TradingContext,
   TradingDecision,
-  MarketAnalysis 
+  MarketAnalysis
 } from './claude.service';

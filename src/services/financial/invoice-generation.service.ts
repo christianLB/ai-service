@@ -52,7 +52,9 @@ export class InvoiceGenerationService {
 
     // Format date helper
     Handlebars.registerHelper('formatDate', (date: Date | string) => {
-      if (!date) return '';
+      if (!date) {
+        return '';
+      }
       const dateObj = typeof date === 'string' ? new Date(date) : date;
       return dateObj.toLocaleDateString('es-ES', {
         year: 'numeric',
@@ -79,7 +81,7 @@ export class InvoiceGenerationService {
     const templatePath = path.join(__dirname, '../../templates/invoice', `${templateName}.template.html`);
     const templateContent = await fs.readFile(templatePath, 'utf-8');
     const template = Handlebars.compile(templateContent);
-    
+
     this.templateCache.set(templateName, template);
     return template;
   }
@@ -96,7 +98,7 @@ export class InvoiceGenerationService {
 
       // Cache key for custom templates
       const cacheKey = `custom_${templateId}`;
-      
+
       // Check cache first
       if (this.templateCache.has(cacheKey)) {
         return this.templateCache.get(cacheKey)!;
@@ -105,7 +107,7 @@ export class InvoiceGenerationService {
       // Compile the custom template
       const template = Handlebars.compile(customTemplate.htmlContent);
       this.templateCache.set(cacheKey, template);
-      
+
       return template;
     } catch (error) {
       logger.error('Error loading custom template:', error);
@@ -130,8 +132,10 @@ export class InvoiceGenerationService {
   }
 
   private calculateDiscountAmount(invoice: Invoice): number {
-    if (!invoice.discount) return 0;
-    
+    if (!invoice.discount) {
+      return 0;
+    }
+
     if (invoice.discountType === 'percentage') {
       return invoice.subtotal * (invoice.discount / 100);
     }
@@ -172,7 +176,7 @@ export class InvoiceGenerationService {
     try {
       // Load template - check for custom template first
       let template: HandlebarsTemplateDelegate;
-      
+
       // Check if invoice has templateId (may be added as custom field)
       const templateId = (invoice as any).templateId;
       if (templateId) {
@@ -249,7 +253,7 @@ export class InvoiceGenerationService {
 
       try {
         const page = await browser.newPage();
-        
+
         // Set content
         await page.setContent(html, {
           waitUntil: 'networkidle0'
@@ -266,7 +270,7 @@ export class InvoiceGenerationService {
             left: '15mm'
           }
         });
-        
+
         // Convert Uint8Array to Buffer
         const pdfBuffer = Buffer.from(pdfData);
 
@@ -300,7 +304,7 @@ export class InvoiceGenerationService {
 
   async generateBatchInvoices(invoices: InvoiceGenerationOptions[]): Promise<GeneratedInvoice[]> {
     const results: GeneratedInvoice[] = [];
-    
+
     for (const invoiceOptions of invoices) {
       try {
         const result = await this.generateInvoicePDF(invoiceOptions);
@@ -383,7 +387,7 @@ export class InvoiceGenerationService {
         if (file.endsWith('.pdf')) {
           const filePath = path.join(this.outputDir, file);
           const stats = await fs.stat(filePath);
-          
+
           if (stats.mtimeMs < cutoffTime) {
             await fs.unlink(filePath);
             logger.info(`Deleted old invoice: ${file}`);

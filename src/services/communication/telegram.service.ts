@@ -22,12 +22,12 @@ export class TelegramService {
   constructor(config: TelegramConfig, financialService: FinancialDatabaseService) {
     this.config = config;
     this.financialService = financialService;
-    
+
     // Initialize additional services
     this.invoiceService = new InvoiceManagementService();
     // Client service is imported as singleton
     // Reporting service is now a Prisma-based singleton
-    
+
     // Initialize bot asynchronously
     this.initializeBot();
   }
@@ -62,8 +62,10 @@ export class TelegramService {
   }
 
   private setupCommands(): void {
-    if (!this.bot) return;
-    
+    if (!this.bot) {
+      return;
+    }
+
     // Configurar comandos del bot
     this.bot.setMyCommands([
       { command: 'start', description: 'Iniciar el bot' },
@@ -106,11 +108,11 @@ export class TelegramService {
       logger.warn('Telegram bot not initialized, cannot set webhook');
       return;
     }
-    
+
     try {
       await this.bot.setWebHook(url);
       logger.info(`Webhook configurado: ${url}`);
-      
+
       // Save webhook URL to config
       await integrationConfigService.setConfig({
         integrationType: 'telegram',
@@ -131,7 +133,7 @@ export class TelegramService {
       logger.warn('Telegram bot not initialized, cannot send message');
       return;
     }
-    
+
     try {
       // Get chat ID from config if not provided
       const targetChatId = chatId || await integrationConfigService.getConfig({
@@ -160,7 +162,7 @@ export class TelegramService {
       integrationType: 'telegram',
       configKey: 'alerts_enabled'
     });
-    
+
     if (alertsEnabled === 'false') {
       logger.info('Alertas deshabilitadas, ignorando');
       return;
@@ -168,17 +170,17 @@ export class TelegramService {
 
     const emoji = this.getAlertEmoji(alert.priority);
     const message = `${emoji} <b>${alert.type.toUpperCase()}</b>\\n\\n${alert.message}\\n\\n<i>Timestamp: ${alert.timestamp.toISOString()}</i>`;
-    
+
     try {
       const chatId = await integrationConfigService.getConfig({
         integrationType: 'telegram',
         configKey: 'chat_id'
       });
-      
+
       if (!chatId) {
         throw new Error('No chat ID configured for alerts');
       }
-      
+
       await this.sendMessage(chatId, message);
       logger.info(`Alerta enviada: ${alert.type} - ${alert.priority}`);
     } catch (error) {
@@ -199,7 +201,7 @@ export class TelegramService {
 
   async handleCommand(command: TelegramCommand): Promise<void> {
     const { name, params, chatId } = command;
-    
+
     try {
       switch (name) {
         case '/start':
@@ -279,14 +281,14 @@ export class TelegramService {
         // Document Intelligence commands
         case '/upload':
           // Send upload instructions
-          await this.sendMessage(chatId, 
+          await this.sendMessage(chatId,
             '📄 *Document Upload*\n\n' +
             'Send me any document (PDF, DOCX, TXT, etc.) and I\'ll:\n' +
             '• Extract and analyze the content\n' +
             '• Generate a summary\n' +
             '• Extract key information\n' +
             '• Make it searchable\n\n' +
-            'Just send the file directly!', 
+            'Just send the file directly!',
             { parse_mode: 'Markdown' }
           );
           break;
@@ -296,13 +298,13 @@ export class TelegramService {
         case '/analyze':
         case '/dochelp':
           // These document commands require more context than available in webhook
-          await this.sendMessage(chatId, 
+          await this.sendMessage(chatId,
             '📄 *Document Commands*\n\n' +
             'Los comandos de documentos están configurados pero requieren procesamiento especial.\n\n' +
             'Para subir documentos:\n' +
             '1. Usa `/upload` para ver instrucciones\n' +
             '2. Envía tu archivo directamente\n\n' +
-            'Los comandos `/list`, `/search`, `/summary`, `/analyze` y `/dochelp` están en desarrollo.', 
+            'Los comandos `/list`, `/search`, `/summary`, `/analyze` y `/dochelp` están en desarrollo.',
             { parse_mode: 'Markdown' }
           );
           break;
@@ -333,7 +335,7 @@ Puedes enviarme documentos directamente para análisis automático.
 
 <i>Sistema inicializado: ${new Date().toLocaleString()}</i>
     `;
-    
+
     await this.sendMessage(chatId, message);
   }
 
@@ -390,7 +392,7 @@ Puedes enviarme documentos directamente para análisis automático.
 <i>• /client balance "Tech Solutions"</i>
 <i>• /trade BTC/USDT buy 0.001</i>
     `;
-    
+
     await this.sendMessage(chatId, message);
   }
 
@@ -398,11 +400,11 @@ Puedes enviarme documentos directamente para análisis automático.
     try {
       // Obtener estado del sistema
       const systemStatus = await this.getSystemStatus();
-      
+
       const aiEmoji = systemStatus.aiService === 'online' ? '🟢' : '🔴';
       const finEmoji = systemStatus.financialService === 'online' ? '🟢' : '🔴';
       const dbEmoji = systemStatus.database === 'connected' ? '🟢' : '🔴';
-      
+
       const message = `
 🖥️ <b>Estado del Sistema</b>
 
@@ -416,7 +418,7 @@ ${dbEmoji} <b>Database:</b> ${systemStatus.database}
 
 <i>Actualizado: ${new Date().toLocaleString()}</i>
       `;
-      
+
       await this.sendMessage(chatId, message);
     } catch (error) {
       await this.sendMessage(chatId, '❌ Error obteniendo estado del sistema');
@@ -426,7 +428,7 @@ ${dbEmoji} <b>Database:</b> ${systemStatus.database}
   private async handleBalanceCommand(chatId: string): Promise<void> {
     try {
       const summary = await this.getFinancialSummary();
-      
+
       const message = `
 💰 <b>Balance de Cuentas</b>
 
@@ -442,7 +444,7 @@ ${summary.lastSync.toLocaleString()}
 
 <i>Datos actualizados en tiempo real</i>
       `;
-      
+
       await this.sendMessage(chatId, message);
     } catch (error) {
       await this.sendMessage(chatId, '❌ Error obteniendo balance');
@@ -452,12 +454,12 @@ ${summary.lastSync.toLocaleString()}
   private async handleGastosCommand(chatId: string, params: string[]): Promise<void> {
     try {
       const categoria = params[0] || 'todas';
-      
+
       // Obtener transacciones de gastos recientes
       const transactions = await this.financialService.getTransactions(undefined, 1, 10);
-      
+
       let message = `📊 <b>Gastos Recientes - ${categoria}</b>\\n\\n`;
-      
+
       if (transactions.items.length === 0) {
         message += '📝 No hay gastos registrados en los últimos 30 días.';
       } else {
@@ -465,12 +467,12 @@ ${summary.lastSync.toLocaleString()}
           const amount = Math.abs(gasto.amount);
           message += `• €${amount.toFixed(2)} - ${gasto.description || 'Sin descripción'}\\n`;
         });
-        
+
         if (transactions.total > 10) {
           message += `\\n... y ${transactions.total - 10} más`;
         }
       }
-      
+
       await this.sendMessage(chatId, message);
     } catch (error) {
       logger.error('Error en handleGastosCommand:', error);
@@ -481,7 +483,7 @@ ${summary.lastSync.toLocaleString()}
   private async handleReporteCommand(chatId: string, params: string[]): Promise<void> {
     try {
       const periodo = (params[0] || 'daily') as ReportType;
-      
+
       const message = `
 📈 <b>Reporte ${periodo.toUpperCase()}</b>
 
@@ -489,13 +491,13 @@ ${summary.lastSync.toLocaleString()}
 
 <i>Este proceso puede tardar unos segundos</i>
       `;
-      
+
       await this.sendMessage(chatId, message);
-      
+
       // Generar reporte real
       const reporte = await this.generateReport(periodo);
       await this.sendMessage(chatId, reporte);
-      
+
     } catch (error) {
       await this.sendMessage(chatId, '❌ Error generando reporte');
     }
@@ -504,11 +506,11 @@ ${summary.lastSync.toLocaleString()}
   private async handleSyncCommand(chatId: string): Promise<void> {
     try {
       await this.sendMessage(chatId, '🔄 Verificando cuentas bancarias...');
-      
+
       // Verificar si hay cuentas configuradas
       const accounts = await this.financialService.getAccounts();
       const bankAccounts = accounts.filter((acc: any) => acc.type === 'bank_account' && acc.is_active);
-      
+
       if (bankAccounts.length === 0) {
         // No hay cuentas, iniciar proceso de configuración
         await this.sendMessage(chatId, `
@@ -524,14 +526,14 @@ Para conectar tu banco necesitas:
         `);
         return;
       }
-      
+
       // Hay cuentas, realizar sincronización
       await this.sendMessage(chatId, `
 📊 <b>Sincronizando ${bankAccounts.length} cuenta(s) bancaria(s)...</b>
 
 Esto puede tomar unos momentos...
       `);
-      
+
       try {
         // Llamar al endpoint de sync
         logger.info(`Iniciando sincronización bancaria para chat ${chatId}`);
@@ -539,14 +541,14 @@ Esto puede tomar unos momentos...
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
-        
+
         logger.info(`Respuesta del endpoint sync: ${response.status}`);
         const result = await response.json();
-        logger.info(`Resultado sync:`, result);
-        
+        logger.info('Resultado sync:', result);
+
         if (result.success) {
           const { accountsSynced, transactionsSynced } = result.data;
-          
+
           await this.sendMessage(chatId, `
 ✅ <b>Sincronización completada</b>
 
@@ -605,18 +607,18 @@ Vamos a conectar tu banco usando GoCardless (Open Banking seguro).
   private async handleSetupBBVACommand(chatId: string): Promise<void> {
     try {
       await this.sendMessage(chatId, '🏦 Iniciando configuración con BBVA...');
-      
+
       // Llamar al endpoint de setup BBVA
       const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/setup-bbva`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success && result.data.requisition) {
         const { requisition } = result.data;
-        
+
         await this.sendMessage(chatId, `
 ✅ <b>Proceso de autorización iniciado</b>
 
@@ -657,18 +659,18 @@ Contacta al administrador del sistema.
   private async handleSetupSandboxCommand(chatId: string): Promise<void> {
     try {
       await this.sendMessage(chatId, '🧪 Iniciando configuración con Sandbox...');
-      
+
       // Llamar al endpoint de setup sandbox
       const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/setup-sandbox`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success && result.data.requisition) {
         const { requisition } = result.data;
-        
+
         await this.sendMessage(chatId, `
 ✅ <b>Proceso de autorización de Sandbox iniciado</b>
 
@@ -717,21 +719,21 @@ El ID te fue proporcionado cuando iniciaste la configuración.
         `);
         return;
       }
-      
+
       await this.sendMessage(chatId, '🔄 Verificando autorización...');
-      
+
       // Llamar al endpoint de complete setup
       const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/complete-setup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requisitionId })
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         const { accountsSaved } = result.data;
-        
+
         await this.sendMessage(chatId, `
 ✅ <b>¡Configuración completada exitosamente!</b>
 
@@ -745,11 +747,11 @@ Ahora puedes:
 
 🎉 ¡Tu sistema financiero está listo!
         `);
-        
+
         // Iniciar una sincronización automática
         await this.sendMessage(chatId, '🔄 Iniciando primera sincronización...');
         setTimeout(() => this.handleSyncCommand(chatId), 1000);
-        
+
       } else {
         throw new Error(result.error || 'Error completando configuración');
       }
@@ -769,10 +771,10 @@ Intenta iniciar el proceso nuevamente con /setup_bbva
       `);
     }
   }
-  
+
   private async handleDashboardCommand(chatId: string): Promise<void> {
     const dashboardUrl = process.env.DASHBOARD_URL || 'http://localhost:3000/dashboard';
-    
+
     const message = `
 🖥️ <b>Dashboard Web</b>
 
@@ -787,7 +789,7 @@ ${dashboardUrl}
 
 <i>Abre el enlace en tu navegador</i>
     `;
-    
+
     await this.sendMessage(chatId, message);
   }
 
@@ -807,7 +809,7 @@ ${dashboardUrl}
     try {
       const accounts = await this.financialService.getAccounts();
       const transactions = await this.financialService.getTransactions(undefined, 1, 100);
-      
+
       return {
         totalBalance: accounts.reduce((sum: number, acc: any) => sum + acc.balance, 0),
         recentTransactions: transactions.total,
@@ -833,7 +835,7 @@ ${dashboardUrl}
       // Calcular fechas según el tipo de reporte
       let startDate: Date;
       const endDate = new Date();
-      
+
       switch (type) {
         case 'daily':
           startDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -847,19 +849,19 @@ ${dashboardUrl}
         default:
           startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       }
-      
+
       // Obtener transacciones para el período
       const transactions = await this.financialService.getTransactions(undefined, 1, 1000);
-      
+
       // Calcular totales
       const totalIncome = transactions.items
         .filter((t: any) => t.amount > 0)
         .reduce((sum: number, t: any) => sum + t.amount, 0);
-      
+
       const totalExpenses = Math.abs(transactions.items
         .filter((t: any) => t.amount < 0)
         .reduce((sum: number, t: any) => sum + t.amount, 0));
-      
+
       return `
 📊 <b>Reporte ${type.toUpperCase()}</b>
 
@@ -884,7 +886,7 @@ ${dashboardUrl}
   private async handleInvoiceCommand(chatId: string, params: string[]): Promise<void> {
     try {
       const subcommand = params[0];
-      
+
       switch (subcommand) {
         case 'create':
           await this.handleInvoiceCreate(chatId, params.slice(1));
@@ -917,7 +919,7 @@ Comandos disponibles:
     try {
       // Parse parameters with quotes support
       const args = this.parseQuotedParams(params.join(' '));
-      
+
       if (args.length < 3) {
         await this.sendMessage(chatId, `
 ❌ <b>Parámetros incorrectos</b>
@@ -939,9 +941,9 @@ Ejemplo:
       }
 
       // Find or create client
-      let clientData = await clientService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
+      const clientData = await clientService.getClientByTaxId(clientName); // Using name as tax ID for simplicity
       let client = clientData ? { id: clientData.id, name: clientData.name } : null;
-      
+
       if (!client) {
         // Create basic client
         const clientData = {
@@ -963,7 +965,7 @@ Ejemplo:
       if (!client) {
         throw new Error('Failed to create or find client');
       }
-      
+
       const invoice = await this.invoiceService.createInvoice({
         clientId: client.id,
         type: 'invoice',
@@ -1046,7 +1048,7 @@ Usa /invoice create para crear una nueva factura
         return;
       }
 
-      let message = `📋 <b>Listado de Facturas</b>\n\n`;
+      let message = '📋 <b>Listado de Facturas</b>\n\n';
       if (clientFilter) {
         message += `🔍 Filtrado por: ${clientFilter}\n\n`;
       }
@@ -1064,17 +1066,17 @@ Usa /invoice create para crear una nueva factura
         const emoji = statusEmoji[invoice.status as keyof typeof statusEmoji] || '📄';
         const isPaid = invoice.status === 'paid';
         const isOverdue = invoice.status !== 'paid' && new Date(invoice.dueDate) < new Date();
-        
+
         message += `${emoji} <b>${invoice.invoiceNumber}</b>\n`;
         message += `   👤 ${invoice.clientName}\n`;
         message += `   💰 €${invoice.total.toFixed(2)}`;
-        
+
         if (isPaid) {
-          message += ` ✅ Pagada`;
+          message += ' ✅ Pagada';
         } else if (isOverdue) {
-          message += ` ⚠️ Vencida`;
+          message += ' ⚠️ Vencida';
         }
-        
+
         message += `\n   📅 ${new Date(invoice.issueDate).toLocaleDateString()}\n\n`;
       });
 
@@ -1089,7 +1091,7 @@ Usa /invoice create para crear una nueva factura
         .reduce((sum, inv) => sum + inv.total, 0);
       const pendingAmount = totalAmount - paidAmount;
 
-      message += `\n<b>📊 Resumen:</b>\n`;
+      message += '\n<b>📊 Resumen:</b>\n';
       message += `💵 Total: €${totalAmount.toFixed(2)}\n`;
       message += `✅ Cobrado: €${paidAmount.toFixed(2)}\n`;
       message += `⏳ Pendiente: €${pendingAmount.toFixed(2)}`;
@@ -1104,7 +1106,7 @@ Usa /invoice create para crear una nueva factura
   private async handleInvoiceSend(chatId: string, params: string[]): Promise<void> {
     try {
       const invoiceId = params[0];
-      
+
       if (!invoiceId) {
         await this.sendMessage(chatId, `
 ❌ <b>Falta el ID de la factura</b>
@@ -1117,7 +1119,7 @@ Para ver los IDs usa: /invoice list
       }
 
       const invoice = await this.invoiceService.getInvoice(invoiceId);
-      
+
       if (!invoice) {
         await this.sendMessage(chatId, '❌ Factura no encontrada');
         return;
@@ -1150,7 +1152,7 @@ Para ver los IDs usa: /invoice list
       const period = isBreakdown ? (params[1] || 'month') : subcommand;
 
       const { startDate, endDate } = this.getPeriodDates(period);
-      
+
       // const report = await financialReportingPrismaService.generateReport({ // TEMPORARILY DISABLED
       //   startDate,
       //   endDate,
@@ -1161,7 +1163,7 @@ Para ver los IDs usa: /invoice list
       let message = `💰 <b>Análisis de Ingresos - ${this.formatPeriod(period)}</b>\n\n`;
 
       // Summary
-      message += `📊 <b>Resumen:</b>\n`;
+      message += '📊 <b>Resumen:</b>\n';
       message += `💵 Ingresos: €${parseFloat(report.summary.totalIncome).toFixed(2)}\n`;
       message += `💸 Gastos: €${parseFloat(report.summary.totalExpenses).toFixed(2)}\n`;
       message += `📈 Neto: €${parseFloat(report.summary.netAmount).toFixed(2)}\n`;
@@ -1170,7 +1172,7 @@ Para ver los IDs usa: /invoice list
       if (isBreakdown) {
         // Detailed breakdown
         if (report.byCategory.income.length > 0) {
-          message += `💚 <b>Desglose de Ingresos:</b>\n`;
+          message += '💚 <b>Desglose de Ingresos:</b>\n';
           report.byCategory.income.forEach((cat: any) => {
             message += `• ${cat.categoryName}: €${parseFloat(cat.amount).toFixed(2)} (${cat.percentage.toFixed(1)}%)\n`;
           });
@@ -1178,7 +1180,7 @@ Para ver los IDs usa: /invoice list
         }
 
         if (report.byCategory.expenses.length > 0) {
-          message += `💔 <b>Desglose de Gastos:</b>\n`;
+          message += '💔 <b>Desglose de Gastos:</b>\n';
           report.byCategory.expenses.forEach((cat: any) => {
             message += `• ${cat.categoryName}: €${parseFloat(cat.amount).toFixed(2)} (${cat.percentage.toFixed(1)}%)\n`;
           });
@@ -1186,10 +1188,10 @@ Para ver los IDs usa: /invoice list
       }
 
       // Quick actions
-      message += `\n<b>🔍 Ver más detalles:</b>\n`;
+      message += '\n<b>🔍 Ver más detalles:</b>\n';
       message += `• /revenue breakdown ${period} - Desglose completo\n`;
-      message += `• /pending - Pagos pendientes\n`;
-      message += `• /invoice list - Ver facturas`;
+      message += '• /pending - Pagos pendientes\n';
+      message += '• /invoice list - Ver facturas';
 
       await this.sendMessage(chatId, message, {
         reply_markup: {
@@ -1213,7 +1215,7 @@ Para ver los IDs usa: /invoice list
   private async handlePendingCommand(chatId: string, params: string[]): Promise<void> {
     try {
       const subcommand = params[0];
-      
+
       if (subcommand === 'remind' && params[1]) {
         await this.handlePendingRemind(chatId, params.slice(1));
         return;
@@ -1226,7 +1228,7 @@ Para ver los IDs usa: /invoice list
         limit: 50
       });
 
-      const allPending = [...overdueInvoices, ...pendingInvoices.filter(inv => 
+      const allPending = [...overdueInvoices, ...pendingInvoices.filter(inv =>
         !overdueInvoices.find(o => o.id === inv.id)
       )];
 
@@ -1241,7 +1243,7 @@ Usa /invoice create para crear nuevas facturas.
         return;
       }
 
-      let message = `⏳ <b>Pagos Pendientes</b>\n\n`;
+      let message = '⏳ <b>Pagos Pendientes</b>\n\n';
 
       // Group by status
       const overdue = allPending.filter(inv => new Date(inv.dueDate) < new Date());
@@ -1250,7 +1252,7 @@ Usa /invoice create para crear nuevas facturas.
       if (overdue.length > 0) {
         message += `⚠️ <b>VENCIDAS (${overdue.length}):</b>\n`;
         let totalOverdue = 0;
-        
+
         overdue.forEach(invoice => {
           const daysOverdue = Math.floor((Date.now() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24));
           message += `\n🔴 <b>${invoice.invoiceNumber}</b>\n`;
@@ -1259,14 +1261,14 @@ Usa /invoice create para crear nuevas facturas.
           message += `   ⏰ Vencida hace ${daysOverdue} días\n`;
           totalOverdue += invoice.total;
         });
-        
+
         message += `\n   <b>Total vencido: €${totalOverdue.toFixed(2)}</b>\n\n`;
       }
 
       if (upcoming.length > 0) {
         message += `📅 <b>PRÓXIMAS A VENCER (${upcoming.length}):</b>\n`;
         let totalUpcoming = 0;
-        
+
         upcoming
           .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
           .slice(0, 5)
@@ -1278,20 +1280,20 @@ Usa /invoice create para crear nuevas facturas.
             message += `   📅 Vence en ${daysUntil} días\n`;
             totalUpcoming += invoice.total;
           });
-        
+
         if (upcoming.length > 5) {
           message += `\n<i>... y ${upcoming.length - 5} más</i>\n`;
         }
-        
+
         message += `\n   <b>Total próximo: €${totalUpcoming.toFixed(2)}</b>\n`;
       }
 
       const grandTotal = allPending.reduce((sum, inv) => sum + inv.total, 0);
       message += `\n💵 <b>TOTAL PENDIENTE: €${grandTotal.toFixed(2)}</b>\n\n`;
 
-      message += `<b>Acciones:</b>\n`;
-      message += `• /pending remind [cliente] - Enviar recordatorio\n`;
-      message += `• /payment record [cliente] [cantidad] - Registrar pago`;
+      message += '<b>Acciones:</b>\n';
+      message += '• /pending remind [cliente] - Enviar recordatorio\n';
+      message += '• /payment record [cliente] [cantidad] - Registrar pago';
 
       await this.sendMessage(chatId, message);
     } catch (error) {
@@ -1303,7 +1305,7 @@ Usa /invoice create para crear nuevas facturas.
   private async handlePendingRemind(chatId: string, params: string[]): Promise<void> {
     try {
       const clientName = params.join(' ');
-      
+
       if (!clientName) {
         await this.sendMessage(chatId, '❌ Especifica el nombre del cliente');
         return;
@@ -1320,7 +1322,7 @@ Usa /invoice create para crear nuevas facturas.
         status: 'sent'
       });
 
-      const pendingInvoices = invoices.filter(inv => 
+      const pendingInvoices = invoices.filter(inv =>
         inv.status !== 'paid' && inv.status !== 'cancelled'
       );
 
@@ -1350,12 +1352,12 @@ Usa /invoice create para crear nuevas facturas.
   private async handleClientCommand(chatId: string, params: string[]): Promise<void> {
     try {
       const subcommand = params[0];
-      
+
       if (subcommand === 'balance' && params[1]) {
         await this.handleClientBalance(chatId, params.slice(1));
         return;
       }
-      
+
       if (subcommand === 'list') {
         await this.handleClientList(chatId);
         return;
@@ -1379,7 +1381,7 @@ Comandos disponibles:
   private async handleClientBalance(chatId: string, params: string[]): Promise<void> {
     try {
       const clientName = params.join(' ');
-      
+
       const client = await clientService.getClientByTaxId(clientName);
       if (!client) {
         await this.sendMessage(chatId, `❌ Cliente "${clientName}" no encontrado`);
@@ -1391,7 +1393,7 @@ Comandos disponibles:
 
       let message = `👤 <b>Balance de ${client.name}</b>\n\n`;
 
-      message += `📊 <b>Resumen:</b>\n`;
+      message += '📊 <b>Resumen:</b>\n';
       message += `📄 Facturas totales: ${stats.totalInvoices}\n`;
       message += `💰 Ingresos totales: €${stats.totalRevenue.toFixed(2)}\n`;
       message += `✅ Facturas pagadas: ${stats.paidInvoices}\n`;
@@ -1404,7 +1406,7 @@ Comandos disponibles:
       }
 
       if (transactions.length > 0) {
-        message += `📋 <b>Últimas transacciones:</b>\n`;
+        message += '📋 <b>Últimas transacciones:</b>\n';
         transactions.forEach(tx => {
           const emoji = tx.type === 'payment' ? '💚' : '📄';
           const sign = tx.type === 'payment' ? '+' : '';
@@ -1450,25 +1452,25 @@ Usa /invoice create para crear tu primera factura.
         return;
       }
 
-      let message = `👥 <b>Listado de Clientes</b>\n\n`;
+      let message = '👥 <b>Listado de Clientes</b>\n\n';
 
       clients.forEach((client: any, index: number) => {
         const emoji = index < 3 ? ['🥇', '🥈', '🥉'][index] : '👤';
         message += `${emoji} <b>${client.name}</b>\n`;
-        
+
         // Show basic client info
         if (client.email) {
           message += `   📧 ${client.email}\n`;
         }
-        
+
         if (client.taxId) {
           message += `   🆔 ${client.taxId}\n`;
         }
-        
+
         if (client.status) {
           message += `   📌 ${client.status}\n`;
         }
-        
+
         message += '\n';
       });
 
@@ -1542,13 +1544,15 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
       const paidInvoices: any[] = [];
 
       for (const invoice of unpaidInvoices) {
-        if (remainingAmount <= 0) break;
-        
+        if (remainingAmount <= 0) {
+          break;
+        }
+
         if (remainingAmount >= invoice.total) {
           // Full payment
           await this.invoiceService.markAsPaid(
-            invoice.id, 
-            new Date(), 
+            invoice.id,
+            new Date(),
             `Pago via Telegram - ${new Date().toISOString()}`
           );
           paidInvoices.push({ invoice, paidAmount: invoice.total });
@@ -1565,11 +1569,11 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
         }
       }
 
-      let message = `✅ <b>Pago Registrado</b>\n\n`;
+      let message = '✅ <b>Pago Registrado</b>\n\n';
       message += `👤 <b>Cliente:</b> ${clientName}\n`;
       message += `💰 <b>Importe:</b> €${amount.toFixed(2)}\n\n`;
 
-      message += `📄 <b>Facturas pagadas:</b>\n`;
+      message += '📄 <b>Facturas pagadas:</b>\n';
       paidInvoices.forEach(({ invoice, paidAmount }) => {
         message += `• ${invoice.invoiceNumber}: €${paidAmount.toFixed(2)}\n`;
       });
@@ -1582,7 +1586,7 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
       if (totalPending > 0) {
         message += `\n⏳ <b>Pendiente restante:</b> €${totalPending.toFixed(2)}`;
       } else {
-        message += `\n🎉 <b>¡Cliente al día!</b>`;
+        message += '\n🎉 <b>¡Cliente al día!</b>';
       }
 
       await this.sendMessage(chatId, message);
@@ -1607,7 +1611,7 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
 
       const data = dashboard.data;
       const portfolioEmoji = data.portfolio.dailyPnL > 0 ? '📈' : '📉';
-      
+
       const message = `
 🤖 <b>Trading Dashboard</b>
 
@@ -1670,20 +1674,20 @@ Usa /strategies para ver el estado de las estrategias de trading.
       positions.forEach((pos: any) => {
         const pnlEmoji = pos.unrealizedPnl > 0 ? '💚' : '💔';
         const sideEmoji = pos.side === 'buy' ? '🟢' : '🔴';
-        
+
         message += `${sideEmoji} <b>${pos.symbol}</b> - ${pos.side.toUpperCase()}\n`;
         message += `💰 Cantidad: ${pos.quantity}\n`;
         message += `📍 Entrada: $${pos.entryPrice.toFixed(2)}\n`;
         message += `📊 Actual: $${pos.currentPrice.toFixed(2)}\n`;
         message += `${pnlEmoji} P&L: $${pos.unrealizedPnl.toFixed(2)} (${((pos.unrealizedPnl / pos.positionValue) * 100).toFixed(2)}%)\n`;
-        
+
         if (pos.stopLoss) {
           message += `🛑 SL: $${pos.stopLoss.toFixed(2)}\n`;
         }
         if (pos.takeProfit) {
           message += `🎯 TP: $${pos.takeProfit.toFixed(2)}\n`;
         }
-        
+
         message += `⏱️ Tiempo: ${this.formatDuration(Date.now() - new Date(pos.openedAt).getTime())}\n\n`;
       });
 
@@ -1708,13 +1712,13 @@ Usa /strategies para ver el estado de las estrategias de trading.
 
       const strategies = result.data;
 
-      let message = `🤖 <b>Estado de Estrategias</b>\n\n`;
+      let message = '🤖 <b>Estado de Estrategias</b>\n\n';
 
       strategies.forEach((strategy: any) => {
-        const statusEmoji = strategy.status === 'active' ? '▶️' : 
-                           strategy.status === 'paused' ? '⏸️' : '⏹️';
+        const statusEmoji = strategy.status === 'active' ? '▶️' :
+          strategy.status === 'paused' ? '⏸️' : '⏹️';
         const pnlEmoji = strategy.performance.totalPnL > 0 ? '💚' : '💔';
-        
+
         message += `${statusEmoji} <b>${strategy.name}</b>\n`;
         message += `📊 Estado: ${strategy.status}\n`;
         message += `📈 Trades: ${strategy.performance.totalTrades}\n`;
@@ -1727,7 +1731,7 @@ Usa /strategies para ver el estado de las estrategias de trading.
       const totalPnL = strategies.reduce((sum: number, s: any) => sum + s.performance.totalPnL, 0);
       const activeCount = strategies.filter((s: any) => s.status === 'active').length;
 
-      message += `<b>📊 Resumen:</b>\n`;
+      message += '<b>📊 Resumen:</b>\n';
       message += `🤖 Estrategias activas: ${activeCount}/${strategies.length}\n`;
       message += `💵 P&L Total: $${totalPnL.toFixed(2)}`;
 
@@ -1749,7 +1753,7 @@ Usa /strategies para ver el estado de las estrategias de trading.
 
       const metrics = result.data.metrics;
       const pnlEmoji = metrics.totalReturn > 0 ? '📈' : '📉';
-      
+
       const message = `
 💰 <b>P&L del Día</b>
 
@@ -1898,7 +1902,7 @@ Ejemplos:
       if (result && result.success) {
         const trade = result.data;
         const sideEmoji = trade.side === 'buy' ? '🟢' : '🔴';
-        
+
         await this.sendMessage(chatId, `
 ✅ <b>Trade Ejecutado</b>
 
@@ -1925,7 +1929,7 @@ ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
   private formatDuration(ms: number): string {
     const hours = Math.floor(ms / (1000 * 60 * 60));
     const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     }
@@ -1996,11 +2000,11 @@ ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
       logger.warn('Telegram service not initialized, cannot process webhook');
       return;
     }
-    
+
     try {
       if (update.message) {
         const message = update.message;
-        
+
         // Handle document uploads
         if (message.document) {
           logger.info('Document received via webhook, processing...', {
@@ -2015,22 +2019,22 @@ ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
           }
           return;
         }
-        
+
         // Handle text commands
         if (message.text && message.text.startsWith('/')) {
           const [command, ...params] = message.text.split(' ');
-          
+
           const telegramCommand: TelegramCommand = {
             name: command,
             params,
             chatId: message.chat.id.toString(),
             messageId: message.message_id
           };
-          
+
           await this.handleCommand(telegramCommand);
         }
       }
-      
+
       // Handle callback queries from inline keyboards
       if (update.callback_query) {
         await this.handleCallbackQuery(update.callback_query);
@@ -2064,26 +2068,26 @@ ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
             await this.sendMessage(chatId, 'Use: /invoice create "cliente" cantidad "descripción"');
           }
           break;
-          
+
         case 'revenue':
           if (params[0] === 'breakdown') {
             await this.handleRevenueCommand(chatId, ['breakdown', params[1] || 'month']);
           }
           break;
-          
+
         case 'pending':
           if (params[0] === 'list') {
             await this.handlePendingCommand(chatId, []);
           }
           break;
-          
+
         case 'client':
           if (params[0] === 'invoices') {
             const clientId = params[1];
             await this.handleInvoiceList(chatId, [clientId]);
           }
           break;
-          
+
         case 'open':
           if (params[0] === 'dashboard') {
             await this.handleDashboardCommand(chatId);

@@ -1,40 +1,52 @@
 import { createExpressEndpoints } from '@ts-rest/express';
 import { Express } from 'express';
 import { entityTagContract } from '../../packages/contracts/src/contracts/entity-tag';
-import { EntityTagService } from '../services/tagging/entity-tag.service';
+import type { EntityTagResponse } from '../../packages/contracts/src/schemas/entity-tag';
+import { entityTagService as service } from '../services/tagging/entity-tag.service';
 import { logger } from '../utils/log';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-const service = new EntityTagService(prisma);
 
 export function setupEntityTagRoutes(app: Express) {
+  // Normalize DB nulls to undefined for optional fields to satisfy contract
+  const normalize = (r: any): EntityTagResponse => {
+    const o: any = { ...r };
+    const optionalKeys = [
+      'appliedBy',
+      'aiProvider',
+      'aiModel',
+      'aiResponse',
+      'aiReasoning',
+      'verifiedBy',
+      'verifiedAt',
+      'feedback',
+      'isCorrect',
+      'sourceEntityType',
+      'sourceEntityId',
+      'relationshipType',
+    ];
+    for (const k of optionalKeys) {
+      if (o[k] === null) {
+        o[k] = undefined;
+      }
+    }
+    return o as EntityTagResponse;
+  };
   createExpressEndpoints(entityTagContract, {
     // Get all entitytags
     getAll: async ({ query }) => {
       try {
-        const { page = 1, limit = 20, sortBy, sortOrder, search, include, ...filters } = query;
-        
-        const result = await service.findAll({
-          page,
-          limit,
-          sortBy,
-          sortOrder,
-          search,
-          include,
-          filters,
-        });
+        const { page = 1, limit = 20, sortBy, sortOrder, search } = query as any;
+        const result = await service.getAll({ page, limit, sortBy, sortOrder, search } as any);
 
         return {
           status: 200,
           body: {
             success: true,
-            data: result.data,
+            data: ((result as any).items || []).map(normalize),
             pagination: {
-              total: result.total,
+              total: (result as any).total,
               page,
               limit,
-              totalPages: Math.ceil(result.total / limit),
+              totalPages: Math.ceil((result as any).total / limit),
             },
           },
         };
@@ -51,10 +63,10 @@ export function setupEntityTagRoutes(app: Express) {
     },
 
     // Get entitytag by ID
-    getById: async ({ params, query }) => {
+    getById: async ({ params }) => {
       try {
-        const result = await service.findById(params.id, query?.include);
-        
+        const result = await service.getById(params.id);
+
         if (!result) {
           return {
             status: 404,
@@ -69,7 +81,7 @@ export function setupEntityTagRoutes(app: Express) {
           status: 200,
           body: {
             success: true,
-            data: result,
+            data: normalize(result),
           },
         };
       } catch (error) {
@@ -87,18 +99,18 @@ export function setupEntityTagRoutes(app: Express) {
     // Create new entitytag
     create: async ({ body }) => {
       try {
-        const result = await service.create(body);
+        const result = await service.create(body as any);
 
         return {
           status: 201,
           body: {
             success: true,
-            data: result,
+            data: normalize(result),
           },
         };
       } catch (error: any) {
         logger.error('Error creating entitytag:', error);
-        
+
         if (error.code === 'P2002') {
           return {
             status: 400,
@@ -132,7 +144,7 @@ export function setupEntityTagRoutes(app: Express) {
     // Update entitytag
     update: async ({ params, body }) => {
       try {
-        const result = await service.update(params.id, body);
+        const result = await service.update(params.id, body as any);
 
         if (!result) {
           return {
@@ -148,7 +160,7 @@ export function setupEntityTagRoutes(app: Express) {
           status: 200,
           body: {
             success: true,
-            data: result,
+            data: normalize(result),
           },
         };
       } catch (error: any) {
@@ -187,17 +199,7 @@ export function setupEntityTagRoutes(app: Express) {
     // Delete entitytag
     delete: async ({ params }) => {
       try {
-        const success = await service.delete(params.id);
-
-        if (!success) {
-          return {
-            status: 404,
-            body: {
-              success: false,
-              error: 'EntityTag not found',
-            },
-          };
-        }
+        await service.delete(params.id);
 
         return {
           status: 200,
@@ -229,78 +231,10 @@ export function setupEntityTagRoutes(app: Express) {
       }
     },
 
-    // Bulk create entitytags
-    bulkCreate: async ({ body }) => {
-      try {
-        const result = await service.bulkCreate(body.data);
-
-        return {
-          status: 201,
-          body: {
-            success: true,
-            data: result,
-            count: result.length,
-          },
-        };
-      } catch (error) {
-        logger.error('Error bulk creating entitytags:', error);
-        return {
-          status: 500,
-          body: {
-            success: false,
-            error: 'Failed to bulk create entitytags',
-          },
-        };
-      }
-    },
-
-    // Bulk update entitytags
-    bulkUpdate: async ({ body }) => {
-      try {
-        const count = await service.bulkUpdate(body.where, body.data);
-
-        return {
-          status: 200,
-          body: {
-            success: true,
-            count,
-          },
-        };
-      } catch (error) {
-        logger.error('Error bulk updating entitytags:', error);
-        return {
-          status: 500,
-          body: {
-            success: false,
-            error: 'Failed to bulk update entitytags',
-          },
-        };
-      }
-    },
-
-    // Bulk delete entitytags
-    bulkDelete: async ({ body }) => {
-      try {
-        const count = await service.bulkDelete(body.ids);
-
-        return {
-          status: 200,
-          body: {
-            success: true,
-            count,
-          },
-        };
-      } catch (error) {
-        logger.error('Error bulk deleting entitytags:', error);
-        return {
-          status: 500,
-          body: {
-            success: false,
-            error: 'Failed to bulk delete entitytags',
-          },
-        };
-      }
-    },
+    // Bulk operations not implemented
+    bulkCreate: async () => ({ status: 501, body: { success: false, error: 'Not implemented' } } as any),
+    bulkUpdate: async () => ({ status: 501, body: { success: false, error: 'Not implemented' } } as any),
+    bulkDelete: async () => ({ status: 501, body: { success: false, error: 'Not implemented' } } as any),
   }, app);
 
   logger.info('EntityTag routes initialized with ts-rest');

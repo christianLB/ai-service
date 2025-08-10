@@ -14,16 +14,16 @@ function getTelegramService(): TelegramService | null {
   if (globalService) {
     return globalService;
   }
-  
+
   // Si no hay instancia global, verificar si está configurado
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  
+
   if (!botToken || !chatId) {
     logger.error('Telegram service not configured');
     return null;
   }
-  
+
   // No deberíamos llegar aquí si la inicialización funcionó
   logger.error('Telegram service not initialized at startup');
   return null;
@@ -42,7 +42,7 @@ router.post('/webhook', async (req: Request, res: Response, next: NextFunction):
     logger.info('Webhook received:', JSON.stringify(update, null, 2));
 
     await service.processWebhook(update);
-    
+
     res.status(200).json({ ok: true });
   } catch (error) {
     logger.error('Error processing webhook:', error);
@@ -60,14 +60,14 @@ router.post('/send-message', async (req: Request, res: Response, next: NextFunct
     }
 
     const { chatId, message, options } = req.body;
-    
+
     if (!chatId || !message) {
       res.status(400).json({ error: 'chatId and message are required' });
       return;
     }
 
     await service.sendMessage(chatId, message, options);
-    
+
     res.json({ success: true, message: 'Message sent successfully' });
   } catch (error) {
     logger.error('Error sending message:', error);
@@ -85,7 +85,7 @@ router.post('/send-alert', async (req: Request, res: Response, next: NextFunctio
     }
 
     const { type, priority, message, data } = req.body;
-    
+
     if (!type || !priority || !message) {
       res.status(400).json({ error: 'type, priority and message are required' });
       return;
@@ -100,7 +100,7 @@ router.post('/send-alert', async (req: Request, res: Response, next: NextFunctio
     };
 
     await service.sendAlert(alert);
-    
+
     res.json({ success: true, message: 'Alert sent successfully' });
   } catch (error) {
     logger.error('Error sending alert:', error);
@@ -118,14 +118,14 @@ router.post('/setup-webhook', async (req: Request, res: Response, next: NextFunc
     }
 
     const { url } = req.body;
-    
+
     if (!url) {
       res.status(400).json({ error: 'url is required' });
       return;
     }
 
     await service.setWebhook(url);
-    
+
     res.json({ success: true, message: 'Webhook configured successfully' });
   } catch (error) {
     logger.error('Error setting webhook:', error);
@@ -138,7 +138,7 @@ router.get('/status', async (req: Request, res: Response, next: NextFunction): P
   try {
     const service = getTelegramService();
     const isConfigured = !!service;
-    
+
     res.json({
       configured: isConfigured,
       botToken: !!process.env.TELEGRAM_BOT_TOKEN,

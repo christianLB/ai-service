@@ -76,7 +76,7 @@ export function createRateLimiter(type: keyof typeof rateLimitConfigs = 'standar
     try {
       // Use user ID if authenticated, otherwise use IP
       const key = (req as any).user?.userId || req.ip;
-      
+
       // Consume 1 point
       const rateLimiterRes = await limiter.consume(key);
 
@@ -89,14 +89,14 @@ export function createRateLimiter(type: keyof typeof rateLimitConfigs = 'standar
     } catch (rejRes: any) {
       // Rate limit exceeded
       const resetDate = new Date(Date.now() + rejRes.msBeforeNext);
-      
+
       res.setHeader('X-RateLimit-Limit', config.points.toString());
       res.setHeader('X-RateLimit-Remaining', '0');
       res.setHeader('X-RateLimit-Reset', resetDate.toISOString());
       res.setHeader('Retry-After', Math.round(rejRes.msBeforeNext / 1000).toString());
 
       const error = new RateLimitError(config.points, resetDate);
-      
+
       logger.warn('Rate limit exceeded', {
         type,
         key: (req as any).user?.userId || req.ip,
@@ -126,7 +126,7 @@ export const databaseRateLimit = createRateLimiter('database');
 // Dynamic rate limiter based on endpoint
 export function dynamicRateLimit(req: Request, res: Response, next: NextFunction): void {
   const path = req.path;
-  
+
   // Determine which rate limiter to use based on endpoint
   if (path.includes('/batch') || path.includes('/retag')) {
     batchRateLimit(req, res, next);

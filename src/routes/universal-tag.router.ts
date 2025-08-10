@@ -1,35 +1,39 @@
 import { createExpressEndpoints } from '@ts-rest/express';
 import { Express } from 'express';
 import { universalTagContract } from '../../packages/contracts/src/contracts/universal-tag';
-import { UniversalTagService } from '../services/tagging/universal-tag.service';
-import { logger } from '../utils/log';
-import { PrismaClient } from '@prisma/client';
+import { universalTagService } from '../services/tagging/universal-tag.service';
+import logger from '../utils/logger';
 
-const prisma = new PrismaClient();
-const service = new UniversalTagService(prisma);
+const service = universalTagService;
 
 export function setupUniversalTagRoutes(app: Express) {
+  const sanitize = (r: any) => ({
+    ...r,
+    description: r?.description ?? undefined,
+    color: r?.color ?? undefined,
+    icon: r?.icon ?? undefined,
+    parentId: r?.parentId ?? undefined,
+    metadata: r?.metadata ?? undefined,
+    entityTags: r?.entityTags ?? '',
+  });
   createExpressEndpoints(universalTagContract, {
     // Get all universaltags
     getAll: async ({ query }) => {
       try {
-        const { page = 1, limit = 20, sortBy, sortOrder, search, include, ...filters } = query;
-        
-        const result = await service.findAll({
+        const { page = 1, limit = 20, sortBy, sortOrder, search } = query;
+        const result = await service.getAll({
           page,
           limit,
-          sortBy,
-          sortOrder,
+          sortBy: sortBy as any,
+          sortOrder: (sortOrder as any) || 'desc',
           search,
-          include,
-          filters,
-        });
+        } as any);
 
         return {
           status: 200,
           body: {
             success: true,
-            data: result.data,
+            data: result.items.map((item: any) => sanitize(item)),
             pagination: {
               total: result.total,
               page,
@@ -51,10 +55,10 @@ export function setupUniversalTagRoutes(app: Express) {
     },
 
     // Get universaltag by ID
-    getById: async ({ params, query }) => {
+    getById: async ({ params }) => {
       try {
-        const result = await service.findById(params.id, query?.include);
-        
+        const result = await service.getById(params.id);
+
         if (!result) {
           return {
             status: 404,
@@ -69,7 +73,7 @@ export function setupUniversalTagRoutes(app: Express) {
           status: 200,
           body: {
             success: true,
-            data: result,
+            data: sanitize(result),
           },
         };
       } catch (error) {
@@ -87,18 +91,24 @@ export function setupUniversalTagRoutes(app: Express) {
     // Create new universaltag
     create: async ({ body }) => {
       try {
-        const result = await service.create(body);
+        const normalized = {
+          ...body,
+          entityTypes: Array.isArray(body.entityTypes)
+            ? body.entityTypes
+            : (body.entityTypes ? [body.entityTypes] : []),
+        } as any;
+        const result = await service.create(normalized);
 
         return {
           status: 201,
           body: {
             success: true,
-            data: result,
+            data: sanitize(result),
           },
         };
       } catch (error: any) {
         logger.error('Error creating universaltag:', error);
-        
+
         if (error.code === 'P2002') {
           return {
             status: 400,
@@ -132,7 +142,13 @@ export function setupUniversalTagRoutes(app: Express) {
     // Update universaltag
     update: async ({ params, body }) => {
       try {
-        const result = await service.update(params.id, body);
+        const normalized = {
+          ...body,
+          entityTypes: Array.isArray(body.entityTypes)
+            ? body.entityTypes
+            : (body.entityTypes ? [body.entityTypes] : []),
+        } as any;
+        const result = await service.update(params.id, normalized);
 
         if (!result) {
           return {
@@ -148,7 +164,7 @@ export function setupUniversalTagRoutes(app: Express) {
           status: 200,
           body: {
             success: true,
-            data: result,
+            data: sanitize(result),
           },
         };
       } catch (error: any) {
@@ -187,17 +203,7 @@ export function setupUniversalTagRoutes(app: Express) {
     // Delete universaltag
     delete: async ({ params }) => {
       try {
-        const success = await service.delete(params.id);
-
-        if (!success) {
-          return {
-            status: 404,
-            body: {
-              success: false,
-              error: 'UniversalTag not found',
-            },
-          };
-        }
+        await service.delete(params.id);
 
         return {
           status: 200,
@@ -229,78 +235,23 @@ export function setupUniversalTagRoutes(app: Express) {
       }
     },
 
-    // Bulk create universaltags
-    bulkCreate: async ({ body }) => {
-      try {
-        const result = await service.bulkCreate(body.data);
+    // Bulk create universaltags - not implemented yet
+    bulkCreate: async () => ({
+      status: 501,
+      body: { success: false, error: 'Bulk create not implemented' },
+    } as any),
 
-        return {
-          status: 201,
-          body: {
-            success: true,
-            data: result,
-            count: result.length,
-          },
-        };
-      } catch (error) {
-        logger.error('Error bulk creating universaltags:', error);
-        return {
-          status: 500,
-          body: {
-            success: false,
-            error: 'Failed to bulk create universaltags',
-          },
-        };
-      }
-    },
+    // Bulk update universaltags - not implemented yet
+    bulkUpdate: async () => ({
+      status: 501,
+      body: { success: false, error: 'Bulk update not implemented' },
+    } as any),
 
-    // Bulk update universaltags
-    bulkUpdate: async ({ body }) => {
-      try {
-        const count = await service.bulkUpdate(body.where, body.data);
-
-        return {
-          status: 200,
-          body: {
-            success: true,
-            count,
-          },
-        };
-      } catch (error) {
-        logger.error('Error bulk updating universaltags:', error);
-        return {
-          status: 500,
-          body: {
-            success: false,
-            error: 'Failed to bulk update universaltags',
-          },
-        };
-      }
-    },
-
-    // Bulk delete universaltags
-    bulkDelete: async ({ body }) => {
-      try {
-        const count = await service.bulkDelete(body.ids);
-
-        return {
-          status: 200,
-          body: {
-            success: true,
-            count,
-          },
-        };
-      } catch (error) {
-        logger.error('Error bulk deleting universaltags:', error);
-        return {
-          status: 500,
-          body: {
-            success: false,
-            error: 'Failed to bulk delete universaltags',
-          },
-        };
-      }
-    },
+    // Bulk delete universaltags - not implemented yet
+    bulkDelete: async () => ({
+      status: 501,
+      body: { success: false, error: 'Bulk delete not implemented' },
+    } as any),
   }, app);
 
   logger.info('UniversalTag routes initialized with ts-rest');

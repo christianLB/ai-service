@@ -4,7 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { 
+import {
   ClientMetrics,
   RevenueMetrics,
   InvoiceStatistics,
@@ -24,11 +24,11 @@ export class DashboardContractService {
   async getClientMetrics(): Promise<z.infer<typeof ClientMetrics>> {
     // Get total clients
     const totalClients = await this.prisma.client.count();
-    
+
     // Get active clients (with invoices in last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const activeClients = await this.prisma.client.count({
       where: {
         invoices: {
@@ -45,7 +45,7 @@ export class DashboardContractService {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
-    
+
     const newThisMonth = await this.prisma.client.count({
       where: {
         createdAt: {
@@ -140,7 +140,7 @@ export class DashboardContractService {
     const current = currentMonthRevenue._sum?.total?.toNumber() || 0;
     const previous = previousMonthRevenue._sum?.total?.toNumber() || 0;
     const ytd = yearToDateRevenue._sum?.total?.toNumber() || 0;
-    
+
     const growthRate = previous > 0 ? ((current - previous) / previous) * 100 : 0;
 
     // Get monthly data for the year
@@ -148,7 +148,7 @@ export class DashboardContractService {
     for (let month = 0; month <= now.getMonth(); month++) {
       const monthStart = new Date(now.getFullYear(), month, 1);
       const monthEnd = new Date(now.getFullYear(), month + 1, 1);
-      
+
       const monthData = await this.prisma.invoice.aggregate({
         where: {
           createdAt: {
@@ -191,21 +191,21 @@ export class DashboardContractService {
         _count: { id: true },
         _sum: { total: true }
       }),
-      
+
       // Pending invoices
       this.prisma.invoice.aggregate({
         where: { status: 'pending' },
         _count: { id: true },
         _sum: { total: true }
       }),
-      
+
       // Paid invoices
       this.prisma.invoice.aggregate({
         where: { status: 'paid' },
         _count: { id: true },
         _sum: { total: true }
       }),
-      
+
       // Overdue invoices
       this.prisma.invoice.aggregate({
         where: {
@@ -306,7 +306,7 @@ export class DashboardContractService {
     const currentMonth = new Date();
     currentMonth.setDate(1);
     currentMonth.setHours(0, 0, 0, 0);
-    
+
     const previousMonth = new Date(currentMonth);
     previousMonth.setMonth(previousMonth.getMonth() - 1);
 

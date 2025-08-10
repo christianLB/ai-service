@@ -142,6 +142,9 @@ ${chalk.green('What gets generated:')}
     includeFrontend: true,
     includeTests: true,
     dryRun: false,
+    skipServices: false,
+    force: false,
+    backup: false,
   };
 
   // Parse flags
@@ -158,6 +161,12 @@ ${chalk.green('What gets generated:')}
       options.includeTests = false;
     } else if (arg === '--dry-run') {
       options.dryRun = true;
+    } else if (arg === '--skip-services') {
+      options.skipServices = true;
+    } else if (arg === '--force') {
+      options.force = true;
+    } else if (arg === '--backup') {
+      options.backup = true;
     }
   }
 
@@ -289,7 +298,27 @@ async function generateFromTemplate(templatePath, outputPath, data, options) {
   
   // Create directory if it doesn't exist
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  
+
+  // If file exists and not forcing, skip
+  let exists = false;
+  try {
+    await fs.access(outputPath);
+    exists = true;
+  } catch {}
+
+  if (exists && !options.force) {
+    console.log(chalk.yellow(`  ⚠️  Skipped (exists): ${outputPath}`));
+    return;
+  }
+
+  // Backup existing file if requested
+  if (exists && options.backup) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = `${outputPath}.${ts}.bak`;
+    await fs.copyFile(outputPath, backupPath);
+    console.log(chalk.blue(`  📦 Backup created: ${backupPath}`));
+  }
+
   // Write file
   await fs.writeFile(outputPath, content);
   console.log(chalk.green(`  ✅ Created: ${outputPath}`));
@@ -348,16 +377,18 @@ async function generateFullStack(options) {
       type: 'ts-rest Contract',
     });
     
-    filesToGenerate.push({
-      template: path.join(projectRoot, 'plop-templates/services/model.service.ts.hbs'),
-      output: path.join(
-        projectRoot,
-        `src/services`,
-        modelInfo.schema !== 'public' ? modelInfo.schema : '',
-        `${kebabCase(options.model)}.service.ts`
-      ),
-      type: 'Service',
-    });
+    if (!options.skipServices) {
+      filesToGenerate.push({
+        template: path.join(projectRoot, 'plop-templates/services/model.service.ts.hbs'),
+        output: path.join(
+          projectRoot,
+          `src/services`,
+          modelInfo.schema !== 'public' ? modelInfo.schema : '',
+          `${kebabCase(options.model)}.service.ts`
+        ),
+        type: 'Service',
+      });
+    }
     
     filesToGenerate.push({
       template: path.join(projectRoot, 'plop-templates/routes/ts-rest-router.ts.hbs'),

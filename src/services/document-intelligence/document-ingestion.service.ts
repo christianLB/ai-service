@@ -28,16 +28,16 @@ export class DocumentIngestionService {
     try {
       // 1. Detect file format
       const format = this.detectFileFormat(metadata.fileName);
-      
+
       // 2. Extract content
       const extractedContent = await this.extractContent(file, format);
-      
+
       // 3. Generate title
       const title = this.generateTitle(metadata.fileName, extractedContent.text);
-      
+
       // 4. Detect document type
       const documentType = this.detectDocumentType(metadata.fileName, extractedContent.text);
-      
+
       // 5. Create document content
       const content: DocumentContent = {
         text: extractedContent.text,
@@ -74,7 +74,7 @@ export class DocumentIngestionService {
       // 9. Store file in filesystem
       const filePath = await this.storeFile(file, documentId, format);
       document.content.originalPath = filePath;
-      
+
       // 10. Update document with file path
       await this.updateDocument(document);
 
@@ -89,7 +89,7 @@ export class DocumentIngestionService {
 
   private detectFileFormat(fileName: string): FileFormat {
     const extension = path.extname(fileName).toLowerCase();
-    
+
     const formatMap: Record<string, FileFormat> = {
       '.pdf': FileFormat.PDF,
       '.docx': FileFormat.DOCX,
@@ -168,7 +168,7 @@ export class DocumentIngestionService {
       };
     } catch (error: any) {
       console.warn('PDF parsing failed, using fallback:', error.message);
-      
+
       // Fallback to placeholder if PDF parsing fails
       const text = `PDF Document Content (${file.length} bytes)
       
@@ -216,7 +216,7 @@ Content extraction failed with error: ${error.message}`;
   private generateTitle(fileName: string, content: string): string {
     // Try to extract title from content first
     const lines = content.split('\n').map(line => line.trim()).filter(line => line);
-    
+
     if (lines.length > 0) {
       const firstLine = lines[0];
       // If first line is reasonably short and looks like a title
@@ -295,7 +295,7 @@ Content extraction failed with error: ${error.message}`;
 
   private async storeDocument(document: DocumentModel): Promise<void> {
     const client = await this.database.pool.connect();
-    
+
     try {
       await client.query('BEGIN');
 
@@ -347,7 +347,7 @@ Content extraction failed with error: ${error.message}`;
 
   private async updateDocument(document: DocumentModel): Promise<void> {
     const client = await this.database.pool.connect();
-    
+
     try {
       await client.query(`
         UPDATE documents.documents 
@@ -365,7 +365,7 @@ Content extraction failed with error: ${error.message}`;
 
   async getDocument(id: string): Promise<Document | null> {
     const client = await this.database.pool.connect();
-    
+
     try {
       const result = await client.query(`
         SELECT * FROM documents.documents WHERE id = $1
@@ -394,7 +394,7 @@ Content extraction failed with error: ${error.message}`;
 
   async listDocuments(userId?: string, limit: number = 50, offset: number = 0): Promise<Document[]> {
     const client = await this.database.pool.connect();
-    
+
     try {
       let query = `
         SELECT * FROM documents.documents
@@ -430,7 +430,7 @@ Content extraction failed with error: ${error.message}`;
 
   async deleteDocument(id: string): Promise<void> {
     const client = await this.database.pool.connect();
-    
+
     try {
       await client.query('BEGIN');
 

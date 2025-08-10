@@ -10,35 +10,35 @@ import type { Client as PrismaClientModel } from '../../lib/prisma';
 export type Client = PrismaClientModel;
 
 export type {
-  
+
   // Invoice related types
   Invoice,
   InvoiceStatus,
   InvoiceItem,
-  
+
   // Transaction related types
   Transaction,
   TransactionType,
   TransactionStatus,
-  
+
   // Account related types
   Account,
   AccountType,
-  
+
   // Currency related types
   Currency,
-  
+
   // Response types
   FinancialApiResponse,
   PaginatedResponse,
-  
+
   // Category related types
   Category,
   CategoryType,
   Subcategory,
   TransactionCategorization,
   CategorizationMethod,
-  
+
   // Reporting types
   CategorizedTransaction,
   CategorySummary,
@@ -81,13 +81,13 @@ export interface InvoiceFormData {
   clientName?: string;
   clientTaxId?: string;
   clientAddress?: any;
-  
+
   // Invoice identification
   invoiceNumber?: string;
   title?: string;
   description?: string;
   type?: 'invoice' | 'credit_note' | 'proforma' | 'receipt';
-  
+
   // Items
   items?: Array<{
     description: string;
@@ -95,7 +95,7 @@ export interface InvoiceFormData {
     unitPrice: number;
     totalPrice?: number;
   }>;
-  
+
   // Financial details
   subtotal?: number;
   taxAmount?: number;
@@ -107,21 +107,21 @@ export interface InvoiceFormData {
   total?: number; // Alternative name for totalAmount
   currency?: string;
   exchangeRate?: number;
-  
+
   // Dates
   issueDate?: Date | string;
   dueDate?: Date | string;
   paidDate?: Date | string;
   serviceStartDate?: Date | string;
   serviceEndDate?: Date | string;
-  
+
   // Payment information
   status?: string;
   paymentMethod?: string;
   paymentTerms?: number;
   bankAccount?: string;
   paymentReference?: string;
-  
+
   // Additional fields
   notes?: string;
   terms?: string;

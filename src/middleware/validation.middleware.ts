@@ -19,9 +19,9 @@ export const validate = (schema: AnyZodObject) => {
           path: issue.path.join('.'),
           message: issue.message
         }));
-        
+
         logger.warn('Validation failed:', errorMessages);
-        
+
         res.status(400).json({
           success: false,
           error: 'Validation failed',
@@ -29,7 +29,7 @@ export const validate = (schema: AnyZodObject) => {
         });
         return;
       }
-      
+
       logger.error('Unexpected validation error:', error);
       res.status(500).json({
         success: false,

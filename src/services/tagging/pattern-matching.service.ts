@@ -22,7 +22,7 @@ export class PatternMatchingService implements IPatternMatchingService {
     try {
       // Generate cache key
       const cacheKey = this.generateCacheKey(content, entityType, metadata);
-      
+
       // Check cache
       const cached = this.patternCache.get(cacheKey);
       if (cached) {
@@ -43,7 +43,9 @@ export class PatternMatchingService implements IPatternMatchingService {
 
       for (const tag of tagsWithPatterns) {
         const patterns = tag.patterns as any;
-        if (!patterns) continue;
+        if (!patterns) {
+          continue;
+        }
 
         const matchResult = this.evaluatePatterns(content, metadata, patterns);
         if (matchResult.matches) {
@@ -114,7 +116,9 @@ export class PatternMatchingService implements IPatternMatchingService {
 
         for (const tag of tagsWithPatterns) {
           const patterns = tag.patterns as any;
-          if (!patterns) continue;
+          if (!patterns) {
+            continue;
+          }
 
           const matchResult = this.evaluatePatterns(entity.content, entity.metadata, patterns);
           if (matchResult.matches) {
@@ -157,7 +161,7 @@ export class PatternMatchingService implements IPatternMatchingService {
       const keywordMatches = patterns.keywords.filter((keyword: string) =>
         contentLower.includes(keyword.toLowerCase())
       );
-      
+
       scores.push({
         type: 'keywords',
         score: keywordMatches.length,
@@ -179,7 +183,7 @@ export class PatternMatchingService implements IPatternMatchingService {
       const merchantMatch = patterns.merchants.find((merchant: string) =>
         merchantLower.includes(merchant.toLowerCase())
       );
-      
+
       if (merchantMatch) {
         return {
           matches: true,
@@ -209,7 +213,7 @@ export class PatternMatchingService implements IPatternMatchingService {
     if (patterns.amountRange && metadata?.amount) {
       const amount = Math.abs(metadata.amount);
       const { min, max } = patterns.amountRange;
-      
+
       if ((min === undefined || amount >= min) && (max === undefined || amount <= max)) {
         return {
           matches: true,
@@ -258,13 +262,13 @@ export class PatternMatchingService implements IPatternMatchingService {
   ): { matches: boolean; confidence: number; rule: string } {
     // Simple custom rule evaluation
     // In a real implementation, this would be more sophisticated
-    
+
     if (rules.contains && Array.isArray(rules.contains)) {
       const contentLower = content.toLowerCase();
       const allMatch = rules.contains.every((term: string) =>
         contentLower.includes(term.toLowerCase())
       );
-      
+
       if (allMatch) {
         return {
           matches: true,
@@ -279,7 +283,7 @@ export class PatternMatchingService implements IPatternMatchingService {
       const anyMatch = rules.containsAny.some((term: string) =>
         contentLower.includes(term.toLowerCase())
       );
-      
+
       if (anyMatch) {
         return {
           matches: true,
@@ -319,7 +323,7 @@ export class PatternMatchingService implements IPatternMatchingService {
       tagId: m.tagId,
       confidence: m.confidence
     }));
-    
+
     this.patternCache.set(key, cacheData);
 
     // Set timeout to clear cache

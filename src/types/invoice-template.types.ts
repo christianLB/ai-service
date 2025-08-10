@@ -8,9 +8,9 @@ export const invoiceTemplateSchema = z.object({
   name: z.string(),
   description: z.string().optional().nullable(),
   isDefault: z.boolean().default(false),
-  templateType: z.string().default("invoice"),
+  templateType: z.string().default('invoice'),
   htmlContent: z.string(),
-  variables: z.any().default("[]"),
+  variables: z.any().default('[]'),
   metadata: z.any().optional().nullable(),
   updatedAt: z.date(),
 });

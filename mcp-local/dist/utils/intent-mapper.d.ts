@@ -30,7 +30,7 @@ export declare class IntentMapper {
      */
     getSuggestions(userInput: string): MappingResult[];
     /**
-     * Calculate confidence score for pattern matching
+     * Calculate confidence score for pattern matching with enhanced logic
      */
     private calculateConfidence;
     /**

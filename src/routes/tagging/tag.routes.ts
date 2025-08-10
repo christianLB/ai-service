@@ -1,10 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { 
-  standardRateLimit, 
-  aiRateLimit, 
-  batchRateLimit, 
-  searchRateLimit 
+import {
+  standardRateLimit,
+  aiRateLimit,
+  batchRateLimit,
+  searchRateLimit
 } from '../../middleware/express-rate-limit.middleware';
 import { getTagService } from '../../services/tagging';
 import {
@@ -167,11 +167,11 @@ router.delete('/:id', standardRateLimit, async (req: Request, res: Response, nex
   try {
     const tagService = getTagService();
     const { id } = req.params;
-    const options = req.query.reassignTo 
+    const options = req.query.reassignTo
       ? deleteTagOptionsSchema.parse(req.query)
       : undefined;
     const userId = (req as any).user.userId;
-    
+
     await tagService.deleteTag(id, options, userId);
     res.status(204).send();
   } catch (error) {
@@ -217,7 +217,7 @@ router.get('/:id/path', standardRateLimit, async (req: Request, res: Response, n
 router.post('/bulk', batchRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { tags } = req.body;
-    
+
     if (!Array.isArray(tags) || tags.length === 0) {
       res.status(400).json({
         error: {
@@ -231,7 +231,7 @@ router.post('/bulk', batchRateLimit, async (req: Request, res: Response, next: N
     // Validate each tag
     const validatedTags = tags.map(tag => createTagSchema.parse(tag));
     const userId = (req as any).user.userId;
-    
+
     const tagService = getTagService();
     const created = await tagService.bulkCreateTags(validatedTags, userId);
     res.status(201).json({
@@ -261,7 +261,7 @@ router.post('/bulk', batchRateLimit, async (req: Request, res: Response, next: N
 router.put('/bulk', batchRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { updates } = req.body;
-    
+
     if (!Array.isArray(updates) || updates.length === 0) {
       res.status(400).json({
         error: {
@@ -277,11 +277,11 @@ router.put('/bulk', batchRateLimit, async (req: Request, res: Response, next: Ne
       id: z.string().uuid().parse(update.id),
       data: updateTagSchema.parse(update.data)
     }));
-    
+
     const userId = (req as any).user.userId;
     const tagService = getTagService();
     const updated = await tagService.bulkUpdateTags(validatedUpdates, userId);
-    
+
     res.json({
       success: true,
       data: updated,
@@ -311,7 +311,7 @@ router.get('/:id/metrics', standardRateLimit, async (req: Request, res: Response
     const tagId = z.string().uuid().parse(req.params.id);
     const tagService = getTagService();
     const tag = await tagService.getTagById(tagId);
-    
+
     if (!tag.data) {
       res.status(404).json({
         error: {

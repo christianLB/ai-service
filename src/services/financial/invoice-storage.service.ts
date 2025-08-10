@@ -27,7 +27,7 @@ export interface InvoiceStorageOptions {
 
 /**
  * Invoice Storage Service - Prisma Implementation
- * 
+ *
  * Manages physical storage of invoice PDF files and their metadata.
  * Supports local filesystem storage with metadata tracked in database.
  */
@@ -112,7 +112,7 @@ export class InvoiceStoragePrismaService {
       });
 
       logger.info(`Invoice stored successfully: ${uniqueFileName}`);
-      
+
       return {
         id: stored_invoices.id,
         invoiceId: stored_invoices.invoice_id,

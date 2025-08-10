@@ -40,7 +40,7 @@ export class ClientsController {
 
     } catch (error: any) {
       logger.error('Error creating client:', error);
-      
+
       if (error.message.includes('already exists')) {
         res.status(409).json({
           success: false,
@@ -86,7 +86,7 @@ export class ClientsController {
       const { taxIdType } = req.query;
 
       const client = await this.clientService.getClientByTaxId(
-        taxId, 
+        taxId,
         taxIdType as string
       );
 
@@ -133,7 +133,7 @@ export class ClientsController {
 
     } catch (error: any) {
       logger.error('Error updating client:', error);
-      
+
       if (error.message === 'Client not found') {
         res.status(404).json({
           success: false,
@@ -219,7 +219,7 @@ export class ClientsController {
 
     } catch (error: any) {
       logger.error('Error getting client stats:', error);
-      
+
       if (error.message === 'Client not found') {
         res.status(404).json({
           success: false,
@@ -359,7 +359,7 @@ export class ClientsController {
                 const currentTags = currentClient.tags || [];
                 const updatedTags = [...currentTags, ...data.tags];
                 const uniqueTags = [...new Set(updatedTags)];
-                
+
                 const result = await this.clientService.updateClient(clientId, {
                   tags: uniqueTags
                 }, userId);

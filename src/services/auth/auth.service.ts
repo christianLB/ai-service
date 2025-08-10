@@ -45,7 +45,9 @@ export class AuthService {
 
   private parseDuration(duration: string): number {
     const match = duration.match(/^(\d+)([smhd])$/);
-    if (!match) return 0;
+    if (!match) {
+      return 0;
+    }
     const value = parseInt(match[1], 10);
     const unit = match[2];
 
@@ -111,7 +113,7 @@ export class AuthService {
   async logout(userId: string, refreshToken: string): Promise<void> {
     // Revoke refresh token
     const tokenHash = this.hashToken(refreshToken);
-    
+
     await this.prisma.refresh_tokens.updateMany({
       where: {
         user_id: userId,
@@ -281,7 +283,7 @@ export class AuthService {
 
     // Revoke all refresh tokens for security
     await this.prisma.refresh_tokens.updateMany({
-      where: { 
+      where: {
         user_id: userId,
         revoked_at: null
       },
@@ -312,7 +314,7 @@ export class AuthService {
 
     // Revoke all refresh tokens
     await this.prisma.refresh_tokens.updateMany({
-      where: { 
+      where: {
         user_id: userId,
         revoked_at: null
       },
@@ -332,7 +334,7 @@ export class AuthService {
     // If deactivating, revoke all refresh tokens
     if (!isActive) {
       await this.prisma.refresh_tokens.updateMany({
-        where: { 
+        where: {
           user_id: userId,
           revoked_at: null
         },
@@ -351,11 +353,11 @@ export class AuthService {
     isActive?: boolean;
   }): Promise<{ users: User[]; total: number }> {
     const where: any = {};
-    
+
     if (options?.role) {
       where.role = options.role;
     }
-    
+
     if (options?.isActive !== undefined) {
       where.is_active = options.isActive;
     }

@@ -68,7 +68,7 @@ export const searchRateLimit = rateLimit({
 // Dynamic rate limiter based on endpoint (for compatibility)
 export function dynamicRateLimit(req: any, res: any, next: any): void {
   const path = req.path;
-  
+
   // Determine which rate limiter to use based on endpoint
   if (path.includes('/batch') || path.includes('/retag')) {
     batchRateLimit(req, res, next);

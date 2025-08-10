@@ -1,10 +1,10 @@
 import { Pool } from 'pg';
 import { logger } from '../../utils/log';
-import { 
-  ClientTransactionLink, 
-  TransactionMatchingPattern, 
+import {
+  ClientTransactionLink,
+  TransactionMatchingPattern,
   UnlinkedTransaction,
-  ClientTransactionSummary 
+  ClientTransactionSummary
 } from '../../models/financial/client-transaction.model';
 
 export class TransactionMatchingService {
@@ -26,7 +26,7 @@ export class TransactionMatchingService {
         WHERE ctl.id IS NULL
           AND t.status = 'confirmed'
       `;
-      
+
       const countResult = await this.pool.query(countQuery);
       const total = parseInt(countResult.rows[0].total);
 
@@ -53,7 +53,7 @@ export class TransactionMatchingService {
       `;
 
       const result = await this.pool.query(query, [limit, offset]);
-      
+
       // For each transaction, find potential matches
       const transactions = await Promise.all(
         result.rows.map(async (row) => {
@@ -88,9 +88,9 @@ export class TransactionMatchingService {
           OR bank_account = $1
         LIMIT 5
       `;
-      
+
       const refResult = await this.pool.query(refQuery, [transaction.reference]);
-      
+
       refResult.rows.forEach(client => {
         matches.push({
           clientId: client.id,
@@ -118,9 +118,9 @@ export class TransactionMatchingService {
         ORDER BY score DESC
         LIMIT 5
       `;
-      
+
       const nameResult = await this.pool.query(nameQuery, [transaction.counterparty_name]);
-      
+
       nameResult.rows.forEach(client => {
         if (client.score > 0.3) {
           matches.push({
@@ -157,13 +157,13 @@ export class TransactionMatchingService {
           )
         LIMIT 5
       `;
-      
+
       const patternResult = await this.pool.query(patternQuery, [
         transaction.amount,
         transaction.description || '',
         transaction.reference || ''
       ]);
-      
+
       patternResult.rows.forEach(pattern => {
         matches.push({
           clientId: pattern.client_id,
@@ -189,14 +189,14 @@ export class TransactionMatchingService {
     notes?: string
   ): Promise<ClientTransactionLink> {
     const client = await this.pool.connect();
-    
+
     try {
       await client.query('BEGIN');
 
       // Check if transaction exists
       const txQuery = 'SELECT id FROM financial.transactions WHERE id = $1';
       const txResult = await client.query(txQuery, [transactionId]);
-      
+
       if (txResult.rows.length === 0) {
         throw new Error('Transaction not found');
       }
@@ -204,7 +204,7 @@ export class TransactionMatchingService {
       // Check if client exists
       const clientQuery = 'SELECT id FROM clients WHERE id = $1';
       const clientResult = await client.query(clientQuery, [clientId]);
-      
+
       if (clientResult.rows.length === 0) {
         throw new Error('Client not found');
       }
@@ -216,7 +216,7 @@ export class TransactionMatchingService {
         WHERE transaction_id = $1
       `;
       const existingResult = await client.query(existingQuery, [transactionId]);
-      
+
       let previousLinkId = null;
       if (existingResult.rows.length > 0) {
         previousLinkId = existingResult.rows[0].id;
@@ -250,9 +250,9 @@ export class TransactionMatchingService {
       ]);
 
       await client.query('COMMIT');
-      
+
       logger.info(`Transaction ${transactionId} manually linked to client ${clientId}`);
-      
+
       return result.rows[0];
     } catch (error) {
       await client.query('ROLLBACK');
@@ -282,7 +282,7 @@ export class TransactionMatchingService {
       // Get transactions to process
       let query: string;
       let params: any[];
-      
+
       if (transactionIds && transactionIds.length > 0) {
         query = `
           SELECT 
@@ -322,10 +322,10 @@ export class TransactionMatchingService {
 
       for (const tx of txResult.rows) {
         processed++;
-        
+
         // Try exact matching first
         const match = await this.findBestMatch(tx, client);
-        
+
         if (match && match.confidence >= 0.7) {
           // Create link
           const insertQuery = `
@@ -360,7 +360,7 @@ export class TransactionMatchingService {
       }
 
       await client.query('COMMIT');
-      
+
       return { matched, processed, results };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -375,7 +375,7 @@ export class TransactionMatchingService {
    * Find the best match for a transaction
    */
   private async findBestMatch(
-    transaction: any, 
+    transaction: any,
     client: any
   ): Promise<any | null> {
     let bestMatch: any = null;
@@ -390,9 +390,9 @@ export class TransactionMatchingService {
           OR custom_fields->>'payment_reference' = $1
           OR bank_account = $1
       `;
-      
+
       const refResult = await client.query(refQuery, [transaction.reference]);
-      
+
       if (refResult.rows.length > 0) {
         return {
           clientId: refResult.rows[0].id,
@@ -421,13 +421,13 @@ export class TransactionMatchingService {
       ORDER BY p.confidence DESC
       LIMIT 1
     `;
-    
+
     const patternResult = await client.query(patternQuery, [
       transaction.amount,
       transaction.description || '',
       transaction.reference || ''
     ]);
-    
+
     if (patternResult.rows.length > 0) {
       const pattern = patternResult.rows[0];
       if (pattern.confidence > highestConfidence) {
@@ -458,9 +458,9 @@ export class TransactionMatchingService {
         ORDER BY score DESC
         LIMIT 1
       `;
-      
+
       const nameResult = await client.query(nameQuery, [transaction.counterparty_name]);
-      
+
       if (nameResult.rows.length > 0 && nameResult.rows[0].score > highestConfidence) {
         bestMatch = {
           clientId: nameResult.rows[0].id,
@@ -510,8 +510,12 @@ export class TransactionMatchingService {
       `;
 
       const params = [clientId];
-      if (startDate) params.push(startDate.toISOString());
-      if (endDate) params.push(endDate.toISOString());
+      if (startDate) {
+        params.push(startDate.toISOString());
+      }
+      if (endDate) {
+        params.push(endDate.toISOString());
+      }
 
       const result = await this.pool.query(query, params);
       return result.rows;
@@ -554,7 +558,7 @@ export class TransactionMatchingService {
       `;
 
       const result = await this.pool.query(query, [clientId]);
-      
+
       if (result.rows.length === 0) {
         return null;
       }

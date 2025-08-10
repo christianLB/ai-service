@@ -21,8 +21,8 @@ class ConfigController {
 
   async getSymbols(req: Request, res: Response) {
     try {
-      const { exchange = 'binance' } = req.query;
-      
+      const { exchange: _exchange = 'binance' } = req.query;
+
       const symbols = [
         'BTC/USDT',
         'ETH/USDT',
@@ -44,9 +44,9 @@ class ConfigController {
   async updateRiskParams(req: Request, res: Response) {
     try {
       const { maxPositionSize, maxDailyLoss, maxDrawdown, maxLeverage } = req.body;
-      
+
       logger.info('Updating risk parameters:', { maxPositionSize, maxDailyLoss, maxDrawdown, maxLeverage });
-      
+
       res.json({ success: true, message: 'Risk parameters updated successfully' });
     } catch (error) {
       logger.error('Failed to update risk parameters', error);
@@ -57,14 +57,14 @@ class ConfigController {
   async emergencyStop(req: Request, res: Response) {
     try {
       logger.warn('EMERGENCY STOP TRIGGERED!');
-      
+
       // In real implementation, this would:
       // 1. Stop all strategies
       // 2. Cancel all open orders
       // 3. Close all positions at market
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: 'Emergency stop executed',
         strategiesStopped: 3,
         ordersCancelled: 5,

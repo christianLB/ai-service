@@ -81,8 +81,25 @@ class MakeCommandBridge {
     async getMakeTools() {
         return [
             {
+                name: 'check_make_commands_first',
+                description: 'ALWAYS USE THIS TOOL FIRST when users mention ANY of these keywords: start, stop, run, build, test, deploy, migrate, status, check, development, database, docker, make, setup, install, create, generate, validate, clean, or ANY development-related task. This tool analyzes the request and automatically executes the appropriate Make command, providing a seamless development workflow.',
+                parameters: {
+                    userRequest: {
+                        type: 'string',
+                        description: 'The complete user request or question'
+                    },
+                    autoExecute: {
+                        type: 'boolean',
+                        description: 'Automatically execute the detected command if confidence is high',
+                        default: true
+                    }
+                },
+                category: 'primary',
+                requiresAuth: false,
+            },
+            {
                 name: 'execute_make_command',
-                description: 'Execute development commands like "start development", "run tests", "check status", or any Make target with safety validation',
+                description: 'DIRECTLY execute Make commands when you know the exact target. Use this for: dev-up (start development), dev-down (stop development), dev-status (check status), db-migrate (run migrations), test (run tests), build (build project), and 250+ other Make targets',
                 parameters: {
                     target: {
                         type: 'string',
@@ -107,7 +124,7 @@ class MakeCommandBridge {
             },
             {
                 name: 'list_make_targets',
-                description: 'List available Make targets by category',
+                description: 'IMMEDIATELY list available Make commands when users ask "what can I do", "what commands", "help", or need to discover available operations',
                 parameters: {
                     category: {
                         type: 'string',
@@ -120,7 +137,7 @@ class MakeCommandBridge {
             },
             {
                 name: 'make_command_help',
-                description: 'Get help and description for a specific Make target',
+                description: 'Get detailed help for any Make command including prerequisites, safety warnings, and usage examples',
                 parameters: {
                     target: {
                         type: 'string',
@@ -132,7 +149,7 @@ class MakeCommandBridge {
             },
             {
                 name: 'validate_make_prerequisites',
-                description: 'Check if prerequisites are met for a Make command',
+                description: 'AUTOMATICALLY check prerequisites before executing commands that require services, databases, or API keys',
                 parameters: {
                     target: {
                         type: 'string',
@@ -144,7 +161,7 @@ class MakeCommandBridge {
             },
             {
                 name: 'make_command_status',
-                description: 'Check status of services and operations',
+                description: 'IMMEDIATELY check service status when users ask "is it running", "what\'s the status", "health check", or mention problems',
                 parameters: {
                     service: {
                         type: 'string',
@@ -157,7 +174,7 @@ class MakeCommandBridge {
             },
             {
                 name: 'analyze_user_intent',
-                description: 'AUTOMATICALLY analyze user requests to suggest or execute appropriate development commands. Use this when users mention development tasks, system status, database work, testing, or any project-related activities.',
+                description: 'FALLBACK tool for complex requests that don\'t match direct commands. Analyzes intent and suggests appropriate Make commands or workflows',
                 parameters: {
                     intent: {
                         type: 'string',
@@ -178,7 +195,7 @@ class MakeCommandBridge {
             },
             {
                 name: 'get_command_suggestions',
-                description: 'Get contextual command suggestions based on user intent - use for complex workflow planning',
+                description: 'Get intelligent command suggestions for complex workflows, deployment sequences, or when multiple commands might be needed',
                 parameters: {
                     intent: {
                         type: 'string',
@@ -446,6 +463,84 @@ class MakeCommandBridge {
                     status: 'error',
                     details: { error: error.message }
                 }];
+        }
+    }
+    /**
+     * Primary entry point for Make command detection and execution
+     * This should be called FIRST for any development-related request
+     */
+    async checkMakeCommandsFirst(userRequest, autoExecute = true) {
+        try {
+            logger_1.logger.info('Checking Make commands first for:', { request: userRequest });
+            // First, try to get direct mapping with high confidence
+            const analysis = await this.autoSuggestionEngine.analyzeIntent(userRequest);
+            // If we have a direct mapping with high confidence, execute it
+            if (analysis.directMapping && analysis.directMapping.confidence > 0.85 && autoExecute) {
+                logger_1.logger.info('High confidence direct mapping found, executing:', {
+                    target: analysis.directMapping.makeTarget,
+                    confidence: analysis.directMapping.confidence
+                });
+                const result = await this.executeMakeCommand(analysis.directMapping.makeTarget, analysis.directMapping.args || {}, analysis.directMapping.confirm);
+                return {
+                    executed: true,
+                    command: analysis.directMapping.makeTarget,
+                    result: result,
+                    confidence: analysis.directMapping.confidence,
+                    followUp: analysis.directMapping.followUp,
+                    message: `Executed: make ${analysis.directMapping.makeTarget}`
+                };
+            }
+            // If we have suggestions but no high-confidence direct mapping
+            if (analysis.suggestions && analysis.suggestions.length > 0) {
+                const topSuggestion = analysis.suggestions[0];
+                // Auto-execute if confidence is high enough and it's safe
+                if (topSuggestion.confidence > 0.75 &&
+                    topSuggestion.safetyLevel === 'safe' &&
+                    autoExecute) {
+                    logger_1.logger.info('Executing top suggestion:', {
+                        target: topSuggestion.makeTarget,
+                        confidence: topSuggestion.confidence
+                    });
+                    const result = await this.executeMakeCommand(topSuggestion.makeTarget);
+                    return {
+                        executed: true,
+                        command: topSuggestion.makeTarget,
+                        result: result,
+                        confidence: topSuggestion.confidence,
+                        message: `Based on your request, I executed: make ${topSuggestion.makeTarget}`
+                    };
+                }
+                // Return suggestions for user to choose
+                return {
+                    executed: false,
+                    suggestions: analysis.suggestions.map(s => ({
+                        command: `make ${s.makeTarget}`,
+                        description: s.description,
+                        confidence: s.confidence,
+                        safetyLevel: s.safetyLevel
+                    })),
+                    message: 'Here are relevant Make commands for your request:',
+                    advice: analysis.contextualAdvice
+                };
+            }
+            // No direct matches found, provide help
+            return {
+                executed: false,
+                message: 'No direct Make command match found. Try "list all make commands" or be more specific.',
+                suggestions: [
+                    { command: 'make dev-status', description: 'Check development environment status' },
+                    { command: 'make dev-up', description: 'Start development environment' },
+                    { command: 'make help', description: 'Show all available commands' }
+                ]
+            };
+        }
+        catch (error) {
+            logger_1.logger.error('Error in checkMakeCommandsFirst:', error);
+            return {
+                executed: false,
+                error: error.message,
+                message: 'Failed to analyze request for Make commands'
+            };
         }
     }
     /**

@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { batchRateLimit, standardRateLimit } from '../../middleware/express-rate-limit.middleware';
-import { 
+import {
   getEntityTaggingService,
   getAITaggingService,
   getTagService
@@ -206,7 +206,7 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
       });
 
       const methodTagIds = methodTags.map(t => t.id);
-      
+
       if (methodTagIds.length > 0) {
         const verifiedCount = await prisma.entityTag.count({
           where: {
@@ -215,11 +215,11 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
           }
         });
 
-        const methodAccuracy = methodTagIds.length > 0 
-          ? verifiedCount / methodTagIds.length 
+        const methodAccuracy = methodTagIds.length > 0
+          ? verifiedCount / methodTagIds.length
           : 1;
 
-        byMethod[method] = { 
+        byMethod[method] = {
           accuracy: methodAccuracy,
           total: methodTagIds.length,
           verified: verifiedCount
@@ -287,7 +287,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
 
     // Calculate date range
     let start: Date, end: Date;
-    
+
     if (startDate && endDate) {
       start = new Date(startDate as string);
       end = new Date(endDate as string);
@@ -343,7 +343,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
       const dayStart = new Date(current);
       const dayEnd = new Date(current.getTime() + dayMs);
 
-      const dayTags = entityTags.filter((et: any) => 
+      const dayTags = entityTags.filter((et: any) =>
         et.createdAt >= dayStart && et.createdAt < dayEnd
       );
 
@@ -414,17 +414,17 @@ router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, r
 router.post('/suggest', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { content, entityType, metadata, options } = req.body;
-    
+
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
-    
+
     const suggestions = await getAITaggingService().suggestTags(
       content,
       validEntityType,
       metadata,
       options
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -454,17 +454,17 @@ router.post('/suggest', standardRateLimit, async (req: Request, res: Response, n
 router.post('/categorize', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { content, entityType, language, context } = req.body;
-    
+
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
-    
+
     const result = await getAITaggingService().autoCategorize(
       content,
       validEntityType,
       language,
       context
     );
-    
+
     res.json({
       success: true,
       data: result
@@ -491,7 +491,7 @@ router.post('/categorize', standardRateLimit, async (req: Request, res: Response
 router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { items, options } = req.body;
-    
+
     // Validate items
     if (!Array.isArray(items) || items.length === 0) {
       res.status(400).json({
@@ -502,14 +502,14 @@ router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, nex
       });
       return;
     }
-    
+
     // Validate entity types in items
     for (const item of items) {
       EntityTypeEnum.parse(item.entityType);
     }
-    
+
     const results = await getAITaggingService().batchProcessTags(items, options);
-    
+
     res.json({
       success: true,
       data: {
@@ -539,19 +539,19 @@ router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, nex
 router.post('/multilingual', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { content, entityType, targetLanguages } = req.body;
-    
+
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
-    
+
     const suggestions = await getAITaggingService().getMultilingualSuggestions(
       content,
       validEntityType,
       targetLanguages
     );
-    
+
     // suggestions is already a Record, no conversion needed
     const result = suggestions;
-    
+
     res.json({
       success: true,
       data: result
@@ -578,16 +578,16 @@ router.post('/multilingual', standardRateLimit, async (req: Request, res: Respon
 router.post('/contextual', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { content, entityType, context } = req.body;
-    
+
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
-    
+
     const suggestions = await getAITaggingService().getContextualSuggestions(
       content,
       validEntityType,
       context
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -617,7 +617,7 @@ router.post('/contextual', standardRateLimit, async (req: Request, res: Response
 router.get('/analytics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const analytics = await getAITaggingService().getTagAnalytics();
-    
+
     res.json({
       success: true,
       data: analytics
@@ -634,7 +634,7 @@ router.get('/analytics', standardRateLimit, async (req: Request, res: Response, 
 router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { tagId, successfulExamples, failedExamples } = req.body;
-    
+
     if (!tagId || !Array.isArray(successfulExamples)) {
       res.status(400).json({
         error: {
@@ -644,13 +644,13 @@ router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Re
       });
       return;
     }
-    
+
     await getAITaggingService().improveTagPatterns(
       tagId,
       successfulExamples,
       failedExamples
     );
-    
+
     res.json({
       success: true,
       data: {

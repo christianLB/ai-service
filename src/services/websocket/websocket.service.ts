@@ -37,7 +37,7 @@ export class WebSocketService {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
         socket.userId = decoded.id;
         socket.email = decoded.email;
-        
+
         logger.info('WebSocket client authenticated', { userId: socket.userId });
         next();
       } catch (error) {
@@ -49,9 +49,9 @@ export class WebSocketService {
 
   private setupEventHandlers(): void {
     this.io.on('connection', (socket: AuthenticatedSocket) => {
-      logger.info('WebSocket client connected', { 
-        socketId: socket.id, 
-        userId: socket.userId 
+      logger.info('WebSocket client connected', {
+        socketId: socket.id,
+        userId: socket.userId
       });
 
       // Store client connection
@@ -69,11 +69,11 @@ export class WebSocketService {
 
       // Handle disconnection
       socket.on('disconnect', () => {
-        logger.info('WebSocket client disconnected', { 
-          socketId: socket.id, 
-          userId: socket.userId 
+        logger.info('WebSocket client disconnected', {
+          socketId: socket.id,
+          userId: socket.userId
         });
-        
+
         if (socket.userId) {
           this.connectedClients.delete(socket.userId);
         }

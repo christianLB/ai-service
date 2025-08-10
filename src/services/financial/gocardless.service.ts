@@ -1,8 +1,8 @@
 // GoCardless Service - Complete API Integration
 import axios, { AxiosInstance } from 'axios';
-import { 
-  GoCardlessAccount, 
-  GoCardlessTransaction, 
+import {
+  GoCardlessAccount,
+  GoCardlessTransaction,
   GoCardlessRequisition,
   FinancialApiResponse,
   Account,
@@ -22,12 +22,12 @@ export class GoCardlessService {
 
   constructor(database: FinancialDatabaseService) {
     this.db = database;
-    
+
     // Clear any cached credentials to ensure fresh lookup
     integrationConfigService.clearCache('gocardless').catch(error => {
       logger.warn('Failed to clear GoCardless cache during initialization', error);
     });
-    
+
     // Initialize service
     this.initializeService();
   }
@@ -39,15 +39,15 @@ export class GoCardlessService {
         integrationType: 'gocardless',
         configKey: 'base_url'
       }) || 'https://bankaccountdata.gocardless.com/api/v2';
-      
+
       // Ensure base URL is properly formatted
       baseUrl = baseUrl.trim();
       if (!baseUrl.endsWith('/api/v2')) {
         baseUrl = baseUrl.replace(/\/$/, '') + '/api/v2';
       }
-      
+
       logger.info(`Initializing GoCardless Service with URL: ${baseUrl}`);
-      
+
       this.api = axios.create({
         baseURL: baseUrl,
         timeout: 30000,
@@ -61,7 +61,7 @@ export class GoCardlessService {
       // Use default production URL
       const defaultUrl = 'https://bankaccountdata.gocardless.com/api/v2';
       logger.info(`Using default production URL: ${defaultUrl}`);
-      
+
       this.api = axios.create({
         baseURL: defaultUrl,
         timeout: 30000,
@@ -71,7 +71,7 @@ export class GoCardlessService {
         }
       });
     }
-    
+
     // Request interceptor to add auth token
     this.api.interceptors.request.use(async (config) => {
       await this.ensureValidToken();
@@ -105,7 +105,7 @@ export class GoCardlessService {
       // Clear any cached token
       this.accessToken = null;
       this.tokenExpiresAt = null;
-      
+
       // Get fresh credentials from database (no cache)
       let secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
@@ -116,12 +116,16 @@ export class GoCardlessService {
         integrationType: 'gocardless',
         configKey: 'secret_key'
       });
-      
-      // Clean credentials - remove any whitespace
-      if (secretId) secretId = secretId.trim();
-      if (secretKey) secretKey = secretKey.trim();
 
-      logger.info('Authenticating with GoCardless', { 
+      // Clean credentials - remove any whitespace
+      if (secretId) {
+        secretId = secretId.trim();
+      }
+      if (secretKey) {
+        secretKey = secretKey.trim();
+      }
+
+      logger.info('Authenticating with GoCardless', {
         hasSecretId: !!secretId,
         hasSecretKey: !!secretKey,
         secretIdLength: secretId?.length,
@@ -136,26 +140,26 @@ export class GoCardlessService {
       if (!secretId || !secretKey) {
         throw new Error('GoCardless credentials not configured in database');
       }
-      
+
       // Validate credential format
       const validation = this.validateCredentialFormat(secretId, secretKey);
       if (!validation.valid) {
         logger.error('Invalid credential format', { errors: validation.errors });
         throw new Error(`Invalid GoCardless credential format: ${validation.errors.join(', ')}`);
       }
-      
+
       // Use the configured base URL for token generation
       const tokenUrl = `${this.api.defaults.baseURL}/token/new/`;
-      
+
       logger.info(`Requesting token from: ${tokenUrl}`);
-      
+
       // Log the request payload structure (without sensitive data)
       logger.debug('Token request payload structure', {
         hasSecretId: !!secretId,
         hasSecretKey: !!secretKey,
         payloadKeys: Object.keys({ secret_id: secretId, secret_key: secretKey })
       });
-      
+
       const response = await axios.post(tokenUrl, {
         secret_id: secretId,
         secret_key: secretKey
@@ -175,18 +179,18 @@ export class GoCardlessService {
       this.accessToken = accessToken;
       // GoCardless tokens expire after 24 hours
       this.tokenExpiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000); // 23 hours to be safe
-      
+
       logger.info('GoCardless authentication successful', {
         tokenLength: accessToken.length,
         expiresAt: this.tokenExpiresAt
       });
-      
+
       return accessToken;
     } catch (error: any) {
       // Clear token on error
       this.accessToken = null;
       this.tokenExpiresAt = null;
-      
+
       logger.error('GoCardless authentication failed', {
         error: error.message,
         status: error.response?.status,
@@ -196,7 +200,7 @@ export class GoCardlessService {
         method: error.config?.method,
         headers: error.config?.headers
       });
-      
+
       if (error.response?.status === 401) {
         const errorDetail = error.response?.data?.detail || error.response?.data?.error || '';
         throw new Error(`Invalid GoCardless credentials (401). ${errorDetail}. Please verify:
@@ -204,7 +208,7 @@ export class GoCardlessService {
 2. No extra whitespace in credentials
 3. Credentials are active and not expired`);
       }
-      
+
       throw new Error(`Failed to authenticate with GoCardless: ${error.message}`);
     }
   }
@@ -212,14 +216,14 @@ export class GoCardlessService {
   private async ensureValidToken(): Promise<void> {
     if (!this.accessToken || !this.tokenExpiresAt || new Date() >= this.tokenExpiresAt) {
       logger.info('GoCardless token expired or missing, checking credentials...');
-      
+
       // Check if credentials are configured before attempting authentication
       const hasCredentials = await this.hasCredentials();
       if (!hasCredentials) {
         logger.error('GoCardless credentials not found in database');
         throw new Error('GoCardless credentials not configured. Please configure secret_id and secret_key in integration settings.');
       }
-      
+
       logger.info('Credentials found, attempting authentication...');
       await this.authenticate();
     }
@@ -230,14 +234,14 @@ export class GoCardlessService {
     logger.info('Force refreshing GoCardless authentication');
     this.accessToken = null;
     this.tokenExpiresAt = null;
-    
+
     // Clear the config cache to ensure fresh credentials
     await integrationConfigService.clearCache('gocardless');
     logger.info('GoCardless config cache cleared');
-    
+
     // Re-initialize the service to pick up any URL changes
     await this.initializeService();
-    
+
     await this.authenticate();
   }
 
@@ -276,7 +280,7 @@ export class GoCardlessService {
         integrationType: 'gocardless',
         configKey: 'redirect_uri'
       }) || 'https://localhost:3000/financial/callback';
-      
+
       const response = await this.api.post('/requisitions/', {
         institution_id: institutionId,
         redirect: redirectUri,
@@ -310,17 +314,17 @@ export class GoCardlessService {
   async getRequisitionStatus(requisitionId: string): Promise<FinancialApiResponse<GoCardlessRequisition>> {
     try {
       console.log(`[getRequisitionStatus] Fetching status for requisition: ${requisitionId}`);
-      
+
       const response = await this.api.get(`/requisitions/${requisitionId}/`);
       const requisition = response.data;
-      
-      console.log(`[getRequisitionStatus] Requisition status retrieved:`, {
+
+      console.log('[getRequisitionStatus] Requisition status retrieved:', {
         id: requisition.id,
         status: requisition.status,
         accounts: requisition.accounts?.length || 0,
         created: requisition.created
       });
-      
+
       return {
         success: true,
         data: requisition,
@@ -330,7 +334,7 @@ export class GoCardlessService {
       };
     } catch (error: any) {
       console.error('[getRequisitionStatus] Failed to get requisition status:', error);
-      
+
       // Handle specific error cases
       if (error.response?.status === 404) {
         return {
@@ -338,14 +342,14 @@ export class GoCardlessService {
           error: 'Requisition not found - The requisition ID does not exist or has been deleted'
         };
       }
-      
+
       if (error.response?.status === 401) {
         return {
           success: false,
           error: 'Authentication failed - Unable to authenticate with GoCardless API'
         };
       }
-      
+
       return {
         success: false,
         error: `Failed to get requisition status: ${error.message || 'Unknown error occurred'}`
@@ -405,14 +409,14 @@ export class GoCardlessService {
     try {
       let url = `/accounts/${accountId}/transactions/`;
       const params = new URLSearchParams();
-      
+
       if (dateFrom) {
         params.append('date_from', dateFrom.toISOString().split('T')[0]);
       }
       if (dateTo) {
         params.append('date_to', dateTo.toISOString().split('T')[0]);
       }
-      
+
       if (params.toString()) {
         url += '?' + params.toString();
       }
@@ -425,14 +429,14 @@ export class GoCardlessService {
         if (apiError.response?.status === 429) {
           const retryAfter = apiError.response.data?.detail?.match(/(\d+) seconds/)?.[1];
           const waitTime = retryAfter ? parseInt(retryAfter) : 3600; // Default 1 hour
-          
+
           console.log(`Rate limit exceeded for account ${accountId}. Must wait ${Math.round(waitTime/3600)} hours.`);
           throw new Error(`GoCardless rate limit exceeded. Next sync available in ${Math.round(waitTime/3600)} hours.`);
         }
         throw apiError;
       }
       const transactions = response.data.transactions;
-      
+
       // Combine booked and pending transactions
       const allTransactions = [
         ...(transactions.booked || []),
@@ -455,7 +459,7 @@ export class GoCardlessService {
       // Get account details from GoCardless
       const accountDetails = await this.getAccountDetails(accountId);
       const balances = await this.getAccountBalances(accountId);
-      
+
       // Get EUR currency (assuming BBVA España)
       const eurCurrency = await this.db.getCurrencyByCode('EUR');
       if (!eurCurrency) {
@@ -473,7 +477,7 @@ export class GoCardlessService {
         // Account exists, update balance and metadata
         console.log('Account already exists, updating balance...');
         account = existingAccount.rows[0];
-        
+
         await this.db.query(
           `UPDATE financial.accounts 
            SET balance = $1, metadata = $2, last_sync = NOW() 
@@ -527,7 +531,7 @@ export class GoCardlessService {
 
       // Get transactions from GoCardless
       const transactions = await this.getAccountTransactions(accountId, dateFrom, dateTo);
-      
+
       console.log(`Found ${transactions.length} transactions to sync`);
 
       // Get EUR currency
@@ -581,7 +585,7 @@ export class GoCardlessService {
           });
 
           syncedCount++;
-          
+
           if (syncedCount % 10 === 0) {
             console.log(`Synced ${syncedCount}/${transactions.length} transactions`);
           }
@@ -619,12 +623,12 @@ export class GoCardlessService {
       // Always use real BBVA institution
       const institutionId = 'BBVA_BBVAESMM';
       const reference = `bbva-setup-${Date.now()}`;
-      
+
       console.log(`Setting up BBVA account with institution: ${institutionId}`);
-      
+
       // Create requisition
       const requisition = await this.createRequisition(institutionId, reference);
-      
+
       return {
         success: true,
         data: {
@@ -653,7 +657,7 @@ export class GoCardlessService {
     try {
       // Check requisition status
       const requisition = await this.getRequisition(requisitionId);
-      
+
       if (requisition.status !== 'LN') { // LN = Linked
         return {
           success: false,
@@ -663,7 +667,7 @@ export class GoCardlessService {
 
       // Get accounts from requisition
       const accountIds = await this.getAccountsByRequisition(requisitionId);
-      
+
       if (accountIds.length === 0) {
         return {
           success: false,
@@ -726,7 +730,7 @@ export class GoCardlessService {
         'SELECT * FROM financial.get_rate_limit_status($1, $2)',
         [accountId, endpointType]
       );
-      
+
       const status = result.rows[0];
       return {
         canSync: status.can_sync,
@@ -765,10 +769,10 @@ export class GoCardlessService {
       // Check rate limit
       const rateLimit = await this.checkRateLimit(accountId, 'accounts');
       if (!rateLimit.canSync) {
-        const waitTime = rateLimit.retryAfter 
+        const waitTime = rateLimit.retryAfter
           ? Math.ceil((rateLimit.retryAfter.getTime() - Date.now()) / 1000 / 60)
           : Math.ceil((rateLimit.windowResetAt.getTime() - Date.now()) / 1000 / 60);
-        
+
         return {
           success: false,
           error: `Rate limit exceeded. Please wait ${waitTime} minutes before syncing account details.`,
@@ -780,10 +784,10 @@ export class GoCardlessService {
 
       // Get account details
       const accountDetails = await this.getAccountDetails(accountId);
-      
+
       // Record API call
       await this.recordApiCall(accountId, 'accounts');
-      
+
       // Update account details in database
       const account = await this.db.query(
         `UPDATE financial.accounts 
@@ -825,7 +829,7 @@ export class GoCardlessService {
       if (error.response?.status === 429) {
         const retryAfter = this.parseRetryAfter(error.response);
         await this.recordApiCall(accountId, 'accounts', retryAfter);
-        
+
         return {
           success: false,
           error: `GoCardless rate limit exceeded. Next sync available in ${Math.round((retryAfter.getTime() - Date.now()) / 1000 / 60 / 60)} hours.`,
@@ -851,10 +855,10 @@ export class GoCardlessService {
       // Check rate limit
       const rateLimit = await this.checkRateLimit(accountId, 'balances');
       if (!rateLimit.canSync) {
-        const waitTime = rateLimit.retryAfter 
+        const waitTime = rateLimit.retryAfter
           ? Math.ceil((rateLimit.retryAfter.getTime() - Date.now()) / 1000 / 60)
           : Math.ceil((rateLimit.windowResetAt.getTime() - Date.now()) / 1000 / 60);
-        
+
         return {
           success: false,
           error: `Rate limit exceeded. Please wait ${waitTime} minutes before syncing balances.`,
@@ -866,13 +870,13 @@ export class GoCardlessService {
 
       // Get balances
       const balances = await this.getAccountBalances(accountId);
-      
+
       // Record API call
       await this.recordApiCall(accountId, 'balances');
-      
+
       const currentBalance = balances[0]?.balanceAmount?.amount || '0';
       const currency = balances[0]?.balanceAmount?.currency || 'EUR';
-      
+
       // Update balance in database
       await this.db.query(
         `UPDATE financial.accounts 
@@ -923,7 +927,7 @@ export class GoCardlessService {
       if (error.response?.status === 429) {
         const retryAfter = this.parseRetryAfter(error.response);
         await this.recordApiCall(accountId, 'balances', retryAfter);
-        
+
         return {
           success: false,
           error: `GoCardless rate limit exceeded. Next sync available in ${Math.round((retryAfter.getTime() - Date.now()) / 1000 / 60 / 60)} hours.`,
@@ -948,10 +952,10 @@ export class GoCardlessService {
       // Check rate limit
       const rateLimit = await this.checkRateLimit(accountId, 'transactions');
       if (!rateLimit.canSync) {
-        const waitTime = rateLimit.retryAfter 
+        const waitTime = rateLimit.retryAfter
           ? Math.ceil((rateLimit.retryAfter.getTime() - Date.now()) / 1000 / 60)
           : Math.ceil((rateLimit.windowResetAt.getTime() - Date.now()) / 1000 / 60);
-        
+
         return {
           success: false,
           error: `Rate limit exceeded. Please wait ${waitTime} minutes before syncing transactions.`,
@@ -978,7 +982,7 @@ export class GoCardlessService {
 
       // Sync transactions
       const transactionCount = await this.syncTransactionsToDatabase(accountId, dbAccountId, days);
-      
+
       // Record API call (syncTransactionsToDatabase already handles rate limit errors)
       await this.recordApiCall(accountId, 'transactions');
 
@@ -1023,9 +1027,9 @@ export class GoCardlessService {
   private parseRetryAfter(response: any): Date {
     const retryAfterHeader = response.headers?.['retry-after'];
     const detailMessage = response.data?.detail;
-    
+
     let retrySeconds = 3600; // Default 1 hour
-    
+
     if (retryAfterHeader) {
       retrySeconds = parseInt(retryAfterHeader);
     } else if (detailMessage) {
@@ -1034,7 +1038,7 @@ export class GoCardlessService {
         retrySeconds = parseInt(match[1]);
       }
     }
-    
+
     return new Date(Date.now() + retrySeconds * 1000);
   }
 
@@ -1051,14 +1055,14 @@ export class GoCardlessService {
     try {
       console.log('=== GOCARDLESS PERIODIC SYNC ===');
       console.log('Starting periodic sync of GoCardless accounts (balances and transactions only)...');
-      
+
       // Get all active bank accounts
       const accounts = await this.db.query(`
         SELECT id, account_id, name, metadata->'last_sync' as last_sync
         FROM financial.accounts 
         WHERE type = 'bank_account' AND is_active = true AND account_id IS NOT NULL
       `);
-      
+
       console.log(`Found ${accounts.rows.length} active bank accounts to sync`);
 
       let accountsSynced = 0;
@@ -1069,7 +1073,7 @@ export class GoCardlessService {
       for (const account of accounts.rows) {
         try {
           console.log(`Syncing account: ${account.name} (${account.account_id})`);
-          
+
           // Sync balance
           const balanceResult = await this.syncAccountBalances(account.account_id);
           if (balanceResult.success) {
@@ -1079,7 +1083,7 @@ export class GoCardlessService {
             console.error(`✗ Balance sync failed for ${account.name}: ${balanceResult.error}`);
             errors.push(`${account.name} balance: ${balanceResult.error}`);
           }
-          
+
           // Sync transactions from last 7 days
           const transactionResult = await this.syncAccountTransactions(account.account_id, 7);
           if (transactionResult.success) {
@@ -1091,7 +1095,7 @@ export class GoCardlessService {
           }
 
           accountsSynced++;
-          
+
         } catch (error) {
           console.error(`Failed to sync account ${account.name}:`, error);
           errors.push(`${account.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1132,40 +1136,40 @@ export class GoCardlessService {
 
   private validateCredentialFormat(secretId: string | null, secretKey: string | null): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
-    
+
     if (!secretId || !secretKey) {
       errors.push('Missing credentials');
       return { valid: false, errors };
     }
-    
+
     // GoCardless secret_id is typically a UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(secretId)) {
       errors.push('Secret ID does not match expected UUID format');
     }
-    
+
     // GoCardless secret_key can be 43 or 128 characters long
     if (secretKey.length !== 43 && secretKey.length !== 128) {
       errors.push(`Secret Key length is ${secretKey.length}, expected 43 or 128 characters`);
     }
-    
+
     // Check for common issues
     if (secretId !== secretId.trim() || secretKey !== secretKey.trim()) {
       errors.push('Credentials contain whitespace');
     }
-    
+
     return { valid: errors.length === 0, errors };
   }
 
   async hasCredentials(): Promise<boolean> {
     try {
       logger.debug('Checking GoCardless credentials...');
-      
+
       const secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_id'
       });
-      
+
       const secretKey = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
         configKey: 'secret_key'
@@ -1173,7 +1177,7 @@ export class GoCardlessService {
 
       const hasId = !!secretId;
       const hasKey = !!secretKey;
-      
+
       logger.info('GoCardless credential check', {
         hasSecretId: hasId,
         hasSecretKey: hasKey,

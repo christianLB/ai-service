@@ -7,7 +7,7 @@ exports.ToolSchema = zod_1.z.object({
     name: zod_1.z.string(),
     description: zod_1.z.string(),
     parameters: zod_1.z.record(zod_1.z.any()).optional().default({}),
-    category: zod_1.z.enum(['financial', 'documents', 'system', 'trading', 'development', 'database', 'quality', 'deployment', 'mcp', 'utility', 'information', 'validation', 'monitoring', 'intelligence']),
+    category: zod_1.z.enum(['primary', 'financial', 'documents', 'system', 'trading', 'development', 'database', 'quality', 'deployment', 'mcp', 'utility', 'information', 'validation', 'monitoring', 'intelligence']),
     requiresAuth: zod_1.z.boolean().optional().default(true),
 });
 // Tool execution request/response

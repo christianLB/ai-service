@@ -133,17 +133,17 @@ describe('TransactionManagementService', () => {
       const callOrder: string[] = [];
 
       mockPrismaClient.transactions.findUnique.mockResolvedValue(mockTransaction);
-      
+
       mockPrismaClient.client_transaction_links.deleteMany.mockImplementation(() => {
         callOrder.push('client_transaction_links');
         return Promise.resolve({ count: 1 });
       });
-      
+
       mockPrismaClient.transaction_categorizations.deleteMany.mockImplementation(() => {
         callOrder.push('transaction_categorizations');
         return Promise.resolve({ count: 1 });
       });
-      
+
       mockPrismaClient.transactions.delete.mockImplementation(() => {
         callOrder.push('transactions');
         return Promise.resolve(mockTransaction);

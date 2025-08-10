@@ -30,7 +30,7 @@ jest.mock('@prisma/client', () => {
 describe('FinancialDashboardService', () => {
   let service: FinancialDashboardService;
   let prisma: any;
-  
+
   const mockTimeRange: TimeRange = {
     startDate: new Date('2025-01-01'),
     endDate: new Date('2025-01-31')
@@ -293,7 +293,7 @@ describe('FinancialDashboardService', () => {
 
       process.env.ENABLE_SQL_VALIDATION = 'true';
       process.env.NODE_ENV = 'test';
-      
+
       const validationService = new FinancialDashboardService(prisma);
 
       await expect(

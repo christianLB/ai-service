@@ -6,8 +6,8 @@ const logger = new Logger('PerformanceController');
 class PerformanceController {
   async getPerformanceMetrics(req: Request, res: Response) {
     try {
-      const { timeRange = '1M', strategy = 'all' } = req.query;
-      
+      const { timeRange: _timeRange = '1M', strategy: _strategy = 'all' } = req.query;
+
       // Mock data
       const metrics = {
         totalReturn: 12500,

@@ -30,17 +30,17 @@ export class InvoiceService {
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
   }) {
-    const { 
-      userId, 
-      limit = 20, 
-      offset = 0, 
-      search, 
-      status, 
+    const {
+      userId,
+      limit = 20,
+      offset = 0,
+      search,
+      status,
       clientId,
       startDate,
       endDate,
-      sortBy = 'created_at', 
-      sortOrder = 'DESC' 
+      sortBy = 'created_at',
+      sortOrder = 'DESC'
     } = params;
 
     try {
@@ -123,7 +123,9 @@ export class InvoiceService {
         },
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error fetching invoice:', error);
       throw new AppError('Failed to fetch invoice', 500);
     }
@@ -152,7 +154,9 @@ export class InvoiceService {
         },
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error fetching invoice by number:', error);
       throw new AppError('Failed to fetch invoice', 500);
     }
@@ -167,12 +171,12 @@ export class InvoiceService {
       const result = await prisma.$transaction(async (tx) => {
         // Generate invoice number if not provided
         let invoiceNumber = data.invoiceNumber;
-        
+
         if (!invoiceNumber) {
           // Use the advanced numbering service
           const series = data.type?.toUpperCase() || 'INVOICE';
           const prefix = this.getInvoicePrefixByType(data.type);
-          
+
           invoiceNumber = await this.numberingService.getNextInvoiceNumber({
             series,
             prefix,
@@ -193,46 +197,46 @@ export class InvoiceService {
 
         // Create invoice within transaction
         const invoice = await tx.invoice.create({
-        data: {
-          userId,
-          invoiceNumber,
-          clientId: data.clientId,
-          clientName: data.clientName || '',
-          clientTaxId: data.clientTaxId || '',
-          clientAddress: data.clientAddress ? JSON.parse(JSON.stringify(data.clientAddress)) : null,
-          type: data.type || 'invoice',
-          status: 'draft',
-          issueDate: data.issueDate ? new Date(data.issueDate) : new Date(),
-          dueDate: data.dueDate ? new Date(data.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          serviceStartDate: data.serviceStartDate ? new Date(data.serviceStartDate) : null,
-          serviceEndDate: data.serviceEndDate ? new Date(data.serviceEndDate) : null,
-          currency: data.currency || 'EUR',
-          items: data.items as any,
-          subtotal,
-          taxAmount,
-          taxRate: data.taxRate,
-          taxType: data.taxType || 'IVA',
-          discount: data.discount || null,
-          discountType: data.discountType || null,
-          total,
-          paymentMethod: data.paymentMethod || null,
-          paymentTerms: data.paymentTerms || 30,
-          bankAccount: data.bankAccount || null,
-          notes: data.notes || null,
-          termsAndConditions: data.termsAndConditions || null,
-          templateId: data.templateId || null,
-          tags: data.tags || [],
-          customFields: data.customFields || {},
-        },
-        include: {
-          client: true,
-        },
-      });
+          data: {
+            userId,
+            invoiceNumber,
+            clientId: data.clientId,
+            clientName: data.clientName || '',
+            clientTaxId: data.clientTaxId || '',
+            clientAddress: data.clientAddress ? JSON.parse(JSON.stringify(data.clientAddress)) : null,
+            type: data.type || 'invoice',
+            status: 'draft',
+            issueDate: data.issueDate ? new Date(data.issueDate) : new Date(),
+            dueDate: data.dueDate ? new Date(data.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            serviceStartDate: data.serviceStartDate ? new Date(data.serviceStartDate) : null,
+            serviceEndDate: data.serviceEndDate ? new Date(data.serviceEndDate) : null,
+            currency: data.currency || 'EUR',
+            items: data.items as any,
+            subtotal,
+            taxAmount,
+            taxRate: data.taxRate,
+            taxType: data.taxType || 'IVA',
+            discount: data.discount || null,
+            discountType: data.discountType || null,
+            total,
+            paymentMethod: data.paymentMethod || null,
+            paymentTerms: data.paymentTerms || 30,
+            bankAccount: data.bankAccount || null,
+            notes: data.notes || null,
+            termsAndConditions: data.termsAndConditions || null,
+            templateId: data.templateId || null,
+            tags: data.tags || [],
+            customFields: data.customFields || {},
+          },
+          include: {
+            client: true,
+          },
+        });
 
         logger.info(`Invoice created: ${invoice.invoiceNumber} for client ${invoice.clientName}`);
         return invoice;
       });
-      
+
       return {
         success: true,
         data: {
@@ -308,7 +312,7 @@ export class InvoiceService {
       });
 
       logger.info(`Invoice updated: ${invoice.invoiceNumber}`);
-      
+
       return {
         success: true,
         data: {
@@ -316,7 +320,9 @@ export class InvoiceService {
         },
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error updating invoice:', error);
       throw new AppError('Failed to update invoice', 500);
     }
@@ -343,13 +349,15 @@ export class InvoiceService {
       });
 
       logger.info(`Invoice deleted: ${invoiceId}`);
-      
+
       return {
         success: true,
         message: 'Invoice deleted successfully',
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error deleting invoice:', error);
       throw new AppError('Failed to delete invoice', 500);
     }
@@ -426,7 +434,7 @@ export class InvoiceService {
       const [totalInvoices, statusCounts, totalAmounts] = await Promise.all([
         // Total count
         prisma.invoice.count({ where }),
-        
+
         // Count by status
         prisma.invoice.groupBy({
           by: ['status'],
@@ -435,7 +443,7 @@ export class InvoiceService {
             id: true,
           },
         }),
-        
+
         // Sum totals by status
         prisma.invoice.groupBy({
           by: ['status'],
@@ -502,7 +510,7 @@ export class InvoiceService {
       });
 
       logger.info(`Invoice status updated: ${invoice.invoiceNumber} -> ${status}`);
-      
+
       return {
         success: true,
         data: {
@@ -510,7 +518,9 @@ export class InvoiceService {
         },
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error updating invoice status:', error);
       throw new AppError('Failed to update invoice status', 500);
     }

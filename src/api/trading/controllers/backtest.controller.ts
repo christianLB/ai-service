@@ -8,12 +8,12 @@ class BacktestController {
   async runBacktest(req: Request, res: Response) {
     try {
       const { strategyId, startDate, endDate, symbols, initialCapital } = req.body;
-      
+
       logger.info('Running backtest:', { strategyId, startDate, endDate, symbols, initialCapital });
-      
+
       // Return task ID for async processing
       const taskId = uuidv4();
-      
+
       // In real implementation, this would start an async job
       res.json({ taskId });
     } catch (error) {
@@ -24,8 +24,8 @@ class BacktestController {
 
   async getBacktestResults(req: Request, res: Response) {
     try {
-      const { limit = 10 } = req.query;
-      
+      const { limit: _limit = 10 } = req.query;
+
       // Mock data
       const results = [
         {
@@ -69,7 +69,7 @@ class BacktestController {
   async getBacktestResult(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
+
       // Mock data
       const result = {
         id,
@@ -98,13 +98,13 @@ class BacktestController {
 
   async optimizeStrategy(req: Request, res: Response) {
     try {
-      const { strategyId, startDate, endDate, symbols, parameterRanges } = req.body;
-      
+      const { strategyId, startDate: _startDate, endDate: _endDate, symbols: _symbols, parameterRanges } = req.body;
+
       logger.info('Running strategy optimization:', { strategyId, parameterRanges });
-      
+
       // Return task ID for async processing
       const taskId = uuidv4();
-      
+
       res.json({ taskId });
     } catch (error) {
       logger.error('Failed to optimize strategy', error);

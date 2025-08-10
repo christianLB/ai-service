@@ -114,7 +114,9 @@ export class ClientService {
         },
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error fetching client:', error);
       throw new AppError('Failed to fetch client', 500);
     }
@@ -181,7 +183,9 @@ export class ClientService {
         message: 'Client updated successfully',
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error updating client:', error);
       throw new AppError('Failed to update client', 500);
     }
@@ -223,7 +227,9 @@ export class ClientService {
         message: 'Client deleted successfully',
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error deleting client:', error);
       throw new AppError('Failed to delete client', 500);
     }
@@ -397,7 +403,9 @@ export class ClientService {
         ...stats,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error fetching client:', error);
       throw new AppError('Failed to fetch client', 500);
     }

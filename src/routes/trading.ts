@@ -27,9 +27,9 @@ router.get('/dashboard/overview', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get trading dashboard overview', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get trading dashboard overview' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get trading dashboard overview'
     });
   }
 });
@@ -47,9 +47,9 @@ router.get('/positions', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get trading positions', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get trading positions' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get trading positions'
     });
   }
 });
@@ -63,9 +63,9 @@ router.get('/strategies', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get trading strategies', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get trading strategies' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get trading strategies'
     });
   }
 });

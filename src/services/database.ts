@@ -36,7 +36,7 @@ class DatabaseService {
     // Validate required environment variables
     const requiredEnvVars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    
+
     if (missingVars.length > 0) {
       throw new Error(`Missing required environment variables: ${missingVars.join(', ')}. Please set them in .env.local`);
     }
@@ -60,7 +60,9 @@ class DatabaseService {
   }
 
   async initialize(): Promise<void> {
-    if (this.initialized) return;
+    if (this.initialized) {
+      return;
+    }
 
     try {
       // Log connection details (without password)
@@ -72,7 +74,7 @@ class DatabaseService {
         user: process.env.POSTGRES_USER,
         NODE_ENV: process.env.NODE_ENV
       });
-      
+
       // Add timeout to the entire initialization
       const initPromise = this.createTables();
       const timeoutPromise = new Promise((_, reject) => {
@@ -80,9 +82,9 @@ class DatabaseService {
           reject(new Error(`Database initialization timeout after 10 seconds. Check if database is running on ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}`));
         }, 10000); // 10 second timeout
       });
-      
+
       await Promise.race([initPromise, timeoutPromise]);
-      
+
       this.initialized = true;
       console.log('[DB] Database service initialized successfully');
       logger.info('Database service initialized successfully');
@@ -108,17 +110,17 @@ class DatabaseService {
       const connectPromise = this.pool.connect();
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          reject(new Error(`Failed to get database connection from pool after 10 seconds`));
+          reject(new Error('Failed to get database connection from pool after 10 seconds'));
         }, 10000);
       });
-      
+
       client = await Promise.race([connectPromise, timeoutPromise]) as PoolClient;
       console.log('[DB] Pool connection obtained!');
     } catch (error: any) {
       console.error('[DB] Failed to get pool connection:', error.message);
       throw error;
     }
-    
+
     try {
       // Tabla de workflows
       await client.query(`
@@ -176,25 +178,25 @@ class DatabaseService {
       `);
 
       logger.info('Database tables created successfully');
-      
+
       // Create financial schema if it doesn't exist
       await this.createFinancialSchema(client);
-      
+
     } finally {
       if (client) {
         client.release();
       }
     }
   }
-  
+
   private async createFinancialSchema(client: any): Promise<void> {
     try {
       // Create schema
-      await client.query(`CREATE SCHEMA IF NOT EXISTS financial`);
-      
+      await client.query('CREATE SCHEMA IF NOT EXISTS financial');
+
       // Always check and update schema
       logger.info('Checking financial schema...');
-      
+
       // ALWAYS run migration to ensure schema consistency
       logger.info('🔧 Running financial schema migration for consistency...');
       try {
@@ -205,7 +207,7 @@ class DatabaseService {
         logger.error('Migration stack trace:', migrationError.stack);
         throw migrationError;
       }
-      
+
       // Verify critical columns exist
       const verifyCheck = await client.query(`
         SELECT 
@@ -226,14 +228,14 @@ class DatabaseService {
             AND table_name = 'transaction_categorizations'
           ) as has_categorizations_table
       `);
-      
+
       const verification = verifyCheck.rows[0];
-      
+
       if (!verification.has_wallet_address || !verification.has_categories_table || !verification.has_categorizations_table) {
         logger.error('CRITICAL: Schema verification failed!', verification);
         throw new Error('Migration incomplete - critical tables or columns missing');
       }
-      
+
       logger.info('✅ Financial schema migration completed and verified');
     } catch (error: any) {
       // If schema already exists, that's fine
@@ -248,14 +250,14 @@ class DatabaseService {
   async createWorkflow(workflow: Omit<WorkflowRecord, 'id' | 'created_at' | 'updated_at' | 'version'>): Promise<string> {
     const client = await this.pool.connect();
     const id = uuidv4();
-    
+
     try {
       const query = `
         INSERT INTO workflows (id, name, description, active, workflow_data, created_by, tags)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
       `;
-      
+
       const values = [
         id,
         workflow.name,
@@ -276,7 +278,7 @@ class DatabaseService {
 
   async getWorkflow(id: string): Promise<WorkflowRecord | null> {
     const client = await this.pool.connect();
-    
+
     try {
       const result = await client.query('SELECT * FROM workflows WHERE id = $1', [id]);
       return result.rows[0] || null;
@@ -287,18 +289,18 @@ class DatabaseService {
 
   async getAllWorkflows(active?: boolean): Promise<WorkflowRecord[]> {
     const client = await this.pool.connect();
-    
+
     try {
       let query = 'SELECT * FROM workflows';
       const values: any[] = [];
-      
+
       if (active !== undefined) {
         query += ' WHERE active = $1';
         values.push(active);
       }
-      
+
       query += ' ORDER BY updated_at DESC';
-      
+
       const result = await client.query(query, values);
       return result.rows;
     } finally {
@@ -308,7 +310,7 @@ class DatabaseService {
 
   async updateWorkflow(id: string, updates: Partial<Omit<WorkflowRecord, 'id' | 'created_at' | 'updated_at'>>): Promise<boolean> {
     const client = await this.pool.connect();
-    
+
     try {
       const setParts: string[] = [];
       const values: any[] = [];
@@ -325,13 +327,13 @@ class DatabaseService {
         paramCount++;
       });
 
-      setParts.push(`updated_at = NOW()`);
-      setParts.push(`version = version + 1`);
+      setParts.push('updated_at = NOW()');
+      setParts.push('version = version + 1');
       values.push(id);
 
       const query = `UPDATE workflows SET ${setParts.join(', ')} WHERE id = $${paramCount}`;
       const result = await client.query(query, values);
-      
+
       logger.info(`Workflow updated: ${id}`);
       return (result.rowCount ?? 0) > 0;
     } finally {
@@ -341,7 +343,7 @@ class DatabaseService {
 
   async deleteWorkflow(id: string): Promise<boolean> {
     const client = await this.pool.connect();
-    
+
     try {
       const result = await client.query('DELETE FROM workflows WHERE id = $1', [id]);
       logger.info(`Workflow deleted: ${id}`);
@@ -355,14 +357,14 @@ class DatabaseService {
   async createExecution(execution: Omit<ExecutionRecord, 'id' | 'start_time'>): Promise<string> {
     const client = await this.pool.connect();
     const id = uuidv4();
-    
+
     try {
       const query = `
         INSERT INTO executions (id, workflow_id, status, input_data)
         VALUES ($1, $2, $3, $4)
         RETURNING id
       `;
-      
+
       const values = [
         id,
         execution.workflow_id,
@@ -379,7 +381,7 @@ class DatabaseService {
 
   async updateExecution(id: string, updates: Partial<Omit<ExecutionRecord, 'id' | 'workflow_id' | 'start_time'>>): Promise<boolean> {
     const client = await this.pool.connect();
-    
+
     try {
       const setParts: string[] = [];
       const values: any[] = [];
@@ -397,12 +399,12 @@ class DatabaseService {
       });
 
       if (updates.status === 'success' || updates.status === 'error' || updates.status === 'timeout') {
-        setParts.push(`end_time = NOW()`);
+        setParts.push('end_time = NOW()');
       }
 
       values.push(id);
       const query = `UPDATE executions SET ${setParts.join(', ')} WHERE id = $${paramCount}`;
-      
+
       const result = await client.query(query, values);
       return (result.rowCount ?? 0) > 0;
     } finally {
@@ -412,7 +414,7 @@ class DatabaseService {
 
   async getExecutionsForWorkflow(workflowId: string, limit = 50): Promise<ExecutionRecord[]> {
     const client = await this.pool.connect();
-    
+
     try {
       const query = `
         SELECT * FROM executions 
@@ -420,7 +422,7 @@ class DatabaseService {
         ORDER BY start_time DESC 
         LIMIT $2
       `;
-      
+
       const result = await client.query(query, [workflowId, limit]);
       return result.rows;
     } finally {
@@ -431,13 +433,13 @@ class DatabaseService {
   // Sistema de Métricas
   async recordMetric(name: string, value: number, type: string, tags?: Record<string, any>): Promise<void> {
     const client = await this.pool.connect();
-    
+
     try {
       const query = `
         INSERT INTO metrics (metric_name, metric_value, metric_type, tags)
         VALUES ($1, $2, $3, $4)
       `;
-      
+
       await client.query(query, [name, value, type, tags ? JSON.stringify(tags) : null]);
     } finally {
       client.release();
@@ -446,7 +448,7 @@ class DatabaseService {
 
   async getMetrics(name: string, hours = 24): Promise<any[]> {
     const client = await this.pool.connect();
-    
+
     try {
       const query = `
         SELECT * FROM metrics 
@@ -454,7 +456,7 @@ class DatabaseService {
         AND timestamp > NOW() - INTERVAL '${hours} hours'
         ORDER BY timestamp DESC
       `;
-      
+
       const result = await client.query(query, [name]);
       return result.rows;
     } finally {
@@ -465,7 +467,7 @@ class DatabaseService {
   // Estadísticas y Analytics
   async getWorkflowStats(): Promise<any> {
     const client = await this.pool.connect();
-    
+
     try {
       const [totalWorkflows, activeWorkflows, totalExecutions, recentExecutions] = await Promise.all([
         client.query('SELECT COUNT(*) as count FROM workflows'),
@@ -497,13 +499,13 @@ class DatabaseService {
     let client;
     try {
       // Add timeout to prevent hanging connections
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Health check timeout')), 5000)
       );
-      
+
       const connectPromise = this.pool.connect();
       client = await Promise.race([connectPromise, timeoutPromise]) as PoolClient;
-      
+
       await client.query('SELECT 1');
       return true;
     } catch (error: any) {

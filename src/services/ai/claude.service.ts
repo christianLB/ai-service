@@ -129,7 +129,7 @@ export class ClaudeAIService {
 
     try {
       const prompt = this.buildTradingAnalysisPrompt(context, signal);
-      
+
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: 1000,
@@ -167,7 +167,7 @@ export class ClaudeAIService {
 
     try {
       const prompt = this.buildMarketAnalysisPrompt(symbols, marketData);
-      
+
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: 2000,
@@ -209,7 +209,7 @@ export class ClaudeAIService {
 
     try {
       const prompt = this.buildStrategyGenerationPrompt(requirements);
-      
+
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: 3000,
@@ -277,10 +277,10 @@ Generate strategies that are practical, implementable, and aligned with the user
   }
 
   private buildTradingAnalysisPrompt(context: TradingContext, signal?: any): string {
-    let prompt = `Analyze this trading opportunity:\n\n`;
+    let prompt = 'Analyze this trading opportunity:\n\n';
 
     if (signal) {
-      prompt += `SIGNAL DETAILS:\n`;
+      prompt += 'SIGNAL DETAILS:\n';
       prompt += `- Symbol: ${signal.symbol}\n`;
       prompt += `- Exchange: ${signal.exchange}\n`;
       prompt += `- Action: ${signal.action}\n`;
@@ -288,7 +288,7 @@ Generate strategies that are practical, implementable, and aligned with the user
       prompt += `- Strategy: ${signal.strategyId || 'Manual'}\n\n`;
     }
 
-    prompt += `MARKET CONTEXT:\n`;
+    prompt += 'MARKET CONTEXT:\n';
     prompt += `- Symbol: ${context.symbol}\n`;
     prompt += `- Exchange: ${context.exchange}\n`;
     prompt += `- Current Price: $${context.currentPrice.toFixed(2)}\n`;
@@ -298,7 +298,7 @@ Generate strategies that are practical, implementable, and aligned with the user
     prompt += `- Order Book Spread: ${context.orderBook.spread.toFixed(2)}%\n`;
 
     if (context.technicalIndicators) {
-      prompt += `\nTECHNICAL INDICATORS:\n`;
+      prompt += '\nTECHNICAL INDICATORS:\n';
       prompt += `- RSI: ${context.technicalIndicators.rsi?.toFixed(1) || 'N/A'}\n`;
       prompt += `- Trend: ${context.technicalIndicators.trend || 'N/A'}\n`;
       if (context.technicalIndicators.macd) {
@@ -307,14 +307,14 @@ Generate strategies that are practical, implementable, and aligned with the user
     }
 
     if (context.portfolio) {
-      prompt += `\nPORTFOLIO STATUS:\n`;
+      prompt += '\nPORTFOLIO STATUS:\n';
       prompt += `- Total Value: $${context.portfolio.totalValue?.toFixed(2) || '0'}\n`;
       prompt += `- Open Positions: ${Object.keys(context.portfolio.exposure || {}).length}\n`;
       prompt += `- Concentration Risk: ${context.portfolio.rebalanceNeeded ? 'HIGH' : 'LOW'}\n`;
     }
 
     if (context.recentPerformance) {
-      prompt += `\nRECENT PERFORMANCE:\n`;
+      prompt += '\nRECENT PERFORMANCE:\n';
       prompt += `- Win Rate: ${(context.recentPerformance.winRate * 100).toFixed(1)}%\n`;
       prompt += `- Total PnL: $${context.recentPerformance.totalPnl?.toFixed(2) || '0'}\n`;
     }
@@ -334,7 +334,7 @@ Format your response as a JSON object.`;
   }
 
   private buildMarketAnalysisPrompt(symbols: string[], marketData: any[]): string {
-    let prompt = `Analyze the current market conditions for the following assets:\n\n`;
+    let prompt = 'Analyze the current market conditions for the following assets:\n\n';
 
     symbols.forEach((symbol, index) => {
       const data = marketData[index];
@@ -390,7 +390,7 @@ Format your response as a JSON object with clear structure.`;
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       return {
         action: parsed.action || 'hold',
         confidence: Math.min(1, Math.max(0, parsed.confidence || 0.5)),
@@ -407,7 +407,7 @@ Format your response as a JSON object with clear structure.`;
       };
     } catch (error) {
       logger.error('Failed to parse Claude trading decision', error);
-      
+
       // Return a conservative default decision
       return {
         action: 'hold',
@@ -432,7 +432,7 @@ Format your response as a JSON object with clear structure.`;
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       return {
         summary: parsed.summary || 'Market analysis completed',
         opportunities: parsed.opportunities || [],
@@ -441,7 +441,7 @@ Format your response as a JSON object with clear structure.`;
       };
     } catch (error) {
       logger.error('Failed to parse Claude market analysis', error);
-      
+
       return {
         summary: 'Failed to parse market analysis',
         opportunities: [],
@@ -467,15 +467,15 @@ Format your response as a JSON object with clear structure.`;
 
   private calculateDefaultStopLoss(currentPrice: number, action: string): number {
     // Default 3% stop loss
-    return action === 'buy' 
-      ? currentPrice * 0.97 
+    return action === 'buy'
+      ? currentPrice * 0.97
       : currentPrice * 1.03;
   }
 
   private calculateDefaultTakeProfit(currentPrice: number, action: string): number {
     // Default 6% take profit
-    return action === 'buy' 
-      ? currentPrice * 1.06 
+    return action === 'buy'
+      ? currentPrice * 1.06
       : currentPrice * 0.94;
   }
 

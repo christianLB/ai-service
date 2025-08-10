@@ -1,27 +1,27 @@
-import { logger } from "../utils/log";
-import { db } from "./database";
-import { metricsService } from "./metrics";
+import { logger } from '../utils/log';
+import { db } from './database';
+import { metricsService } from './metrics';
 
 // Taxonomía oficial del sistema neuronal
 export enum ComponentType {
-  CORE = "core",
-  HEMISPHERE = "hemisphere",
-  EXTREMITY = "extremity",
-  RAMIFICATION = "ramification",
+  CORE = 'core',
+  HEMISPHERE = 'hemisphere',
+  EXTREMITY = 'extremity',
+  RAMIFICATION = 'ramification',
 }
 
 export enum HealthStatus {
-  OPTIMAL = "optimal", // 🟢 100% funcional
-  DEGRADED = "degraded", // 🟡 Funcional con limitaciones
-  CRITICAL = "critical", // 🟠 Barely functional
-  OFFLINE = "offline", // 🔴 No funcional
+  OPTIMAL = 'optimal', // 🟢 100% funcional
+  DEGRADED = 'degraded', // 🟡 Funcional con limitaciones
+  CRITICAL = 'critical', // 🟠 Barely functional
+  OFFLINE = 'offline', // 🔴 No funcional
 }
 
 export enum OperationMode {
-  COMPLETE = "complete", // Todos los sistemas activos
-  ESSENTIAL = "essential", // Solo core + hemisferios básicos
-  CRITICAL = "critical", // Solo funciones vitales
-  EMERGENCY = "emergency", // Modo supervivencia
+  COMPLETE = 'complete', // Todos los sistemas activos
+  ESSENTIAL = 'essential', // Solo core + hemisferios básicos
+  CRITICAL = 'critical', // Solo funciones vitales
+  EMERGENCY = 'emergency', // Modo supervivencia
 }
 
 export interface NeuralComponent {
@@ -80,8 +80,8 @@ export class NeuralOrchestrator {
   private initializeComponents(): void {
     // CORE COMPONENTS
     this.registerComponent({
-      id: "database",
-      name: "PostgreSQL Database",
+      id: 'database',
+      name: 'PostgreSQL Database',
       type: ComponentType.CORE,
       status: HealthStatus.OPTIMAL,
       dependencies: [],
@@ -92,8 +92,8 @@ export class NeuralOrchestrator {
     });
 
     this.registerComponent({
-      id: "express-server",
-      name: "Express HTTP Server",
+      id: 'express-server',
+      name: 'Express HTTP Server',
       type: ComponentType.CORE,
       status: HealthStatus.OPTIMAL,
       dependencies: [],
@@ -105,11 +105,11 @@ export class NeuralOrchestrator {
 
     // HEMISPHERES
     this.registerComponent({
-      id: "financial-hemisphere",
-      name: "Financial Intelligence Hemisphere",
+      id: 'financial-hemisphere',
+      name: 'Financial Intelligence Hemisphere',
       type: ComponentType.HEMISPHERE,
       status: HealthStatus.OPTIMAL,
-      dependencies: ["database", "openai-api", "gocardless-api"],
+      dependencies: ['database', 'openai-api', 'gocardless-api'],
       healthCheckFn: this.checkFinancialHemisphere.bind(this),
       lastCheck: new Date(),
       errorCount: 0,
@@ -117,11 +117,11 @@ export class NeuralOrchestrator {
     });
 
     this.registerComponent({
-      id: "document-hemisphere",
-      name: "Document Intelligence Hemisphere",
+      id: 'document-hemisphere',
+      name: 'Document Intelligence Hemisphere',
       type: ComponentType.HEMISPHERE,
       status: HealthStatus.OPTIMAL,
-      dependencies: ["database", "openai-api", "filesystem"],
+      dependencies: ['database', 'openai-api', 'filesystem'],
       healthCheckFn: this.checkDocumentHemisphere.bind(this),
       lastCheck: new Date(),
       errorCount: 0,
@@ -129,11 +129,11 @@ export class NeuralOrchestrator {
     });
 
     this.registerComponent({
-      id: "workflow-hemisphere",
-      name: "Workflow Automation Hemisphere",
+      id: 'workflow-hemisphere',
+      name: 'Workflow Automation Hemisphere',
       type: ComponentType.HEMISPHERE,
       status: HealthStatus.OPTIMAL,
-      dependencies: ["database", "n8n-api"],
+      dependencies: ['database', 'n8n-api'],
       healthCheckFn: this.checkWorkflowHemisphere.bind(this),
       lastCheck: new Date(),
       errorCount: 0,
@@ -142,11 +142,11 @@ export class NeuralOrchestrator {
 
     // EXTREMITIES
     this.registerComponent({
-      id: "communication-extremity",
-      name: "Communication Extremity (Telegram)",
+      id: 'communication-extremity',
+      name: 'Communication Extremity (Telegram)',
       type: ComponentType.EXTREMITY,
       status: HealthStatus.OPTIMAL,
-      dependencies: ["telegram-api"],
+      dependencies: ['telegram-api'],
       healthCheckFn: this.checkCommunicationExtremity.bind(this),
       lastCheck: new Date(),
       errorCount: 0,
@@ -154,8 +154,8 @@ export class NeuralOrchestrator {
     });
 
     this.registerComponent({
-      id: "metrics-extremity",
-      name: "Metrics & Monitoring Extremity",
+      id: 'metrics-extremity',
+      name: 'Metrics & Monitoring Extremity',
       type: ComponentType.EXTREMITY,
       status: HealthStatus.OPTIMAL,
       dependencies: [],
@@ -167,8 +167,8 @@ export class NeuralOrchestrator {
 
     // EXTERNAL DEPENDENCIES
     this.registerComponent({
-      id: "openai-api",
-      name: "OpenAI API",
+      id: 'openai-api',
+      name: 'OpenAI API',
       type: ComponentType.RAMIFICATION,
       status: HealthStatus.OPTIMAL,
       dependencies: [],
@@ -179,8 +179,8 @@ export class NeuralOrchestrator {
     });
 
     this.registerComponent({
-      id: "gocardless-api",
-      name: "GoCardless API",
+      id: 'gocardless-api',
+      name: 'GoCardless API',
       type: ComponentType.RAMIFICATION,
       status: HealthStatus.OPTIMAL,
       dependencies: [],
@@ -199,7 +199,7 @@ export class NeuralOrchestrator {
   }
 
   async startMonitoring(): Promise<void> {
-    logger.info("🧠 Neural Orchestrator starting continuous monitoring...");
+    logger.info('🧠 Neural Orchestrator starting continuous monitoring...');
 
     // Initial evaluation
     await this.evaluateSystemHealth();
@@ -209,7 +209,7 @@ export class NeuralOrchestrator {
       try {
         await this.evaluateSystemHealth();
       } catch (error: any) {
-        logger.error("🚨 Neural Orchestrator monitoring error:", error);
+        logger.error('🚨 Neural Orchestrator monitoring error:', error);
       }
     }, this.MONITORING_INTERVAL);
   }
@@ -218,7 +218,7 @@ export class NeuralOrchestrator {
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
-      logger.info("🧠 Neural Orchestrator monitoring stopped");
+      logger.info('🧠 Neural Orchestrator monitoring stopped');
     }
   }
 
@@ -256,7 +256,7 @@ export class NeuralOrchestrator {
 
       return this.systemState;
     } catch (error: any) {
-      logger.error("🚨 Neural system evaluation failed:", error);
+      logger.error('🚨 Neural system evaluation failed:', error);
       throw error;
     }
   }
@@ -358,9 +358,15 @@ export class NeuralOrchestrator {
       (c) => c.status === HealthStatus.DEGRADED
     ).length;
 
-    if (offlineCount > 0) return HealthStatus.CRITICAL;
-    if (criticalCount > 0) return HealthStatus.DEGRADED;
-    if (degradedCount > 0) return HealthStatus.DEGRADED;
+    if (offlineCount > 0) {
+      return HealthStatus.CRITICAL;
+    }
+    if (criticalCount > 0) {
+      return HealthStatus.DEGRADED;
+    }
+    if (degradedCount > 0) {
+      return HealthStatus.DEGRADED;
+    }
 
     return HealthStatus.OPTIMAL;
   }
@@ -402,7 +408,7 @@ export class NeuralOrchestrator {
       .filter((c) => c.status !== HealthStatus.OPTIMAL)
       .map((c) => c.name);
 
-    return failures.length > 0 ? failures.join(", ") : "Unknown trigger";
+    return failures.length > 0 ? failures.join(', ') : 'Unknown trigger';
   }
 
   private getAffectedComponents(): string[] {
@@ -416,13 +422,13 @@ export class NeuralOrchestrator {
     to: OperationMode
   ): string {
     const descriptions = {
-      [OperationMode.COMPLETE]: "Sistema neuronal en capacidad completa",
+      [OperationMode.COMPLETE]: 'Sistema neuronal en capacidad completa',
       [OperationMode.ESSENTIAL]:
-        "Sistema neuronal en modo esencial - funcionalidades básicas",
+        'Sistema neuronal en modo esencial - funcionalidades básicas',
       [OperationMode.CRITICAL]:
-        "Sistema neuronal en modo crítico - solo funciones vitales",
+        'Sistema neuronal en modo crítico - solo funciones vitales',
       [OperationMode.EMERGENCY]:
-        "Sistema neuronal en emergencia - modo supervivencia",
+        'Sistema neuronal en emergencia - modo supervivencia',
     };
 
     return `${descriptions[from]} → ${descriptions[to]}`;
@@ -458,10 +464,10 @@ export class NeuralOrchestrator {
 
   private getAlertLevel(mode: OperationMode): string {
     const levels = {
-      [OperationMode.COMPLETE]: "🟢 NEURAL OPTIMAL",
-      [OperationMode.ESSENTIAL]: "🟡 NEURAL DEGRADED",
-      [OperationMode.CRITICAL]: "🟠 NEURAL CRITICAL",
-      [OperationMode.EMERGENCY]: "🔴 NEURAL EMERGENCY",
+      [OperationMode.COMPLETE]: '🟢 NEURAL OPTIMAL',
+      [OperationMode.ESSENTIAL]: '🟡 NEURAL DEGRADED',
+      [OperationMode.CRITICAL]: '🟠 NEURAL CRITICAL',
+      [OperationMode.EMERGENCY]: '🔴 NEURAL EMERGENCY',
     };
 
     return levels[mode];

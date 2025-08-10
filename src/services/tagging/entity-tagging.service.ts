@@ -61,7 +61,7 @@ export class EntityTaggingService implements IEntityTaggingService {
       }
 
       // Get tag suggestions based on method
-      let suggestedTags: Array<{ tagId: string; confidence: number; method: TagMethod }> = [];
+      const suggestedTags: Array<{ tagId: string; confidence: number; method: TagMethod }> = [];
 
       if (request.method === 'ai' || request.method === 'auto') {
         // Use AI for tagging
@@ -144,7 +144,7 @@ export class EntityTaggingService implements IEntityTaggingService {
             // Update tag usage count
             await tx.universalTag.update({
               where: { id: suggestion.tagId },
-              data: { 
+              data: {
                 usageCount: { increment: 1 },
                 lastUsed: new Date()
               }
@@ -754,7 +754,9 @@ export class EntityTaggingService implements IEntityTaggingService {
   }
 
   private getEntityPreview(entity: any, type: EntityType): string {
-    if (!entity) return 'N/A';
+    if (!entity) {
+      return 'N/A';
+    }
 
     switch (type) {
       case 'transaction':
