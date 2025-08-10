@@ -17,8 +17,8 @@ export class CryptoOrchestrator {
       await c.connect();
       const balances = await c.getBalances();
       const txs = await c.getTransactions();
-      console.log(`[${c.name}] balances`, balances.length);
-      console.log(`[${c.name}] tx`, txs.length);
+      // console.log(`[${c.name}] balances`, balances.length);
+      // console.log(`[${c.name}] tx`, txs.length);
       // Here store in DB
     }
   }

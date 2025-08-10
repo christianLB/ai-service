@@ -154,7 +154,7 @@ export const UniversalTagForm: React.FC<UniversalTagFormProps> = ({
             name="patterns"
             control={control}
             render={({ field }) => (
-              <TextArea {...field} rows={4} placeholder="Enter JSON data" />
+              <TextArea {...field} value={field.value as string} rows={4} placeholder="Enter JSON data" />
             )}
           />
           {errors.patterns && (
@@ -166,7 +166,7 @@ export const UniversalTagForm: React.FC<UniversalTagFormProps> = ({
             name="rules"
             control={control}
             render={({ field }) => (
-              <TextArea {...field} rows={4} placeholder="Enter JSON data" />
+              <TextArea {...field} value={field.value as string} rows={4} placeholder="Enter JSON data" />
             )}
           />
           {errors.rules && (
@@ -279,7 +279,7 @@ export const UniversalTagForm: React.FC<UniversalTagFormProps> = ({
             name="metadata"
             control={control}
             render={({ field }) => (
-              <TextArea {...field} rows={4} placeholder="Enter JSON data" />
+              <TextArea {...field} value={field.value as string} rows={4} placeholder="Enter JSON data" />
             )}
           />
           {errors.metadata && (

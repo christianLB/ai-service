@@ -7,7 +7,7 @@ export class Logger {
 
   private formatMessage(level: string, message: string, ...args: any[]): void {
     const timestamp = new Date().toISOString();
-    console.log(`${timestamp} [${level}] [${this.context}] ${message}`, ...args);
+    // console.log(`${timestamp} [${level}] [${this.context}] ${message}`, ...args);
   }
 
   info(message: string, ...args: any[]): void {

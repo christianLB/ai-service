@@ -88,7 +88,7 @@ export function useClientMutations() {
       message.success(response.message || 'Client created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create client');
+      message.error((error as any).response?.data?.message || 'Failed to create client');
     },
   });
 
@@ -103,7 +103,7 @@ export function useClientMutations() {
       message.success(response.message || 'Client updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update client');
+      message.error((error as any).response?.data?.message || 'Failed to update client');
     },
   });
 
@@ -117,7 +117,7 @@ export function useClientMutations() {
       message.success(response.message || 'Client deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete client');
+      message.error((error as any).response?.data?.message || 'Failed to delete client');
     },
   });
 
@@ -134,7 +134,7 @@ export function useClientMutations() {
       message.success(response.message || 'Clients deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete clients');
+      message.error((error as any).response?.data?.message || 'Failed to delete clients');
     },
   });
 

@@ -10,7 +10,7 @@ interface BruteForceOptions {
 export function createBruteForceProtection(pool: Pool, options: BruteForceOptions) {
   const { maxAttempts, windowMs, blockDurationMs } = options;
 
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, res: Response, _next: NextFunction: Promise<void> => {
     const email = req.body.email;
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
 
@@ -78,7 +78,7 @@ export async function cleanupLoginAttempts(pool: Pool, retentionDays: number = 7
     `;
 
     const result = await pool.query(query);
-    console.log(`Cleaned up ${result.rowCount} old login attempts`);
+    // console.log(`Cleaned up ${result.rowCount} old login attempts`);
   } catch (error) {
     console.error('Error cleaning up login attempts:', error);
   }

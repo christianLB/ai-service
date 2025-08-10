@@ -66,7 +66,7 @@ class DatabaseService {
 
     try {
       // Log connection details (without password)
-      console.log('[DB] Attempting database connection...');
+      // console.log('[DB] Attempting database connection...');
       logger.info('Attempting database connection:', {
         host: process.env.POSTGRES_HOST,
         port: process.env.POSTGRES_PORT,
@@ -86,7 +86,7 @@ class DatabaseService {
       await Promise.race([initPromise, timeoutPromise]);
 
       this.initialized = true;
-      console.log('[DB] Database service initialized successfully');
+      // console.log('[DB] Database service initialized successfully');
       logger.info('Database service initialized successfully');
     } catch (error: any) {
       console.error('[DB] Database initialization failed:', error.message);
@@ -103,7 +103,7 @@ class DatabaseService {
   }
 
   private async createTables(): Promise<void> {
-    console.log('[DB] Getting pool connection...');
+    // console.log('[DB] Getting pool connection...');
     let client;
     try {
       // Add timeout for getting connection from pool
@@ -115,7 +115,7 @@ class DatabaseService {
       });
 
       client = await Promise.race([connectPromise, timeoutPromise]) as PoolClient;
-      console.log('[DB] Pool connection obtained!');
+      // console.log('[DB] Pool connection obtained!');
     } catch (error: any) {
       console.error('[DB] Failed to get pool connection:', error.message);
       throw error;

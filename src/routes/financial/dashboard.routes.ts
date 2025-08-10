@@ -41,7 +41,7 @@ const initializeServices = () => {
  * GET /api/financial/dashboard/metrics
  * Get comprehensive dashboard metrics using Prisma (with feature flag)
  */
-router.get('/metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     initializeServices();
 
@@ -97,7 +97,7 @@ router.get('/metrics', authMiddleware, databaseRateLimit, async (req: Request, r
  * GET /api/financial/dashboard/revenue-metrics
  * Get comprehensive revenue metrics with trends and comparisons
  */
-router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     initializeServices();
 
@@ -388,7 +388,7 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
  * GET /api/financial/dashboard/invoice-stats
  * Get detailed invoice statistics with status breakdown and aging analysis
  */
-router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     initializeServices();
 
@@ -599,7 +599,7 @@ router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Requ
  * GET /api/financial/dashboard/client-metrics
  * Get client performance metrics including payment behavior and revenue analysis
  */
-router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     initializeServices();
 
@@ -847,7 +847,7 @@ router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Req
  * GET /api/financial/dashboard/cash-flow
  * Get cash flow projections based on outstanding invoices and payment history
  */
-router.get('/cash-flow', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/cash-flow', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     initializeServices();
 
@@ -1071,7 +1071,7 @@ router.get('/cash-flow', authMiddleware, databaseRateLimit, async (req: Request,
  * GET /api/financial/dashboard/yearly-report
  * Get yearly financial report with income/expense matrix by category and month
  */
-router.get('/yearly-report', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/yearly-report', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     initializeServices();
 
@@ -1116,7 +1116,7 @@ router.get('/yearly-report', authMiddleware, databaseRateLimit, async (req: Requ
  * GET /api/financial/dashboard/health
  * Health check for dashboard endpoints
  */
-router.get('/health', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/health', async (req: Request, res: Response, _next: NextFunction => {
   try {
     initializeServices();
 

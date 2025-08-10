@@ -88,7 +88,7 @@ export function useTradeMutations() {
       message.success(response.message || 'Trade created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create trade');
+      message.error((error as any).response?.data?.message || 'Failed to create trade');
     },
   });
 
@@ -103,7 +103,7 @@ export function useTradeMutations() {
       message.success(response.message || 'Trade updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update trade');
+      message.error((error as any).response?.data?.message || 'Failed to update trade');
     },
   });
 
@@ -117,7 +117,7 @@ export function useTradeMutations() {
       message.success(response.message || 'Trade deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete trade');
+      message.error((error as any).response?.data?.message || 'Failed to delete trade');
     },
   });
 
@@ -134,7 +134,7 @@ export function useTradeMutations() {
       message.success(response.message || 'Trades deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete trades');
+      message.error((error as any).response?.data?.message || 'Failed to delete trades');
     },
   });
 

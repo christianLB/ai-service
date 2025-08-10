@@ -5,7 +5,7 @@ export interface Strategy {
   name: string;
   type: string;
   status: string;
-  parameters: any;
+  parameters: unknown;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -14,7 +14,7 @@ export interface CreateStrategy {
   name: string;
   type: string;
   status: string;
-  parameters: any;
+  parameters: unknown;
 }
 
 export interface UpdateStrategy extends Partial<CreateStrategy> {

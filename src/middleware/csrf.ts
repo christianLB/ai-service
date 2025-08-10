@@ -14,7 +14,7 @@ const generateToken = (): string => {
 };
 
 // CSRF protection middleware
-export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
+export const csrfProtection = (req: Request, res: Response, _next: NextFunction): void => {
   // Skip CSRF for safe methods
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     next();
@@ -51,7 +51,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
 };
 
 // Error handler for CSRF token failures
-export const csrfErrorHandler = (err: any, req: Request, res: Response, next: NextFunction): void => {
+export const csrfErrorHandler = (err: any, req: Request, res: Response, _next: NextFunction): void => {
   // This is for compatibility with the app error handler structure
   next(err);
 };

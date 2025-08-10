@@ -13,7 +13,7 @@ export interface AuthRequest extends Request {
 // Type assertion helper
 export const authMiddlewareWrapper = (middleware: any) => middleware as any;
 
-export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): void {
+export function authMiddleware(req: AuthRequest, res: Response, _next: NextFunction): void {
 
   // Get token from header
   const authHeader = req.headers.authorization;
@@ -51,7 +51,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
       role: decoded.role
     };
 
-    next();
+    _next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       res.status(401).json({ error: 'Token expired' });
@@ -64,7 +64,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
 
 // Role-based access control middleware
 export function requireRole(...roles: string[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  return (req: AuthRequest, res: Response, _next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
@@ -75,6 +75,6 @@ export function requireRole(...roles: string[]) {
       return;
     }
 
-    next();
+    _next();
   };
 }

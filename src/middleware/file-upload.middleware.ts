@@ -171,7 +171,7 @@ export const createUploadMiddleware = (options: {
 };
 
 // Error handling middleware for multer errors
-export const handleUploadError = (error: any, req: Request, res: Response, next: NextFunction): void => {
+export const handleUploadError = (error: any, req: Request, res: Response, _next: NextFunction): void => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
       res.status(413).json({

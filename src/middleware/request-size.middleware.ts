@@ -15,7 +15,7 @@ export const SIZE_LIMITS = {
 
 // Create middleware for request size validation
 export const createSizeLimitMiddleware = (limit: string | number) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response, _next: NextFunction): void => {
     // Skip if no content-length header
     const contentLength = req.headers['content-length'];
     if (!contentLength) {

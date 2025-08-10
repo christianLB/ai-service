@@ -56,7 +56,7 @@ export class DocumentStorageService {
       await fs.mkdir(this.basePath, { recursive: true });
       await fs.mkdir(path.join(this.basePath, 'thumbnails'), { recursive: true });
       await fs.mkdir(path.join(this.basePath, 'temp'), { recursive: true });
-      console.log('✅ Document storage initialized at:', this.basePath);
+      // console.log('✅ Document storage initialized at:', this.basePath);
     } catch (error) {
       console.error('❌ Failed to initialize document storage:', error);
       throw error;

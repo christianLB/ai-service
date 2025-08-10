@@ -11,7 +11,7 @@ import { standardRateLimit } from '../middleware/express-rate-limit.middleware';
 
 const router = Router();
 
-router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req: Request, res: Response, _next: NextFunction => {
   const startTime = Date.now();
   const { description, save = true } = req.body;
 
@@ -122,7 +122,7 @@ router.post('/flow-gen', standardRateLimit, validate(flowGenSchema), async (req:
 });
 
 // Endpoint para obtener workflows guardados
-router.get('/flows', standardRateLimit, validate(getFlowsSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/flows', standardRateLimit, validate(getFlowsSchema), async (req: Request, res: Response, _next: NextFunction => {
   try {
     const { active } = req.query;
     const activeFilter = active === 'true' ? true : active === 'false' ? false : undefined;
@@ -140,7 +140,7 @@ router.get('/flows', standardRateLimit, validate(getFlowsSchema), async (req: Re
 });
 
 // Endpoint para obtener un workflow específico
-router.get('/flows/:id', standardRateLimit, validate(getFlowByIdSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/flows/:id', standardRateLimit, validate(getFlowByIdSchema), async (req: Request, res: Response, _next: NextFunction => {
   try {
     const { id } = req.params;
     const workflow = await db.getWorkflow(id);
@@ -163,7 +163,7 @@ router.get('/flows/:id', standardRateLimit, validate(getFlowByIdSchema), async (
 });
 
 // Endpoint para métricas
-router.get('/metrics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/metrics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     const metrics = await metricsService.getMetrics();
     res.set('Content-Type', 'text/plain');
@@ -175,7 +175,7 @@ router.get('/metrics', standardRateLimit, async (req: Request, res: Response, ne
 });
 
 // Endpoint para métricas en JSON
-router.get('/metrics/json', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/metrics/json', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     const metrics = await metricsService.getMetricsJson();
     res.json(metrics);
@@ -186,7 +186,7 @@ router.get('/metrics/json', standardRateLimit, async (req: Request, res: Respons
 });
 
 // Endpoint para reporte de rendimiento
-router.get('/performance', standardRateLimit, validate(getPerformanceSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/performance', standardRateLimit, validate(getPerformanceSchema), async (req: Request, res: Response, _next: NextFunction => {
   try {
     const hours = parseInt(req.query.hours as string) || 24;
     const report = await metricsService.getPerformanceReport(hours);

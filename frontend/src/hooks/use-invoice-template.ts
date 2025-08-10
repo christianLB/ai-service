@@ -89,7 +89,7 @@ export function useInvoiceTemplateMutations() {
       message.success(response.message || 'InvoiceTemplate created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create invoicetemplate');
+      message.error((error as any).response?.data?.message || 'Failed to create invoicetemplate');
     },
   });
 
@@ -104,7 +104,7 @@ export function useInvoiceTemplateMutations() {
       message.success(response.message || 'InvoiceTemplate updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update invoicetemplate');
+      message.error((error as any).response?.data?.message || 'Failed to update invoicetemplate');
     },
   });
 
@@ -118,7 +118,7 @@ export function useInvoiceTemplateMutations() {
       message.success(response.message || 'InvoiceTemplate deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete invoicetemplate');
+      message.error((error as any).response?.data?.message || 'Failed to delete invoicetemplate');
     },
   });
 
@@ -135,7 +135,7 @@ export function useInvoiceTemplateMutations() {
       message.success(response.message || 'InvoiceTemplates deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete invoicetemplates');
+      message.error((error as any).response?.data?.message || 'Failed to delete invoicetemplates');
     },
   });
 
@@ -167,7 +167,7 @@ export function useCreateInvoiceTemplate() {
       message.success(response.message || 'Invoice template created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create invoice template');
+      message.error((error as any).response?.data?.message || 'Failed to create invoice template');
     },
   });
 }
@@ -186,7 +186,7 @@ export function useUpdateInvoiceTemplate() {
       message.success(response.message || 'Invoice template updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update invoice template');
+      message.error((error as any).response?.data?.message || 'Failed to update invoice template');
     },
   });
 }
@@ -204,7 +204,7 @@ export function useDeleteInvoiceTemplate() {
       message.success(response.message || 'Invoice template deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete invoice template');
+      message.error((error as any).response?.data?.message || 'Failed to delete invoice template');
     },
   });
 }

@@ -425,11 +425,13 @@ class TradingService {
       unsubscribe: (channels: string[]) => {
         console.log('Mock unsubscribe:', channels);
       },
-      on: (event: string, _callback: (data: unknown) => void) => {
+      on: (event: string, callback: (data: unknown) => void) => {
         console.log('Mock on:', event);
+        void callback; // Intentionally unused in mock
       },
-      off: (event: string, _callback?: (data: unknown) => void) => {
+      off: (event: string, callback?: (data: unknown) => void) => {
         console.log('Mock off:', event);
+        void callback; // Intentionally unused in mock
       },
       disconnect: () => {
         console.log('Mock disconnect');

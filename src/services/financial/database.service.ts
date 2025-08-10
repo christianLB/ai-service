@@ -35,7 +35,7 @@ export class FinancialDatabaseService {
     try {
       // Test connection
       await client.query('SELECT NOW()');
-      console.log('Financial database connected successfully');
+      // console.log('Financial database connected successfully');
     } finally {
       client.release();
     }

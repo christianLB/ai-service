@@ -46,7 +46,7 @@ export function createAuthRoutes(pool: Pool): Router {
       body('email').isEmail().normalizeEmail(),
       body('password').notEmpty().trim()
     ],
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction => {
       try {
         // Validate input
         const errors = validationResult(req);
@@ -125,7 +125,7 @@ export function createAuthRoutes(pool: Pool): Router {
   router.post(
     '/refresh',
     [body('refreshToken').notEmpty()],
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction => {
       try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -158,7 +158,7 @@ export function createAuthRoutes(pool: Pool): Router {
         return;
       }
 
-      console.log('Getting user with ID:', req.user.userId);
+      // console.log('Getting user with ID:', req.user.userId);
       const user = await authService.getCurrentUser(req.user.userId);
       res.json({
         id: user.id,
@@ -185,7 +185,7 @@ export function createAuthRoutes(pool: Pool): Router {
         body('password').isLength({ min: 8 }).trim(),
         body('fullName').notEmpty().trim()
       ],
-      async (req: Request, res: Response, next: NextFunction) => {
+      async (req: Request, res: Response, _next: NextFunction => {
         try {
           const errors = validationResult(req);
           if (!errors.isEmpty()) {

@@ -86,8 +86,8 @@ export function useEntityTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'EntityTag created successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to create entitytag');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to create entitytag');
     },
   });
 
@@ -101,8 +101,8 @@ export function useEntityTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'EntityTag updated successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to update entitytag');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to update entitytag');
     },
   });
 
@@ -115,8 +115,8 @@ export function useEntityTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'EntityTag deleted successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete entitytag');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to delete entitytag');
     },
   });
 
@@ -132,8 +132,8 @@ export function useEntityTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'EntityTags deleted successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete entitytags');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to delete entitytags');
     },
   });
 

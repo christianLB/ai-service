@@ -11,7 +11,7 @@ import { standardRateLimit } from '../middleware/express-rate-limit.middleware';
 
 const router = Router();
 
-router.post('/flow-update', standardRateLimit, validate(flowUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/flow-update', standardRateLimit, validate(flowUpdateSchema), async (req: Request, res: Response, _next: NextFunction => {
   const startTime = Date.now();
   const { workflowId, changes, description } = req.body;
 

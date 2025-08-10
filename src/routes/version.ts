@@ -18,7 +18,7 @@ function getTelegramService(): TelegramService | null {
 }
 
 // Get current version information
-router.get('/version', (req: Request, res: Response, next: NextFunction) => {
+router.get('/version', (req: Request, res: Response, _next: NextFunction => {
   const versionInfo = {
     version: process.env.VERSION || 'development',
     buildDate: process.env.BUILD_DATE || 'unknown',
@@ -37,9 +37,9 @@ router.get('/version', (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Watchtower deployment notification endpoint
-router.post('/watchtower/notify', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/watchtower/notify', async (req: Request, res: Response, _next: NextFunction => {
   try {
-    console.log('📦 Watchtower notification received:', req.body);
+    // console.log('📦 Watchtower notification received:', req.body);
 
     const notification = req.body;
 
@@ -58,7 +58,7 @@ router.post('/watchtower/notify', async (req: Request, res: Response, next: Next
     try {
       const telegramService = getTelegramService();
       if (!telegramService) {
-        console.log('⚠️ Telegram service not available for notifications');
+        // console.log('⚠️ Telegram service not available for notifications');
         res.json({
           success: true,
           message: 'Notification processed (Telegram unavailable)',
@@ -86,13 +86,13 @@ router.post('/watchtower/notify', async (req: Request, res: Response, next: Next
       // Send to configured admin chat
       await telegramService.sendAlert(alert);
 
-      console.log('✅ Deployment notification sent via Telegram');
+      // console.log('✅ Deployment notification sent via Telegram');
     } catch (telegramError) {
       console.error('❌ Failed to send Telegram notification:', telegramError);
     }
 
     // Log deployment
-    console.log(`🎉 Deployment completed: ${versionInfo.version} (${versionInfo.commit})`);
+    // console.log(`🎉 Deployment completed: ${versionInfo.version} (${versionInfo.commit})`);
 
     res.json({
       success: true,
@@ -110,7 +110,7 @@ router.post('/watchtower/notify', async (req: Request, res: Response, next: Next
 });
 
 // Manual deployment test notification
-router.post('/test-notification', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/test-notification', async (req: Request, res: Response, _next: NextFunction => {
   try {
     const telegramService = getTelegramService();
     if (!telegramService) {

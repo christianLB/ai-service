@@ -86,8 +86,8 @@ export function useInvoiceAttachmentMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceAttachment created successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to create invoiceattachment');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to create invoiceattachment');
     },
   });
 
@@ -101,8 +101,8 @@ export function useInvoiceAttachmentMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'InvoiceAttachment updated successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to update invoiceattachment');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to update invoiceattachment');
     },
   });
 
@@ -115,8 +115,8 @@ export function useInvoiceAttachmentMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceAttachment deleted successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete invoiceattachment');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to delete invoiceattachment');
     },
   });
 
@@ -132,8 +132,8 @@ export function useInvoiceAttachmentMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceAttachments deleted successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete invoiceattachments');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to delete invoiceattachments');
     },
   });
 

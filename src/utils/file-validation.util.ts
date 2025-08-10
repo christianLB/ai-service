@@ -9,8 +9,8 @@ export class FileValidationUtil {
     declaredMimeType: string,
     options?: any,
     providedChecksum?: string
-  ): { 
-    isValid: boolean; 
+  ): {
+    isValid: boolean;
     errors: string[];
     mimeType?: string;
     extension?: string;

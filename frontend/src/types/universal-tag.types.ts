@@ -5,8 +5,8 @@ export interface UniversalTag {
   name: string;
   description?: string;
   entityTypes: string;
-  patterns?: any;
-  rules?: any;
+  patterns?: unknown;
+  rules?: unknown;
   confidence: number;
   embeddingModel?: string;
   path: string;
@@ -15,7 +15,7 @@ export interface UniversalTag {
   icon?: string;
   isActive: boolean;
   isSystem: boolean;
-  metadata?: any;
+  metadata?: unknown;
   usageCount: number;
   successRate: number;
   lastUsed?: Date | string;
@@ -30,8 +30,8 @@ export interface CreateUniversalTag {
   name: string;
   description?: string;
   entityTypes: string;
-  patterns?: any;
-  rules?: any;
+  patterns?: unknown;
+  rules?: unknown;
   confidence: number;
   embeddingModel?: string;
   path: string;
@@ -40,7 +40,7 @@ export interface CreateUniversalTag {
   icon?: string;
   isActive: boolean;
   isSystem: boolean;
-  metadata?: any;
+  metadata?: unknown;
   usageCount: number;
   successRate: number;
   lastUsed?: Date | string;

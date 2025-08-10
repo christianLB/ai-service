@@ -288,7 +288,7 @@ export class GoCardlessService {
       });
 
       const requisition = response.data;
-      console.log('Requisition created:', {
+// console.log('Requisition created:', {
         id: requisition.id,
         institution_id: requisition.institution_id,
         link: requisition.link
@@ -313,12 +313,12 @@ export class GoCardlessService {
 
   async getRequisitionStatus(requisitionId: string): Promise<FinancialApiResponse<GoCardlessRequisition>> {
     try {
-      console.log(`[getRequisitionStatus] Fetching status for requisition: ${requisitionId}`);
+// console.log(`[getRequisitionStatus] Fetching status for requisition: ${requisitionId}`);
 
       const response = await this.api.get(`/requisitions/${requisitionId}/`);
       const requisition = response.data;
 
-      console.log('[getRequisitionStatus] Requisition status retrieved:', {
+// console.log('[getRequisitionStatus] Requisition status retrieved:', {
         id: requisition.id,
         status: requisition.status,
         accounts: requisition.accounts?.length || 0,
@@ -360,7 +360,7 @@ export class GoCardlessService {
   async deleteRequisition(requisitionId: string): Promise<void> {
     try {
       await this.api.delete(`/requisitions/${requisitionId}/`);
-      console.log('Requisition deleted:', requisitionId);
+// console.log('Requisition deleted:', requisitionId);
     } catch (error) {
       console.error('Failed to delete requisition:', error);
       throw error;
@@ -430,7 +430,7 @@ export class GoCardlessService {
           const retryAfter = apiError.response.data?.detail?.match(/(\d+) seconds/)?.[1];
           const waitTime = retryAfter ? parseInt(retryAfter) : 3600; // Default 1 hour
 
-          console.log(`Rate limit exceeded for account ${accountId}. Must wait ${Math.round(waitTime/3600)} hours.`);
+// console.log(`Rate limit exceeded for account ${accountId}. Must wait ${Math.round(waitTime/3600)} hours.`);
           throw new Error(`GoCardless rate limit exceeded. Next sync available in ${Math.round(waitTime/3600)} hours.`);
         }
         throw apiError;
@@ -475,7 +475,7 @@ export class GoCardlessService {
       let account;
       if (existingAccount.rows.length > 0) {
         // Account exists, update balance and metadata
-        console.log('Account already exists, updating balance...');
+// console.log('Account already exists, updating balance...');
         account = existingAccount.rows[0];
 
         await this.db.query(
@@ -512,7 +512,7 @@ export class GoCardlessService {
         });
       }
 
-      console.log('Account synced to database:', account.id);
+// console.log('Account synced to database:', account.id);
       return account;
     } catch (error) {
       console.error('Failed to sync account to database:', error);
@@ -527,12 +527,12 @@ export class GoCardlessService {
       const dateFrom = new Date();
       dateFrom.setDate(dateTo.getDate() - days);
 
-      console.log(`Syncing transactions for account ${accountId} from ${dateFrom.toISOString().split('T')[0]} to ${dateTo.toISOString().split('T')[0]}`);
+// console.log(`Syncing transactions for account ${accountId} from ${dateFrom.toISOString().split('T')[0]} to ${dateTo.toISOString().split('T')[0]}`);
 
       // Get transactions from GoCardless
       const transactions = await this.getAccountTransactions(accountId, dateFrom, dateTo);
 
-      console.log(`Found ${transactions.length} transactions to sync`);
+// console.log(`Found ${transactions.length} transactions to sync`);
 
       // Get EUR currency
       const eurCurrency = await this.db.getCurrencyByCode('EUR');
@@ -547,7 +547,7 @@ export class GoCardlessService {
         try {
           // Validate transaction has required data
           if (!gcTransaction.transactionAmount?.amount) {
-            console.log('Skipping transaction without amount:', gcTransaction.transactionId);
+// console.log('Skipping transaction without amount:', gcTransaction.transactionId);
             continue;
           }
 
@@ -587,7 +587,7 @@ export class GoCardlessService {
           syncedCount++;
 
           if (syncedCount % 10 === 0) {
-            console.log(`Synced ${syncedCount}/${transactions.length} transactions`);
+// console.log(`Synced ${syncedCount}/${transactions.length} transactions`);
           }
         } catch (error) {
           console.error('Failed to sync individual transaction:', gcTransaction.transactionId, error);
@@ -602,7 +602,7 @@ export class GoCardlessService {
         await this.db.updateAccountBalance(dbAccountId, currentBalance);
       }
 
-      console.log(`Successfully synced ${syncedCount} transactions for account ${accountId}`);
+// console.log(`Successfully synced ${syncedCount} transactions for account ${accountId}`);
       return syncedCount;
     } catch (error) {
       console.error('Failed to sync transactions to database:', error);
@@ -624,7 +624,7 @@ export class GoCardlessService {
       const institutionId = 'BBVA_BBVAESMM';
       const reference = `bbva-setup-${Date.now()}`;
 
-      console.log(`Setting up BBVA account with institution: ${institutionId}`);
+// console.log(`Setting up BBVA account with institution: ${institutionId}`);
 
       // Create requisition
       const requisition = await this.createRequisition(institutionId, reference);
@@ -689,7 +689,7 @@ export class GoCardlessService {
           const transactionCount = await this.syncTransactionsToDatabase(accountId, account.id, 90);
           totalTransactionsSynced += transactionCount;
 
-          console.log(`Account ${accountId} setup complete: ${transactionCount} transactions synced`);
+// console.log(`Account ${accountId} setup complete: ${transactionCount} transactions synced`);
         } catch (error) {
           console.error(`Failed to setup account ${accountId}:`, error);
           // Continue with other accounts
@@ -1053,8 +1053,8 @@ export class GoCardlessService {
     errors: string[];
   }>> {
     try {
-      console.log('=== GOCARDLESS PERIODIC SYNC ===');
-      console.log('Starting periodic sync of GoCardless accounts (balances and transactions only)...');
+// console.log('=== GOCARDLESS PERIODIC SYNC ===');
+// console.log('Starting periodic sync of GoCardless accounts (balances and transactions only)...');
 
       // Get all active bank accounts
       const accounts = await this.db.query(`
@@ -1063,7 +1063,7 @@ export class GoCardlessService {
         WHERE type = 'bank_account' AND is_active = true AND account_id IS NOT NULL
       `);
 
-      console.log(`Found ${accounts.rows.length} active bank accounts to sync`);
+// console.log(`Found ${accounts.rows.length} active bank accounts to sync`);
 
       let accountsSynced = 0;
       let totalTransactionsSynced = 0;
@@ -1072,13 +1072,13 @@ export class GoCardlessService {
 
       for (const account of accounts.rows) {
         try {
-          console.log(`Syncing account: ${account.name} (${account.account_id})`);
+// console.log(`Syncing account: ${account.name} (${account.account_id})`);
 
           // Sync balance
           const balanceResult = await this.syncAccountBalances(account.account_id);
           if (balanceResult.success) {
             balancesSynced++;
-            console.log(`✓ Balance synced for ${account.name}`);
+// console.log(`✓ Balance synced for ${account.name}`);
           } else {
             console.error(`✗ Balance sync failed for ${account.name}: ${balanceResult.error}`);
             errors.push(`${account.name} balance: ${balanceResult.error}`);
@@ -1088,7 +1088,7 @@ export class GoCardlessService {
           const transactionResult = await this.syncAccountTransactions(account.account_id, 7);
           if (transactionResult.success) {
             totalTransactionsSynced += transactionResult.data!.transactionsSynced;
-            console.log(`✓ Transactions synced for ${account.name}: ${transactionResult.data!.transactionsSynced} new`);
+// console.log(`✓ Transactions synced for ${account.name}: ${transactionResult.data!.transactionsSynced} new`);
           } else {
             console.error(`✗ Transaction sync failed for ${account.name}: ${transactionResult.error}`);
             errors.push(`${account.name} transactions: ${transactionResult.error}`);
@@ -1102,9 +1102,9 @@ export class GoCardlessService {
         }
       }
 
-      console.log(`Periodic sync completed: ${accountsSynced} accounts processed, ${balancesSynced} balances synced, ${totalTransactionsSynced} transactions synced`);
+// console.log(`Periodic sync completed: ${accountsSynced} accounts processed, ${balancesSynced} balances synced, ${totalTransactionsSynced} transactions synced`);
       if (errors.length > 0) {
-        console.log('Sync errors:', errors);
+// console.log('Sync errors:', errors);
       }
 
       return {

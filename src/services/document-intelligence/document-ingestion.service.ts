@@ -78,7 +78,7 @@ export class DocumentIngestionService {
       // 10. Update document with file path
       await this.updateDocument(document);
 
-      console.log(`📄 Document ingested successfully: ${title} (${Date.now() - startTime}ms)`);
+      // console.log(`📄 Document ingested successfully: ${title} (${Date.now() - startTime}ms)`);
       return document.toJSON();
 
     } catch (error: any) {

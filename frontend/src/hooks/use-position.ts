@@ -88,7 +88,7 @@ export function usePositionMutations() {
       message.success(response.message || 'Position created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create position');
+      message.error((error as any).response?.data?.message || 'Failed to create position');
     },
   });
 
@@ -103,7 +103,7 @@ export function usePositionMutations() {
       message.success(response.message || 'Position updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update position');
+      message.error((error as any).response?.data?.message || 'Failed to update position');
     },
   });
 
@@ -117,7 +117,7 @@ export function usePositionMutations() {
       message.success(response.message || 'Position deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete position');
+      message.error((error as any).response?.data?.message || 'Failed to delete position');
     },
   });
 
@@ -134,7 +134,7 @@ export function usePositionMutations() {
       message.success(response.message || 'Positions deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete positions');
+      message.error((error as any).response?.data?.message || 'Failed to delete positions');
     },
   });
 

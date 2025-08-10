@@ -8,7 +8,7 @@ export interface EntityTag {
   appliedBy?: string;
   aiProvider?: string;
   aiModel?: string;
-  aiResponse?: any;
+  aiResponse?: unknown;
   aiReasoning?: string;
   isVerified: boolean;
   verifiedBy?: string;
@@ -31,7 +31,7 @@ export interface CreateEntityTag {
   appliedBy?: string;
   aiProvider?: string;
   aiModel?: string;
-  aiResponse?: any;
+  aiResponse?: unknown;
   aiReasoning?: string;
   isVerified: boolean;
   verifiedBy?: string;

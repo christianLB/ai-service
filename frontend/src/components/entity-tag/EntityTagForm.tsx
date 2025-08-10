@@ -62,7 +62,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
     if (initialData) {
       reset({
         ...initialData,
-      } as any);
+      } as CreateEntityTag);
     }
   }, [initialData, reset]);
 
@@ -75,7 +75,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
       }
       onSuccess();
       reset();
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -106,7 +106,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.entityType && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.entityType as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.entityType?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Entityid" required>
@@ -119,7 +119,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.entityId && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.entityId as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.entityId?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Method" required>
@@ -132,7 +132,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.method && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.method as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.method?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Confidence" required>
@@ -145,7 +145,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
             )}
           />
           {errors.confidence && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.confidence as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.confidence?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Appliedby">
@@ -157,7 +157,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.appliedBy && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.appliedBy as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.appliedBy?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Aiprovider">
@@ -169,7 +169,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.aiProvider && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.aiProvider as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.aiProvider?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Aimodel">
@@ -181,7 +181,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.aiModel && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.aiModel as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.aiModel?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Airesponse">
@@ -189,11 +189,11 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
             name="aiResponse"
             control={control}
             render={({ field }) => (
-              <TextArea {...field} rows={4} placeholder="Enter JSON data" />
+              <TextArea {...field} value={field.value as string} rows={4} placeholder="Enter JSON data" />
             )}
           />
           {errors.aiResponse && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.aiResponse as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.aiResponse?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Aireasoning">
@@ -205,7 +205,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.aiReasoning && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.aiReasoning as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.aiReasoning?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Isverified" required>
@@ -218,7 +218,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
             )}
           />
           {errors.isVerified && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.isVerified as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.isVerified?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Verifiedby">
@@ -230,7 +230,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.verifiedBy && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.verifiedBy as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.verifiedBy?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Verifiedat">
@@ -242,7 +242,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
             )}
           />
           {errors.verifiedAt && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.verifiedAt as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.verifiedAt?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Feedback">
@@ -254,7 +254,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.feedback && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.feedback as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.feedback?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Iscorrect">
@@ -266,7 +266,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
             )}
           />
           {errors.isCorrect && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.isCorrect as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.isCorrect?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Sourceentitytype">
@@ -278,7 +278,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.sourceEntityType && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.sourceEntityType as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.sourceEntityType?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Sourceentityid">
@@ -290,7 +290,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.sourceEntityId && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.sourceEntityId as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.sourceEntityId?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Relationshiptype">
@@ -302,7 +302,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.relationshipType && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.relationshipType as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.relationshipType?.message ?? '')}</span>
           )}
         </Form.Item>
         <Form.Item label="Tagid" required>
@@ -315,7 +315,7 @@ export const EntityTagForm: React.FC<EntityTagFormProps> = ({
                           )}
           />
           {errors.tagId && (
-            <span style={{ color: 'red', fontSize: 12 }}>{String((errors.tagId as any).message ?? '')}</span>
+            <span style={{ color: 'red', fontSize: 12 }}>{String(errors.tagId?.message ?? '')}</span>
           )}
         </Form.Item>
       </Form>

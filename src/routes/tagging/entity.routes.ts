@@ -23,7 +23,7 @@ router.use(authMiddleware);
  * POST /api/entities/:type/:id/tags
  * Tag an entity
  */
-router.post('/:type/:id/tags', aiRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:type/:id/tags', aiRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     const entityType = EntityTypeEnum.parse(req.params.type);
     const { id: entityId } = req.params;
@@ -58,7 +58,7 @@ router.post('/:type/:id/tags', aiRateLimit, async (req: Request, res: Response, 
  * GET /api/entities/:type/:id/tags
  * Get tags for an entity
  */
-router.get('/:type/:id/tags', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:type/:id/tags', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     const entityTaggingService = getEntityTaggingService();
     const entityType = EntityTypeEnum.parse(req.params.type);
@@ -85,7 +85,7 @@ router.get('/:type/:id/tags', standardRateLimit, async (req: Request, res: Respo
  * DELETE /api/entities/:type/:id/tags/:tagId
  * Remove a tag from an entity
  */
-router.delete('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     const entityTaggingService = getEntityTaggingService();
     const entityType = EntityTypeEnum.parse(req.params.type);
@@ -122,7 +122,7 @@ router.delete('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, 
  * PATCH /api/entities/:type/:id/tags/:tagId
  * Update an entity tag (confidence, verification)
  */
-router.patch('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     const entityTaggingService = getEntityTaggingService();
     const entityType = EntityTypeEnum.parse(req.params.type);
@@ -161,7 +161,7 @@ router.patch('/:type/:id/tags/:tagId', standardRateLimit, async (req: Request, r
  * GET /api/entities/by-tag/:tagId
  * Find entities by tag
  */
-router.get('/by-tag/:tagId', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/by-tag/:tagId', standardRateLimit, async (req: Request, res: Response, _next: NextFunction => {
   try {
     const { tagId } = req.params;
     const { types, page, limit } = req.query;

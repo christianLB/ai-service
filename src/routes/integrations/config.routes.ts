@@ -7,7 +7,7 @@ const logger = new Logger('IntegrationConfigRoutes');
 const router = Router();
 
 // Validation middleware
-const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
+const validateRequest = (req: Request, res: Response, _next: NextFunction): void => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     res.status(400).json({
@@ -262,7 +262,7 @@ router.post('/test/:integrationType',
 );
 
 // GET /api/integrations/types - Get available integration types
-router.get('/types', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/types', async (req: Request, res: Response, _next: NextFunction => {
   try {
     const { category } = req.query;
 

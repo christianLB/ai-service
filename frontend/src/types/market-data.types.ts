@@ -12,7 +12,7 @@ export interface MarketData {
   quoteVolume?: number;
   trades?: number;
   timeframe: string;
-  metadata?: any;
+  metadata?: unknown;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -29,7 +29,7 @@ export interface CreateMarketData {
   quoteVolume?: number;
   trades?: number;
   timeframe: string;
-  metadata?: any;
+  metadata?: unknown;
 }
 
 export interface UpdateMarketData extends Partial<CreateMarketData> {

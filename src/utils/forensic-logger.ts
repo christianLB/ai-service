@@ -278,33 +278,33 @@ export function auditCatch(location: string, error: any, action: 'silenced' | 'l
 // Comando para ver logs forenses
 export function showForensicLogs(): void {
   const summary = forensicLogger.getSummary();
-  console.log('\n🔍 FORENSIC LOG SUMMARY\n');
-  console.log('📊 Statistics:');
-  console.log(`   Total entries: ${summary.totalEntries}`);
-  console.log('\n📈 By Type:');
+  // console.log('\n🔍 FORENSIC LOG SUMMARY\n');
+  // console.log('📊 Statistics:');
+  // console.log(`   Total entries: ${summary.totalEntries}`);
+  // console.log('\n📈 By Type:');
   Object.entries(summary.byType).forEach(([type, count]) => {
-    console.log(`   ${type}: ${count}`);
+    // console.log(`   ${type}: ${count}`);
   });
-  console.log('\n📍 By Location:');
+  // console.log('\n📍 By Location:');
   Object.entries(summary.byLocation).forEach(([loc, count]) => {
-    console.log(`   ${loc}: ${count}`);
+    // console.log(`   ${loc}: ${count}`);
   });
 
   if (summary.silentCatches.length > 0) {
-    console.log('\n🤫 SILENT CATCHES DETECTED:');
+    // console.log('\n🤫 SILENT CATCHES DETECTED:');
     summary.silentCatches.forEach((entry: any) => {
-      console.log(`   - ${entry.location}: ${entry.message}`);
+      // console.log(`   - ${entry.location}: ${entry.message}`);
     });
   }
 
   if (summary.criticalErrors.length > 0) {
-    console.log('\n🚨 CRITICAL ERRORS:');
+    // console.log('\n🚨 CRITICAL ERRORS:');
     summary.criticalErrors.forEach((entry: any) => {
-      console.log(`   - ${entry.location}: ${entry.message}`);
+      // console.log(`   - ${entry.location}: ${entry.message}`);
     });
   }
 
-  console.log(`\n📁 Full log: ${forensicLogger.getLogFile()}`);
+// console.log(`\n📁 Full log: ${forensicLogger.getLogFile()}`);
 }
 
 // Auto-flush en salida

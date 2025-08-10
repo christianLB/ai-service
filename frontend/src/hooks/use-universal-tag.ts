@@ -86,8 +86,8 @@ export function useUniversalTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'UniversalTag created successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to create universaltag');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to create universaltag');
     },
   });
 
@@ -101,8 +101,8 @@ export function useUniversalTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'UniversalTag updated successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to update universaltag');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to update universaltag');
     },
   });
 
@@ -115,8 +115,8 @@ export function useUniversalTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'UniversalTag deleted successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete universaltag');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to delete universaltag');
     },
   });
 
@@ -132,8 +132,8 @@ export function useUniversalTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'UniversalTags deleted successfully');
     },
-    onError: (error: any) => {
-      message.error(error.response?.data?.message || 'Failed to delete universaltags');
+    onError: (error) => {
+      message.error((error as any).response?.data?.message || 'Failed to delete universaltags');
     },
   });
 
