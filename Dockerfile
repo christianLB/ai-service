@@ -32,8 +32,12 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Instalar dependencias
-RUN npm ci --only=production && npm cache clean --force
+# Variables para Puppeteer disponibles en todas las stages
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Nota: No instalamos dependencias en la stage base para evitar fallos por toolchains.
+# La instalación ocurre en las stages de desarrollo/compilación.
 
 # Stage de desarrollo
 FROM base AS development
@@ -45,6 +49,8 @@ CMD ["dumb-init", "npm", "run", "dev"]
 
 # Stage de construcción
 FROM base AS builder
+# Herramientas necesarias para compilar dependencias nativas (bcrypt, etc.)
+RUN apk add --no-cache python3 make g++ git
 RUN npm ci
 
 # Copiar archivos del proyecto
