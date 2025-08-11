@@ -60,34 +60,38 @@ let websocketService: WebSocketService | null = null;
 app.set('trust proxy', true);
 
 // Security middleware - Elena's implementation
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ['\'self\''],
-      scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''],
-      styleSrc: ['\'self\'', '\'unsafe-inline\''],
-      imgSrc: ['\'self\'', 'data:', 'https:'],
-      connectSrc: ['\'self\''],
-      fontSrc: ['\'self\''],
-      objectSrc: ['\'none\''],
-      mediaSrc: ['\'self\''],
-      frameSrc: ['\'none\'']
-    }
-  },
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true
-  }
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
+    },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+  })
+);
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 
 // Global rate limiting - MUST be before other middleware
 app.use(standardRateLimit);
@@ -129,7 +133,7 @@ app.get('/api/info', (_req: express.Request, res: express.Response) => {
     service: 'AI Service API',
     version: process.env.npm_package_version || '1.0.0',
     status: 'running',
-    message: 'Use /health for health check or /api/* for API endpoints'
+    message: 'Use /health for health check or /api/* for API endpoints',
   });
 });
 
@@ -139,7 +143,7 @@ app.get('/forensic-logs', (_req: express.Request, res: express.Response) => {
   res.json({
     summary,
     logFile: forensicLogger.getLogFile(),
-    message: 'Check console for detailed output or view the log file directly'
+    message: 'Check console for detailed output or view the log file directly',
   });
 });
 
@@ -148,7 +152,7 @@ app.get('/health', (_req: express.Request, res: express.Response) => {
   res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
   });
 });
 
@@ -159,7 +163,7 @@ app.get('/api/health', (_req: express.Request, res: express.Response) => {
     service: 'ai-service-api',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.VERSION || 'development'
+    version: process.env.VERSION || 'development',
   });
 });
 
@@ -176,7 +180,7 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
     const poolStats = {
       total: db.pool.totalCount,
       idle: db.pool.idleCount,
-      waiting: db.pool.waitingCount
+      waiting: db.pool.waitingCount,
     };
 
     const status = {
@@ -186,7 +190,7 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
         overallHealth: neuralState.overallHealth,
         activeHemispheres: neuralState.activeHemispheres,
         offlineExtremities: neuralState.offlineExtremities,
-        lastEvaluation: neuralState.lastEvaluation
+        lastEvaluation: neuralState.lastEvaluation,
       },
       // Traditional status for backward compatibility
       status: neuralState.overallHealth === 'optimal' ? 'ok' : 'degraded',
@@ -196,10 +200,10 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
       database: {
         connected: dbHealthy,
         poolStats,
-        healthCheckDuration: `${healthCheckDuration}ms`
+        healthCheckDuration: `${healthCheckDuration}ms`,
       },
       version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
     };
 
     // Determine HTTP status based on neural health
@@ -213,7 +217,6 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
     }
 
     res.status(httpStatus).json(status);
-
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const message = error instanceof Error ? error.message : String(error);
@@ -221,13 +224,13 @@ app.get('/status', async (_req: express.Request, res: express.Response) => {
     logger.error('Neural health check failed:', {
       error: message,
       duration: `${duration}ms`,
-      stack
+      stack,
     });
     res.status(503).json({
       status: 'error',
       error: message,
       timestamp: new Date().toISOString(),
-      duration: `${duration}ms`
+      duration: `${duration}ms`,
     });
   }
 });
@@ -238,13 +241,13 @@ app.get('/neural', async (_req: express.Request, res: express.Response) => {
     const neuralReport = neuralOrchestrator.getNeuralReport();
     res.json({
       success: true,
-      data: neuralReport
+      data: neuralReport,
     });
   } catch (error: unknown) {
     logger.error('Error getting neural report:', error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -259,7 +262,7 @@ app.get('/metrics', async (_req: express.Request, res: express.Response) => {
     logger.error('Error getting metrics:', error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -288,10 +291,11 @@ app.use('/api/integrations', integrationRoutes);
 // Trading routes removed
 
 // Servir archivos estáticos del frontend
-// En producción, el volumen se monta en /app/public según docker-compose.production.yml
-const frontendPath = process.env.NODE_ENV === 'production'
-  ? path.join(__dirname, '../public')
-  : path.join(__dirname, '../frontend/dist');
+// En producción, los archivos están en /app/frontend/dist
+const frontendPath =
+  process.env.NODE_ENV === 'production'
+    ? path.join(__dirname, '../../frontend/dist')
+    : path.join(__dirname, '../frontend/dist');
 logger.info(`Serving static files from: ${frontendPath}`);
 
 // Middleware para prevenir caché en archivos HTML
@@ -313,9 +317,10 @@ app.use(express.static(frontendPath));
 
 // Catch-all route for SPA - serve index.html for any non-API route
 app.get('*', (_req: express.Request, res: express.Response) => {
-  const indexPath = process.env.NODE_ENV === 'production'
-    ? path.join(__dirname, '../frontend/dist/index.html')
-    : path.join(__dirname, '../frontend/dist/index.html');
+  const indexPath =
+    process.env.NODE_ENV === 'production'
+      ? path.join(__dirname, '../../frontend/dist/index.html')
+      : path.join(__dirname, '../frontend/dist/index.html');
   res.sendFile(indexPath);
 });
 
@@ -327,22 +332,24 @@ app.get('*', (_req: express.Request, res: express.Response) => {
 app.use(csrfErrorHandler);
 
 // Global error handler
-app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  const message = err instanceof Error ? err.message : String(err);
-  const stack = err instanceof Error ? err.stack : undefined;
-  logger.error('Unhandled error:', {
-    error: message,
-    stack,
-    path: req.path,
-    method: req.method
-  });
+app.use(
+  (err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    logger.error('Unhandled error:', {
+      error: message,
+      stack,
+      path: req.path,
+      method: req.method,
+    });
 
-  res.status(500).json({
-    error: 'Internal server error',
-    path: req.path,
-    timestamp: new Date().toISOString()
-  });
-});
+    res.status(500).json({
+      error: 'Internal server error',
+      path: req.path,
+      timestamp: new Date().toISOString(),
+    });
+  }
+);
 
 // 404 handler
 app.use('*', (req: express.Request, res: express.Response) => {
@@ -397,8 +404,8 @@ app.use('*', (req: express.Request, res: express.Response) => {
       'POST /api/integrations/configs - Create/update configuration',
       'PUT /api/integrations/configs/:type/:key - Update configuration',
       'DELETE /api/integrations/configs/:type/:key - Delete configuration',
-      'POST /api/integrations/test/:type - Test integration configuration'
-    ]
+      'POST /api/integrations/test/:type - Test integration configuration',
+    ],
   });
 });
 
@@ -423,7 +430,7 @@ async function initializeTelegramBot() {
       port: parseInt(process.env.POSTGRES_PORT || '5432'),
       database: process.env.POSTGRES_DB || 'ai_service',
       user: process.env.POSTGRES_USER || 'ai_user',
-      password: process.env.POSTGRES_PASSWORD || ''
+      password: process.env.POSTGRES_PASSWORD || '',
     });
 
     // Crear instancia del servicio de Telegram
@@ -432,7 +439,7 @@ async function initializeTelegramBot() {
         botToken,
         chatId,
         webhookUrl,
-        alertsEnabled: process.env.TELEGRAM_ALERTS_ENABLED === 'true'
+        alertsEnabled: process.env.TELEGRAM_ALERTS_ENABLED === 'true',
       },
       financialService
     );
@@ -491,7 +498,7 @@ async function initializeServices() {
     // Inicializar document storage
     logger.info('📄 Initializing document storage...');
     const documentStorage = new DocumentStorageService({
-      basePath: process.env.DOCUMENT_STORAGE_PATH
+      basePath: process.env.DOCUMENT_STORAGE_PATH,
     });
     await documentStorage.init();
     logger.info('✅ Document storage initialized successfully');
@@ -586,7 +593,7 @@ async function startServer() {
         n8n_url: process.env.N8N_API_URL || 'http://localhost:5678',
         openai_configured: !!process.env.OPENAI_API_KEY,
         claude_configured: !!process.env.CLAUDE_API_KEY,
-        websocket_enabled: true
+        websocket_enabled: true,
       });
     });
 
