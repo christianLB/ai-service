@@ -13,4 +13,3 @@ export function getOpenAIClient(): OpenAI | null {
     return null;
   }
 }
-

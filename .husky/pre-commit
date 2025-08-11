@@ -1,1 +1,5 @@
+#!/bin/sh
+
+# Husky v9 deprecates the shim, remove for v10 compatibility
+# Run linters/formatters on staged files
 npx lint-staged
