@@ -31,9 +31,21 @@ jest.mock('../../src/services/database', () => ({
   }
 }));
 
-import { openai } from '../../src/services/openai';
+import { getOpenAIClient } from '../../src/services/openai';
 import { validateWorkflow, validateWorkflowUpdate } from '../../src/services/validator';
 import { db } from '../../src/services/database';
+
+const mockOpenAI = {
+  chat: {
+    completions: {
+      create: jest.fn()
+    }
+  }
+};
+
+jest.mock('../../src/services/openai', () => ({
+  getOpenAIClient: jest.fn(() => mockOpenAI)
+}));
 
 describe('API Routes Integration Tests', () => {
   let app: express.Application;
@@ -65,7 +77,7 @@ describe('API Routes Integration Tests', () => {
 
     it('should generate a workflow successfully', async () => {
       // Mock OpenAI response
-      (openai.chat.completions.create as jest.Mock).mockResolvedValue({
+      (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
         choices: [
           {
             message: {

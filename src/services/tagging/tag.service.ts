@@ -51,7 +51,7 @@ export class TagService implements ITagService {
         }
 
         // Check if entity types are compatible
-        const commonTypes = data.entityTypes.filter(type => 
+        const commonTypes = data.entityTypes.filter(type =>
           parent.entityTypes.includes(type)
         );
 
@@ -66,12 +66,12 @@ export class TagService implements ITagService {
       // Calculate path and level based on parent
       let path = '/';
       let level = 0;
-      
+
       if (data.parentId) {
         const parent = await prisma.universalTag.findUnique({
           where: { id: data.parentId }
         });
-        
+
         if (parent) {
           path = parent.path === '/' ? `/${parent.code}` : `${parent.path}/${parent.code}`;
           level = parent.level + 1;
@@ -240,9 +240,9 @@ export class TagService implements ITagService {
           data: { tagId: options.reassignTo }
         });
 
-        logger.info('Entity tags reassigned', { 
-          fromTagId: tagId, 
-          toTagId: options.reassignTo 
+        logger.info('Entity tags reassigned', {
+          fromTagId: tagId,
+          toTagId: options.reassignTo
         });
       }
 
@@ -264,7 +264,7 @@ export class TagService implements ITagService {
     try {
       const where: Prisma.UniversalTagWhereInput = {
         ...(query.isActive !== undefined && { isActive: query.isActive }),
-        ...(query.entityType && { 
+        ...(query.entityType && {
           entityTypes: { has: query.entityType }
         }),
         ...(query.parentId && { parentId: query.parentId }),
@@ -354,7 +354,7 @@ export class TagService implements ITagService {
         tags.map(async (tag) => {
           const path = await this.getTagPath(tag.id);
           const score = this.calculateSearchScore(tag, search.q);
-          
+
           return {
             ...tag,
             path: path.join(' > '),
@@ -421,7 +421,9 @@ export class TagService implements ITagService {
           select: { name: true, parentId: true }
         });
 
-        if (!tag) break;
+        if (!tag) {
+          break;
+        }
 
         path.unshift(tag.name);
         currentId = tag.parentId;
@@ -441,7 +443,7 @@ export class TagService implements ITagService {
       // Validate all tag codes are unique
       const codes = tags.map(t => t.code);
       const uniqueCodes = new Set(codes);
-      
+
       if (codes.length !== uniqueCodes.size) {
         throw new InvalidTagHierarchyError('Duplicate tag codes in batch');
       }
@@ -458,7 +460,7 @@ export class TagService implements ITagService {
 
       // Create all tags
       const created = await prisma.$transaction(
-        tags.map(tag => 
+        tags.map(tag =>
           prisma.universalTag.create({
             data: {
               ...tag,
@@ -564,17 +566,31 @@ export class TagService implements ITagService {
     let score = 0;
 
     // Exact match scores highest
-    if (tag.code.toLowerCase() === q) score += 100;
-    if (tag.name.toLowerCase() === q) score += 90;
+    if (tag.code.toLowerCase() === q) {
+      score += 100;
+    }
+    if (tag.name.toLowerCase() === q) {
+      score += 90;
+    }
 
     // Starts with query
-    if (tag.code.toLowerCase().startsWith(q)) score += 50;
-    if (tag.name.toLowerCase().startsWith(q)) score += 45;
+    if (tag.code.toLowerCase().startsWith(q)) {
+      score += 50;
+    }
+    if (tag.name.toLowerCase().startsWith(q)) {
+      score += 45;
+    }
 
     // Contains query
-    if (tag.code.toLowerCase().includes(q)) score += 20;
-    if (tag.name.toLowerCase().includes(q)) score += 18;
-    if (tag.description?.toLowerCase().includes(q)) score += 10;
+    if (tag.code.toLowerCase().includes(q)) {
+      score += 20;
+    }
+    if (tag.name.toLowerCase().includes(q)) {
+      score += 18;
+    }
+    if (tag.description?.toLowerCase().includes(q)) {
+      score += 10;
+    }
 
     // Usage count bonus (logarithmic)
     score += Math.log10(tag.usageCount + 1) * 5;

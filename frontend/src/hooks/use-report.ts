@@ -88,7 +88,7 @@ export function useReportMutations() {
       message.success(response.message || 'Report created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create report');
+      message.error((error as any).response?.data?.message || 'Failed to create report');
     },
   });
 
@@ -103,7 +103,7 @@ export function useReportMutations() {
       message.success(response.message || 'Report updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update report');
+      message.error((error as any).response?.data?.message || 'Failed to update report');
     },
   });
 
@@ -117,7 +117,7 @@ export function useReportMutations() {
       message.success(response.message || 'Report deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete report');
+      message.error((error as any).response?.data?.message || 'Failed to delete report');
     },
   });
 
@@ -134,7 +134,7 @@ export function useReportMutations() {
       message.success(response.message || 'Reports deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete reports');
+      message.error((error as any).response?.data?.message || 'Failed to delete reports');
     },
   });
 

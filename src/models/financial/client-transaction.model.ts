@@ -2,13 +2,13 @@ export interface ClientTransactionLink {
   id: string;
   transactionId: string; // UUID from financial.transactions
   clientId: string; // UUID from clients table
-  
+
   // Matching information
   matchType: 'automatic' | 'manual' | 'pattern' | 'fuzzy';
   matchConfidence: number; // 0.0 to 1.0
   matchedBy?: string; // userId for manual matches
   matchedAt: Date;
-  
+
   // Match criteria used
   matchCriteria?: {
     amount?: boolean;
@@ -18,12 +18,12 @@ export interface ClientTransactionLink {
     clientName?: boolean;
     pattern?: string;
   };
-  
+
   // Override information
   isManualOverride: boolean;
   previousLinkId?: string; // If this overrides a previous match
   overrideReason?: string;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -37,17 +37,17 @@ export interface TransactionMatchingPattern {
   pattern: string; // Regex or specific pattern
   confidence: number; // Default confidence when pattern matches
   isActive: boolean;
-  
+
   // Pattern specifics
   amountMin?: number;
   amountMax?: number;
   dayOfMonth?: number; // For recurring payments
   frequency?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
-  
+
   // Stats
   matchCount: number;
   lastMatchedAt?: Date;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,7 +63,7 @@ export interface UnlinkedTransaction {
   counterpartyName?: string;
   date: Date;
   type: string;
-  
+
   // Matching hints
   potentialMatches?: Array<{
     clientId: string;
@@ -83,13 +83,13 @@ export interface ClientTransactionSummary {
   firstTransactionDate: Date;
   lastTransactionDate: Date;
   averageAmount: number;
-  
+
   // Breakdown by type
   manualMatches: number;
   automaticMatches: number;
   patternMatches: number;
   fuzzyMatches: number;
-  
+
   // Confidence metrics
   averageConfidence: number;
   lowConfidenceMatches: number; // < 0.7

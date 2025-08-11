@@ -29,7 +29,7 @@ export class DocumentController {
       }
 
       const startTime = Date.now();
-      
+
       // Ingest document
       const document = await this.ingestionService.ingestDocument(req.file.buffer, {
         fileName: req.file.originalname,
@@ -99,9 +99,9 @@ export class DocumentController {
   async getDocument(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      
+
       const document = await this.ingestionService.getDocument(id);
-      
+
       if (!document) {
         res.status(404).json({
           success: false,
@@ -127,9 +127,9 @@ export class DocumentController {
   async getDocumentAnalysis(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      
+
       const document = await this.ingestionService.getDocument(id);
-      
+
       if (!document) {
         res.status(404).json({
           success: false,
@@ -163,9 +163,9 @@ export class DocumentController {
   async analyzeDocument(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      
+
       const document = await this.ingestionService.getDocument(id);
-      
+
       if (!document) {
         res.status(404).json({
           success: false,
@@ -256,7 +256,7 @@ export class DocumentController {
       }
 
       const document = await this.ingestionService.getDocument(id);
-      
+
       if (!document) {
         res.status(404).json({
           success: false,
@@ -292,9 +292,9 @@ export class DocumentController {
   async deleteDocument(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      
+
       const document = await this.ingestionService.getDocument(id);
-      
+
       if (!document) {
         res.status(404).json({
           success: false,
@@ -368,11 +368,11 @@ export class DocumentController {
       }
 
       const fileBuffer = await this.storageService.downloadFile(filename);
-      
+
       // Set appropriate headers
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      
+
       res.send(fileBuffer);
 
     } catch (error: any) {

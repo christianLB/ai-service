@@ -1,0 +1,88 @@
+import { z } from 'zod';
+{{#if hasCommonTypes}}
+import { UUID{{#if hasDateTime}}, ISODate{{/if}}{{#if hasDecimal}}, Money{{/if}} } from '../common';
+{{/if}}
+
+/**
+ * Zod schemas for {{pascalCase model}} model
+ * Auto-generated from Prisma schema
+ */
+
+// Base schema with all fields
+export const {{pascalCase model}}Schema = z.object({
+{{#each fields}}
+  {{#unless this.isRelation}}
+  {{camelCase this.name}}: {{#if this.isId}}UUID{{else if (eq this.type "String")}}z.string(){{#if this.minLength}}.min({{this.minLength}}){{/if}}{{#if this.maxLength}}.max({{this.maxLength}}){{/if}}{{#if this.email}}.email(){{/if}}{{#if this.isOptional}}.optional(){{/if}}{{else if (eq this.type "Int")}}z.number().int(){{#if this.min}}.min({{this.min}}){{/if}}{{#if this.max}}.max({{this.max}}){{/if}}{{#if this.isOptional}}.optional(){{/if}}{{else if (eq this.type "Float")}}z.number(){{#if this.min}}.min({{this.min}}){{/if}}{{#if this.max}}.max({{this.max}}){{/if}}{{#if this.isOptional}}.optional(){{/if}}{{else if (eq this.type "Decimal")}}{{#if this.isOptional}}Money.optional(){{else}}Money{{/if}}{{else if (eq this.type "Boolean")}}z.boolean(){{#if this.isOptional}}.optional(){{/if}}{{else if (eq this.type "DateTime")}}{{#if this.isOptional}}ISODate.optional(){{else}}ISODate{{/if}}{{else if (eq this.type "Json")}}z.record(z.any()){{#if this.isOptional}}.optional(){{/if}}{{else}}z.string(){{#if this.isOptional}}.optional(){{/if}}{{/if}},
+  {{/unless}}
+{{/each}}
+});
+
+// Schema for creating new records (omits auto-generated fields)
+export const {{pascalCase model}}CreateSchema = {{pascalCase model}}Schema.omit({
+{{#each fields}}
+  {{#if (or this.isId this.isCreatedAt this.isUpdatedAt this.hasDefaultValue)}}
+  {{camelCase this.name}}: true,
+  {{/if}}
+{{/each}}
+});
+
+// Schema for updating records (all fields optional)
+export const {{pascalCase model}}UpdateSchema = {{pascalCase model}}CreateSchema.partial();
+
+// Schema for API responses (includes relations)
+export const {{pascalCase model}}ResponseSchema = {{pascalCase model}}Schema{{#if hasRelations}}.extend({
+{{#each fields}}
+  {{#if this.isRelation}}
+  {{camelCase this.name}}: {{#if this.isList}}z.array(z.object({ 
+    id: UUID,
+    name: z.string().optional(),
+  })){{else}}z.object({ 
+    id: UUID,
+    name: z.string().optional(),
+  }){{/if}}{{#if this.isOptional}}.nullish(){{/if}},
+  {{/if}}
+{{/each}}
+}){{/if}};
+
+// Schema for query parameters
+export const {{pascalCase model}}QuerySchema = z.object({
+  // Pagination
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().positive().max(100).optional().default(20),
+  
+  // Sorting
+  sortBy: z.enum([
+{{#each fields}}
+  {{#unless this.isRelation}}
+    '{{camelCase this.name}}',
+  {{/unless}}
+{{/each}}
+  ]).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  
+  // Filtering
+  search: z.string().optional(),
+{{#each fields}}
+  {{#if (and (not this.isRelation) (not this.isId) (not this.isCreatedAt) (not this.isUpdatedAt))}}
+  {{camelCase this.name}}: {{#if (eq this.type "String")}}z.string().optional(){{else if (eq this.type "Boolean")}}z.coerce.boolean().optional(){{else if (or (eq this.type "Int") (eq this.type "Float"))}}z.coerce.number().optional(){{else}}z.any().optional(){{/if}},
+  {{/if}}
+{{/each}}
+  
+  // Relations to include
+  {{#if hasRelations}}
+  include: z.object({
+{{#each fields}}
+  {{#if this.isRelation}}
+    {{camelCase this.name}}: z.boolean().optional(),
+  {{/if}}
+{{/each}}
+  }).optional(),
+  {{/if}}
+});
+
+// Type exports for TypeScript
+export type {{pascalCase model}} = z.infer<typeof {{pascalCase model}}Schema>;
+export type {{pascalCase model}}Create = z.infer<typeof {{pascalCase model}}CreateSchema>;
+export type {{pascalCase model}}Update = z.infer<typeof {{pascalCase model}}UpdateSchema>;
+export type {{pascalCase model}}Response = z.infer<typeof {{pascalCase model}}ResponseSchema>;
+export type {{pascalCase model}}Query = z.infer<typeof {{pascalCase model}}QuerySchema>;

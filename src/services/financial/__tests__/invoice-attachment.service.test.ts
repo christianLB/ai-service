@@ -40,7 +40,7 @@ describe('InvoiceAttachmentService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock Prisma client
     mockPrisma = {
       $transaction: jest.fn((fn) => fn(mockPrisma)),

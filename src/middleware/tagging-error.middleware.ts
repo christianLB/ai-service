@@ -9,7 +9,7 @@ export function taggingErrorHandler(
   error: any,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void {
   // Log the error
   logger.error('Tagging error occurred', {
@@ -94,7 +94,7 @@ export function taggingErrorHandler(
 
   // Handle generic errors
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
+
   res.status(500).json({
     error: {
       code: 'INTERNAL_ERROR',

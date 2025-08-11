@@ -96,30 +96,69 @@ export class IntentMapper {
   }
 
   /**
-   * Calculate confidence score for pattern matching
+   * Calculate confidence score for pattern matching with enhanced logic
    */
   private calculateConfidence(input: string, patterns: string[]): number {
-    let totalScore = 0;
-    let matchedPatterns = 0;
+    let bestScore = 0;
+    const inputWords = input.toLowerCase().split(' ').filter(w => w.length > 0);
 
     for (const pattern of patterns) {
-      const patternWords = pattern.toLowerCase().split(' ');
-      let patternScore = 0;
+      const patternWords = pattern.toLowerCase().split(' ').filter(w => w.length > 0);
+      let score = 0;
 
-      for (const word of patternWords) {
-        if (input.includes(word)) {
-          patternScore += 1;
+      // Check for exact match first (highest confidence)
+      if (input === pattern.toLowerCase()) {
+        return 1.0;
+      }
+
+      // Check if the entire pattern is contained in the input
+      if (input.includes(pattern.toLowerCase())) {
+        score = 0.95;
+      } else {
+        // Calculate word-level matching
+        let matchedWords = 0;
+        let totalImportance = 0;
+
+        for (let i = 0; i < patternWords.length; i++) {
+          const word = patternWords[i];
+          const importance = i === 0 ? 2 : 1; // First word is more important
+          totalImportance += importance;
+
+          // Check for exact word match
+          if (inputWords.includes(word)) {
+            matchedWords += importance;
+          } 
+          // Check for partial match (word is part of an input word)
+          else if (inputWords.some(iw => iw.includes(word) || word.includes(iw))) {
+            matchedWords += importance * 0.7;
+          }
+        }
+
+        // Calculate weighted score
+        score = matchedWords / totalImportance;
+
+        // Boost score if key action words match
+        const actionWords = ['start', 'stop', 'run', 'build', 'test', 'deploy', 'migrate', 'check', 'status'];
+        const hasActionMatch = actionWords.some(action => 
+          input.includes(action) && pattern.includes(action)
+        );
+        if (hasActionMatch) {
+          score = Math.min(1.0, score * 1.2);
+        }
+
+        // Penalize if input has many extra words not in pattern
+        const extraWords = inputWords.filter(w => 
+          !patternWords.some(pw => w.includes(pw) || pw.includes(w))
+        ).length;
+        if (extraWords > 3) {
+          score *= 0.8;
         }
       }
 
-      const wordMatchRatio = patternScore / patternWords.length;
-      if (wordMatchRatio > 0) {
-        totalScore += wordMatchRatio;
-        matchedPatterns++;
-      }
+      bestScore = Math.max(bestScore, score);
     }
 
-    return matchedPatterns > 0 ? totalScore / patterns.length : 0;
+    return Math.min(1.0, bestScore);
   }
 
   /**
@@ -132,7 +171,10 @@ export class IntentMapper {
         patterns: [
           'start development', 'start dev', 'begin development', 'start working',
           'launch development', 'boot up dev', 'fire up development',
-          'get development running', 'start dev environment', 'bring up dev'
+          'get development running', 'start dev environment', 'bring up dev',
+          'start', 'begin', 'launch', 'boot', 'start the project', 'get started',
+          'spin up', 'fire up', 'turn on', 'activate development', 'initialize',
+          'start coding', 'start the app', 'start the application', 'run the project'
         ],
         makeTarget: 'dev-up',
         description: 'Start the development environment with all services',
@@ -296,6 +338,98 @@ export class IntentMapper {
         makeTarget: 'trading-down',
         description: 'Stop trading services',
         category: 'trading'
+      },
+
+      // Common Development Tasks
+      {
+        patterns: [
+          'build', 'compile', 'build project', 'compile code', 'create build',
+          'make build', 'build the app', 'compile application', 'generate build'
+        ],
+        makeTarget: 'build',
+        description: 'Build the project',
+        category: 'development'
+      },
+      {
+        patterns: [
+          'clean', 'cleanup', 'clean build', 'remove build', 'clean project',
+          'clear cache', 'reset build', 'clean everything', 'fresh start'
+        ],
+        makeTarget: 'clean',
+        description: 'Clean build artifacts and temporary files',
+        category: 'development'
+      },
+      {
+        patterns: [
+          'install', 'install dependencies', 'npm install', 'install packages',
+          'setup dependencies', 'get dependencies', 'install requirements'
+        ],
+        makeTarget: 'install',
+        description: 'Install project dependencies',
+        category: 'development'
+      },
+      {
+        patterns: [
+          'generate', 'create crud', 'generate crud', 'create model', 'scaffold',
+          'generate code', 'create component', 'generate service', 'make crud'
+        ],
+        makeTarget: 'generate:crud:auto',
+        description: 'Generate CRUD operations for a model',
+        category: 'development',
+        prerequisites: ['Model must exist in Prisma schema']
+      },
+      {
+        patterns: [
+          'logs', 'show logs', 'view logs', 'check logs', 'see logs',
+          'dev logs', 'development logs', 'container logs', 'service logs'
+        ],
+        makeTarget: 'dev-logs',
+        description: 'View development service logs',
+        category: 'development'
+      },
+      {
+        patterns: [
+          'problems', 'issues', 'errors', 'what\'s wrong', 'debug', 'troubleshoot',
+          'not working', 'broken', 'fix', 'help', 'something wrong'
+        ],
+        makeTarget: 'dev-status',
+        description: 'Check status to identify problems',
+        category: 'development',
+        followUp: ['dev-logs', 'health']
+      },
+
+      // Database Advanced
+      {
+        patterns: [
+          'create migration', 'new migration', 'add migration', 'make migration',
+          'database change', 'schema change', 'alter database', 'modify schema'
+        ],
+        makeTarget: 'db-migrate-create',
+        description: 'Create a new database migration',
+        category: 'database',
+        prerequisites: ['NAME parameter required']
+      },
+      {
+        patterns: [
+          'prisma studio', 'database ui', 'db studio', 'visual database',
+          'database browser', 'explore database', 'db ui', 'database viewer'
+        ],
+        makeTarget: 'db-studio',
+        description: 'Open Prisma Studio for visual database exploration',
+        category: 'database'
+      },
+
+      // Deployment and Production
+      {
+        patterns: [
+          'deploy', 'deploy to production', 'production deploy', 'release',
+          'push to production', 'go live', 'ship it', 'deploy app'
+        ],
+        makeTarget: 'deploy',
+        description: 'Deploy to production',
+        category: 'deployment',
+        confirm: true,
+        prerequisites: ['Tests must pass', 'Build must succeed']
       },
 
       // MCP Operations

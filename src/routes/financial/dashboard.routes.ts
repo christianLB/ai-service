@@ -27,7 +27,7 @@ const initializeServices = () => {
     };
     databaseService = new FinancialDatabaseService(dbConfig);
   }
-  
+
   if (!dashboardPrismaService && featureFlags.isEnabled('USE_PRISMA_DASHBOARD')) {
     dashboardPrismaService = new FinancialDashboardService();
   }
@@ -41,31 +41,31 @@ const initializeServices = () => {
  * GET /api/financial/dashboard/metrics
  * Get comprehensive dashboard metrics using Prisma (with feature flag)
  */
-router.get('/metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     initializeServices();
-    
+
     // Check if Prisma dashboard is enabled
     if (featureFlags.isEnabled('USE_PRISMA_DASHBOARD')) {
-      const { 
+      const {
         startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
         endDate = new Date().toISOString(),
         currency = 'EUR'
       } = req.query;
-      
+
       const timeRange = {
         startDate: new Date(startDate as string),
         endDate: new Date(endDate as string)
       };
-      
-      logger.info('Using Prisma dashboard service', { 
+
+      logger.info('Using Prisma dashboard service', {
         featureFlag: 'USE_PRISMA_DASHBOARD',
         timeRange,
-        currency 
+        currency
       });
-      
+
       const metrics = await dashboardPrismaService.getDashboardMetrics(timeRange, currency as string);
-      
+
       res.json({
         success: true,
         data: metrics,
@@ -97,26 +97,26 @@ router.get('/metrics', authMiddleware, databaseRateLimit, async (req: Request, r
  * GET /api/financial/dashboard/revenue-metrics
  * Get comprehensive revenue metrics with trends and comparisons
  */
-router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     initializeServices();
-    
-    const { 
-      period = 'monthly', 
-      currency = 'EUR', 
-      startDate, 
-      endDate 
+
+    const {
+      period = 'monthly',
+      currency = 'EUR',
+      startDate,
+      endDate
     } = req.query;
 
     // Use Prisma service if enabled
     if (featureFlags.isEnabled('USE_PRISMA_DASHBOARD')) {
       logger.info('Using Prisma for revenue-metrics', { period, currency });
-      
+
       // Convert period-based query to time range
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
-      
+
       let timeRange;
       if (period === 'monthly') {
         timeRange = {
@@ -140,9 +140,9 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
           endDate: endDate ? new Date(endDate as string) : new Date(currentYear, currentMonth + 1, 0)
         };
       }
-      
+
       const metrics = await dashboardPrismaService.getRevenueMetrics(timeRange, currency as string);
-      
+
       // Transform Prisma response to match expected API format
       const transformedData = {
         period: {
@@ -163,7 +163,7 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
           overdueRevenue: '0',
           totalInvoices: metrics[0]?.invoiceCount || 0,
           paidInvoices: metrics[0]?.invoiceCount || 0,
-          averageInvoiceAmount: (metrics[0]?.amount && metrics[0]?.invoiceCount) 
+          averageInvoiceAmount: (metrics[0]?.amount && metrics[0]?.invoiceCount)
             ? (parseFloat(metrics[0].amount.toString()) / metrics[0].invoiceCount).toFixed(2)
             : '0',
           uniqueClients: metrics[0]?.uniqueClients || 0
@@ -194,12 +194,12 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
         generatedAt: new Date().toISOString(),
         service: 'prisma'
       };
-      
+
       res.json({
         success: true,
         data: transformedData
       });
-      
+
       return;
     }
 
@@ -207,13 +207,13 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
-    
+
     // Calculate date ranges based on period
     let currentPeriodStart: Date;
     let currentPeriodEnd: Date;
     let previousPeriodStart: Date;
     let previousPeriodEnd: Date;
-    
+
     if (period === 'monthly') {
       currentPeriodStart = new Date(currentYear, currentMonth, 1);
       currentPeriodEnd = new Date(currentYear, currentMonth + 1, 0);
@@ -265,12 +265,12 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
     const previous = previousResult.rows[0];
 
     // Calculate growth rates
-    const revenueGrowth = previous.total_revenue > 0 
-      ? ((current.total_revenue - previous.total_revenue) / previous.total_revenue) * 100 
+    const revenueGrowth = previous.total_revenue > 0
+      ? ((current.total_revenue - previous.total_revenue) / previous.total_revenue) * 100
       : 0;
-    
-    const invoiceGrowth = previous.total_invoices > 0 
-      ? ((current.total_invoices - previous.total_invoices) / previous.total_invoices) * 100 
+
+    const invoiceGrowth = previous.total_invoices > 0
+      ? ((current.total_invoices - previous.total_invoices) / previous.total_invoices) * 100
       : 0;
 
     // Monthly trend data (last 12 months)
@@ -388,23 +388,23 @@ router.get('/revenue-metrics', authMiddleware, databaseRateLimit, async (req: Re
  * GET /api/financial/dashboard/invoice-stats
  * Get detailed invoice statistics with status breakdown and aging analysis
  */
-router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     initializeServices();
-    
+
     const { currency = 'EUR', includeAging = 'true' } = req.query;
 
     // Use Prisma service if enabled
     if (featureFlags.isEnabled('USE_PRISMA_DASHBOARD')) {
       logger.info('Using Prisma for invoice-stats', { currency, includeAging });
-      
+
       const timeRange = {
         startDate: new Date(new Date().getFullYear() - 1, 0, 1), // Last year
         endDate: new Date()
       };
-      
+
       const stats = await dashboardPrismaService.getBasicInvoiceStats(timeRange);
-      
+
       // Format response to match existing API
       res.json({
         success: true,
@@ -425,7 +425,7 @@ router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Requ
           service: 'prisma'
         }
       });
-      
+
       return;
     }
 
@@ -599,12 +599,12 @@ router.get('/invoice-stats', authMiddleware, databaseRateLimit, async (req: Requ
  * GET /api/financial/dashboard/client-metrics
  * Get client performance metrics including payment behavior and revenue analysis
  */
-router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     initializeServices();
-    
-    const { 
-      currency = 'EUR', 
+
+    const {
+      currency = 'EUR',
       limit = '20',
       sortBy = 'total_revenue',
       includeInactive = 'false'
@@ -613,12 +613,12 @@ router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Req
     // Use Prisma service if enabled
     if (featureFlags.isEnabled('USE_PRISMA_DASHBOARD')) {
       logger.info('Using Prisma for client-metrics', { currency, limit });
-      
+
       const [clientMetrics, topClients] = await Promise.all([
         dashboardPrismaService.getBasicClientMetrics(),
         dashboardPrismaService.getTopClients(parseInt(limit as string))
       ]);
-      
+
       // Format response to match existing API
       res.json({
         success: true,
@@ -640,7 +640,7 @@ router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Req
           service: 'prisma'
         }
       });
-      
+
       return;
     }
 
@@ -693,9 +693,9 @@ router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Req
     `;
 
     const clientMetricsResult = await databaseService.pool.query(clientMetricsQuery, [
-      currency, 
-      includeInactive, 
-      sortBy, 
+      currency,
+      includeInactive,
+      sortBy,
       parseInt(limit as string)
     ]);
 
@@ -847,12 +847,12 @@ router.get('/client-metrics', authMiddleware, databaseRateLimit, async (req: Req
  * GET /api/financial/dashboard/cash-flow
  * Get cash flow projections based on outstanding invoices and payment history
  */
-router.get('/cash-flow', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/cash-flow', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     initializeServices();
-    
-    const { 
-      currency = 'EUR', 
+
+    const {
+      currency = 'EUR',
       daysAhead = '90',
       includeTransactions = 'true'
     } = req.query;
@@ -946,23 +946,23 @@ router.get('/cash-flow', authMiddleware, databaseRateLimit, async (req: Request,
     // Weekly cash flow projections
     const weeklyProjections = [];
     let runningBalance = currentCash;
-    
+
     for (let week = 0; week < Math.ceil(projectionDays / 7); week++) {
       const weekStart = new Date(today.getTime() + (week * 7 * 24 * 60 * 60 * 1000));
       const weekEnd = new Date(today.getTime() + ((week + 1) * 7 * 24 * 60 * 60 * 1000));
-      
+
       // Calculate expected receipts for this week
       const weeklyInvoices = outstandingResult.rows.filter(invoice => {
         const paymentDate = new Date(invoice.estimated_payment_date);
         return paymentDate >= weekStart && paymentDate < weekEnd;
       });
-      
+
       const expectedReceipts = weeklyInvoices.reduce((sum, invoice) => {
         return sum + (parseFloat(invoice.total) * parseFloat(invoice.payment_probability));
       }, 0);
-      
+
       runningBalance += expectedReceipts;
-      
+
       weeklyProjections.push({
         weekStart: weekStart.toISOString(),
         weekEnd: weekEnd.toISOString(),
@@ -1071,24 +1071,24 @@ router.get('/cash-flow', authMiddleware, databaseRateLimit, async (req: Request,
  * GET /api/financial/dashboard/yearly-report
  * Get yearly financial report with income/expense matrix by category and month
  */
-router.get('/yearly-report', authMiddleware, databaseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/yearly-report', authMiddleware, databaseRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     initializeServices();
-    
-    const { 
-      year = new Date().getFullYear().toString(), 
-      currency = 'EUR' 
+
+    const {
+      year = new Date().getFullYear().toString(),
+      currency = 'EUR'
     } = req.query;
 
     // Import reporting service
     const { FinancialReportingService } = await import('../../services/financial/reporting.service');
-    
+
     // Create reporting service instance with database pool
     const reportingService = new FinancialReportingService(databaseService.pool);
-    
+
     // Get yearly report
     const yearlyReport = await reportingService.getYearlyFinancialReport(
-      parseInt(year as string), 
+      parseInt(year as string),
       currency as string
     );
 
@@ -1116,20 +1116,20 @@ router.get('/yearly-report', authMiddleware, databaseRateLimit, async (req: Requ
  * GET /api/financial/dashboard/health
  * Health check for dashboard endpoints
  */
-router.get('/health', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/health', async (req: Request, res: Response, _next: NextFunction) => {
   try {
     initializeServices();
-    
+
     // Test database connection
     await databaseService.pool.query('SELECT NOW()');
-    
+
     // Check feature flags
     const featureStatus = {
       prismaEnabled: featureFlags.isEnabled('USE_PRISMA_DASHBOARD'),
       validationEnabled: featureFlags.isEnabled('ENABLE_SQL_VALIDATION'),
       performanceLoggingEnabled: featureFlags.isEnabled('LOG_QUERY_PERFORMANCE')
     };
-    
+
     res.json({
       success: true,
       status: 'healthy',
@@ -1139,7 +1139,7 @@ router.get('/health', async (req: Request, res: Response, next: NextFunction) =>
         endpoints: [
           'metrics',
           'revenue-metrics',
-          'invoice-stats', 
+          'invoice-stats',
           'client-metrics',
           'cash-flow',
           'yearly-report'

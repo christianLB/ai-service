@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { Pool } from 'pg';
 
 interface BruteForceOptions {
@@ -10,12 +10,12 @@ interface BruteForceOptions {
 export function createBruteForceProtection(pool: Pool, options: BruteForceOptions) {
   const { maxAttempts, windowMs, blockDurationMs } = options;
 
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     const email = req.body.email;
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
 
     if (!email) {
-      next();
+      _next();
       return;
     }
 
@@ -44,7 +44,7 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
         `;
 
         const blockResult = await pool.query(blockCheckQuery, [email, ip, maxAttempts]);
-        
+
         if (blockResult.rows.length > 0) {
           // Log the blocked attempt
           await pool.query(
@@ -54,17 +54,17 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
 
           res.status(429).json({
             error: 'Too many failed login attempts. Please try again later.',
-            retryAfter: Math.ceil(blockDurationMs / 1000)
+            retryAfter: Math.ceil(blockDurationMs / 1000),
           });
           return;
         }
       }
 
-      next();
+      _next();
     } catch (error) {
       console.error('Brute force check error:', error);
       // Don't block on error, but log it
-      next();
+      _next();
     }
   };
 }
@@ -76,7 +76,7 @@ export async function cleanupLoginAttempts(pool: Pool, retentionDays: number = 7
       DELETE FROM login_attempts
       WHERE attempted_at < NOW() - INTERVAL '${retentionDays} days'
     `;
-    
+
     const result = await pool.query(query);
     console.log(`Cleaned up ${result.rowCount} old login attempts`);
   } catch (error) {

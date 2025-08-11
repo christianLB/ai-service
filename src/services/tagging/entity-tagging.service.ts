@@ -61,7 +61,7 @@ export class EntityTaggingService implements IEntityTaggingService {
       }
 
       // Get tag suggestions based on method
-      let suggestedTags: Array<{ tagId: string; confidence: number; method: TagMethod }> = [];
+      const suggestedTags: Array<{ tagId: string; confidence: number; method: TagMethod }> = [];
 
       if (request.method === 'ai' || request.method === 'auto') {
         // Use AI for tagging
@@ -135,7 +135,7 @@ export class EntityTaggingService implements IEntityTaggingService {
                 aiProvider: request.options?.aiProvider
               },
               include: {
-                tag: true
+                universalTag: true
               }
             });
 
@@ -144,7 +144,7 @@ export class EntityTaggingService implements IEntityTaggingService {
             // Update tag usage count
             await tx.universalTag.update({
               where: { id: suggestion.tagId },
-              data: { 
+              data: {
                 usageCount: { increment: 1 },
                 lastUsed: new Date()
               }
@@ -159,7 +159,7 @@ export class EntityTaggingService implements IEntityTaggingService {
                   method: suggestion.method
                 },
                 include: {
-                  tag: true
+                  universalTag: true
                 }
               });
 
@@ -211,7 +211,7 @@ export class EntityTaggingService implements IEntityTaggingService {
 
       const entityTags = await prisma.entityTag.findMany({
         where: { entityType, entityId },
-        include: { tag: true },
+        include: { universalTag: true },
         orderBy: { confidence: 'desc' }
       });
 
@@ -305,7 +305,7 @@ export class EntityTaggingService implements IEntityTaggingService {
           verifiedBy: data.isVerified ? userId : entityTag.verifiedBy,
           verifiedAt: data.isVerified ? new Date() : entityTag.verifiedAt
         },
-        include: { tag: true }
+        include: { universalTag: true }
       });
 
       logger.info('Entity tag updated', {
@@ -754,7 +754,9 @@ export class EntityTaggingService implements IEntityTaggingService {
   }
 
   private getEntityPreview(entity: any, type: EntityType): string {
-    if (!entity) return 'N/A';
+    if (!entity) {
+      return 'N/A';
+    }
 
     switch (type) {
       case 'transaction':

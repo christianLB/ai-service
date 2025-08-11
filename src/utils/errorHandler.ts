@@ -25,21 +25,21 @@ export const handleSecureError = (
     statusCode: error?.statusCode,
     timestamp: new Date().toISOString()
   };
-  
+
   logger.error(`${context} failed:`, errorDetails);
-  
+
   // Determine status code
   const statusCode = error?.statusCode || error?.status || 500;
-  
+
   // Send safe response to client
   const responseData = {
     success: false,
     error: defaultMessage,
     // Only include error code if it's a known safe code
-    ...(error?.code && ['INVALID_INPUT', 'NOT_FOUND', 'UNAUTHORIZED', 'FORBIDDEN'].includes(error.code) 
-      ? { code: error.code } 
+    ...(error?.code && ['INVALID_INPUT', 'NOT_FOUND', 'UNAUTHORIZED', 'FORBIDDEN'].includes(error.code)
+      ? { code: error.code }
       : {})
   };
-  
+
   res.status(statusCode).json(responseData);
 };

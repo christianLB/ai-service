@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai';
+import { getOpenAIClient } from '../openai';
 import { Document, DocumentAnalysis, Entity, Topic, Sentiment, AnalysisProfile, EntityType } from '../../models/documents/types';
 import { db as DatabaseService } from '../database';
 
@@ -20,14 +21,14 @@ export interface AnalysisResult {
 }
 
 export class OpenAIAnalysisService {
-  private openai: OpenAI;
+  private openai: OpenAI | null;
   private database: typeof DatabaseService;
   private defaultProfile: AnalysisProfile;
 
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    // Do not require OPENAI_API_KEY at startup. Lazily obtain client;
+    // if not available, methods will no-op with safe defaults.
+    this.openai = getOpenAIClient();
     this.database = DatabaseService;
     this.defaultProfile = {
       name: 'default',
@@ -56,23 +57,23 @@ export class OpenAIAnalysisService {
       if (profile.summaryLength) {
         summary = await this.generateSummary(document.content.text, profile.summaryLength);
       }
-      
+
       if (profile.extractEntities) {
         entities = await this.extractEntities(document.content.text);
       }
-      
+
       if (profile.detectTopics) {
         topics = await this.detectTopics(document.content.text);
       }
-      
+
       if (profile.generateQuestions) {
         questions = await this.generateQuestions(document.content.text);
       }
-      
+
       if (profile.detectSentiment) {
         sentiments = await this.analyzeSentiment(document.content.text);
       }
-      
+
       if (options.includeEmbedding) {
         embedding = await this.generateEmbedding(document.content.text);
       }
@@ -109,6 +110,9 @@ export class OpenAIAnalysisService {
   }
 
   async generateSummary(text: string, length: 'short' | 'medium' | 'long'): Promise<string> {
+    if (!this.openai) {
+      return '';
+    }
     const lengthInstructions = {
       short: 'in 2-3 sentences',
       medium: 'in 1-2 paragraphs',
@@ -149,6 +153,9 @@ Summary:`;
   }
 
   async extractEntities(text: string): Promise<Entity[]> {
+    if (!this.openai) {
+      return [];
+    }
     const prompt = `
 Extract named entities from the following text. Return a JSON array of entities with this structure:
 [{"text": "entity text", "type": "entity_type", "confidence": 0.95}]
@@ -192,6 +199,9 @@ Entities (JSON only):`;
   }
 
   async detectTopics(text: string): Promise<Topic[]> {
+    if (!this.openai) {
+      return [];
+    }
     const prompt = `
 Analyze the following text and identify the main topics. Return a JSON array with this structure:
 [{"name": "topic name", "confidence": 0.9, "keywords": ["keyword1", "keyword2"]}]
@@ -233,6 +243,9 @@ Topics (JSON only):`;
   }
 
   async generateQuestions(text: string): Promise<string[]> {
+    if (!this.openai) {
+      return [];
+    }
     const prompt = `
 Based on the following document, generate 3-5 insightful questions that would help someone understand the key points better. 
 Return only the questions as a JSON array of strings.
@@ -268,6 +281,9 @@ Questions (JSON array only):`;
   }
 
   async analyzeSentiment(text: string): Promise<Sentiment[]> {
+    if (!this.openai) {
+      return [{ label: 'neutral', confidence: 0.5 }];
+    }
     const prompt = `
 Analyze the sentiment of the following text. Return a JSON array with this structure:
 [{"label": "positive/negative/neutral", "confidence": 0.85}]
@@ -303,6 +319,9 @@ Sentiment (JSON only):`;
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
+    if (!this.openai) {
+      throw new Error('OpenAI client not configured');
+    }
     try {
       const response = await this.openai.embeddings.create({
         model: 'text-embedding-3-small',
@@ -317,6 +336,9 @@ Sentiment (JSON only):`;
   }
 
   async answerQuestion(question: string, context: string): Promise<string> {
+    if (!this.openai) {
+      return '';
+    }
     const prompt = `
 Based on the following context, answer the question accurately and concisely.
 
@@ -355,10 +377,10 @@ Answer:`;
     try {
       // Generate embedding for query
       const queryEmbedding = await this.generateEmbedding(query);
-      
+
       // Search in database using cosine similarity
       const client = await this.database.pool.connect();
-      
+
       try {
         const result = await client.query(`
           SELECT *, 
@@ -408,7 +430,7 @@ Answer:`;
 
   private async storeAnalysis(documentId: string, analysis: DocumentAnalysis): Promise<void> {
     const client = await this.database.pool.connect();
-    
+
     try {
       await client.query(`
         UPDATE documents.documents 
@@ -427,7 +449,7 @@ Answer:`;
     topTopics: { name: string; count: number }[];
   }> {
     const client = await this.database.pool.connect();
-    
+
     try {
       const totalResult = await client.query(`
         SELECT COUNT(*) as total FROM documents.documents

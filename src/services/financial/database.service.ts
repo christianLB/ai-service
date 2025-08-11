@@ -1,15 +1,15 @@
 // Financial Database Service - Crypto-Ready PostgreSQL
 import { Pool, PoolClient } from 'pg';
-import { 
-  Currency, 
-  Customer, 
-  Account, 
-  Transaction, 
-  Invoice, 
+import {
+  Currency,
+  Customer,
+  Account,
+  Transaction,
+  Invoice,
   InvoiceItem,
   TransactionInvoiceLink,
   ExchangeRate,
-  PaginatedResponse 
+  PaginatedResponse
 } from './types';
 
 export class FinancialDatabaseService {
@@ -35,7 +35,7 @@ export class FinancialDatabaseService {
     try {
       // Test connection
       await client.query('SELECT NOW()');
-      console.log('Financial database connected successfully');
+      // console.log('Financial database connected successfully');
     } finally {
       client.release();
     }
@@ -95,7 +95,7 @@ export class FinancialDatabaseService {
 
   async getCustomers(page = 1, limit = 50): Promise<PaginatedResponse<Customer>> {
     const offset = (page - 1) * limit;
-    
+
     const countQuery = 'SELECT COUNT(*) FROM financial.customers WHERE is_active = true';
     const countResult = await this.pool.query(countQuery);
     const total = parseInt(countResult.rows[0].count);
@@ -139,7 +139,7 @@ export class FinancialDatabaseService {
                 is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"
     `;
     const values = [
-      customer.name, customer.email, customer.taxId, 
+      customer.name, customer.email, customer.taxId,
       customer.address, customer.type, customer.metadata, customer.isActive
     ];
     const result = await this.pool.query(query, values);
@@ -213,10 +213,10 @@ export class FinancialDatabaseService {
 
   async getTransactions(accountId?: string, page = 1, limit = 50, sortBy = 'date', sortOrder = 'desc'): Promise<PaginatedResponse<Transaction>> {
     const offset = (page - 1) * limit;
-    
+
     let whereClause = '';
-    let queryParams: any[] = [limit, offset];
-    
+    const queryParams: any[] = [limit, offset];
+
     if (accountId) {
       whereClause = 'WHERE account_id = $3';
       queryParams.push(accountId);
@@ -323,10 +323,10 @@ export class FinancialDatabaseService {
 
   async getInvoices(customerId?: string, page = 1, limit = 50): Promise<PaginatedResponse<Invoice>> {
     const offset = (page - 1) * limit;
-    
+
     let whereClause = '';
-    let queryParams: any[] = [limit, offset];
-    
+    const queryParams: any[] = [limit, offset];
+
     if (customerId) {
       whereClause = 'WHERE customer_id = $3';
       queryParams.push(customerId);

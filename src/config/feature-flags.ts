@@ -1,6 +1,6 @@
 /**
  * Feature Flags Configuration
- * 
+ *
  * Controls gradual rollout of new features and migrations
  */
 

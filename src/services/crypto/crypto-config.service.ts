@@ -26,7 +26,7 @@ export class CryptoConfigService {
     try {
       // Store in integration_configs table
       const promises = [];
-      
+
       if (apiKey) {
         promises.push(
           integrationConfigService.setConfig({
@@ -39,7 +39,7 @@ export class CryptoConfigService {
           })
         );
       }
-      
+
       if (secretKey) {
         promises.push(
           integrationConfigService.setConfig({
@@ -52,7 +52,7 @@ export class CryptoConfigService {
           })
         );
       }
-      
+
       if (address) {
         promises.push(
           integrationConfigService.setConfig({
@@ -65,9 +65,9 @@ export class CryptoConfigService {
           })
         );
       }
-      
+
       await Promise.all(promises);
-      
+
       // Also store in legacy table for backward compatibility
       const query = `
         INSERT INTO financial.user_crypto_configs (user_id, provider, api_key, secret_key, address)
@@ -76,7 +76,7 @@ export class CryptoConfigService {
         DO UPDATE SET api_key = EXCLUDED.api_key, secret_key = EXCLUDED.secret_key, address = EXCLUDED.address, updated_at = NOW();
       `;
       await this.pool.query(query, [userId, provider, apiKey, secretKey, address]);
-      
+
       logger.info('Crypto config updated', { userId, provider });
     } catch (error) {
       logger.error('Failed to update crypto config', { error, userId, provider });
@@ -88,13 +88,13 @@ export class CryptoConfigService {
     try {
       // First try to get from integration_configs
       const configs = await integrationConfigService.getAllConfigs(userId, 'crypto');
-      
+
       // Group by provider
       const providerMap = new Map<string, any>();
-      
+
       for (const config of configs) {
         const [provider, keyType] = config.configKey.split('_');
-        
+
         if (!providerMap.has(provider)) {
           providerMap.set(provider, {
             id: config.id,
@@ -104,16 +104,16 @@ export class CryptoConfigService {
             updated_at: new Date()
           });
         }
-        
+
         const providerConfig = providerMap.get(provider);
-        const value = config.isEncrypted ? 
+        const value = config.isEncrypted ?
           await integrationConfigService.getConfig({
             userId,
             integrationType: 'crypto',
             configKey: config.configKey,
             decrypt: true
           }) : config.configValue;
-        
+
         if (keyType === 'api' && config.configKey.endsWith('_key')) {
           providerConfig.api_key = value;
         } else if (keyType === 'secret' && config.configKey.endsWith('_key')) {
@@ -122,7 +122,7 @@ export class CryptoConfigService {
           providerConfig.address = value;
         }
       }
-      
+
       // If no configs in integration_configs, fall back to legacy table
       if (providerMap.size === 0) {
         const result = await this.pool.query<CryptoConfig>(
@@ -131,7 +131,7 @@ export class CryptoConfigService {
         );
         return result.rows;
       }
-      
+
       return Array.from(providerMap.values());
     } catch (error) {
       logger.error('Failed to get crypto configs', { error, userId });

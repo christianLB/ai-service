@@ -2,6 +2,17 @@
 
 Welcome to the AI Service documentation. This is the central hub for all technical documentation, organized by domain for easy navigation.
 
+## 🚨 CRITICAL - Start Here
+**The project has critical issues that must be fixed before any other work:**
+- **[IMMEDIATE ACTION PLAN](./IMMEDIATE-ACTION-PLAN.md)** - What to fix RIGHT NOW (Build is broken!)
+- **[CONTRACT-FIRST MIGRATION](./TECH-DEBT-CONTRACT-FIRST-MIGRATION.md)** - Complete technical debt analysis
+
+## 📊 Current Status
+- **Build**: ❌ BROKEN (58 TypeScript errors)
+- **Migration**: 🟡 4% Complete (8/200 endpoints)
+- **Deployment**: ❌ Blocked by build errors
+- **Priority**: Fix build → Migrate dashboard → Complete migration
+
 ## 📚 Documentation Structure
 
 ### Core Domains

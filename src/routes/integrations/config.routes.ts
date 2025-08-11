@@ -7,16 +7,16 @@ const logger = new Logger('IntegrationConfigRoutes');
 const router = Router();
 
 // Validation middleware
-const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
+const validateRequest = (req: Request, res: Response, _next: NextFunction): void => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(400).json({ 
-      success: false, 
-      errors: errors.array() 
+    res.status(400).json({
+      success: false,
+      errors: errors.array()
     });
     return;
   }
-  next();
+  _next();
 };
 
 // GET /api/integrations/configs - Get all configurations
@@ -29,19 +29,19 @@ router.get('/configs',
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { integrationType, userId } = req.query;
-      
+
       // For security, only return non-sensitive config metadata
       const configs = await integrationConfigService.getAllConfigs(
         userId as string,
         integrationType as string
       );
-      
+
       // Remove actual values for encrypted configs
       const sanitizedConfigs = configs.map(config => ({
         ...config,
         configValue: config.isEncrypted ? '***ENCRYPTED***' : config.configValue
       }));
-      
+
       res.json({
         success: true,
         data: sanitizedConfigs
@@ -68,14 +68,14 @@ router.get('/configs/:integrationType/:configKey',
     try {
       const { integrationType, configKey } = req.params;
       const { userId } = req.query;
-      
+
       const value = await integrationConfigService.getConfig({
         userId: userId as string,
         integrationType,
         configKey,
         decrypt: true
       });
-      
+
       if (value === null) {
         res.status(404).json({
           success: false,
@@ -83,7 +83,7 @@ router.get('/configs/:integrationType/:configKey',
         });
         return;
       }
-      
+
       res.json({
         success: true,
         data: {
@@ -125,7 +125,7 @@ router.post('/configs',
         description,
         encrypt = true
       } = req.body;
-      
+
       await integrationConfigService.setConfig({
         userId,
         integrationType,
@@ -135,7 +135,7 @@ router.post('/configs',
         description,
         encrypt
       });
-      
+
       res.json({
         success: true,
         message: 'Configuration saved successfully'
@@ -164,7 +164,7 @@ router.put('/configs/:integrationType/:configKey',
     try {
       const { integrationType, configKey } = req.params;
       const { configValue, userId, description } = req.body;
-      
+
       await integrationConfigService.setConfig({
         userId,
         integrationType,
@@ -173,7 +173,7 @@ router.put('/configs/:integrationType/:configKey',
         description,
         encrypt: true
       });
-      
+
       res.json({
         success: true,
         message: 'Configuration updated successfully'
@@ -200,13 +200,13 @@ router.delete('/configs/:integrationType/:configKey',
     try {
       const { integrationType, configKey } = req.params;
       const { userId } = req.query;
-      
+
       const deleted = await integrationConfigService.deleteConfig({
         userId: userId as string,
         integrationType,
         configKey
       });
-      
+
       if (!deleted) {
         res.status(404).json({
           success: false,
@@ -214,7 +214,7 @@ router.delete('/configs/:integrationType/:configKey',
         });
         return;
       }
-      
+
       res.json({
         success: true,
         message: 'Configuration deleted successfully'
@@ -240,9 +240,9 @@ router.post('/test/:integrationType',
     try {
       const { integrationType } = req.params;
       const { configs } = req.body;
-      
+
       const isValid = await integrationConfigService.testConfig(integrationType, configs);
-      
+
       res.json({
         success: true,
         data: {
@@ -262,10 +262,10 @@ router.post('/test/:integrationType',
 );
 
 // GET /api/integrations/types - Get available integration types
-router.get('/types', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/types', async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { category } = req.query;
-    
+
     // Define available integration types and their config keys
     const allIntegrationTypes = [
       {
@@ -289,7 +289,7 @@ router.get('/types', async (req: Request, res: Response, next: NextFunction) => 
           // Common Configuration
           { key: 'base_url', required: false, encrypted: false, description: 'API URL (default: https://bankaccountdata.gocardless.com/api/v2)' },
           { key: 'redirect_uri', required: true, encrypted: false, description: 'Redirect URI after bank authorization' },
-          
+
           // Production Configuration
           { key: 'secret_id', required: false, encrypted: true, description: 'Production Secret ID (for live mode)' },
           { key: 'secret_key', required: false, encrypted: true, description: 'Production Secret Key (for live mode)' }
@@ -344,13 +344,13 @@ router.get('/types', async (req: Request, res: Response, next: NextFunction) => 
         ]
       }
     ];
-    
+
     // Filter by category if requested
     let integrationTypes = allIntegrationTypes;
     if (category) {
       integrationTypes = allIntegrationTypes.filter(type => type.category === category);
     }
-    
+
     res.json({
       success: true,
       data: integrationTypes

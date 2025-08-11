@@ -108,7 +108,7 @@ export const validateWorkflow = (workflow: any): ValidationResult => {
     const securityValidation = validateSecurity(workflow);
     result.errors.push(...securityValidation.errors);
     result.warnings.push(...securityValidation.warnings);
-    
+
     if (securityValidation.errors.length > 0) {
       result.isValid = false;
     }
@@ -117,7 +117,7 @@ export const validateWorkflow = (workflow: any): ValidationResult => {
     const businessValidation = validateBusinessLogic(workflow);
     result.errors.push(...businessValidation.errors);
     result.warnings.push(...businessValidation.warnings);
-    
+
     if (businessValidation.errors.length > 0) {
       result.isValid = false;
     }
@@ -179,12 +179,12 @@ const validateBusinessLogic = (workflow: any): { errors: string[], warnings: str
   const warnings: string[] = [];
 
   // Validar que hay al menos un nodo de inicio
-  const startNodes = workflow.nodes.filter((node: any) => 
-    node.type === 'n8n-nodes-base.start' || 
-    node.type === 'n8n-nodes-base.webhook' || 
+  const startNodes = workflow.nodes.filter((node: any) =>
+    node.type === 'n8n-nodes-base.start' ||
+    node.type === 'n8n-nodes-base.webhook' ||
     node.type === 'n8n-nodes-base.cron'
   );
-  
+
   if (startNodes.length === 0) {
     errors.push('Workflow must have at least one trigger node (start, webhook, or cron)');
   }
@@ -228,11 +228,11 @@ const validateBusinessLogic = (workflow: any): { errors: string[], warnings: str
     }
   }
 
-  const disconnectedNodes = workflow.nodes.filter((node: any) => 
-    !connectedNodes.has(node.id) && 
+  const disconnectedNodes = workflow.nodes.filter((node: any) =>
+    !connectedNodes.has(node.id) &&
     !['n8n-nodes-base.start', 'n8n-nodes-base.webhook', 'n8n-nodes-base.cron'].includes(node.type)
   );
-  
+
   if (disconnectedNodes.length > 0) {
     warnings.push(`Workflow has disconnected nodes: ${disconnectedNodes.map((n: any) => n.name).join(', ')}`);
   }
@@ -242,7 +242,7 @@ const validateBusinessLogic = (workflow: any): { errors: string[], warnings: str
 
 export const validateWorkflowUpdate = (existingWorkflow: any, updatedWorkflow: any): ValidationResult => {
   const result = validateWorkflow(updatedWorkflow);
-  
+
   if (!result.isValid) {
     return result;
   }
@@ -258,10 +258,10 @@ export const validateWorkflowUpdate = (existingWorkflow: any, updatedWorkflow: a
     result.warnings.push('Workflow will be deactivated');
   }
 
-  const existingTriggers = existingWorkflow.nodes.filter((n: any) => 
+  const existingTriggers = existingWorkflow.nodes.filter((n: any) =>
     ['n8n-nodes-base.webhook', 'n8n-nodes-base.cron'].includes(n.type)
   );
-  const newTriggers = updatedWorkflow.nodes.filter((n: any) => 
+  const newTriggers = updatedWorkflow.nodes.filter((n: any) =>
     ['n8n-nodes-base.webhook', 'n8n-nodes-base.cron'].includes(n.type)
   );
 

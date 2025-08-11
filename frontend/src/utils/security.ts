@@ -22,6 +22,7 @@ export function sanitizeFilename(filename: string): string {
     .replace(/\//g, '&#x2F;');
   
   // Remove any non-printable characters
+  // eslint-disable-next-line no-control-regex
   const clean = escaped.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
   
   // Limit length to prevent DoS

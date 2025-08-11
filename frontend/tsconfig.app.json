@@ -23,9 +23,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"],
-  "exclude": [
-    "src/pages/trading/**/*",
-    "src/services/tradingService.ts"
-  ]
+  "include": ["src"]
 }

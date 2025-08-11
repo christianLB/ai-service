@@ -7,17 +7,17 @@ async function addCrossExchangeArbitrageStrategy() {
   try {
     // Initialize database
     await db.initialize();
-    
+
     // Check if strategy already exists
     const existing = await db.pool.query(
-      `SELECT id FROM trading.strategies WHERE type = 'cross_exchange_arbitrage' LIMIT 1`
+      'SELECT id FROM trading.strategies WHERE type = \'cross_exchange_arbitrage\' LIMIT 1'
     );
-    
+
     if (existing.rows.length > 0) {
       logger.info('Cross-exchange arbitrage strategy already exists');
       return;
     }
-    
+
     // Insert new strategy
     const result = await db.pool.query(
       `INSERT INTO trading.strategies (
@@ -68,11 +68,11 @@ async function addCrossExchangeArbitrageStrategy() {
         true, // Start in paper trading mode
       ]
     );
-    
+
     logger.info('Cross-exchange arbitrage strategy added successfully', {
       strategyId: result.rows[0].id,
     });
-    
+
     // Add strategy parameters documentation
     await db.pool.query(
       `INSERT INTO trading.strategy_descriptions (
@@ -100,9 +100,9 @@ async function addCrossExchangeArbitrageStrategy() {
         ]),
       ]
     );
-    
+
     logger.info('Strategy documentation added');
-    
+
   } catch (error) {
     logger.error('Failed to add arbitrage strategy', error);
     throw error;

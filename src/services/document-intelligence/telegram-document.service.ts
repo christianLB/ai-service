@@ -43,14 +43,14 @@ export class TelegramDocumentService {
     // Document upload command
     this.bot.onText(/\/upload/, async (msg) => {
       const chatId = msg.chat.id;
-      await this.bot.sendMessage(chatId, 
+      await this.bot.sendMessage(chatId,
         '📄 *Document Upload*\n\n' +
         'Send me any document (PDF, DOCX, TXT, etc.) and I\'ll:\n' +
         '• Extract and analyze the content\n' +
         '• Generate a summary\n' +
         '• Extract key information\n' +
         '• Make it searchable\n\n' +
-        'Just send the file directly!', 
+        'Just send the file directly!',
         { parse_mode: 'Markdown' }
       );
     });
@@ -114,11 +114,11 @@ export class TelegramDocumentService {
 
     try {
       // Send processing message
-      const processingMsg = await this.bot.sendMessage(chatId, 
+      const processingMsg = await this.bot.sendMessage(chatId,
         '📄 *Processing Document*\n\n' +
         `• File: ${this.escapeMarkdown(document.file_name || 'unknown')}\n` +
         `• Size: ${this.formatFileSize(document.file_size || 0)}\n` +
-        `• Status: Downloading... 📥`,
+        '• Status: Downloading... 📥',
         { parse_mode: 'Markdown' }
       );
 
@@ -136,13 +136,13 @@ export class TelegramDocumentService {
 
       // Download file
       const fileBuffer = await this.downloadFile(document.file_id);
-      
+
       // Update status
       await this.bot.editMessageText(
         '📄 *Processing Document*\n\n' +
         `• File: ${this.escapeMarkdown(document.file_name || 'unknown')}\n` +
         `• Size: ${this.formatFileSize(document.file_size || 0)}\n` +
-        `• Status: Extracting content... 📝`,
+        '• Status: Extracting content... 📝',
         { chat_id: chatId, message_id: processingMsg.message_id, parse_mode: 'Markdown' }
       );
 
@@ -159,7 +159,7 @@ export class TelegramDocumentService {
         '📄 *Processing Document*\n\n' +
         `• File: ${this.escapeMarkdown(document.file_name || 'unknown')}\n` +
         `• Size: ${this.formatFileSize(document.file_size || 0)}\n` +
-        `• Status: Analyzing content... 🧠`,
+        '• Status: Analyzing content... 🧠',
         { chat_id: chatId, message_id: processingMsg.message_id, parse_mode: 'Markdown' }
       );
 
@@ -175,13 +175,13 @@ export class TelegramDocumentService {
         '✅ *Document Processed Successfully*\n\n' +
         `${this.formatDocumentSummary(ingestedDoc)}\n\n` +
         `📋 Document ID: \`${ingestedDoc.id}\`\n` +
-        `🔍 Use /search to find this document later`,
+        '🔍 Use /search to find this document later',
         { chat_id: chatId, message_id: processingMsg.message_id, parse_mode: 'Markdown' }
       );
 
     } catch (error) {
       console.error('❌ Error processing document:', error);
-      await this.bot.sendMessage(chatId, 
+      await this.bot.sendMessage(chatId,
         '❌ *Error Processing Document*\n\n' +
         'Sorry, I encountered an error while processing your document. Please try again.',
         { parse_mode: 'Markdown' }
@@ -191,8 +191,8 @@ export class TelegramDocumentService {
 
   private async handlePhotoUpload(msg: TelegramBot.Message): Promise<void> {
     const chatId = msg.chat.id;
-    
-    await this.bot.sendMessage(chatId, 
+
+    await this.bot.sendMessage(chatId,
       '📸 *Photo Upload Detected*\n\n' +
       'Photo processing is not yet implemented. Please send documents in these formats:\n' +
       `• ${this.config.allowedTypes.join(', ')}\n\n` +
@@ -207,9 +207,9 @@ export class TelegramDocumentService {
 
     try {
       const documents = await this.ingestionService.listDocuments(userId, 10);
-      
+
       if (documents.length === 0) {
-        await this.bot.sendMessage(chatId, 
+        await this.bot.sendMessage(chatId,
           '📂 *No Documents Found*\n\n' +
           'You haven\'t uploaded any documents yet. Send me a document to get started!',
           { parse_mode: 'Markdown' }
@@ -224,7 +224,7 @@ export class TelegramDocumentService {
                `   📋 ID: \`${doc.id}\``;
       }).join('\n\n');
 
-      await this.bot.sendMessage(chatId, 
+      await this.bot.sendMessage(chatId,
         '📂 *Your Documents*\n\n' +
         documentList + '\n\n' +
         '💡 Use /summary [ID] to get a summary\n' +
@@ -234,7 +234,7 @@ export class TelegramDocumentService {
 
     } catch (error) {
       console.error('❌ Error listing documents:', error);
-      await this.bot.sendMessage(chatId, 
+      await this.bot.sendMessage(chatId,
         '❌ Error retrieving documents. Please try again.',
         { parse_mode: 'Markdown' }
       );
@@ -253,9 +253,9 @@ export class TelegramDocumentService {
       };
 
       const results = await this.analysisService.searchSimilarDocuments(query, 5);
-      
+
       if (results.length === 0) {
-        await this.bot.sendMessage(chatId, 
+        await this.bot.sendMessage(chatId,
           '🔍 *No Results Found*\n\n' +
           `No documents found matching: "${query}"\n\n` +
           'Try different keywords or upload more documents.',
@@ -271,7 +271,7 @@ export class TelegramDocumentService {
                `   📋 ID: \`${doc.id}\``;
       }).join('\n\n');
 
-      await this.bot.sendMessage(chatId, 
+      await this.bot.sendMessage(chatId,
         `🔍 *Search Results for "${query}"*\n\n` +
         resultList + '\n\n' +
         '💡 Use /summary [ID] to get full details',
@@ -280,7 +280,7 @@ export class TelegramDocumentService {
 
     } catch (error) {
       console.error('❌ Error searching documents:', error);
-      await this.bot.sendMessage(chatId, 
+      await this.bot.sendMessage(chatId,
         '❌ Error searching documents. Please try again.',
         { parse_mode: 'Markdown' }
       );
@@ -292,9 +292,9 @@ export class TelegramDocumentService {
 
     try {
       const document = await this.ingestionService.getDocument(docId);
-      
+
       if (!document) {
-        await this.bot.sendMessage(chatId, 
+        await this.bot.sendMessage(chatId,
           '❌ *Document Not Found*\n\n' +
           `Document with ID \`${docId}\` not found.`,
           { parse_mode: 'Markdown' }
@@ -307,7 +307,7 @@ export class TelegramDocumentService {
 
     } catch (error) {
       console.error('❌ Error getting document summary:', error);
-      await this.bot.sendMessage(chatId, 
+      await this.bot.sendMessage(chatId,
         '❌ Error retrieving document summary. Please try again.',
         { parse_mode: 'Markdown' }
       );
@@ -319,9 +319,9 @@ export class TelegramDocumentService {
 
     try {
       const document = await this.ingestionService.getDocument(docId);
-      
+
       if (!document) {
-        await this.bot.sendMessage(chatId, 
+        await this.bot.sendMessage(chatId,
           '❌ *Document Not Found*\n\n' +
           `Document with ID \`${docId}\` not found.`,
           { parse_mode: 'Markdown' }
@@ -329,7 +329,7 @@ export class TelegramDocumentService {
         return;
       }
 
-      const processingMsg = await this.bot.sendMessage(chatId, 
+      const processingMsg = await this.bot.sendMessage(chatId,
         '🧠 *Analyzing Document*\n\n' +
         'Please wait while I analyze the document...',
         { parse_mode: 'Markdown' }
@@ -348,7 +348,7 @@ export class TelegramDocumentService {
 
     } catch (error) {
       console.error('❌ Error analyzing document:', error);
-      await this.bot.sendMessage(chatId, 
+      await this.bot.sendMessage(chatId,
         '❌ Error analyzing document. Please try again.',
         { parse_mode: 'Markdown' }
       );
@@ -357,8 +357,8 @@ export class TelegramDocumentService {
 
   public async handleDocumentHelp(msg: TelegramBot.Message): Promise<void> {
     const chatId = msg.chat.id;
-    
-    await this.bot.sendMessage(chatId, 
+
+    await this.bot.sendMessage(chatId,
       '📚 *Document Intelligence Help*\n\n' +
       '*Commands:*\n' +
       '• /upload - Upload and analyze documents\n' +
@@ -385,7 +385,7 @@ export class TelegramDocumentService {
     try {
       const fileInfo = await this.bot.getFile(fileId);
       const fileUrl = `https://api.telegram.org/file/bot${(this.bot as any).token}/${fileInfo.file_path}`;
-      
+
       const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
       return Buffer.from(response.data);
     } catch (error: any) {
@@ -410,46 +410,46 @@ export class TelegramDocumentService {
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;
-    
+
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
+
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   }
 
   private formatDocumentSummary(document: Document): string {
     const docModel = new DocumentModel(document.id, document.title, document.type, document.format, document.content, document.metadata, document.analysis, document.createdAt, document.updatedAt);
     const analysis = document.analysis;
-    
+
     let summary = `${docModel.getTypeIcon()} *${document.title}*\n\n`;
-    
+
     if (analysis?.summary) {
       summary += `📝 *Summary:*\n${analysis.summary}\n\n`;
     }
-    
+
     if (analysis?.entities && analysis.entities.length > 0) {
       const topEntities = analysis.entities.slice(0, 3);
       summary += `🏷 *Key Entities:*\n${topEntities.map(e => `• ${e.text} (${e.type})`).join('\n')}\n\n`;
     }
-    
+
     if (analysis?.topics && analysis.topics.length > 0) {
       const topTopics = analysis.topics.slice(0, 3);
       summary += `📊 *Topics:*\n${topTopics.map(t => `• ${t.name}`).join('\n')}\n\n`;
     }
-    
+
     if (analysis?.questions && analysis.questions.length > 0) {
       summary += `❓ *Key Questions:*\n${analysis.questions.slice(0, 2).map(q => `• ${q}`).join('\n')}\n\n`;
     }
-    
-    summary += `📊 *Info:*\n`;
+
+    summary += '📊 *Info:*\n';
     summary += `• Words: ${docModel.getWordCount()}\n`;
     summary += `• Reading time: ${docModel.getReadingTime()} min\n`;
     summary += `• Format: ${document.format.toUpperCase()}\n`;
     summary += `• Size: ${docModel.getSize()}\n`;
     summary += `• Date: ${document.createdAt.toLocaleDateString()}`;
-    
+
     return summary;
   }
 

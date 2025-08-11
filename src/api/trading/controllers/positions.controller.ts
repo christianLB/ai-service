@@ -6,8 +6,8 @@ const logger = new Logger('PositionsController');
 class PositionsController {
   async getPositions(req: Request, res: Response) {
     try {
-      const { status = 'open' } = req.query;
-      
+      const { status: _status = 'open' } = req.query;
+
       // Mock data
       const positions = [
         {
@@ -52,7 +52,7 @@ class PositionsController {
   async getPosition(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
+
       // Mock data
       const position = {
         id,
@@ -80,11 +80,11 @@ class PositionsController {
     try {
       const { id } = req.params;
       const { reason = 'manual_close', market = true } = req.body;
-      
+
       logger.info(`Closing position ${id} - reason: ${reason}, market: ${market}`);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: 'Position closed successfully',
         closedAt: new Date(),
         finalPnl: 1750
@@ -98,9 +98,9 @@ class PositionsController {
   async closeAllPositions(req: Request, res: Response) {
     try {
       logger.info('Closing all positions');
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: 'All positions closed successfully',
         positionsClosed: 2
       });
@@ -114,11 +114,11 @@ class PositionsController {
     try {
       const { id } = req.params;
       const { stopLoss, takeProfit } = req.body;
-      
+
       logger.info(`Updating SL/TP for position ${id} - SL: ${stopLoss}, TP: ${takeProfit}`);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: 'Stop loss and take profit updated successfully'
       });
     } catch (error) {

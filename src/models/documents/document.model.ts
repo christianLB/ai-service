@@ -1,4 +1,4 @@
-import { Document, DocumentAnalysis, DocumentContent, DocumentMetadata, DocumentType, FileFormat, DocumentSource } from './types';
+import { Document, DocumentAnalysis, DocumentContent, DocumentMetadata, DocumentType, FileFormat } from './types';
 
 export class DocumentModel {
   constructor(
@@ -64,11 +64,15 @@ export class DocumentModel {
   }
 
   getPreview(maxLength: number = 200): string {
-    if (!this.content.text) return '';
-    
+    if (!this.content.text) {
+      return '';
+    }
+
     const text = this.content.text.trim();
-    if (text.length <= maxLength) return text;
-    
+    if (text.length <= maxLength) {
+      return text;
+    }
+
     return text.substring(0, maxLength) + '...';
   }
 
@@ -100,12 +104,12 @@ export class DocumentModel {
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;
-    
+
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
+
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   }
 
@@ -120,7 +124,7 @@ export class DocumentModel {
       [DocumentType.EMAIL]: '📧',
       [DocumentType.OTHER]: '📄'
     };
-    
+
     return iconMap[this.type] || '📄';
   }
 
@@ -138,18 +142,28 @@ export class DocumentModel {
       [FileFormat.PPTX]: '📽️',
       [FileFormat.IMAGE]: '🖼️'
     };
-    
+
     return iconMap[this.format] || '📄';
   }
 
   validate(): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    if (!this.id) errors.push('Document ID is required');
-    if (!this.title) errors.push('Document title is required');
-    if (!this.content.text) errors.push('Document content is required');
-    if (!this.metadata.fileName) errors.push('File name is required');
-    if (this.metadata.fileSize <= 0) errors.push('File size must be greater than 0');
+    if (!this.id) {
+      errors.push('Document ID is required');
+    }
+    if (!this.title) {
+      errors.push('Document title is required');
+    }
+    if (!this.content.text) {
+      errors.push('Document content is required');
+    }
+    if (!this.metadata.fileName) {
+      errors.push('File name is required');
+    }
+    if (this.metadata.fileSize <= 0) {
+      errors.push('File size must be greater than 0');
+    }
 
     return {
       isValid: errors.length === 0,

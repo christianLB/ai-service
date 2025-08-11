@@ -19,36 +19,36 @@ export class FinancialSchedulerService {
 
   start(): void {
     if (this.isRunning) {
-      console.log('Financial scheduler is already running');
+      // console.log('Financial scheduler is already running');
       return;
     }
 
-    console.log('Starting financial scheduler (2x/day sync)...');
-    
+    // console.log('Starting financial scheduler (2x/day sync)...');
+
     // Schedule sync twice daily: 8:00 AM and 8:00 PM
     this.scheduleDailySync();
-    
+
     // Also run an initial sync if needed
     this.performInitialSyncCheck();
-    
+
     this.isRunning = true;
-    console.log('Financial scheduler started successfully');
+    // console.log('Financial scheduler started successfully');
   }
 
   stop(): void {
     if (!this.isRunning) {
-      console.log('Financial scheduler is not running');
+      // console.log('Financial scheduler is not running');
       return;
     }
 
-    console.log('Stopping financial scheduler...');
-    
+    // console.log('Stopping financial scheduler...');
+
     // Clear all intervals
     this.syncIntervals.forEach(interval => clearInterval(interval));
     this.syncIntervals = [];
-    
+
     this.isRunning = false;
-    console.log('Financial scheduler stopped');
+    // console.log('Financial scheduler stopped');
   }
 
   isActive(): boolean {
@@ -64,49 +64,49 @@ export class FinancialSchedulerService {
     const now = new Date();
     const next8AM = new Date();
     next8AM.setHours(8, 0, 0, 0);
-    
+
     if (now > next8AM) {
       next8AM.setDate(next8AM.getDate() + 1);
     }
-    
+
     const msUntil8AM = next8AM.getTime() - now.getTime();
-    
+
     // Calculate milliseconds until next 8:00 PM
     const next8PM = new Date();
     next8PM.setHours(20, 0, 0, 0);
-    
+
     if (now > next8PM) {
       next8PM.setDate(next8PM.getDate() + 1);
     }
-    
+
     const msUntil8PM = next8PM.getTime() - now.getTime();
 
-    console.log(`Next sync scheduled for: ${next8AM.toLocaleString()}`);
-    console.log(`Following sync scheduled for: ${next8PM.toLocaleString()}`);
+    // console.log(`Next sync scheduled for: ${next8AM.toLocaleString()}`);
+    // console.log(`Following sync scheduled for: ${next8PM.toLocaleString()}`);
 
     // Schedule first sync (whichever comes first)
     const firstSyncDelay = Math.min(msUntil8AM, msUntil8PM);
     const firstSyncTime = msUntil8AM < msUntil8PM ? '8:00 AM' : '8:00 PM';
-    
+
     setTimeout(() => {
       this.executeSyncWithRetry();
       // After first sync, schedule regular 12-hour intervals
       this.scheduleRegularSync();
     }, firstSyncDelay);
 
-    console.log(`First sync will run in ${Math.round(firstSyncDelay / 1000 / 60)} minutes at ${firstSyncTime}`);
+    // console.log(`First sync will run in ${Math.round(firstSyncDelay / 1000 / 60)} minutes at ${firstSyncTime}`);
   }
 
   private scheduleRegularSync(): void {
     // Schedule sync every 12 hours (2x/day)
     const twelveHours = 12 * 60 * 60 * 1000;
-    
+
     const interval = setInterval(() => {
       this.executeSyncWithRetry();
     }, twelveHours);
-    
+
     this.syncIntervals.push(interval);
-    console.log('Regular 12-hour sync interval scheduled');
+    // console.log('Regular 12-hour sync interval scheduled');
   }
 
   // ============================================================================
@@ -115,20 +115,20 @@ export class FinancialSchedulerService {
 
   private async performInitialSyncCheck(): Promise<void> {
     try {
-      console.log('Checking if initial sync is needed...');
-      
+      // console.log('Checking if initial sync is needed...');
+
       // Check if we have any accounts
       const accounts = await this.db.query(`
         SELECT COUNT(*) as count 
         FROM financial.accounts 
         WHERE type = 'bank_account' AND is_active = true
       `);
-      
+
       const accountCount = parseInt(accounts.rows[0].count);
-      
+
       if (accountCount === 0) {
-        console.log('No bank accounts found. Initial setup required.');
-        console.log('Use /api/financial/setup-bbva to start the setup process');
+        // console.log('No bank accounts found. Initial setup required.');
+        // console.log('Use /api/financial/setup-bbva to start the setup process');
         return;
       }
 
@@ -143,9 +143,9 @@ export class FinancialSchedulerService {
       `);
 
       if (accountsNeedingSync.rows.length > 0) {
-        console.log(`Found ${accountsNeedingSync.rows.length} accounts needing initial sync`);
-        console.log('Performing initial 90-day sync...');
-        
+        // console.log(`Found ${accountsNeedingSync.rows.length} accounts needing initial sync`);
+        // console.log('Performing initial 90-day sync...');
+
         for (const account of accountsNeedingSync.rows) {
           try {
             const syncResult = await this.goCardless.syncTransactionsToDatabase(
@@ -153,7 +153,7 @@ export class FinancialSchedulerService {
               account.id,
               90
             );
-            console.log(`Initial sync completed for ${account.name}: ${syncResult} transactions`);
+            // console.log(`Initial sync completed for ${account.name}: ${syncResult} transactions`);
           } catch (error) {
             console.error(`Initial sync failed for ${account.name}:`, error);
           }
@@ -172,7 +172,7 @@ export class FinancialSchedulerService {
       `);
 
       if (accountsWithOldSync.rows.length > 0) {
-        console.log(`Found ${accountsWithOldSync.rows.length} accounts with outdated sync`);
+        // console.log(`Found ${accountsWithOldSync.rows.length} accounts with outdated sync`);
         await this.executeSyncWithRetry();
       }
 
@@ -183,17 +183,17 @@ export class FinancialSchedulerService {
 
   private async executeSyncWithRetry(maxRetries = 3): Promise<void> {
     let attempts = 0;
-    
+
     while (attempts < maxRetries) {
       try {
         attempts++;
-        console.log(`Starting sync attempt ${attempts}/${maxRetries} at ${new Date().toISOString()}`);
-        
+        // console.log(`Starting sync attempt ${attempts}/${maxRetries} at ${new Date().toISOString()}`);
+
         const result = await this.goCardless.performPeriodicSync();
-        
+
         if (result.success) {
-          console.log('Sync completed successfully:', result.data);
-          
+          // console.log('Sync completed successfully:', result.data);
+
           // Log sync metrics to database
           await this.logSyncMetrics({
             accountsSynced: result.data!.accountsSynced,
@@ -203,11 +203,11 @@ export class FinancialSchedulerService {
             attempts,
             errors: result.data!.errors
           });
-          
+
           return; // Success, exit retry loop
         } else {
           console.error(`Sync attempt ${attempts} failed:`, result.error);
-          
+
           if (attempts === maxRetries) {
             await this.logSyncMetrics({
               accountsSynced: 0,
@@ -221,7 +221,7 @@ export class FinancialSchedulerService {
         }
       } catch (error) {
         console.error(`Sync attempt ${attempts} failed with error:`, error);
-        
+
         if (attempts === maxRetries) {
           await this.logSyncMetrics({
             accountsSynced: 0,
@@ -237,11 +237,11 @@ export class FinancialSchedulerService {
       // Wait before retry (exponential backoff)
       if (attempts < maxRetries) {
         const delay = Math.pow(2, attempts) * 1000; // 2s, 4s, 8s
-        console.log(`Waiting ${delay}ms before retry...`);
+        // console.log(`Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
-    
+
     console.error(`All ${maxRetries} sync attempts failed`);
   }
 
@@ -286,7 +286,7 @@ export class FinancialSchedulerService {
         metrics.error
       ]);
 
-      console.log('Sync metrics logged successfully');
+      // console.log('Sync metrics logged successfully');
     } catch (error) {
       console.error('Failed to log sync metrics:', error);
     }
@@ -352,18 +352,18 @@ export class FinancialSchedulerService {
   // ============================================================================
 
   async performManualSync(): Promise<any> {
-    console.log('=== MANUAL SYNC STARTED ===');
-    console.log(`Timestamp: ${new Date().toISOString()}`);
-    
+    // console.log('=== MANUAL SYNC STARTED ===');
+    // console.log(`Timestamp: ${new Date().toISOString()}`);
+
     try {
       // Pre-flight check: Verify GoCardless credentials are configured
-      console.log('Performing pre-flight checks...');
+      // console.log('Performing pre-flight checks...');
       const hasCredentials = await this.goCardless.hasCredentials();
-      
+
       if (!hasCredentials) {
         const error = 'GoCardless credentials not configured. Please configure secret_id and secret_key in integration settings.';
         console.error(error);
-        
+
         await this.logSyncMetrics({
           accountsSynced: 0,
           transactionsSynced: 0,
@@ -372,23 +372,23 @@ export class FinancialSchedulerService {
           attempts: 1,
           error: error
         });
-        
+
         return {
           success: false,
           error: error,
           data: null
         };
       }
-      
+
       // Pre-flight check: Test authentication
-      console.log('Testing GoCardless authentication...');
+      // console.log('Testing GoCardless authentication...');
       try {
         await this.goCardless.refreshAuthentication();
-        console.log('Authentication successful');
+        // console.log('Authentication successful');
       } catch (authError) {
         const error = `GoCardless authentication failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`;
         console.error(error);
-        
+
         await this.logSyncMetrics({
           accountsSynced: 0,
           transactionsSynced: 0,
@@ -397,18 +397,18 @@ export class FinancialSchedulerService {
           attempts: 1,
           error: error
         });
-        
+
         return {
           success: false,
           error: error,
           data: null
         };
       }
-      
-      console.log('Pre-flight checks passed, calling GoCardless performPeriodicSync...');
+
+      // console.log('Pre-flight checks passed, calling GoCardless performPeriodicSync...');
       const result = await this.goCardless.performPeriodicSync();
-      console.log('GoCardless sync result:', JSON.stringify(result, null, 2));
-      
+      // console.log('GoCardless sync result:', JSON.stringify(result, null, 2));
+
       await this.logSyncMetrics({
         accountsSynced: result.data?.accountsSynced || 0,
         transactionsSynced: result.data?.transactionsSynced || 0,
@@ -422,7 +422,7 @@ export class FinancialSchedulerService {
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Manual sync failed';
-      
+
       await this.logSyncMetrics({
         accountsSynced: 0,
         transactionsSynced: 0,
@@ -449,10 +449,10 @@ export class FinancialSchedulerService {
     const now = new Date();
     const next8AM = new Date();
     next8AM.setHours(8, 0, 0, 0);
-    
+
     const next8PM = new Date();
     next8PM.setHours(20, 0, 0, 0);
-    
+
     // If current time is past both times today, move to tomorrow
     if (now.getHours() >= 20) {
       next8AM.setDate(next8AM.getDate() + 1);

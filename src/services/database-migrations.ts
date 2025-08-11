@@ -29,10 +29,10 @@ async function recordMigration(client: any, version: string, description: string
 export async function migrateFinancialSchema(client: any): Promise<void> {
   try {
     logger.info('🔧 Starting financial schema migration...');
-    
+
     // Ensure migrations tracking table exists
     await ensureMigrationsTable(client);
-    
+
     // Enable pg_trgm extension for fuzzy string matching
     try {
       await client.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
@@ -40,13 +40,13 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
     } catch (error: any) {
       logger.warn('Could not enable pg_trgm extension:', error.message);
     }
-    
+
     // Step 0: Ensure base tables exist first
     await ensureBaseTables(client);
-    
+
     // Step 0.5: Ensure all required columns exist (for GoCardless and crypto support)
     await ensureMissingColumns(client);
-    
+
     // PRIORITY 1: Add wallet_address column if missing (this is the critical issue)
     const walletCheck = await client.query(`
       SELECT EXISTS (
@@ -56,9 +56,9 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         AND column_name = 'wallet_address'
       ) as has_wallet_address
     `);
-    
+
     const { has_wallet_address } = walletCheck.rows[0];
-    
+
     if (!has_wallet_address) {
       logger.info('🚨 CRITICAL: Adding wallet_address column...');
       await client.query(`
@@ -69,10 +69,10 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
     } else {
       logger.info('✅ wallet_address column already exists');
     }
-    
+
     // Simple migration since tables are created fresh
     logger.info('Schema tables already created by ensureBaseTables, migration complete!');
-    
+
     // Add extra currencies that might be missing
     await client.query(`
       INSERT INTO financial.currencies (code, name, type, decimals, symbol) VALUES 
@@ -81,7 +81,7 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
       ('ETH', 'Ethereum', 'crypto', 18, 'Ξ')
       ON CONFLICT (code) DO NOTHING
     `);
-    
+
     // Add counterparty_name column if missing
     const counterpartyCheck = await client.query(`
       SELECT EXISTS (
@@ -91,7 +91,7 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         AND column_name = 'counterparty_name'
       ) as has_counterparty_name
     `);
-    
+
     if (!counterpartyCheck.rows[0].has_counterparty_name) {
       logger.info('Adding counterparty_name column to transactions...');
       await client.query(`
@@ -100,7 +100,7 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
       `);
       logger.info('✅ counterparty_name column added successfully');
     }
-    
+
     // Check and create client_transaction_links table if missing
     const linkTableCheck = await client.query(`
       SELECT EXISTS (
@@ -109,7 +109,7 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         AND table_name = 'client_transaction_links'
       ) as has_links_table
     `);
-    
+
     if (!linkTableCheck.rows[0].has_links_table) {
       logger.info('Creating client_transaction_links table...');
       await client.query(`
@@ -131,17 +131,17 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
           UNIQUE(transaction_id)
         )
       `);
-      
+
       // Create indexes
       await client.query(`
         CREATE INDEX idx_client_transaction_links_transaction_id ON financial.client_transaction_links(transaction_id);
         CREATE INDEX idx_client_transaction_links_client_id ON financial.client_transaction_links(client_id);
         CREATE INDEX idx_client_transaction_links_match_type ON financial.client_transaction_links(match_type);
       `);
-      
+
       logger.info('✅ client_transaction_links table created successfully');
     }
-    
+
     // Check and create transaction_matching_patterns table if missing
     const patternTableCheck = await client.query(`
       SELECT EXISTS (
@@ -150,7 +150,7 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         AND table_name = 'transaction_matching_patterns'
       ) as has_patterns_table
     `);
-    
+
     if (!patternTableCheck.rows[0].has_patterns_table) {
       logger.info('Creating transaction_matching_patterns table...');
       await client.query(`
@@ -171,49 +171,49 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
           updated_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
-      
+
       // Create indexes
       await client.query(`
         CREATE INDEX idx_transaction_matching_patterns_client_id ON financial.transaction_matching_patterns(client_id);
         CREATE INDEX idx_transaction_matching_patterns_pattern_type ON financial.transaction_matching_patterns(pattern_type);
         CREATE INDEX idx_transaction_matching_patterns_active ON financial.transaction_matching_patterns(is_active);
       `);
-      
+
       logger.info('✅ transaction_matching_patterns table created successfully');
     }
-    
+
     logger.info('✅ Financial schema migration completed successfully');
-    
+
     /*
     // LEGACY MIGRATION CODE - DISABLED FOR FRESH INSTALLS
     const schemaCheck = await client.query(`
-      SELECT 
+      SELECT
         EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_schema = 'financial' 
-          AND table_name = 'transactions' 
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'financial'
+          AND table_name = 'transactions'
           AND column_name = 'currency'
         ) as has_old_currency,
         EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_schema = 'financial' 
-          AND table_name = 'transactions' 
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'financial'
+          AND table_name = 'transactions'
           AND column_name = 'currency_id'
         ) as has_currency_id,
         EXISTS (
-          SELECT 1 FROM information_schema.tables 
-          WHERE table_schema = 'financial' 
+          SELECT 1 FROM information_schema.tables
+          WHERE table_schema = 'financial'
           AND table_name = 'categories'
         ) as has_categories
     `);
-    
+
     const { has_old_currency, has_currency_id, has_categories } = schemaCheck.rows[0];
-    
+
     logger.info('Starting financial schema migration...');
-    
+
     // Begin transaction for safe migration
     await client.query('BEGIN');
-    
+
     try {
       // Step 1: Create currencies table if not exists
       await client.query(`
@@ -229,10 +229,10 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
           updated_at TIMESTAMPTZ DEFAULT NOW()
         )
       `);
-      
+
       // Insert default currencies
       await client.query(`
-        INSERT INTO financial.currencies (code, name, type, decimals, symbol) VALUES 
+        INSERT INTO financial.currencies (code, name, type, decimals, symbol) VALUES
         ('EUR', 'Euro', 'fiat', 2, '€'),
         ('USD', 'US Dollar', 'fiat', 2, '$'),
         ('GBP', 'British Pound', 'fiat', 2, '£'),
@@ -240,23 +240,23 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         ('ETH', 'Ethereum', 'crypto', 18, 'Ξ')
         ON CONFLICT (code) DO NOTHING
       `);
-      
+
       // Step 2: Ensure currency_id column exists (skip complex migration since we're creating from scratch)
       if (!has_currency_id) {
         logger.info('Adding currency_id column...');
-        
+
         // Add new column if it doesn't exist
         await client.query(`
-          ALTER TABLE financial.transactions 
+          ALTER TABLE financial.transactions
           ADD COLUMN IF NOT EXISTS currency_id UUID REFERENCES financial.currencies(id)
         `);
-        
+
         logger.info('✅ currency_id column added');
       }
-      
+
       // Step 3: Add missing columns to transactions
       await client.query(`
-        ALTER TABLE financial.transactions 
+        ALTER TABLE financial.transactions
         ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'confirmed',
         ADD COLUMN IF NOT EXISTS reference VARCHAR(255),
         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -264,15 +264,15 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         ADD COLUMN IF NOT EXISTS fee_amount DECIMAL(20, 8),
         ADD COLUMN IF NOT EXISTS fee_currency_id UUID REFERENCES financial.currencies(id)
       `);
-      
+
       // Step 4: Ensure accounts table has all required columns (simplified)
       logger.info('Ensuring accounts table has all required columns...');
-      
+
       // Step 5: Add missing columns to accounts
       logger.info('Adding missing columns to accounts table...');
       try {
         await client.query(`
-          ALTER TABLE financial.accounts 
+          ALTER TABLE financial.accounts
           ADD COLUMN IF NOT EXISTS institution_id VARCHAR(255),
           ADD COLUMN IF NOT EXISTS requisition_id VARCHAR(255),
           ADD COLUMN IF NOT EXISTS iban VARCHAR(255),
@@ -286,7 +286,7 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         logger.error('Error adding columns:', error.message);
         throw error;
       }
-      
+
       // Step 6: Create categories table
       if (!has_categories) {
         await client.query(`
@@ -302,10 +302,10 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
             updated_at TIMESTAMPTZ DEFAULT NOW()
           )
         `);
-        
+
         // Insert default categories
         await client.query(`
-          INSERT INTO financial.categories (name, type) VALUES 
+          INSERT INTO financial.categories (name, type) VALUES
           ('Salary', 'income'),
           ('Freelance', 'income'),
           ('Investment', 'income'),
@@ -319,7 +319,7 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
           ON CONFLICT (name) DO NOTHING
         `);
       }
-      
+
       // Step 7: Create transaction_categorizations table
       await client.query(`
         CREATE TABLE IF NOT EXISTS financial.transaction_categorizations (
@@ -332,7 +332,7 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
           UNIQUE(transaction_id)
         )
       `);
-      
+
       // Step 8: Create missing indexes
       await client.query(`
         CREATE INDEX IF NOT EXISTS idx_transactions_currency_id ON financial.transactions(currency_id);
@@ -340,11 +340,11 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_transaction_id ON financial.transaction_categorizations(transaction_id);
         CREATE INDEX IF NOT EXISTS idx_transaction_categorizations_category_id ON financial.transaction_categorizations(category_id);
       `);
-      
+
       // Step 9: Create categorized_transactions view
       await client.query(`
         CREATE OR REPLACE VIEW financial.categorized_transactions AS
-        SELECT 
+        SELECT
           t.id,
           t.account_id,
           a.name as account_name,
@@ -366,16 +366,16 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
         LEFT JOIN financial.transaction_categorizations tc ON t.id = tc.transaction_id
         LEFT JOIN financial.categories cat ON tc.category_id = cat.id
       `);
-      
+
       await client.query('COMMIT');
       logger.info('✅ Financial schema migration completed successfully');
-      
+
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     }
     */
-    
+
   } catch (error: any) {
     logger.error('Financial schema migration failed:', error.message);
     throw error;
@@ -384,11 +384,11 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
 
 async function ensureBaseTables(client: any): Promise<void> {
   logger.info('🏗️ Ensuring base tables exist...');
-  
+
   // CRITICAL: Never drop existing tables - this was destroying production data!
   // Only create tables if they don't exist
   logger.info('📊 Ensuring financial schema exists...');
-  
+
   // Create currencies table
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.currencies (
@@ -403,7 +403,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  
+
   // Insert default currencies if not exist
   await client.query(`
     INSERT INTO financial.currencies (code, name, type, decimals, symbol) VALUES 
@@ -411,7 +411,7 @@ async function ensureBaseTables(client: any): Promise<void> {
     ('USD', 'US Dollar', 'fiat', 2, '$')
     ON CONFLICT (code) DO NOTHING
   `);
-  
+
   // Create accounts table (with all required columns from the start)
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.accounts (
@@ -436,7 +436,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  
+
   // Create transactions table with all required columns
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.transactions (
@@ -469,7 +469,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       counterparty_account VARCHAR(255)
     )
   `);
-  
+
   // Create categories table
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.categories (
@@ -484,7 +484,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  
+
   // Create transaction_categorizations table
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.transaction_categorizations (
@@ -497,7 +497,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       UNIQUE(transaction_id)
     )
   `);
-  
+
   // Insert default categories
   await client.query(`
     INSERT INTO financial.categories (name, type) VALUES 
@@ -513,7 +513,7 @@ async function ensureBaseTables(client: any): Promise<void> {
     ('Transfer', 'transfer')
     ON CONFLICT (name) DO NOTHING
   `);
-  
+
   // Create client_transaction_links table
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.client_transaction_links (
@@ -571,7 +571,7 @@ async function ensureBaseTables(client: any): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_transaction_matching_patterns_pattern_type ON financial.transaction_matching_patterns(pattern_type);
     CREATE INDEX IF NOT EXISTS idx_transaction_matching_patterns_active ON financial.transaction_matching_patterns(is_active);
   `);
-  
+
   // Create views needed for reporting
   await client.query(`
     CREATE OR REPLACE VIEW financial.categorized_transactions AS
@@ -597,7 +597,7 @@ async function ensureBaseTables(client: any): Promise<void> {
     LEFT JOIN financial.transaction_categorizations tc ON t.id = tc.transaction_id
     LEFT JOIN financial.categories cat ON tc.category_id = cat.id
   `);
-  
+
   // Create monthly_category_summary view for reporting
   await client.query(`
     CREATE OR REPLACE VIEW financial.monthly_category_summary AS
@@ -620,7 +620,7 @@ async function ensureBaseTables(client: any): Promise<void> {
     GROUP BY DATE_TRUNC('month', t.date), cat.id, cat.name, cat.type, cur.code
     ORDER BY month DESC, total_amount DESC
   `);
-  
+
   // Create clients table for invoice management
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.clients (
@@ -655,7 +655,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       last_contact_date TIMESTAMP
     )
   `);
-  
+
   // Create invoice_sequences table for invoice numbering
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.invoice_sequences (
@@ -669,7 +669,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       CONSTRAINT unique_sequence_prefix_year UNIQUE (prefix, year)
     )
   `);
-  
+
   // Create invoices table
   await client.query(`
     CREATE TABLE IF NOT EXISTS financial.invoices (
@@ -718,7 +718,7 @@ async function ensureBaseTables(client: any): Promise<void> {
       deductible_percentage DECIMAL(5,2)
     )
   `);
-  
+
   // Create indexes for invoice tables
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_clients_status ON financial.clients(status);
@@ -729,20 +729,20 @@ async function ensureBaseTables(client: any): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_invoices_issue_date ON financial.invoices(issue_date DESC);
     CREATE INDEX IF NOT EXISTS idx_invoices_invoice_number ON financial.invoices(invoice_number);
   `);
-  
+
   logger.info('✅ Base tables ensured (including invoice tables)');
 }
 
 async function ensureMissingColumns(client: any): Promise<void> {
   logger.info('🔧 Ensuring all required columns exist...');
-  
+
   // Check if this migration has already been applied
   const migrationVersion = '002_add_gocardless_crypto_columns';
   if (await hasMigrationBeenApplied(client, migrationVersion)) {
     logger.info('✅ Missing columns migration already applied');
     return;
   }
-  
+
   // Add missing columns to transactions table if they don't exist
   const columnsToAdd = [
     { name: 'gocardless_data', type: 'JSONB' },
@@ -776,15 +776,15 @@ async function ensureMissingColumns(client: any): Promise<void> {
       logger.error(`Failed to add column ${column.name}:`, error);
     }
   }
-  
+
   // Create indexes for performance
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_transactions_transaction_hash 
     ON financial.transactions(transaction_hash);
   `);
-  
+
   // Record this migration as applied
   await recordMigration(client, migrationVersion, 'Add GoCardless and crypto columns to transactions table');
-  
+
   logger.info('✅ All missing columns ensured');
 }

@@ -35,11 +35,11 @@ export declare class AutoSuggestionEngine {
      */
     private isSafeForAutoExecution;
     /**
-     * Map confidence score to priority level
+     * Map confidence score to priority level with enhanced logic
      */
     private mapConfidenceToPriority;
     /**
-     * Assess safety level of a make target
+     * Assess safety level of a make target with enhanced categorization
      */
     private assessSafetyLevel;
     /**

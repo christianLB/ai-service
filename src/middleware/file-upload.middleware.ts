@@ -67,13 +67,13 @@ const storage = multer.diskStorage({
 const createFileFilter = (category: keyof typeof ALLOWED_MIME_TYPES) => {
   return (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedTypes = ALLOWED_MIME_TYPES[category] || ALLOWED_MIME_TYPES.documents;
-    
+
     if (!validateMimeType(file.mimetype, allowedTypes)) {
       logger.warn(`Rejected file upload: Invalid MIME type ${file.mimetype}`);
       cb(new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`));
       return;
     }
-    
+
     // Additional security check on file extension
     const allowedExtensions = getAllowedExtensions(category);
     if (!validateFileExtension(file.originalname, allowedExtensions)) {
@@ -81,7 +81,7 @@ const createFileFilter = (category: keyof typeof ALLOWED_MIME_TYPES) => {
       cb(new Error(`Invalid file extension. Allowed extensions: ${allowedExtensions.join(', ')}`));
       return;
     }
-    
+
     cb(null, true);
   };
 };
@@ -154,24 +154,24 @@ export const createUploadMiddleware = (options: {
       // Use custom MIME types if provided
       const mimeTypes = allowedMimeTypes || ALLOWED_MIME_TYPES[category] || ALLOWED_MIME_TYPES.documents;
       const extensions = allowedExtensions || getAllowedExtensions(category);
-      
+
       if (!validateMimeType(file.mimetype, mimeTypes)) {
         cb(new Error(`Invalid file type. Allowed types: ${mimeTypes.join(', ')}`));
         return;
       }
-      
+
       if (!validateFileExtension(file.originalname, extensions)) {
         cb(new Error(`Invalid file extension. Allowed extensions: ${extensions.join(', ')}`));
         return;
       }
-      
+
       cb(null, true);
     }
   });
 };
 
 // Error handling middleware for multer errors
-export const handleUploadError = (error: any, req: Request, res: Response, next: NextFunction): void => {
+export const handleUploadError = (error: any, req: Request, res: Response, _next: NextFunction): void => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
       res.status(413).json({
@@ -198,7 +198,7 @@ export const handleUploadError = (error: any, req: Request, res: Response, next:
       return;
     }
   }
-  
+
   if (error && error.message) {
     res.status(400).json({
       success: false,
@@ -207,6 +207,6 @@ export const handleUploadError = (error: any, req: Request, res: Response, next:
     });
     return;
   }
-  
-  next(error);
+
+  _next(error);
 };

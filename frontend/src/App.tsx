@@ -11,6 +11,7 @@ import { PrivateRoute } from './components/auth/PrivateRoute';
 import { Login } from './pages/auth/Login';
 import AppLayout from './components/layout/AppLayout';
 import { WebSocketProvider } from './components/WebSocketProvider';
+import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import ClientList from './pages/clients/ClientList';
 import ClientDetail from './pages/clients/ClientDetail';
@@ -29,13 +30,13 @@ import Transactions from './pages/Transactions';
 import InvoiceTemplatePage from './pages/invoice-template';
 import ImportDemo from './pages/ImportDemo';
 
-// Trading routes
-import TradingDashboard from './pages/trading/TradingDashboard';
-import Positions from './pages/trading/Positions';
-import Strategies from './pages/trading/Strategies';
-import Backtest from './pages/trading/Backtest';
-import Performance from './pages/trading/Performance';
-import TradingSettings from './pages/trading/Settings';
+// Trading routes - Lazy loaded for better performance
+const TradingDashboard = React.lazy(() => import('./pages/trading/TradingDashboard'));
+const Positions = React.lazy(() => import('./pages/trading/Positions'));
+const Strategies = React.lazy(() => import('./pages/trading/Strategies'));
+const Backtest = React.lazy(() => import('./pages/trading/Backtest'));
+const Performance = React.lazy(() => import('./pages/trading/Performance'));
+const TradingSettings = React.lazy(() => import('./pages/trading/Settings'));
 
 // Intelligence routes
 import DocumentIntelligence from './pages/DocumentIntelligence';
@@ -110,13 +111,49 @@ const AppComponent: React.FC = () => {
               <Route path="bank-accounts" element={<BankAccounts />} />
               <Route path="transactions" element={<Transactions />} />
               
-              {/* Trading Routes */}
-              <Route path="trading" element={<TradingDashboard />} />
-              <Route path="trading/positions" element={<Positions />} />
-              <Route path="trading/strategies" element={<Strategies />} />
-              <Route path="trading/backtest" element={<Backtest />} />
-              <Route path="trading/performance" element={<Performance />} />
-              <Route path="trading/settings" element={<TradingSettings />} />
+              {/* Trading Routes - Wrapped in ErrorBoundary and Suspense for safety and lazy loading */}
+              <Route path="trading" element={
+                <ErrorBoundary name="trading">
+                  <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '50px' }}>Loading Trading Dashboard...</div>}>
+                    <TradingDashboard />
+                  </React.Suspense>
+                </ErrorBoundary>
+              } />
+              <Route path="trading/positions" element={
+                <ErrorBoundary name="trading">
+                  <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '50px' }}>Loading Positions...</div>}>
+                    <Positions />
+                  </React.Suspense>
+                </ErrorBoundary>
+              } />
+              <Route path="trading/strategies" element={
+                <ErrorBoundary name="trading">
+                  <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '50px' }}>Loading Strategies...</div>}>
+                    <Strategies />
+                  </React.Suspense>
+                </ErrorBoundary>
+              } />
+              <Route path="trading/backtest" element={
+                <ErrorBoundary name="trading">
+                  <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '50px' }}>Loading Backtest...</div>}>
+                    <Backtest />
+                  </React.Suspense>
+                </ErrorBoundary>
+              } />
+              <Route path="trading/performance" element={
+                <ErrorBoundary name="trading">
+                  <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '50px' }}>Loading Performance...</div>}>
+                    <Performance />
+                  </React.Suspense>
+                </ErrorBoundary>
+              } />
+              <Route path="trading/settings" element={
+                <ErrorBoundary name="trading">
+                  <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '50px' }}>Loading Settings...</div>}>
+                    <TradingSettings />
+                  </React.Suspense>
+                </ErrorBoundary>
+              } />
               
               {/* System Routes */}
               <Route path="health" element={<SystemHealth />} />

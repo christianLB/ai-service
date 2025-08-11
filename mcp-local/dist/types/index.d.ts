@@ -3,18 +3,18 @@ export declare const ToolSchema: z.ZodObject<{
     name: z.ZodString;
     description: z.ZodString;
     parameters: z.ZodDefault<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>>;
-    category: z.ZodEnum<["financial", "documents", "system", "trading", "development", "database", "quality", "deployment", "mcp", "utility", "information", "validation", "monitoring", "intelligence"]>;
+    category: z.ZodEnum<["primary", "financial", "documents", "system", "trading", "development", "database", "quality", "deployment", "mcp", "utility", "information", "validation", "monitoring", "intelligence"]>;
     requiresAuth: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     description: string;
     parameters: Record<string, any>;
-    category: "validation" | "financial" | "documents" | "system" | "trading" | "development" | "database" | "quality" | "deployment" | "mcp" | "utility" | "information" | "monitoring" | "intelligence";
+    category: "validation" | "primary" | "financial" | "documents" | "system" | "trading" | "development" | "database" | "quality" | "deployment" | "mcp" | "utility" | "information" | "monitoring" | "intelligence";
     requiresAuth: boolean;
 }, {
     name: string;
     description: string;
-    category: "validation" | "financial" | "documents" | "system" | "trading" | "development" | "database" | "quality" | "deployment" | "mcp" | "utility" | "information" | "monitoring" | "intelligence";
+    category: "validation" | "primary" | "financial" | "documents" | "system" | "trading" | "development" | "database" | "quality" | "deployment" | "mcp" | "utility" | "information" | "monitoring" | "intelligence";
     parameters?: Record<string, any> | undefined;
     requiresAuth?: boolean | undefined;
 }>;

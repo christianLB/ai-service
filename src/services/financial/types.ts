@@ -26,7 +26,7 @@ export interface Customer {
   updatedAt: Date;
 }
 
-export type AccountType = 
+export type AccountType =
   | 'bank_account'      // Traditional banking (GoCardless)
   | 'crypto_wallet'     // Crypto wallets
   | 'exchange_account'  // Crypto exchange accounts
@@ -37,18 +37,18 @@ export interface Account {
   name: string;
   type: AccountType;
   currencyId: string;
-  
+
   // Traditional banking (GoCardless)
   accountId?: string;      // GoCardless account_id
   institutionId?: string;  // Bank identifier
   requisitionId?: string;  // GoCardless requisition
   iban?: string;
-  
+
   // Crypto specific
   walletAddress?: string;  // Crypto wallet address
   chainId?: number;        // Blockchain network ID
   exchangeName?: string;   // Binance, Coinbase, etc.
-  
+
   // Common fields
   balance: string;         // High precision decimal as string
   isActive: boolean;
@@ -57,7 +57,7 @@ export interface Account {
   updatedAt: Date;
 }
 
-export type TransactionType = 
+export type TransactionType =
   | 'bank_transfer'    // Traditional bank transfers
   | 'crypto_send'      // Crypto outgoing
   | 'crypto_receive'   // Crypto incoming
@@ -66,7 +66,7 @@ export type TransactionType =
   | 'fee'             // Transaction fees
   | 'conversion';     // Currency conversion
 
-export type TransactionStatus = 
+export type TransactionStatus =
   | 'pending'
   | 'confirmed'
   | 'failed'
@@ -78,19 +78,19 @@ export interface Transaction {
   accountId: string;
   type: TransactionType;
   status: TransactionStatus;
-  
+
   // Amount and currency
   amount: string;          // High precision decimal as string
   currencyId: string;
-  
+
   // Transaction details
   description?: string;
   reference?: string;      // External reference (GoCardless, txHash, etc.)
   date: Date;
-  
+
   // Fiat specific (GoCardless)
   gocardlessData?: Record<string, any>;
-  
+
   // Crypto specific
   transactionHash?: string; // Blockchain tx hash
   blockNumber?: number;     // Block number
@@ -98,22 +98,22 @@ export interface Transaction {
   gasPrice?: string;       // Gas price
   fromAddress?: string;    // Sender address
   toAddress?: string;      // Recipient address
-  
+
   // Counterparty
   counterpartyName?: string;
   counterpartyAccount?: string;
-  
+
   // Fees
   feeAmount?: string;
   feeCurrencyId?: string;
-  
+
   // Metadata and audit
   metadata: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export type InvoiceStatus = 
+export type InvoiceStatus =
   | 'draft'
   | 'sent'
   | 'paid'
@@ -124,29 +124,29 @@ export type InvoiceStatus =
 export interface Invoice {
   id: string;
   customerId: string;
-  
+
   // Invoice details
   invoiceNumber: string;
   title?: string;
   description?: string;
-  
+
   // Amounts
   subtotal: string;
   taxAmount: string;
   totalAmount: string;
   currencyId: string;
-  
+
   // Dates
   issueDate: Date;
   dueDate: Date;
   paidDate?: Date;
-  
+
   // Status
   status: InvoiceStatus;
-  
+
   // Payment tracking
   amountPaid: string;
-  
+
   // Metadata
   metadata: Record<string, any>;
   createdAt: Date;
@@ -296,22 +296,22 @@ export interface AITag {
   id: string;
   name: string;
   description?: string;
-  
+
   // AI matching patterns
   keywords: string[];              // Array of keywords to match
   merchantPatterns: string[];      // Regex patterns for merchant names
   amountPatterns?: Record<string, any>; // Min/max amounts, recurring patterns
-  
+
   // Association strength
   categoryId?: string;
   subcategoryId?: string;
   confidenceScore: number;         // 0.0 to 1.0
-  
+
   // Learning metadata
   matchCount: number;
   successRate: number;
   lastUsed?: Date;
-  
+
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -324,17 +324,17 @@ export interface TransactionCategorization {
   transactionId: string;
   categoryId?: string;
   subcategoryId?: string;
-  
+
   // Categorization metadata
   method: CategorizationMethod;
   confidenceScore?: number;        // AI confidence (0.0 to 1.0)
   aiTagId?: string;               // Which AI tag triggered this
-  
+
   // User feedback for learning
   userConfirmed?: boolean;         // null=no feedback, true=correct, false=incorrect
   userCorrectedCategoryId?: string;
   userCorrectedSubcategoryId?: string;
-  
+
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -370,21 +370,21 @@ export interface CategorizedTransaction {
   description?: string;
   counterpartyName?: string;
   date: Date;
-  
+
   // Categorization
   categoryId?: string;
   categoryName?: string;
   categoryType?: CategoryType;
   categoryColor?: string;
   categoryIcon?: string;
-  
+
   subcategoryId?: string;
   subcategoryName?: string;
-  
+
   categorizationMethod?: CategorizationMethod;
   confidenceScore?: number;
   userConfirmed?: boolean;
-  
+
   createdAt: Date;
 }
 
@@ -406,7 +406,7 @@ export interface AccountInsights {
   name: string;
   balance: string;
   currencyCode: string;
-  
+
   // Last 30 days activity
   transactions30d: number;
   income30d?: string;
@@ -419,26 +419,26 @@ export interface FinancialReport {
     end: Date;
     type: 'month' | 'quarter' | 'year' | 'custom';
   };
-  
+
   summary: {
     totalIncome: string;
     totalExpenses: string;
     netAmount: string;
     transactionCount: number;
   };
-  
+
   byCategory: {
     income: CategoryReportItem[];
     expenses: CategoryReportItem[];
     transfers: CategoryReportItem[];
   };
-  
+
   trends: {
     monthlyIncome: MonthlyTrend[];
     monthlyExpenses: MonthlyTrend[];
     topCategories: TopCategoryItem[];
   };
-  
+
   currency: string;
   generatedAt: Date;
 }
@@ -481,23 +481,23 @@ export interface RealtimeMetrics {
     balance: string;
     transactionCount: number;
   };
-  
+
   previousMonth: {
     income: string;
     expenses: string;
     balance: string;
     transactionCount: number;
   };
-  
+
   trends: {
     incomeChange: number;      // Percentage change
     expenseChange: number;     // Percentage change
     balanceChange: number;     // Percentage change
   };
-  
+
   topExpenseCategories: TopCategoryItem[];
   recentTransactions: CategorizedTransaction[];
-  
+
   alerts: FinancialAlert[];
   updatedAt: Date;
 }

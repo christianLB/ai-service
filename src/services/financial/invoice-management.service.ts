@@ -64,7 +64,7 @@ export class InvoiceManagementService {
         ) RETURNING *`;
 
       const values = [
-        invoice.id, invoice.invoiceNumber, invoice.clientId, invoice.clientName, 
+        invoice.id, invoice.invoiceNumber, invoice.clientId, invoice.clientName,
         invoice.clientTaxId, JSON.stringify(invoice.clientAddress),
         invoice.type, invoice.status, invoice.issueDate, invoice.dueDate,
         invoice.serviceStartDate, invoice.serviceEndDate, invoice.currency,
@@ -158,7 +158,7 @@ export class InvoiceManagementService {
         const hasRestrictedUpdates = Object.keys(updates).some(
           key => !allowedFields.includes(key.replace(/([A-Z])/g, '_$1').toLowerCase())
         );
-        
+
         if (hasRestrictedUpdates) {
           throw new Error('Cannot modify paid invoices except for status, payment info, and notes');
         }
@@ -192,14 +192,14 @@ export class InvoiceManagementService {
         const camelField = field.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
         if (updates[camelField as keyof Invoice] !== undefined) {
           updateFields.push(`${field} = $${paramCount}`);
-          
+
           // Handle JSON fields
           if (['items', 'related_documents', 'custom_fields', 'attachments'].includes(field)) {
             values.push(JSON.stringify(updates[camelField as keyof Invoice]));
           } else {
             values.push(updates[camelField as keyof Invoice]);
           }
-          
+
           paramCount++;
         }
       }
@@ -209,15 +209,15 @@ export class InvoiceManagementService {
       }
 
       // Add updated_at
-      updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+      updateFields.push('updated_at = CURRENT_TIMESTAMP');
 
       // Handle status-specific updates
       if (updates.status === 'sent' && !currentInvoice.sentAt) {
-        updateFields.push(`sent_at = CURRENT_TIMESTAMP`);
+        updateFields.push('sent_at = CURRENT_TIMESTAMP');
       } else if (updates.status === 'viewed' && !currentInvoice.viewedAt) {
-        updateFields.push(`viewed_at = CURRENT_TIMESTAMP`);
+        updateFields.push('viewed_at = CURRENT_TIMESTAMP');
       } else if (updates.status === 'paid' && !currentInvoice.paidDate) {
-        updateFields.push(`paid_date = CURRENT_DATE`);
+        updateFields.push('paid_date = CURRENT_DATE');
       }
 
       // Execute update

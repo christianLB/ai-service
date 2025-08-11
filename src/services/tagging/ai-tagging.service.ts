@@ -23,8 +23,10 @@ export class AITaggingService implements IAITaggingService {
   }
 
   private async initializeClaudeService() {
-    if (this.claudeInitialized) return;
-    
+    if (this.claudeInitialized) {
+      return;
+    }
+
     try {
       await claudeAIService.initialize();
       this.claudeInitialized = true;
@@ -76,7 +78,7 @@ export class AITaggingService implements IAITaggingService {
 
       // Call AI provider
       let aiResponse: any;
-      
+
       try {
         if (provider === 'claude') {
           await this.initializeClaudeService();
@@ -125,20 +127,20 @@ export class AITaggingService implements IAITaggingService {
       // Update learning patterns
       const patternKey = `${feedback.entityType}-${feedback.entityTagId}`;
       const pattern = this.learningPatterns.get(patternKey) || { correct: 0, incorrect: 0 };
-      
+
       if (feedback.feedback.isCorrect) {
         pattern.correct++;
       } else {
         pattern.incorrect++;
       }
-      
+
       this.learningPatterns.set(patternKey, pattern);
 
       // Update tag confidence based on feedback
       if (!feedback.feedback.isCorrect && feedback.feedback.suggestedTagId) {
         // Get the entity content for pattern learning
         const entity = await this.getEntityContent(feedback.entityType, feedback.entityId);
-        
+
         if (entity) {
           // Update patterns for the suggested tag
           await this.updateTagPatterns(feedback.feedback.suggestedTagId, [entity.content]);
@@ -201,7 +203,7 @@ export class AITaggingService implements IAITaggingService {
       const pattern = this.learningPatterns.get(learningKey) || { correct: 0, incorrect: 0 };
       pattern.correct++;
       this.learningPatterns.set(learningKey, pattern);
-      
+
       // Also track incorrect patterns if previous tag exists
       if (learning.previousTagId) {
         const incorrectKey = `${learning.entityType}-${learning.previousTagId}`;
@@ -336,7 +338,7 @@ export class AITaggingService implements IAITaggingService {
     metadata: Record<string, any> | undefined,
     availableTags: any[]
   ): string {
-    const tagList = availableTags.map(t => 
+    const tagList = availableTags.map(t =>
       `- ${t.code}: ${t.name}${t.description ? ` (${t.description})` : ''}`
     ).join('\n');
 
@@ -375,7 +377,7 @@ Response format:
       // Simple keyword matching for mock
       if (tag.patterns?.keywords) {
         const keywords = tag.patterns.keywords as string[];
-        const matches = keywords.filter((k: string) => 
+        const matches = keywords.filter((k: string) =>
           contentLower.includes(k.toLowerCase())
         );
         confidence = matches.length / keywords.length;
@@ -434,8 +436,10 @@ Response format:
           const transaction = await prisma.transactions.findUnique({
             where: { id: entityId }
           });
-          if (!transaction) return null;
-          
+          if (!transaction) {
+            return null;
+          }
+
           return {
             content: transaction.description || '',
             metadata: {
@@ -446,13 +450,15 @@ Response format:
             }
           };
         }
-        
+
         case 'client': {
           const client = await prisma.client.findUnique({
             where: { id: entityId }
           });
-          if (!client) return null;
-          
+          if (!client) {
+            return null;
+          }
+
           return {
             content: `${client.name} ${client.businessName || ''}`,
             metadata: {
@@ -463,13 +469,15 @@ Response format:
             }
           };
         }
-        
+
         case 'invoice': {
           const invoice = await prisma.invoice.findUnique({
             where: { id: entityId }
           });
-          if (!invoice) return null;
-          
+          if (!invoice) {
+            return null;
+          }
+
           const items = Array.isArray(invoice.items) ? invoice.items : [];
           const itemsDescription = items.map((i: any) => i.description || '').join(' ');
           return {
@@ -482,7 +490,7 @@ Response format:
             }
           };
         }
-        
+
         case 'document': {
           // For documents, we'd need to fetch from document service
           // Placeholder for now
@@ -491,9 +499,9 @@ Response format:
             metadata: {}
           };
         }
-        
+
         // Removed expense case as it's not a valid EntityType
-        
+
         default:
           return null;
       }
@@ -583,7 +591,7 @@ Response format:
 
     await this.initializeClaudeService();
     const decision = await claudeAIService.analyzeTradingOpportunity(mockContext);
-    
+
     if (!decision || !decision.reasoning) {
       throw new Error('No response from Claude');
     }
@@ -595,7 +603,7 @@ Response format:
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
-      
+
       // Fallback: create suggestions from the decision
       return this.parseClaudeDecisionToTags(decision, availableTags);
     } catch (error) {
@@ -610,7 +618,7 @@ Response format:
     const suggestions = [];
 
     for (const tag of availableTags) {
-      if (reasoning.includes(tag.code.toLowerCase()) || 
+      if (reasoning.includes(tag.code.toLowerCase()) ||
           reasoning.includes(tag.name.toLowerCase())) {
         suggestions.push({
           code: tag.code,
@@ -631,25 +639,25 @@ Response format:
   ): Promise<any> {
     // Generate embeddings for content and tags
     const contentEmbedding = await this.getOrCreateEmbedding(content);
-    
+
     // Get or create embeddings for all tags
     const tagSimilarities = await Promise.all(
       availableTags.map(async (tag) => {
         const tagText = `${tag.name} ${tag.description || ''} ${tag.patterns?.keywords?.join(' ') || ''}`;
         const tagEmbedding = await this.getOrCreateEmbedding(`${tag.id}-${tagText}`, tagText);
-        
+
         // Calculate cosine similarity
         const similarity = this.cosineSimilarity(contentEmbedding, tagEmbedding);
-        
+
         // Get pattern score
         const patternScore = await this.testTagPattern(tag.id, content);
-        
+
         // Get learning score
         const learningScore = this.getLearningScore(entityType, tag.id);
-        
+
         // Combined confidence (weighted average)
         const confidence = (similarity * 0.5) + (patternScore.confidence * 0.3) + (learningScore * 0.2);
-        
+
         return {
           code: tag.code,
           confidence,
@@ -673,49 +681,57 @@ Response format:
 
     // Generate embedding
     const embedding = await this.openaiService.generateEmbedding(text || key);
-    
+
     // Cache it
     this.tagEmbeddings.set(key, embedding);
-    
+
     return embedding;
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) return 0;
-    
+    if (a.length !== b.length) {
+      return 0;
+    }
+
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
-    
+
     for (let i = 0; i < a.length; i++) {
       dotProduct += a[i] * b[i];
       normA += a[i] * a[i];
       normB += b[i] * b[i];
     }
-    
+
     normA = Math.sqrt(normA);
     normB = Math.sqrt(normB);
-    
-    if (normA === 0 || normB === 0) return 0;
-    
+
+    if (normA === 0 || normB === 0) {
+      return 0;
+    }
+
     return dotProduct / (normA * normB);
   }
 
   private getLearningScore(entityType: EntityType, tagId: string): number {
     const key = `${entityType}-${tagId}`;
     const pattern = this.learningPatterns.get(key);
-    
-    if (!pattern) return 0.5; // Neutral score if no learning data
-    
+
+    if (!pattern) {
+      return 0.5;
+    } // Neutral score if no learning data
+
     const total = pattern.correct + pattern.incorrect;
-    if (total === 0) return 0.5;
-    
+    if (total === 0) {
+      return 0.5;
+    }
+
     // Calculate confidence based on correct/incorrect ratio
     const accuracy = pattern.correct / total;
-    
+
     // Weight by total observations (more data = more confidence)
     const weight = Math.min(1, total / 10); // Cap at 10 observations
-    
+
     // Return weighted accuracy
     return 0.5 + (accuracy - 0.5) * weight;
   }
@@ -726,16 +742,24 @@ Response format:
     metadata: Record<string, any> | undefined,
     availableTags: any[]
   ): string {
-    const tagList = availableTags.map(t => 
+    const tagList = availableTags.map(t =>
       `- ${t.code}: ${t.name}${t.description ? ` (${t.description})` : ''}`
     ).join('\n');
 
     let contextInfo = '';
     if (metadata) {
-      if (metadata.amount) contextInfo += `\nAmount: ${metadata.amount}`;
-      if (metadata.date) contextInfo += `\nDate: ${metadata.date}`;
-      if (metadata.category) contextInfo += `\nCategory: ${metadata.category}`;
-      if (metadata.language) contextInfo += `\nLanguage: ${metadata.language}`;
+      if (metadata.amount) {
+        contextInfo += `\nAmount: ${metadata.amount}`;
+      }
+      if (metadata.date) {
+        contextInfo += `\nDate: ${metadata.date}`;
+      }
+      if (metadata.category) {
+        contextInfo += `\nCategory: ${metadata.category}`;
+      }
+      if (metadata.language) {
+        contextInfo += `\nLanguage: ${metadata.language}`;
+      }
     }
 
     return `Analyze this ${entityType} content and suggest the most appropriate tags.
@@ -764,7 +788,7 @@ Return up to 5 most relevant tags with confidence scores.`;
     for (const tag of availableTags) {
       const patternResult = await this.testTagPattern(tag.id, content);
       const learningScore = this.getLearningScore('transaction', tag.id); // Default to transaction
-      
+
       if (patternResult.matches || learningScore > 0.6) {
         suggestions.push({
           code: tag.code,
@@ -806,7 +830,7 @@ Return up to 5 most relevant tags with confidence scores.`;
 
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
-      
+
       // Process batch in parallel
       const batchResults = await Promise.all(
         batch.map(async (item) => {
@@ -817,7 +841,7 @@ Return up to 5 most relevant tags with confidence scores.`;
               item.metadata,
               { provider: options?.provider }
             );
-            
+
             return {
               entityId: item.entityId,
               status: 'success' as const,
@@ -858,7 +882,7 @@ Return up to 5 most relevant tags with confidence scores.`;
     try {
       // Detect language if not provided
       const detectedLanguage = language || await this.detectLanguage(content);
-      
+
       // Get all categories from tags
       const tags = await prisma.universalTag.findMany({
         where: {
@@ -920,11 +944,11 @@ Return up to 5 most relevant tags with confidence scores.`;
     try {
       // Use OpenAI to detect language
       const prompt = `Detect the language of this text and return only the ISO 639-1 language code (e.g., 'en', 'es', 'fr'): "${content.substring(0, 200)}"`;
-      
+
       // This would use OpenAI's completion API
       // For now, simple detection based on common words
       const lowerContent = content.toLowerCase();
-      
+
       if (lowerContent.includes('the') || lowerContent.includes('and') || lowerContent.includes('for')) {
         return 'en';
       } else if (lowerContent.includes('el') || lowerContent.includes('la') || lowerContent.includes('de')) {
@@ -932,7 +956,7 @@ Return up to 5 most relevant tags with confidence scores.`;
       } else if (lowerContent.includes('le') || lowerContent.includes('de') || lowerContent.includes('et')) {
         return 'fr';
       }
-      
+
       return 'en'; // Default to English
     } catch (error) {
       logger.warn('Failed to detect language, defaulting to English', error);
@@ -1013,9 +1037,9 @@ Return up to 5 most relevant tags with confidence scores.`;
 
       // Extract positive patterns from successful examples
       const positivePatterns = this.extractPatterns(successfulExamples);
-      
+
       // Extract negative patterns from failed examples
-      const negativePatterns = failedExamples.length > 0 
+      const negativePatterns = failedExamples.length > 0
         ? this.extractPatterns(failedExamples)
         : { keywords: [], merchants: [] };
 
@@ -1075,10 +1099,10 @@ Return up to 5 most relevant tags with confidence scores.`;
     // Add positive keywords
     const refined = new Set(existing);
     positive.forEach(k => refined.add(k));
-    
+
     // Remove keywords that appear in negative examples
     negative.forEach(k => refined.delete(k));
-    
+
     return Array.from(refined);
   }
 
@@ -1099,14 +1123,16 @@ Return up to 5 most relevant tags with confidence scores.`;
     currentConfidence: number
   ): number {
     const total = successCount + failureCount;
-    if (total === 0) return currentConfidence;
-    
+    if (total === 0) {
+      return currentConfidence;
+    }
+
     const successRate = successCount / total;
     const weight = Math.min(1, total / 20); // More examples = more weight
-    
+
     // Weighted average of current confidence and new success rate
     const newConfidence = (currentConfidence * (1 - weight)) + (successRate * weight);
-    
+
     return Math.round(newConfidence * 100) / 100;
   }
 
@@ -1126,7 +1152,7 @@ Return up to 5 most relevant tags with confidence scores.`;
     try {
       // Get base suggestions
       const baseSuggestions = await this.suggestTags(content, entityType);
-      
+
       // Enhance with contextual information
       const contextualScores = new Map<string, number>();
 
@@ -1161,7 +1187,7 @@ Return up to 5 most relevant tags with confidence scores.`;
         return {
           ...suggestion,
           confidence: Math.min(1, suggestion.confidence + contextBoost),
-          reasoning: contextBoost > 0 
+          reasoning: contextBoost > 0
             ? `${suggestion.reasoning || ''} (Context boost: +${(contextBoost * 100).toFixed(0)}%)`
             : suggestion.reasoning
         };

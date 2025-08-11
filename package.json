@@ -16,7 +16,6 @@
     "test:generator:regression": "node tests/generator/regression.test.mjs",
     "test:generator:all": "npm run test:generator && npm run test:generator:templates && npm run test:generator:regression",
     "build": "npm run build:frontend && npm run build:backend",
-    "build:stable": "tsc -p tsconfig.build.json",
     "typecheck:packages": "pnpm -w tsc -b",
     "build:backend": "tsc",
     "build:backend:nocheck": "tsc --noEmit false || echo 'TypeScript errors ignored'",
@@ -24,12 +23,14 @@
     "install:frontend": "cd frontend && npm install",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn src/index.ts",
-    "dev:stable": "ts-node-dev --respawn src/index.stable.ts",
     "dev:services": "docker compose -f docker-compose.dev.yml up -d",
     "dev:services:down": "docker compose -f docker-compose.dev.yml down -v",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:frontend\"",
     "lint": "eslint src --ext .ts,.js --max-warnings 0 || echo 'ESLint not configured, skipping'",
+    "lint:fix": "eslint src --ext .ts,.js --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json}\" \"*.{json,md}\"",
     "typecheck": "tsc --noEmit",
     "validate:schema": "ts-node scripts/validate-schema.ts",
     "predeploy": "npm run build && npm run validate:schema",
@@ -62,6 +63,7 @@
     "generate": "plop",
     "generate:crud": "plop crud",
     "generate:crud:auto": "node scripts/generate-crud.mjs",
+    "generate:full": "node scripts/generate-full.mjs",
     "generate:service": "plop service",
     "generate:hook": "plop hook",
     "migration:status": "node scripts/migration/update-migration-status.js",
@@ -69,7 +71,8 @@
     "migration:rollback": "node scripts/migration/financial-dashboard-rollback.js",
     "migration:rollback:dry": "node scripts/migration/financial-dashboard-rollback.js --dry-run",
     "migration:test": "./test-prisma-dashboard.sh",
-    "migration:monitor": "node scripts/migration/monitor-performance.js"
+    "migration:monitor": "node scripts/migration/monitor-performance.js",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -139,8 +142,7 @@
     "superjson": "^2.2.2",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
-    "zod": "^3.23.8",
-    "zod-to-openapi": "^0.2.1"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.0",
@@ -159,9 +161,14 @@
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
     "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
+    "lint-staged": "^16.1.5",
     "node-plop": "^0.32.0",
     "plop": "^4.0.1",
+    "prettier": "^3.6.2",
     "prisma": "^6.12.0",
     "supertest": "^7.1.1",
     "ts-jest": "^29.4.0",
@@ -172,6 +179,15 @@
     "undici": "^6.21.3",
     "upper-case": "^2.0.2",
     "zod-prisma-types": "^3.2.4"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   },
   "packageManager": "pnpm@10.12.1+sha1.4bd977ce548dc9fcd1ca0c62838c55646cea6847"
 }

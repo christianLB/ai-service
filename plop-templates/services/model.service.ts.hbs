@@ -1,16 +1,16 @@
-import { prisma } from '../lib/prisma';
+import { prisma } from '{{#if (not (eq schema "public"))}}../../{{else}}../{{/if}}lib/prisma';
 import { 
   {{pascalCase model}}, 
   Create{{pascalCase model}}, 
   Update{{pascalCase model}},
   {{pascalCase model}}Query,
   {{pascalCase model}}WithRelations
-} from '../types/{{kebabCase model}}.types';
+} from '{{#if (not (eq schema "public"))}}../../{{else}}../{{/if}}types/{{kebabCase model}}.types';
 {{#if modelInfo}}
 import { Prisma } from '@prisma/client';
 {{/if}}
-import { AppError } from '../utils/errors';
-import logger from '../utils/logger';
+import { AppError } from '{{#if (not (eq schema "public"))}}../../{{else}}../{{/if}}utils/errors';
+import logger from '{{#if (not (eq schema "public"))}}../../{{else}}../{{/if}}utils/logger';
 
 {{#if modelInfo}}
 {{#if schema}}
@@ -91,31 +91,15 @@ export class {{pascalCase model}}Service {
         {{/if}}
         ...(search && {
           OR: [
-            {{#if (eq model 'Client')}}
-            { name: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
-            { taxId: { contains: search, mode: 'insensitive' } },
-            {{else if (eq model 'Invoice')}}
-            { invoiceNumber: { contains: search, mode: 'insensitive' } },
-            { notes: { contains: search, mode: 'insensitive' } },
-            {{else if (eq model 'Trade')}}
-            { symbol: { contains: search, mode: 'insensitive' } },
-            { exchangeOrderId: { contains: search, mode: 'insensitive' } },
-            {{else if (eq model 'Alert')}}
-            { title: { contains: search, mode: 'insensitive' } },
-            { message: { contains: search, mode: 'insensitive' } },
-            {{else if (eq model 'Position')}}
-            { symbol: { contains: search, mode: 'insensitive' } },
-            {{else if (eq model 'Strategy')}}
-            { name: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
-            {{else if modelInfo}}
+            {{#if modelInfo}}
+            {{!-- Prefer schema-driven safe string fields. Exclude common FK/ID names and list fields. --}}
             {{#each modelInfo.fields}}
-            {{#if (and (eq this.type 'String') (not this.isRelation) (not (eq this.name 'id')))}}
+            {{#if (and (eq this.type 'String') (not this.isRelation) (not (eq this.name 'id')) (not (eq this.name 'userId')) (not (eq this.name 'clientId')) (not (eq this.name 'invoiceId')) (not (eq this.name 'entityId')) (not (eq this.name 'tagId')) (not this.isList))}}
             { {{this.name}}: { contains: search, mode: 'insensitive' } },
             {{/if}}
             {{/each}}
             {{else}}
+            {{!-- Fallback for models without modelInfo: conservative default --}}
             { name: { contains: search, mode: 'insensitive' } },
             {{/if}}
           ],

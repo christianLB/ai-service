@@ -37,7 +37,7 @@ export class InvoicesController {
     this.invoiceGenerationService = new InvoiceGenerationService();
     this.invoiceEmailService = getInvoiceEmailService();
     this.prisma = new PrismaClient();
-    
+
     // Initialize services
     this.invoiceStorageService = new InvoiceStoragePrismaService(this.prisma);
     this.invoiceNumberingService = new InvoiceNumberingService(this.prisma);
@@ -45,9 +45,15 @@ export class InvoicesController {
 
   // Helper to convert Decimal to number for JSON serialization
   private convertDecimalToNumber(value: any): number {
-    if (typeof value === 'number') return value;
-    if (value && typeof value.toNumber === 'function') return value.toNumber();
-    if (value && typeof value.toString === 'function') return parseFloat(value.toString());
+    if (typeof value === 'number') {
+      return value;
+    }
+    if (value && typeof value.toNumber === 'function') {
+      return value.toNumber();
+    }
+    if (value && typeof value.toString === 'function') {
+      return parseFloat(value.toString());
+    }
     return 0;
   }
 
@@ -90,7 +96,7 @@ export class InvoicesController {
 
     } catch (error: any) {
       logger.error('Error creating invoice:', error);
-      
+
       if (error.message.includes('not found')) {
         res.status(404).json({
           success: false,
@@ -112,7 +118,7 @@ export class InvoicesController {
   async getInvoice(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      
+
       // Extract userId from auth context
       const userId = (req as any).user?.userId || (req as any).userId;
       if (!userId) {
@@ -199,7 +205,7 @@ export class InvoicesController {
 
     } catch (error: any) {
       logger.error('Error updating invoice:', error);
-      
+
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
@@ -312,7 +318,7 @@ export class InvoicesController {
       const userId = (req.user as any)?.userId || req.user?.userId;
       const invoice = await this.invoiceService.updateInvoice(
         id,
-        { 
+        {
           status: 'paid'
         },
         userId
@@ -326,7 +332,7 @@ export class InvoicesController {
 
     } catch (error: any) {
       logger.error('Error marking invoice as paid:', error);
-      
+
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
@@ -374,7 +380,7 @@ export class InvoicesController {
       // Add new item to existing items
       const existingItems = Array.isArray(currentInvoice.items) ? (currentInvoice.items as unknown as InvoiceItem[]) : [];
       const updatedItems = [...existingItems, item];
-      
+
       // Update invoice with new items
       const invoice = await this.invoiceService.updateInvoice(id, { items: updatedItems }, userId);
 
@@ -386,7 +392,7 @@ export class InvoicesController {
 
     } catch (error: any) {
       logger.error('Error adding item to invoice:', error);
-      
+
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
@@ -424,7 +430,7 @@ export class InvoicesController {
       }
 
       const userId = (req.user as any)?.userId || req.user?.userId;
-      
+
       // Update invoice metadata to include the attachment
       const currentInvoiceResult = await this.invoiceService.getInvoiceById(id, userId);
       if (!currentInvoiceResult.success || !currentInvoiceResult.data.invoice) {
@@ -447,7 +453,7 @@ export class InvoicesController {
       });
 
       const invoice = await this.invoiceService.updateInvoice(
-        id, 
+        id,
         { customFields: { ...customFields, attachments } },
         userId
       );
@@ -460,7 +466,7 @@ export class InvoicesController {
 
     } catch (error: any) {
       logger.error('Error attaching document to invoice:', error);
-      
+
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
@@ -515,7 +521,7 @@ export class InvoicesController {
 
     } catch (error: any) {
       logger.error('Error deleting invoice:', error);
-      
+
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
@@ -555,7 +561,7 @@ export class InvoicesController {
 
       res.json({
         success: true,
-        data: { 
+        data: {
           invoice,
           sendMethod,
           recipients
@@ -565,7 +571,7 @@ export class InvoicesController {
 
     } catch (error: any) {
       logger.error('Error sending invoice:', error);
-      
+
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
@@ -641,7 +647,7 @@ export class InvoicesController {
     try {
       // Ensure schemas are initialized for storage
       await this.ensureSchemasInitialized();
-      
+
       const { id } = req.params;
       const { language, showStatus = true, generateQR = true } = req.body;
       const userId = (req.user as any)?.userId || req.user?.userId;
@@ -674,7 +680,7 @@ export class InvoicesController {
       }
 
       const client = clientResult.data.client;
-      
+
       // Convert Decimal fields to numbers for PDF generation
       const invoiceForPDF = {
         ...invoice,
@@ -706,7 +712,7 @@ export class InvoicesController {
         isActive: client.status === 'active',
         metadata: client.customFields || {}
       } as any;
-      
+
       // Generate PDF
       const result = await this.invoiceGenerationService.generateInvoicePDF({
         invoice: invoiceForPDF,
@@ -731,9 +737,9 @@ export class InvoicesController {
       if (currentInvoiceRes.success && currentInvoiceRes.data.invoice) {
         const customFields = currentInvoiceRes.data.invoice.customFields as any || {};
         await this.invoiceService.updateInvoice(id, {
-          customFields: { 
-            ...customFields, 
-            pdfUrl: stored.url 
+          customFields: {
+            ...customFields,
+            pdfUrl: stored.url
           }
         }, userId);
       }
@@ -766,12 +772,12 @@ export class InvoicesController {
     try {
       // Ensure schemas are initialized for storage
       await this.ensureSchemasInitialized();
-      
+
       const { id } = req.params;
 
       // Retrieve stored PDF
       const result = await this.invoiceStorageService.retrieveInvoice(id);
-      
+
       if (!result) {
         res.status(404).json({
           success: false,
@@ -835,7 +841,7 @@ export class InvoicesController {
       }
 
       const client = clientResult.data.client;
-      
+
       // Convert Decimal fields to numbers for HTML preview
       const invoiceForPreview = {
         ...invoice,
@@ -867,7 +873,7 @@ export class InvoicesController {
         isActive: client.status === 'active',
         metadata: client.customFields || {}
       } as any;
-      
+
       // Generate HTML preview
       const html = await this.invoiceGenerationService.previewInvoiceHTML({
         invoice: invoiceForPreview,
@@ -935,7 +941,7 @@ export class InvoicesController {
       }
 
       const client = clientResult.data.client;
-      
+
       // Convert Decimal fields to numbers for email
       const invoiceForEmail = {
         ...invoice,
@@ -967,11 +973,11 @@ export class InvoicesController {
         isActive: client.status === 'active',
         metadata: client.customFields || {}
       } as any;
-      
+
       // Generate PDF if not already generated
       let pdfBuffer: Buffer;
       const existingPdf = await this.invoiceStorageService.retrieveInvoice(id);
-      
+
       if (existingPdf) {
         pdfBuffer = existingPdf.buffer;
       } else {
@@ -982,7 +988,7 @@ export class InvoicesController {
           language: language || client.language || 'en'
         });
         pdfBuffer = result.pdfBuffer;
-        
+
         // Store for future use
         await this.invoiceStorageService.storeInvoice(
           invoice.id,
@@ -1077,7 +1083,7 @@ export class InvoicesController {
       }
 
       const client = clientResult.data.client;
-      
+
       // Convert Decimal fields to numbers for email
       const invoiceForReminder = {
         ...invoice,
@@ -1144,7 +1150,7 @@ export class InvoicesController {
     try {
       // Ensure schemas are initialized
       await this.ensureSchemasInitialized();
-      
+
       const { series, prefix, format, year } = req.query;
 
       const nextNumber = await this.invoiceNumberingService.getNextInvoiceNumber({
@@ -1179,7 +1185,7 @@ export class InvoicesController {
     try {
       // Ensure schemas are initialized
       await this.ensureSchemasInitialized();
-      
+
       const sequences = await this.invoiceNumberingService.getAllSequences();
       const stats = await this.invoiceNumberingService.getStatistics();
 

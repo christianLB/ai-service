@@ -1,31 +1,31 @@
 export interface Invoice {
   id: string;
   invoiceNumber: string; // AUTO-001, AUTO-002, etc.
-  
+
   // Client Information
   clientId: string;
   clientName: string; // Denormalized for quick access
   clientTaxId: string;
   clientAddress?: InvoiceAddress;
-  
+
   // Invoice Details
   type: 'invoice' | 'credit_note' | 'proforma' | 'receipt';
   status: 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled' | 'refunded';
-  
+
   // Dates
   issueDate: Date;
   dueDate: Date;
   paidDate?: Date;
   serviceStartDate?: Date;
   serviceEndDate?: Date;
-  
+
   // Financial Information
   currency: string;
   exchangeRate?: number; // If different from base currency
-  
+
   // Line Items
   items: InvoiceItem[];
-  
+
   // Totals
   subtotal: number;
   taxAmount: number;
@@ -34,34 +34,34 @@ export interface Invoice {
   discount?: number;
   discountType?: 'percentage' | 'fixed';
   total: number;
-  
+
   // Payment Information
   paymentMethod?: 'transfer' | 'cash' | 'card' | 'crypto' | 'other';
   paymentTerms: number; // Days
   bankAccount?: string;
   paymentReference?: string;
-  
+
   // Related Documents
   relatedDocuments?: RelatedDocument[];
   relatedTransactionIds?: string[]; // Bank transactions
-  
+
   // Custom Fields
   notes?: string;
   termsAndConditions?: string;
   customFields?: Record<string, any>;
   tags?: string[];
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
   sentAt?: Date;
   viewedAt?: Date;
   createdBy?: string; // userId
-  
+
   // Attachments
   attachments?: InvoiceAttachment[];
   pdfUrl?: string;
-  
+
   // Tax Deductible Info
   isDeductible?: boolean;
   deductibleCategory?: string;
@@ -208,7 +208,7 @@ export class InvoiceModel implements Invoice {
     this.isDeductible = data.isDeductible;
     this.deductibleCategory = data.deductibleCategory;
     this.deductiblePercentage = data.deductiblePercentage;
-    
+
     // Calculate totals if not provided
     if (!data.subtotal || !data.total) {
       this.calculateTotals();
@@ -228,7 +228,7 @@ export class InvoiceModel implements Invoice {
   calculateTotals(): void {
     // Calculate subtotal from items
     this.subtotal = this.items.reduce((sum, item) => sum + item.amount, 0);
-    
+
     // Apply discount
     let discountAmount = 0;
     if (this.discount) {
@@ -238,11 +238,11 @@ export class InvoiceModel implements Invoice {
         discountAmount = this.discount;
       }
     }
-    
+
     // Calculate tax
     const taxableAmount = this.subtotal - discountAmount;
     this.taxAmount = taxableAmount * (this.taxRate / 100);
-    
+
     // Calculate total
     this.total = taxableAmount + this.taxAmount;
   }
@@ -255,10 +255,10 @@ export class InvoiceModel implements Invoice {
       taxAmount: item.taxRate ? (item.quantity * item.unitPrice * item.taxRate / 100) : 0,
       total: 0
     };
-    
+
     // Calculate item total
     newItem.total = newItem.amount + (newItem.taxAmount || 0) - (newItem.discount || 0);
-    
+
     this.items.push(newItem);
     this.calculateTotals();
     this.updatedAt = new Date();

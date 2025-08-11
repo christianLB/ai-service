@@ -29,8 +29,8 @@ export class DocumentStorageService {
   private generateThumbnails: boolean;
 
   constructor(options: StorageOptions = {}) {
-    this.basePath = options.basePath || 
-                   process.env.DOCUMENT_STORAGE_PATH || 
+    this.basePath = options.basePath ||
+                   process.env.DOCUMENT_STORAGE_PATH ||
                    path.join(process.cwd(), 'data', 'documents', 'storage');
     this.maxFileSize = options.maxFileSize || 50 * 1024 * 1024; // 50MB default
     this.allowedTypes = options.allowedTypes || [
@@ -56,7 +56,7 @@ export class DocumentStorageService {
       await fs.mkdir(this.basePath, { recursive: true });
       await fs.mkdir(path.join(this.basePath, 'thumbnails'), { recursive: true });
       await fs.mkdir(path.join(this.basePath, 'temp'), { recursive: true });
-      console.log('✅ Document storage initialized at:', this.basePath);
+      // console.log('✅ Document storage initialized at:', this.basePath);
     } catch (error) {
       console.error('❌ Failed to initialize document storage:', error);
       throw error;
@@ -113,7 +113,7 @@ export class DocumentStorageService {
       // Also delete thumbnail if it exists
       const fileName = path.basename(fullPath, path.extname(fullPath));
       const thumbnailPath = path.join(this.basePath, 'thumbnails', `${fileName}_thumb.jpg`);
-      
+
       try {
         await fs.unlink(thumbnailPath);
       } catch (error) {
@@ -130,10 +130,10 @@ export class DocumentStorageService {
     // In production, this should be replaced with cloud storage signed URLs
     const expiresIn = options.expiresIn || 3600; // 1 hour default
     const action = options.action || 'read';
-    
+
     const token = this.generateAccessToken(filePath, expiresIn, action);
     const fileName = path.basename(filePath);
-    
+
     return `/api/documents/files/${fileName}?token=${token}&expires=${Date.now() + expiresIn * 1000}`;
   }
 
@@ -161,7 +161,7 @@ export class DocumentStorageService {
     try {
       const fullSourcePath = path.isAbsolute(sourcePath) ? sourcePath : path.join(this.basePath, sourcePath);
       const fullDestPath = path.isAbsolute(destinationPath) ? destinationPath : path.join(this.basePath, destinationPath);
-      
+
       await fs.rename(fullSourcePath, fullDestPath);
     } catch (error: any) {
       console.error('❌ Failed to move file:', error);
@@ -173,7 +173,7 @@ export class DocumentStorageService {
     try {
       const fullSourcePath = path.isAbsolute(sourcePath) ? sourcePath : path.join(this.basePath, sourcePath);
       const fullDestPath = path.isAbsolute(destinationPath) ? destinationPath : path.join(this.basePath, destinationPath);
-      
+
       await fs.copyFile(fullSourcePath, fullDestPath);
     } catch (error: any) {
       console.error('❌ Failed to copy file:', error);
@@ -244,7 +244,7 @@ export class DocumentStorageService {
     // For now, this is a placeholder
     // In production, you would use a library like sharp or jimp
     const thumbnailPath = path.join(this.basePath, 'thumbnails', `${uniqueId}_thumb.jpg`);
-    
+
     try {
       // This is a placeholder - in production, implement actual thumbnail generation
       await fs.writeFile(thumbnailPath, file.slice(0, 1024)); // Just a placeholder
@@ -260,14 +260,14 @@ export class DocumentStorageService {
       expiresAt: Date.now() + expiresIn * 1000,
       action
     };
-    
+
     return Buffer.from(JSON.stringify(payload)).toString('base64');
   }
 
   validateAccessToken(token: string): { isValid: boolean; filePath?: string; action?: string } {
     try {
       const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-      
+
       if (payload.expiresAt < Date.now()) {
         return { isValid: false };
       }
@@ -286,11 +286,11 @@ export class DocumentStorageService {
     try {
       const tempDir = path.join(this.basePath, 'temp');
       const files = await fs.readdir(tempDir);
-      
+
       for (const file of files) {
         const filePath = path.join(tempDir, file);
         const stats = await fs.stat(filePath);
-        
+
         // Delete files older than 24 hours
         if (Date.now() - stats.mtime.getTime() > 24 * 60 * 60 * 1000) {
           await fs.unlink(filePath);

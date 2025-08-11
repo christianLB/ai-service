@@ -24,7 +24,7 @@ const numberingService = new InvoiceNumberingService(prisma, {
 router.get('/sequences', async (req, res, next) => {
   try {
     const sequences = await numberingService.getAllSequences();
-    
+
     res.json({
       success: true,
       data: {
@@ -46,7 +46,7 @@ router.get('/sequences/:series', async (req, res, next) => {
   try {
     const { series } = req.params;
     const sequences = await numberingService.getSequenceInfo(series);
-    
+
     res.json({
       success: true,
       data: {
@@ -67,14 +67,14 @@ router.get('/sequences/:series', async (req, res, next) => {
 router.get('/preview', async (req, res, next) => {
   try {
     const { series = 'DEFAULT', prefix = 'INV', format, year } = req.query;
-    
+
     // Get the last used number without incrementing
     const lastUsed = await numberingService.getLastUsedNumber(
       series as string,
       prefix as string,
       year ? parseInt(year as string) : undefined
     );
-    
+
     // Calculate what the next number would be
     let nextNumber: string;
     if (lastUsed) {
@@ -91,7 +91,7 @@ router.get('/preview', async (req, res, next) => {
     } else {
       nextNumber = `${prefix as string}-${new Date().getFullYear()}-0001`;
     }
-    
+
     res.json({
       success: true,
       data: {
@@ -115,18 +115,18 @@ router.get('/preview', async (req, res, next) => {
 router.post('/set-next', async (req, res, next) => {
   try {
     const { series = 'DEFAULT', prefix = 'INV', nextNumber, year } = req.body;
-    
+
     if (!nextNumber || typeof nextNumber !== 'number') {
       throw new AppError('Next number is required and must be a number', 400);
     }
-    
+
     await numberingService.setNextNumber(
       series,
       prefix,
       nextNumber,
       year || new Date().getFullYear()
     );
-    
+
     res.json({
       success: true,
       message: 'Next invoice number set successfully',
@@ -150,18 +150,18 @@ router.post('/set-next', async (req, res, next) => {
 router.post('/reset', async (req, res, next) => {
   try {
     const { series = 'DEFAULT', prefix = 'INV', year } = req.body;
-    
+
     // Add confirmation check for safety
     if (!req.body.confirm) {
       throw new AppError('Please confirm the reset operation by setting confirm: true', 400);
     }
-    
+
     await numberingService.resetSequence(
       series,
       prefix,
       year || new Date().getFullYear()
     );
-    
+
     res.json({
       success: true,
       message: 'Sequence reset successfully',
@@ -184,7 +184,7 @@ router.post('/reset', async (req, res, next) => {
 router.get('/statistics', async (req, res, next) => {
   try {
     const statistics = await numberingService.getStatistics();
-    
+
     res.json({
       success: true,
       data: statistics
@@ -202,13 +202,13 @@ router.get('/statistics', async (req, res, next) => {
 router.post('/validate', async (req, res, next) => {
   try {
     const { invoiceNumber } = req.body;
-    
+
     if (!invoiceNumber) {
       throw new AppError('Invoice number is required', 400);
     }
-    
+
     const isValid = await numberingService.validateInvoiceNumber(invoiceNumber);
-    
+
     res.json({
       success: true,
       data: {

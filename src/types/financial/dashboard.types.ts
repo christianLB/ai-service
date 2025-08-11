@@ -53,6 +53,20 @@ export interface TopClient {
 }
 
 export interface DashboardMetrics {
+  revenue?: {
+    total: number;
+    changePercentage?: number;
+  };
+  invoices?: {
+    total: number;
+    pending: number;
+    overdue: number;
+  };
+  clients?: {
+    total: number;
+    active: number;
+    new: number;
+  };
   invoiceStats: InvoiceStats;
   clientMetrics: ClientMetrics;
   revenueMetrics: RevenueMetric[];

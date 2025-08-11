@@ -63,7 +63,7 @@ export class AICategorizationService {
     try {
       // Get all active AI tags for matching
       const aiTags = await this.getActiveAITags();
-      
+
       // Try different categorization methods in order of confidence
       const results = await Promise.all([
         this.matchByMerchantPattern(transaction, aiTags),
@@ -100,7 +100,7 @@ export class AICategorizationService {
           status: 'confirmed'
         }
       });
-      
+
       // Process each transaction
       for (const transaction of transactions) {
         const result = await this.categorizeTransaction({
@@ -137,9 +137,11 @@ export class AICategorizationService {
   ): Promise<CategorizationResult | null> {
     const counterparty = (transaction.counterpartyName || '').toLowerCase();
     const description = (transaction.description || '').toLowerCase();
-    
+
     for (const tag of aiTags) {
-      if (!tag.merchantPatterns || tag.merchantPatterns.length === 0) continue;
+      if (!tag.merchantPatterns || tag.merchantPatterns.length === 0) {
+        continue;
+      }
 
       for (const pattern of tag.merchantPatterns) {
         try {
@@ -171,12 +173,14 @@ export class AICategorizationService {
     aiTags: AITag[]
   ): Promise<CategorizationResult | null> {
     const searchText = `${transaction.description || ''} ${transaction.counterpartyName || ''}`.toLowerCase();
-    
+
     let bestMatch: { tag: AITag; matchedKeywords: string[] } | null = null;
     let maxMatches = 0;
 
     for (const tag of aiTags) {
-      if (!tag.keywords || tag.keywords.length === 0) continue;
+      if (!tag.keywords || tag.keywords.length === 0) {
+        continue;
+      }
 
       const matchedKeywords = tag.keywords.filter(keyword =>
         searchText.includes(keyword.toLowerCase())
@@ -215,15 +219,17 @@ export class AICategorizationService {
     transaction: any,
     aiTags: AITag[]
   ): Promise<CategorizationResult | null> {
-    const amount = typeof transaction.amount === 'object' 
-      ? parseFloat(transaction.amount.toString()) 
+    const amount = typeof transaction.amount === 'object'
+      ? parseFloat(transaction.amount.toString())
       : parseFloat(transaction.amount);
-    
+
     for (const tag of aiTags) {
-      if (!tag.amountPatterns) continue;
+      if (!tag.amountPatterns) {
+        continue;
+      }
 
       const patterns = tag.amountPatterns;
-      
+
       // Check exact amount match
       if (patterns.exactAmounts && patterns.exactAmounts.includes(amount)) {
         return {
@@ -262,7 +268,9 @@ export class AICategorizationService {
     aiTags: AITag[]
   ): Promise<CategorizationResult | null> {
     try {
-      if (!transaction.counterpartyName) return null;
+      if (!transaction.counterpartyName) {
+        return null;
+      }
 
       // Look for similar transactions from the same counterparty
       const threeMonthsAgo = new Date();
@@ -288,11 +296,11 @@ export class AICategorizationService {
         // Analyze frequency pattern
         const dates = [transaction.date, ...similarTransactions.map(tx => tx.date)];
         const isRecurring = this.analyzeRecurringPattern(dates);
-        
+
         if (isRecurring) {
           // Find best matching tag for recurring transactions
-          const recurringTags = aiTags.filter(tag => 
-            tag.keywords.some(keyword => 
+          const recurringTags = aiTags.filter(tag =>
+            tag.keywords.some(keyword =>
               ['subscription', 'recurring', 'monthly', 'weekly'].includes(keyword.toLowerCase())
             )
           );
@@ -329,12 +337,12 @@ export class AICategorizationService {
     try {
       // Update AI tag success rates
       await this.updateAITagStats(feedback);
-      
+
       // Create new AI tags based on patterns
       if (!feedback.wasCorrect && feedback.predictedCategoryId) {
         await this.createLearningTag(feedback);
       }
-      
+
       // Update existing tags based on feedback
       await this.refineTags(feedback);
     } catch (error) {
@@ -370,7 +378,7 @@ export class AICategorizationService {
           user_confirmed: { not: null }
         }
       });
-      
+
       const totalPredictions = predictions.length;
       const correctPredictions = predictions.filter(p => p.user_confirmed === true).length;
       const accuracy = totalPredictions > 0 ? (correctPredictions / totalPredictions) * 100 : 0;
@@ -453,7 +461,9 @@ export class AICategorizationService {
   }
 
   private analyzeRecurringPattern(dates: Date[]): boolean {
-    if (dates.length < 2) return false;
+    if (dates.length < 2) {
+      return false;
+    }
 
     // Sort dates and calculate intervals
     const sortedDates = dates.sort((a, b) => a.getTime() - b.getTime());
@@ -466,10 +476,10 @@ export class AICategorizationService {
 
     // Check for monthly pattern (28-32 days)
     const monthlyPattern = intervals.every(interval => interval >= 28 && interval <= 32);
-    
+
     // Check for weekly pattern (6-8 days)
     const weeklyPattern = intervals.every(interval => interval >= 6 && interval <= 8);
-    
+
     // Check for bi-weekly pattern (13-15 days)
     const biWeeklyPattern = intervals.every(interval => interval >= 13 && interval <= 15);
 
@@ -508,15 +518,17 @@ export class AICategorizationService {
       const transaction = await prisma.transactions.findUnique({
         where: { id: feedback.transactionId }
       });
-      
-      if (!transaction) return;
-      
+
+      if (!transaction) {
+        return;
+      }
+
       // Create a new AI tag based on this transaction pattern
       const keywords = this.extractKeywords(
-        transaction.description || '', 
+        transaction.description || '',
         transaction.counterparty_name || ''
       );
-      
+
       // TODO: ai_tags model needs to be created in Prisma schema
       /*
       await prisma.ai_tags.create({
@@ -543,7 +555,7 @@ export class AICategorizationService {
   }
 
   private async generateImprovementSuggestions(
-    accuracy: number, 
+    accuracy: number,
     topTags: any[]
   ): Promise<string[]> {
     const suggestions: string[] = [];
@@ -570,7 +582,7 @@ export class AICategorizationService {
   private extractKeywords(description: string, counterparty: string): string[] {
     const text = `${description || ''} ${counterparty || ''}`.toLowerCase();
     const words = text.split(/\W+/).filter(word => word.length > 2);
-    
+
     // Remove common stop words
     const stopWords = ['the', 'and', 'for', 'with', 'from', 'this', 'that', 'are', 'was'];
     return words.filter(word => !stopWords.includes(word)).slice(0, 5);

@@ -88,7 +88,7 @@ export function useAlertMutations() {
       message.success(response.message || 'Alert created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create alert');
+      message.error((error as any).response?.data?.message || 'Failed to create alert');
     },
   });
 
@@ -103,7 +103,7 @@ export function useAlertMutations() {
       message.success(response.message || 'Alert updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update alert');
+      message.error((error as any).response?.data?.message || 'Failed to update alert');
     },
   });
 
@@ -117,7 +117,7 @@ export function useAlertMutations() {
       message.success(response.message || 'Alert deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete alert');
+      message.error((error as any).response?.data?.message || 'Failed to delete alert');
     },
   });
 
@@ -134,7 +134,7 @@ export function useAlertMutations() {
       message.success(response.message || 'Alerts deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete alerts');
+      message.error((error as any).response?.data?.message || 'Failed to delete alerts');
     },
   });
 

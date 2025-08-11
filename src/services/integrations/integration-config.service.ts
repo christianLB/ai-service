@@ -38,7 +38,7 @@ export class IntegrationConfigService {
     // Use a key from environment or generate one
     const key = process.env.INTEGRATION_CONFIG_KEY || config.jwt.secret || 'default-encryption-key-32-chars!!';
     this.encryptionKey = crypto.scryptSync(key, 'salt', 32);
-    
+
     // Clear cache periodically
     setInterval(() => this.clearExpiredCache(), this.cacheTTL);
   }
@@ -83,7 +83,7 @@ export class IntegrationConfigService {
     // Could be improved with individual TTL tracking
     this.configCache.clear();
   }
-  
+
   async clearCache(integrationType?: string): Promise<void> {
     if (integrationType) {
       // Clear cache entries for specific integration type
@@ -104,7 +104,7 @@ export class IntegrationConfigService {
 
   async getConfig(options: GetConfigOptions): Promise<string | null> {
     const cacheKey = this.getCacheKey(options);
-    
+
     // Check cache first
     if (this.configCache.has(cacheKey)) {
       logger.debug('Returning cached config', { cacheKey });
@@ -118,32 +118,32 @@ export class IntegrationConfigService {
         FROM financial.integration_configs 
         WHERE integration_type = $1 AND config_key = $2
       `;
-      
+
       const params: any[] = [options.integrationType, options.configKey];
-      
+
       if (options.userId) {
         query += ' AND user_id = $3';
         params.push(options.userId);
       } else {
         query += ' AND user_id IS NULL AND is_global = true';
       }
-      
+
       const result = await db.pool.query(query, params);
-      
+
       if (result.rows.length === 0) {
         return null;
       }
-      
+
       const { config_value, is_encrypted } = result.rows[0];
       let value = config_value;
-      
+
       if (is_encrypted && options.decrypt !== false) {
         value = this.decrypt(value);
       }
-      
+
       // Cache the decrypted value
       this.configCache.set(cacheKey, value);
-      
+
       return value;
     } catch (error) {
       logger.error('Failed to get config', { error, options });
@@ -165,9 +165,9 @@ export class IntegrationConfigService {
 
     try {
       const finalValue = encrypt ? this.encrypt(configValue) : configValue;
-      
+
       let query: string;
-      
+
       // Handle different ON CONFLICT cases based on whether it's a global config
       if (isGlobal && !userId) {
         // For global configs (user_id is NULL)
@@ -202,7 +202,7 @@ export class IntegrationConfigService {
             updated_at = NOW()
         `;
       }
-      
+
       await db.pool.query(query, [
         userId || null,
         integrationType,
@@ -213,11 +213,11 @@ export class IntegrationConfigService {
         description,
         JSON.stringify(metadata)
       ]);
-      
+
       // Clear cache for this config
       const cacheKey = this.getCacheKey({ userId, integrationType, configKey });
       this.configCache.delete(cacheKey);
-      
+
       logger.info('Config updated successfully', { integrationType, configKey, userId });
     } catch (error) {
       logger.error('Failed to set config', { error, options });
@@ -232,16 +232,18 @@ export class IntegrationConfigService {
         WHERE integration_type = $1 AND config_key = $2
         ${options.userId ? 'AND user_id = $3' : 'AND user_id IS NULL'}
       `;
-      
+
       const params = [options.integrationType, options.configKey];
-      if (options.userId) params.push(options.userId);
-      
+      if (options.userId) {
+        params.push(options.userId);
+      }
+
       const result = await db.pool.query(query, params);
-      
+
       // Clear cache
       const cacheKey = this.getCacheKey(options);
       this.configCache.delete(cacheKey);
-      
+
       return (result.rowCount || 0) > 0;
     } catch (error) {
       logger.error('Failed to delete config', { error, options });
@@ -253,21 +255,21 @@ export class IntegrationConfigService {
     try {
       let query = 'SELECT * FROM financial.integration_configs WHERE 1=1';
       const params: any[] = [];
-      
+
       if (userId) {
         params.push(userId);
         query += ` AND user_id = $${params.length}`;
       }
-      
+
       if (integrationType) {
         params.push(integrationType);
         query += ` AND integration_type = $${params.length}`;
       }
-      
+
       query += ' ORDER BY integration_type, config_key';
-      
+
       const result = await db.pool.query(query, params);
-      
+
       return result.rows.map((row: any) => ({
         id: row.id,
         userId: row.user_id,
@@ -289,7 +291,7 @@ export class IntegrationConfigService {
   async getIntegrationConfigs(integrationType: string, userId?: string): Promise<Record<string, string>> {
     const configs = await this.getAllConfigs(userId, integrationType);
     const result: Record<string, string> = {};
-    
+
     for (const config of configs) {
       if (config.isEncrypted) {
         try {
@@ -301,7 +303,7 @@ export class IntegrationConfigService {
         result[config.configKey] = config.configValue;
       }
     }
-    
+
     return result;
   }
 

@@ -64,6 +64,11 @@ export declare class MakeCommandBridge {
         details: any;
     }[]>;
     /**
+     * Primary entry point for Make command detection and execution
+     * This should be called FIRST for any development-related request
+     */
+    checkMakeCommandsFirst(userRequest: string, autoExecute?: boolean): Promise<any>;
+    /**
      * Analyze user intent and provide intelligent command suggestions or direct execution
      */
     analyzeUserIntent(intent?: string, currentState?: any): Promise<any>;

@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { batchRateLimit, standardRateLimit } from '../../middleware/express-rate-limit.middleware';
-import { 
+import {
   getEntityTaggingService,
   getAITaggingService,
   getTagService
@@ -26,7 +26,7 @@ router.use(authMiddleware);
  * POST /api/tagging/batch
  * Batch tag multiple entities
  */
-router.post('/batch', batchRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/batch', batchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const request = batchTagRequestSchema.parse(req.body);
     const userId = (req as any).user.userId;
@@ -44,7 +44,7 @@ router.post('/batch', batchRateLimit, async (req: Request, res: Response, next: 
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -52,7 +52,7 @@ router.post('/batch', batchRateLimit, async (req: Request, res: Response, next: 
  * POST /api/tagging/retag
  * Re-tag entities based on filter criteria
  */
-router.post('/retag', batchRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/retag', batchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const request = reTagRequestSchema.parse(req.body);
     const userId = (req as any).user.userId;
@@ -70,7 +70,7 @@ router.post('/retag', batchRateLimit, async (req: Request, res: Response, next: 
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -78,7 +78,7 @@ router.post('/retag', batchRateLimit, async (req: Request, res: Response, next: 
  * POST /api/tagging/feedback
  * Submit feedback on tag accuracy
  */
-router.post('/feedback', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/feedback', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const feedback = tagFeedbackSchema.parse(req.body);
     const result = await getAITaggingService().learnFromFeedback(feedback);
@@ -94,7 +94,7 @@ router.post('/feedback', standardRateLimit, async (req: Request, res: Response, 
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -102,7 +102,7 @@ router.post('/feedback', standardRateLimit, async (req: Request, res: Response, 
  * POST /api/tagging/learn
  * Learn from manual tag corrections
  */
-router.post('/learn', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/learn', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const learning = tagLearningSchema.parse(req.body);
     const result = await getAITaggingService().learnFromCorrection(learning);
@@ -118,7 +118,7 @@ router.post('/learn', standardRateLimit, async (req: Request, res: Response, nex
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -126,7 +126,7 @@ router.post('/learn', standardRateLimit, async (req: Request, res: Response, nex
  * GET /api/tagging/accuracy
  * Get system accuracy metrics
  */
-router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { period, entityType } = req.query;
 
@@ -206,7 +206,7 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
       });
 
       const methodTagIds = methodTags.map(t => t.id);
-      
+
       if (methodTagIds.length > 0) {
         const verifiedCount = await prisma.entityTag.count({
           where: {
@@ -215,11 +215,11 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
           }
         });
 
-        const methodAccuracy = methodTagIds.length > 0 
-          ? verifiedCount / methodTagIds.length 
+        const methodAccuracy = methodTagIds.length > 0
+          ? verifiedCount / methodTagIds.length
           : 1;
 
-        byMethod[method] = { 
+        byMethod[method] = {
           accuracy: methodAccuracy,
           total: methodTagIds.length,
           verified: verifiedCount
@@ -256,7 +256,7 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -264,7 +264,7 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, n
  * GET /api/tags/:id/metrics
  * Get metrics for a specific tag
  */
-router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { id: tagId } = req.params;
     const { period, startDate, endDate } = req.query;
@@ -287,7 +287,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
 
     // Calculate date range
     let start: Date, end: Date;
-    
+
     if (startDate && endDate) {
       start = new Date(startDate as string);
       end = new Date(endDate as string);
@@ -343,7 +343,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
       const dayStart = new Date(current);
       const dayEnd = new Date(current.getTime() + dayMs);
 
-      const dayTags = entityTags.filter((et: any) => 
+      const dayTags = entityTags.filter((et: any) =>
         et.createdAt >= dayStart && et.createdAt < dayEnd
       );
 
@@ -377,7 +377,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
       }
     });
   } catch (error) {
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -385,7 +385,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
  * GET /api/relationships/:type/:id
  * Discover relationships for an entity
  */
-router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const entityType = EntityTypeEnum.parse(req.params.type);
     const { id: entityId } = req.params;
@@ -403,7 +403,7 @@ router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, r
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -411,20 +411,20 @@ router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, r
  * POST /api/tagging/suggest
  * Get AI-powered tag suggestions for content
  */
-router.post('/suggest', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/suggest', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { content, entityType, metadata, options } = req.body;
-    
+
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
-    
+
     const suggestions = await getAITaggingService().suggestTags(
       content,
       validEntityType,
       metadata,
       options
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -443,7 +443,7 @@ router.post('/suggest', standardRateLimit, async (req: Request, res: Response, n
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -451,20 +451,20 @@ router.post('/suggest', standardRateLimit, async (req: Request, res: Response, n
  * POST /api/tagging/categorize
  * Auto-categorize content using AI
  */
-router.post('/categorize', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/categorize', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { content, entityType, language, context } = req.body;
-    
+
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
-    
+
     const result = await getAITaggingService().autoCategorize(
       content,
       validEntityType,
       language,
       context
     );
-    
+
     res.json({
       success: true,
       data: result
@@ -480,7 +480,7 @@ router.post('/categorize', standardRateLimit, async (req: Request, res: Response
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -488,10 +488,10 @@ router.post('/categorize', standardRateLimit, async (req: Request, res: Response
  * POST /api/tagging/batch-ai
  * Batch process items for AI tagging
  */
-router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { items, options } = req.body;
-    
+
     // Validate items
     if (!Array.isArray(items) || items.length === 0) {
       res.status(400).json({
@@ -502,14 +502,14 @@ router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, nex
       });
       return;
     }
-    
+
     // Validate entity types in items
     for (const item of items) {
       EntityTypeEnum.parse(item.entityType);
     }
-    
+
     const results = await getAITaggingService().batchProcessTags(items, options);
-    
+
     res.json({
       success: true,
       data: {
@@ -528,7 +528,7 @@ router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, nex
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -536,22 +536,22 @@ router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, nex
  * POST /api/tagging/multilingual
  * Get multi-language tag suggestions
  */
-router.post('/multilingual', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/multilingual', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { content, entityType, targetLanguages } = req.body;
-    
+
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
-    
+
     const suggestions = await getAITaggingService().getMultilingualSuggestions(
       content,
       validEntityType,
       targetLanguages
     );
-    
+
     // suggestions is already a Record, no conversion needed
     const result = suggestions;
-    
+
     res.json({
       success: true,
       data: result
@@ -567,7 +567,7 @@ router.post('/multilingual', standardRateLimit, async (req: Request, res: Respon
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -575,19 +575,19 @@ router.post('/multilingual', standardRateLimit, async (req: Request, res: Respon
  * POST /api/tagging/contextual
  * Get contextual tag suggestions based on related entities
  */
-router.post('/contextual', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/contextual', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { content, entityType, context } = req.body;
-    
+
     // Validate entity type
     const validEntityType = EntityTypeEnum.parse(entityType);
-    
+
     const suggestions = await getAITaggingService().getContextualSuggestions(
       content,
       validEntityType,
       context
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -606,7 +606,7 @@ router.post('/contextual', standardRateLimit, async (req: Request, res: Response
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -614,16 +614,16 @@ router.post('/contextual', standardRateLimit, async (req: Request, res: Response
  * GET /api/tagging/analytics
  * Get AI tagging analytics
  */
-router.get('/analytics', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/analytics', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const analytics = await getAITaggingService().getTagAnalytics();
-    
+
     res.json({
       success: true,
       data: analytics
     });
   } catch (error) {
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -631,10 +631,10 @@ router.get('/analytics', standardRateLimit, async (req: Request, res: Response, 
  * POST /api/tagging/improve-patterns
  * Improve tag patterns based on examples
  */
-router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { tagId, successfulExamples, failedExamples } = req.body;
-    
+
     if (!tagId || !Array.isArray(successfulExamples)) {
       res.status(400).json({
         error: {
@@ -644,13 +644,13 @@ router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Re
       });
       return;
     }
-    
+
     await getAITaggingService().improveTagPatterns(
       tagId,
       successfulExamples,
       failedExamples
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -661,7 +661,7 @@ router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Re
       }
     });
   } catch (error) {
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 

@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma';
-import type { Prisma } from '../lib/prisma';
-import type { 
+import type { Prisma } from '@prisma/client';
+import type {
   InvoiceTemplate,
   InvoiceTemplateWithRelations,
   CreateInvoiceTemplate,
@@ -64,7 +64,7 @@ export class InvoiceTemplateService {
   async getById(id: string, userId?: string): Promise<InvoiceTemplateWithRelations | null> {
     try {
       const invoiceTemplate = await prisma.invoiceTemplate.findFirst({
-        where: { 
+        where: {
           id,
           ...(userId && { userId }),
         },
@@ -78,9 +78,11 @@ export class InvoiceTemplateService {
         throw new AppError('InvoiceTemplate not found', 404);
       }
 
-      return invoiceTemplate;
+      return invoiceTemplate as any;
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error in InvoiceTemplateService.getById:', error);
       throw new AppError('Failed to fetch invoicetemplate', 500);
     }
@@ -129,7 +131,9 @@ export class InvoiceTemplateService {
       logger.info(`InvoiceTemplate updated: ${id}`);
       return invoiceTemplate;
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error in InvoiceTemplateService.update:', error);
       throw new AppError('Failed to update invoicetemplate', 500);
     }
@@ -152,7 +156,9 @@ export class InvoiceTemplateService {
 
       logger.info(`InvoiceTemplate deleted: ${id}`);
     } catch (error) {
-      if (error instanceof AppError) throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
       logger.error('Error in InvoiceTemplateService.delete:', error);
       throw new AppError('Failed to delete invoicetemplate', 500);
     }

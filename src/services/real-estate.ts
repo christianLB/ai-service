@@ -11,7 +11,7 @@ export class RealEstateService {
     return res.rows;
   }
 
-  async createProperty(data: Omit<Property, "id" | "createdAt" | "updatedAt">): Promise<Property> {
+  async createProperty(data: Omit<Property, 'id' | 'createdAt' | 'updatedAt'>): Promise<Property> {
     const result = await this.pool.query(
       `INSERT INTO real_estate.properties (type, address, acquisition_date, initial_value, status)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,

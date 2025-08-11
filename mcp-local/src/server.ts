@@ -73,11 +73,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     let result;
     
     // Route to appropriate bridge based on tool name
-    if (name.startsWith('execute_make_') || name.startsWith('list_make_') || 
+    if (name.startsWith('check_make_') || name.startsWith('execute_make_') || name.startsWith('list_make_') || 
         name.startsWith('make_command_') || name.startsWith('validate_make_') || 
         name.startsWith('get_command_') || name.startsWith('analyze_user_')) {
       // Route to Make command bridge
       switch (name) {
+        case 'check_make_commands_first':
+          result = await makeBridge.checkMakeCommandsFirst(
+            String(args?.userRequest || ''),
+            args?.autoExecute !== false
+          );
+          break;
         case 'execute_make_command':
           result = await makeBridge.executeMakeCommand(
             String(args?.target || ''), 

@@ -1,6 +1,5 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+#!/bin/sh
 
-# Run service validation for frontend
-echo "🔍 Validating frontend services..."
-cd frontend && npm run validate:services
+# Husky v9 deprecates the shim, remove for v10 compatibility
+# Run linters/formatters on staged files
+npx lint-staged

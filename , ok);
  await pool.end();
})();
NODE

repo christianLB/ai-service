@@ -1,0 +1,21 @@
+                   List of relations
+ Schema |            Name             | Type  |  Owner  
+--------+-----------------------------+-------+---------
+ public | executions                  | table | ai_user
+ public | invoice_numbering_sequences | table | ai_user
+ public | login_attempts              | table | ai_user
+ public | memories                    | table | ai_user
+ public | metrics                     | table | ai_user
+ public | refresh_tokens              | table | ai_user
+ public | schema_migrations           | table | ai_user
+ public | security_logs               | table | ai_user
+ public | stored_invoices             | table | ai_user
+ public | users                       | table | ai_user
+ public | workflows                   | table | ai_user
+(11 rows)
+
+         email          | is_active | hash_len 
+------------------------+-----------+----------
+ admin@ai-service.local | t         |       60
+(1 row)
+

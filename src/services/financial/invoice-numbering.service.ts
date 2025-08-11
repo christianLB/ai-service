@@ -23,7 +23,7 @@ export interface InvoiceNumberOptions {
 
 /**
  * Invoice Numbering Service - Prisma Implementation
- * 
+ *
  * Manages sequential invoice numbering with database locking to ensure
  * no gaps in numbering sequences. This is critical for legal compliance
  * in many jurisdictions.
@@ -33,7 +33,7 @@ export class InvoiceNumberingService {
   private defaultPrefix: string;
   private defaultFormat: string;
   private yearlyReset: boolean;
-  
+
 
   constructor(
     prisma: PrismaClient,
@@ -83,7 +83,7 @@ export class InvoiceNumberingService {
             AND current_year = ${year}
           FOR UPDATE
         `;
-        
+
         const existingSequence: NumberingSequence[] = existingSequenceRaw.map(seq => ({
           id: seq.id,
           series: seq.series,
@@ -103,7 +103,7 @@ export class InvoiceNumberingService {
         if (existingSequence.length === 0) {
           // Create new sequence
           nextNumber = 1;
-          
+
           const newSequence = await tx.invoice_numbering_sequences.create({
             data: {
               series,
@@ -115,7 +115,7 @@ export class InvoiceNumberingService {
               last_used: new Date()
             }
           });
-          
+
           sequence = {
             id: newSequence.id,
             series: newSequence.series,
@@ -135,7 +135,7 @@ export class InvoiceNumberingService {
           // Check if we need to reset for new year
           if (this.yearlyReset && sequence.currentYear < year) {
             nextNumber = 1;
-            
+
             await tx.invoice_numbering_sequences.update({
               where: { id: sequence.id },
               data: {
@@ -147,7 +147,7 @@ export class InvoiceNumberingService {
             });
           } else {
             nextNumber = sequence.currentNumber + 1;
-            
+
             await tx.invoice_numbering_sequences.update({
               where: { id: sequence.id },
               data: {
@@ -166,7 +166,7 @@ export class InvoiceNumberingService {
 
       // Format the invoice number
       const invoiceNumber = this.formatInvoiceNumber(result, year, prefix, format);
-      
+
       logger.info(`Generated invoice number: ${invoiceNumber} (series: ${series})`);
       return invoiceNumber;
 
@@ -186,20 +186,20 @@ export class InvoiceNumberingService {
     format: string
   ): string {
     let formatted = format;
-    
+
     // Replace PREFIX
     formatted = formatted.replace('PREFIX', prefix);
-    
+
     // Replace YYYY (4-digit year)
     formatted = formatted.replace('YYYY', year.toString());
-    
+
     // Replace YY (2-digit year)
     formatted = formatted.replace('YY', (year % 100).toString().padStart(2, '0'));
-    
+
     // Replace number with appropriate padding
     const numberPattern = /0+|#+/g;
     const matches = formatted.match(numberPattern);
-    
+
     if (matches) {
       const paddingLength = matches[0].length;
       const paddedNumber = number.toString().padStart(paddingLength, '0');
@@ -280,7 +280,7 @@ export class InvoiceNumberingService {
    */
   async resetSequence(series: string, prefix: string, year?: number): Promise<void> {
     const currentYear = year || new Date().getFullYear();
-    
+
     try {
       await this.prisma.invoice_numbering_sequences.updateMany({
         where: {
@@ -312,7 +312,7 @@ export class InvoiceNumberingService {
     year?: number
   ): Promise<void> {
     const currentYear = year || new Date().getFullYear();
-    
+
     try {
       // Use upsert to create or update
       await this.prisma.invoice_numbering_sequences.upsert({

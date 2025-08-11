@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "ms-vscode.vscode-typescript-tslint-plugin",
+    "prisma.prisma",
+    "christian-kohler.path-intellisense",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}

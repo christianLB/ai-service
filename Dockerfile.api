@@ -22,10 +22,11 @@ COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY scripts/ ./scripts/
 COPY config/ ./config/
+COPY packages/ ./packages/
 
-# Generate Prisma client (if used) and run stable build
+# Generate Prisma client (if used) and build
 RUN npx prisma generate || echo "Prisma generate skipped" && \
-    npm run build:stable && \
+    npm run build:backend && \
     npm prune --production
 
 # Production stage
@@ -87,4 +88,4 @@ ENTRYPOINT ["/sbin/tini", "--"]
 
 # Start the API server
 EXPOSE 3001
-CMD ["node", "dist/index.stable.js"]
+CMD ["node", "dist/index.js"]

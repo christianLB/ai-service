@@ -47,28 +47,30 @@ export class TransactionImportService {
     currencyIdOrCode: string | undefined,
     cache: Map<string, string>
   ): Promise<string | undefined> {
-    if (!currencyIdOrCode) return undefined;
-    
+    if (!currencyIdOrCode) {
+      return undefined;
+    }
+
     // Check if it's already a UUID (36 chars with dashes)
     if (currencyIdOrCode.length === 36 && currencyIdOrCode.includes('-')) {
       return currencyIdOrCode;
     }
-    
+
     // Check cache first
     if (cache.has(currencyIdOrCode)) {
       return cache.get(currencyIdOrCode);
     }
-    
+
     // Look up by code
     const currency = await prisma.currencies.findUnique({
       where: { code: currencyIdOrCode }
     });
-    
+
     if (currency) {
       cache.set(currencyIdOrCode, currency.id);
       return currency.id;
     }
-    
+
     // If not found, return the original value (might be a UUID we couldn't validate)
     return currencyIdOrCode;
   }
@@ -112,31 +114,31 @@ export class TransactionImportService {
       const batchSize = 100;
       for (let i = 0; i < transactions.length; i += batchSize) {
         const batch = transactions.slice(i, i + batchSize);
-        
+
         // Process each transaction in the batch
         for (let j = 0; j < batch.length; j++) {
           const row = i + j + 1; // 1-indexed row number
           const transaction = batch[j];
-          
+
           try {
             // Generate unique transaction_id if not provided
             const transactionId = transaction.transaction_id || `IMP_${accountId}_${Date.now()}_${row}`;
-            
+
             // Check for duplicates
             const existing = await prisma.transactions.findUnique({
               where: { transaction_id: transactionId }
             });
-            
+
             if (existing) {
               result.duplicates.push({ row, transaction_id: transactionId });
               result.skipped++;
               continue;
             }
-            
+
             // Resolve currency IDs
             const currencyId = await this.resolveCurrencyId(transaction.currency_id, currencyCache) || account.currency_id;
             const feeCurrencyId = transaction.fee_currency_id ? await this.resolveCurrencyId(transaction.fee_currency_id, currencyCache) : undefined;
-            
+
             // Create the transaction
             await prisma.transactions.create({
               data: {
@@ -165,9 +167,9 @@ export class TransactionImportService {
                 to_address: transaction.to_address
               }
             });
-            
+
             result.imported++;
-            
+
           } catch (error) {
             logger.error(`Error importing transaction at row ${row}:`, error);
             result.errors.push({
@@ -180,9 +182,9 @@ export class TransactionImportService {
       }
 
       logger.info(`Import completed: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`);
-      
+
       return result;
-      
+
     } catch (error) {
       logger.error('Import failed:', error);
       throw error;
@@ -196,15 +198,15 @@ export class TransactionImportService {
    */
   validateTransactions(transactions: ImportTransactionData[]): Array<{ row: number; error: string }> {
     const errors: Array<{ row: number; error: string }> = [];
-    
+
     transactions.forEach((transaction, index) => {
       const row = index + 1;
-      
+
       // Required fields validation
       if (!transaction.amount) {
         errors.push({ row, error: 'Amount is required' });
       }
-      
+
       if (!transaction.date) {
         errors.push({ row, error: 'Date is required' });
       } else {
@@ -214,13 +216,13 @@ export class TransactionImportService {
           errors.push({ row, error: 'Invalid date format' });
         }
       }
-      
+
       // Validate amount is a valid number
       if (transaction.amount && isNaN(parseFloat(transaction.amount))) {
         errors.push({ row, error: 'Invalid amount format' });
       }
     });
-    
+
     return errors;
   }
 

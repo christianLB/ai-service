@@ -37,7 +37,7 @@ class ForensicLogger {
     // En producción, usar /app/logs, en desarrollo usar process.cwd()
     const baseDir = process.env.NODE_ENV === 'production' ? '/app' : process.cwd();
     const logsDir = path.join(baseDir, 'logs', 'forensic');
-    
+
     try {
       if (!fs.existsSync(logsDir)) {
         fs.mkdirSync(logsDir, { recursive: true });
@@ -48,11 +48,11 @@ class ForensicLogger {
       console.warn('Cannot create forensic logs directory, using /tmp:', error.message);
       this.logFile = path.join('/tmp', `forensic-${format(new Date(), 'yyyy-MM-dd-HH-mm-ss')}.log`);
     }
-    
+
     // Guardar referencias originales
     this.originalConsoleError = console.error;
     this.originalConsoleWarn = console.warn;
-    
+
     this.setupInterceptors();
     this.setupGlobalHandlers();
   }
@@ -152,8 +152,8 @@ class ForensicLogger {
     if (stack) {
       const lines = stack.split('\n');
       // Buscar la línea que no sea de este archivo
-      const callerLine = lines.find(line => 
-        !line.includes('forensic-logger') && 
+      const callerLine = lines.find(line =>
+        !line.includes('forensic-logger') &&
         !line.includes('console.') &&
         line.includes('.ts') || line.includes('.js')
       );
@@ -166,17 +166,19 @@ class ForensicLogger {
   }
 
   addEntry(entry: ForensicEntry): void {
-    if (!this.enabled) return;
-    
+    if (!this.enabled) {
+      return;
+    }
+
     this.entries.push(entry);
-    
+
     // Escribir inmediatamente al archivo
     const logLine = `[${entry.timestamp.toISOString()}] ${entry.type.toUpperCase()} @ ${entry.location}\n` +
                    `Message: ${entry.message}\n` +
                    (entry.stack ? `Stack: ${entry.stack}\n` : '') +
                    (entry.metadata ? `Metadata: ${JSON.stringify(entry.metadata, null, 2)}\n` : '') +
                    '---\n';
-    
+
     try {
       fs.appendFileSync(this.logFile, logLine);
     } catch (error) {
@@ -187,8 +189,10 @@ class ForensicLogger {
   // Método para auditar try-catch específicos
   auditCatch(location: string, error: any, action: 'silenced' | 'logged' | 'rethrown'): void {
     const key = `${location}-${action}`;
-    if (this.interceptedCatches.has(key)) return;
-    
+    if (this.interceptedCatches.has(key)) {
+      return;
+    }
+
     this.interceptedCatches.add(key);
     this.addEntry({
       timestamp: new Date(),
@@ -214,15 +218,15 @@ class ForensicLogger {
     this.entries.forEach(entry => {
       // Por tipo
       summary.byType[entry.type] = (summary.byType[entry.type] || 0) + 1;
-      
+
       // Por ubicación
       summary.byLocation[entry.location] = (summary.byLocation[entry.location] || 0) + 1;
-      
+
       // Catches silenciosos
       if (entry.type === 'silent_catch') {
         summary.silentCatches.push(entry);
       }
-      
+
       // Errores críticos
       if (entry.type === 'unhandled' || entry.metadata?.fatal) {
         summary.criticalErrors.push(entry);
@@ -238,7 +242,7 @@ class ForensicLogger {
     if (!this.enabled || this.logFile === '/dev/null') {
       return;
     }
-    
+
     try {
       const summary = this.getSummary();
       const summaryFile = path.join(path.dirname(this.logFile), 'forensic-summary.json');
@@ -274,33 +278,33 @@ export function auditCatch(location: string, error: any, action: 'silenced' | 'l
 // Comando para ver logs forenses
 export function showForensicLogs(): void {
   const summary = forensicLogger.getSummary();
-  console.log('\n🔍 FORENSIC LOG SUMMARY\n');
-  console.log('📊 Statistics:');
-  console.log(`   Total entries: ${summary.totalEntries}`);
-  console.log('\n📈 By Type:');
+  // console.log('\n🔍 FORENSIC LOG SUMMARY\n');
+  // console.log('📊 Statistics:');
+  // console.log(`   Total entries: ${summary.totalEntries}`);
+  // console.log('\n📈 By Type:');
   Object.entries(summary.byType).forEach(([type, count]) => {
-    console.log(`   ${type}: ${count}`);
+    // console.log(`   ${type}: ${count}`);
   });
-  console.log('\n📍 By Location:');
+  // console.log('\n📍 By Location:');
   Object.entries(summary.byLocation).forEach(([loc, count]) => {
-    console.log(`   ${loc}: ${count}`);
+    // console.log(`   ${loc}: ${count}`);
   });
-  
+
   if (summary.silentCatches.length > 0) {
-    console.log('\n🤫 SILENT CATCHES DETECTED:');
+    // console.log('\n🤫 SILENT CATCHES DETECTED:');
     summary.silentCatches.forEach((entry: any) => {
-      console.log(`   - ${entry.location}: ${entry.message}`);
+      // console.log(`   - ${entry.location}: ${entry.message}`);
     });
   }
-  
+
   if (summary.criticalErrors.length > 0) {
-    console.log('\n🚨 CRITICAL ERRORS:');
+    // console.log('\n🚨 CRITICAL ERRORS:');
     summary.criticalErrors.forEach((entry: any) => {
-      console.log(`   - ${entry.location}: ${entry.message}`);
+      // console.log(`   - ${entry.location}: ${entry.message}`);
     });
   }
-  
-  console.log(`\n📁 Full log: ${forensicLogger.getLogFile()}`);
+
+// console.log(`\n📁 Full log: ${forensicLogger.getLogFile()}`);
 }
 
 // Auto-flush en salida

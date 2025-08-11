@@ -91,30 +91,53 @@ class AutoSuggestionEngine {
     isSafeForAutoExecution(makeTarget) {
         const safeCommands = [
             'dev-status', 'db-migrate-status', 'check-db', 'health',
-            'trading-status', 'mcp-status', 'auth-token'
+            'trading-status', 'mcp-status', 'auth-token', 'list-make-targets',
+            'make-command-help', 'dev-logs', 'typecheck', 'lint', 'test'
         ];
-        return safeCommands.includes(makeTarget);
+        // Check if it's a read-only or status command
+        const readOnlyPatterns = ['status', 'check', 'list', 'help', 'show', 'view', 'logs'];
+        const isReadOnly = readOnlyPatterns.some(pattern => makeTarget.includes(pattern));
+        return safeCommands.includes(makeTarget) || isReadOnly;
     }
     /**
-     * Map confidence score to priority level
+     * Map confidence score to priority level with enhanced logic
      */
     mapConfidenceToPriority(confidence) {
-        if (confidence > 0.8)
+        // Boost confidence for exact matches
+        if (confidence > 0.9)
             return 'high';
-        if (confidence > 0.6)
+        if (confidence > 0.7)
+            return 'high';
+        if (confidence > 0.5)
             return 'medium';
         return 'low';
     }
     /**
-     * Assess safety level of a make target
+     * Assess safety level of a make target with enhanced categorization
      */
     assessSafetyLevel(makeTarget) {
-        const dangerousCommands = ['db-reset', 'dev-down', 'production-deploy'];
-        const warningCommands = ['db-migrate', 'financial-sync', 'trading-up', 'dev-refresh'];
-        if (dangerousCommands.some(cmd => makeTarget.includes(cmd))) {
+        const dangerousCommands = [
+            'db-reset', 'db-drop', 'destroy', 'delete', 'remove', 'prune',
+            'production-deploy', 'force', 'clean-all', 'reset-all'
+        ];
+        const warningCommands = [
+            'db-migrate', 'financial-sync', 'trading-up', 'dev-refresh',
+            'deploy', 'backup', 'restore', 'dev-down', 'stop', 'restart'
+        ];
+        const safeCommands = [
+            'status', 'check', 'list', 'help', 'show', 'view', 'logs',
+            'test', 'lint', 'typecheck', 'build', 'dev-up', 'start'
+        ];
+        // Check for dangerous patterns
+        if (dangerousCommands.some(cmd => makeTarget.toLowerCase().includes(cmd))) {
             return 'dangerous';
         }
-        if (warningCommands.some(cmd => makeTarget.includes(cmd))) {
+        // Check for safe patterns first (override warning if it's actually safe)
+        if (safeCommands.some(cmd => makeTarget.toLowerCase().includes(cmd))) {
+            return 'safe';
+        }
+        // Check for warning patterns
+        if (warningCommands.some(cmd => makeTarget.toLowerCase().includes(cmd))) {
             return 'warning';
         }
         return 'safe';

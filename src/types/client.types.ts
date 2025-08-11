@@ -48,7 +48,7 @@ export type CreateClient = z.infer<typeof createClientSchema>;
 export type UpdateClient = z.infer<typeof updateClientSchema>;
 export type ClientQuery = z.infer<typeof clientQuerySchema>;
 
-// Prisma types  
+// Prisma types
 import type { Client as PrismaClient } from '../lib/prisma';
 
 export interface ClientWithRelations extends PrismaClient {

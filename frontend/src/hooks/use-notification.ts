@@ -88,7 +88,7 @@ export function useNotificationMutations() {
       message.success(response.message || 'Notification created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create notification');
+      message.error((error as any).response?.data?.message || 'Failed to create notification');
     },
   });
 
@@ -103,7 +103,7 @@ export function useNotificationMutations() {
       message.success(response.message || 'Notification updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update notification');
+      message.error((error as any).response?.data?.message || 'Failed to update notification');
     },
   });
 
@@ -117,7 +117,7 @@ export function useNotificationMutations() {
       message.success(response.message || 'Notification deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete notification');
+      message.error((error as any).response?.data?.message || 'Failed to delete notification');
     },
   });
 
@@ -134,7 +134,7 @@ export function useNotificationMutations() {
       message.success(response.message || 'Notifications deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete notifications');
+      message.error((error as any).response?.data?.message || 'Failed to delete notifications');
     },
   });
 

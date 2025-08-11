@@ -88,7 +88,7 @@ export function useAccountsMutations() {
       message.success(response.message || 'Accounts created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to create accounts');
+      message.error((error as any).response?.data?.message || 'Failed to create accounts');
     },
   });
 
@@ -103,7 +103,7 @@ export function useAccountsMutations() {
       message.success(response.message || 'Accounts updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to update accounts');
+      message.error((error as any).response?.data?.message || 'Failed to update accounts');
     },
   });
 
@@ -117,7 +117,7 @@ export function useAccountsMutations() {
       message.success(response.message || 'Accounts deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete accounts');
+      message.error((error as any).response?.data?.message || 'Failed to delete accounts');
     },
   });
 
@@ -134,7 +134,7 @@ export function useAccountsMutations() {
       message.success(response.message || 'Accountss deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error(error.response?.data?.message || 'Failed to delete accountss');
+      message.error((error as any).response?.data?.message || 'Failed to delete accountss');
     },
   });
 
