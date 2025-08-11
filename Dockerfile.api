@@ -22,6 +22,7 @@ COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY scripts/ ./scripts/
 COPY config/ ./config/
+COPY packages/ ./packages/
 
 # Generate Prisma client (if used) and build
 RUN npx prisma generate || echo "Prisma generate skipped" && \
