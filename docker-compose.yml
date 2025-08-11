@@ -11,6 +11,11 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3001
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ai_service
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=ultra_secure_password_2025
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-development}

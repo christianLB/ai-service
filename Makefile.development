@@ -89,24 +89,24 @@ dev-logs-db: ## Ver logs de PostgreSQL local
 
 .PHONY: dev-up
 dev-up: ## Levantar ambiente de desarrollo
-	@echo "$(BLUE)🚀 Iniciando ambiente de desarrollo...$(NC)"
-	@docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-	@echo "$(YELLOW)⏳ Esperando que los servicios inicien...$(NC)"
-	@sleep 5
-	@$(MAKE) dev-status
+    @echo "$(BLUE)🚀 Iniciando ambiente de desarrollo...$(NC)"
+    @docker compose -f docker-compose.yml up -d
+    @echo "$(YELLOW)⏳ Esperando que los servicios inicien...$(NC)"
+    @sleep 5
+    @$(MAKE) dev-status
 
 .PHONY: dev-down
 dev-down: ## Detener ambiente de desarrollo
-	@echo "$(YELLOW)🛑 Deteniendo ambiente de desarrollo...$(NC)"
-	@docker compose -f docker-compose.yml -f docker-compose.dev.yml down
-	@echo "$(GREEN)✓ Ambiente detenido$(NC)"
+    @echo "$(YELLOW)🛑 Deteniendo ambiente de desarrollo...$(NC)"
+    @docker compose -f docker-compose.yml down
+    @echo "$(GREEN)✓ Ambiente detenido$(NC)"
 
 .PHONY: dev-restart
 dev-restart: ## Reiniciar servicios de desarrollo
-	@echo "$(YELLOW)🔄 Reiniciando servicios...$(NC)"
-	@docker compose -f docker-compose.yml -f docker-compose.dev.yml restart
-	@sleep 5
-	@$(MAKE) dev-status
+    @echo "$(YELLOW)🔄 Reiniciando servicios...$(NC)"
+    @docker compose -f docker-compose.yml restart
+    @sleep 5
+    @$(MAKE) dev-status
 
 .PHONY: dev-rebuild
 dev-rebuild: ## Reconstruir imagen de desarrollo
@@ -116,14 +116,14 @@ dev-rebuild: ## Reconstruir imagen de desarrollo
 
 .PHONY: dev-refresh
 dev-refresh: ## Detiene, reconstruye y levanta el ambiente (down, build, up)
-	@echo "$(BLUE)🔄 Refrescando completamente el ambiente de desarrollo...$(NC)"
-	@echo "$(YELLOW)1. Deteniendo servicios...$(NC)"
-	@docker compose -f docker-compose.yml -f docker-compose.dev.yml down
-	@echo "$(YELLOW)2. Reconstruyendo imágenes...$(NC)"
-	@docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache
-	@echo "$(YELLOW)3. Levantando servicios...$(NC)"
-	@docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-	@echo "$(GREEN)✓ Ambiente refrescado y corriendo en segundo plano$(NC)"
+    @echo "$(BLUE)🔄 Refrescando completamente el ambiente de desarrollo...$(NC)"
+    @echo "$(YELLOW)1. Deteniendo servicios...$(NC)"
+    @docker compose -f docker-compose.yml down
+    @echo "$(YELLOW)2. Reconstruyendo imágenes...$(NC)"
+    @docker compose -f docker-compose.yml build --no-cache
+    @echo "$(YELLOW)3. Levantando servicios...$(NC)"
+    @docker compose -f docker-compose.yml up -d
+    @echo "$(GREEN)✓ Ambiente refrescado y corriendo en segundo plano$(NC)"
 
 .PHONY: dev-build-frontend
 dev-build-frontend: ## Recompilar frontend en desarrollo

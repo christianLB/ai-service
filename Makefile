@@ -312,15 +312,15 @@ build-frontend: ## 🔨 Compilar frontend (alias)
 
 .PHONY: dev-up
 dev-up: ## 🚀 Levantar ambiente de desarrollo
-	@$(MAKE) -f Makefile.development dev-up
+    @$(MAKE) -f Makefile.development dev-up
 
 .PHONY: dev-down
 dev-down: ## 🛑 Detener ambiente de desarrollo
-	@$(MAKE) -f Makefile.development dev-down
+    @$(MAKE) -f Makefile.development dev-down
 
 .PHONY: dev-refresh
 dev-refresh: ## 🔄 Refrescar ambiente de desarrollo (down, build, up)
-	@$(MAKE) -f Makefile.development dev-refresh
+    @$(MAKE) -f Makefile.development dev-refresh
 
 .PHONY: dev-status
 dev-status: ## 📊 Estado del desarrollo local
