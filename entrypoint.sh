@@ -70,4 +70,4 @@ echo "✅ Data directories ready"
 
 # Start the application
 echo "🎯 Starting Node.js application..."
-exec node dist/index.js
+exec node dist/src/index.js
