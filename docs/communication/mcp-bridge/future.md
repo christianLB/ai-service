@@ -2,7 +2,7 @@
 
 **Versión**: 1.0.0  
 **Fecha**: 2025-07-18  
-**Estado**: Producción en https://mcp.anaxi.net
+**Estado**: Producción en https://your-mcp-bridge.example.com
 
 ---
 
@@ -11,17 +11,19 @@
 MCP Bridge es la interfaz unificada entre asistentes AI (Claude, GPT, etc.) y las capacidades del AI Service. Su propósito es democratizar el acceso a la inteligencia del sistema, permitiendo que cualquier agente AI pueda ejecutar tareas complejas sin necesidad de conocer la implementación interna.
 
 ### Estado Actual
+
 - ✅ 25 herramientas en producción
 - ✅ 3 categorías: Financial (9), Documents (7), System (8)
 - ✅ Autenticación JWT + API Keys
 - ✅ Rate limiting y WebSocket support
-- ✅ Desplegado en https://mcp.anaxi.net
+- ✅ Desplegado en https://your-mcp-bridge.example.com
 
 ---
 
 ## 🔮 El Futuro: MCP como Sistema Nervioso Digital
 
 ### Concepto Central
+
 MCP Bridge evoluciona de ser un simple puente a convertirse en el **Sistema Nervioso Central** del AI Service, donde:
 
 1. **Herramientas = Neuronas**: Cada tool es una neurona especializada
@@ -65,29 +67,32 @@ MCP Bridge evoluciona de ser un simple puente a convertirse en el **Sistema Nerv
 ### 📅 Q3 2025: Expansión de Capacidades
 
 #### 1. **Nueva Categoría: Crypto Intelligence** 🪙
+
 ```typescript
 // Herramientas propuestas
-- get_crypto_portfolio      // Vista consolidada de holdings
-- analyze_crypto_performance // Análisis de rendimiento
-- execute_crypto_trade      // Ejecución de trades
-- crypto_tax_calculator     // Cálculos fiscales
-- market_sentiment_analysis // Análisis de sentimiento
+-get_crypto_portfolio - // Vista consolidada de holdings
+  analyze_crypto_performance - // Análisis de rendimiento
+  execute_crypto_trade - // Ejecución de trades
+  crypto_tax_calculator - // Cálculos fiscales
+  market_sentiment_analysis; // Análisis de sentimiento
 ```
 
 **Valor**: Integración completa con exchanges, análisis en tiempo real
 
 #### 2. **Nueva Categoría: Client Relationship** 👥
+
 ```typescript
 // Herramientas propuestas
-- manage_client_data        // CRUD de clientes
-- link_revenue_to_client    // Tracking de ingresos
-- client_interaction_log    // Historial de comunicaciones
-- generate_client_report    // Reportes personalizados
+-manage_client_data - // CRUD de clientes
+  link_revenue_to_client - // Tracking de ingresos
+  client_interaction_log - // Historial de comunicaciones
+  generate_client_report; // Reportes personalizados
 ```
 
 **Valor**: CRM integrado con capacidades financieras
 
 #### 3. **Sistema de Memoria Contextual** 🧠
+
 ```typescript
 interface ContextMemory {
   sessionId: string;
@@ -106,6 +111,7 @@ interface ContextMemory {
 ### 📅 Q4 2025: Inteligencia Aumentada
 
 #### 4. **Orchestrator Inteligente** 🎭
+
 ```typescript
 // Capacidades del Orchestrator
 - Reconocimiento de intenciones complejas
@@ -116,6 +122,7 @@ interface ContextMemory {
 ```
 
 **Ejemplo de uso**:
+
 ```
 Usuario: "Necesito preparar mi declaración de impuestos"
 Orchestrator:
@@ -128,12 +135,13 @@ Orchestrator:
 ```
 
 #### 5. **Workflow Automation** 🔄
+
 ```typescript
 // Integración con n8n
-- design_workflow         // Diseño asistido por AI
-- test_workflow          // Validación automática
-- deploy_workflow        // Despliegue a producción
-- monitor_workflow       // Monitoreo y alertas
+-design_workflow - // Diseño asistido por AI
+  test_workflow - // Validación automática
+  deploy_workflow - // Despliegue a producción
+  monitor_workflow; // Monitoreo y alertas
 ```
 
 **Valor**: Automatización sin código de procesos complejos
@@ -141,12 +149,14 @@ Orchestrator:
 ### 📅 2026: Ecosistema Autónomo
 
 #### 6. **API Marketplace** 🏪
+
 - Publicar herramientas MCP para terceros
 - Monetización de capacidades especializadas
 - SDK para desarrolladores externos
 - Certificación de herramientas
 
 #### 7. **Multi-Agent Collaboration** 🤝
+
 - Múltiples AI agents trabajando en paralelo
 - Especialización por dominio
 - Consenso y validación cruzada
@@ -157,8 +167,9 @@ Orchestrator:
 ## 💡 Casos de Uso Transformadores
 
 ### 1. **Asistente Financiero Personal**
+
 ```yaml
-Trigger: "¿Cómo están mis finanzas?"
+Trigger: '¿Cómo están mis finanzas?'
 Actions:
   - Análisis completo de gastos/ingresos
   - Detección de anomalías
@@ -168,8 +179,9 @@ Actions:
 ```
 
 ### 2. **Gestor Documental Inteligente**
+
 ```yaml
-Trigger: "Encuentra todos los contratos de 2024"
+Trigger: 'Encuentra todos los contratos de 2024'
 Actions:
   - Búsqueda semántica en documentos
   - Extracción de cláusulas clave
@@ -179,6 +191,7 @@ Actions:
 ```
 
 ### 3. **Operador de Sistema Autónomo**
+
 ```yaml
 Trigger: Detección de problema de rendimiento
 Actions:
@@ -196,6 +209,7 @@ Actions:
 ### Añadir una Nueva Herramienta
 
 1. **Crear el archivo de herramienta**:
+
 ```typescript
 // mcp-bridge/src/tools/crypto.tools.ts
 import { z } from 'zod';
@@ -209,20 +223,21 @@ export const getCryptoPortfolioTool: MCPTool = {
   rateLimit: { windowMs: 60000, maxRequests: 10 },
   inputSchema: z.object({
     includeHistory: z.boolean().optional(),
-    currency: z.enum(['USD', 'EUR']).default('USD')
+    currency: z.enum(['USD', 'EUR']).default('USD'),
   }),
   handler: async (params) => {
     // Implementación
     const response = await apiClient.get('/crypto/portfolio', { params });
     return {
       success: true,
-      data: response.data
+      data: response.data,
     };
-  }
+  },
 };
 ```
 
 2. **Registrar en el servidor**:
+
 ```typescript
 // mcp-bridge/src/server/mcp-server.ts
 import { getCryptoPortfolioTool } from '../tools/crypto.tools';
@@ -232,6 +247,7 @@ this.toolRegistry.registerTool(getCryptoPortfolioTool);
 ```
 
 3. **Probar la herramienta**:
+
 ```bash
 make mcp-test-tool TOOL=get_crypto_portfolio
 ```
@@ -250,18 +266,21 @@ make mcp-test-tool TOOL=get_crypto_portfolio
 ## 🎯 KPIs de Éxito
 
 ### Métricas Técnicas
+
 - **Disponibilidad**: >99.9% uptime
 - **Latencia**: <200ms p95
 - **Throughput**: >1000 req/min
 - **Error Rate**: <0.1%
 
 ### Métricas de Negocio
+
 - **Adopción**: Herramientas usadas/día
 - **Eficiencia**: Tiempo ahorrado por automatización
 - **Satisfacción**: NPS de usuarios
 - **ROI**: Valor generado vs. costo de desarrollo
 
 ### Métricas de Innovación
+
 - **Nuevas herramientas/mes**
 - **Contribuciones de la comunidad**
 - **Integraciones de terceros**
@@ -274,6 +293,7 @@ make mcp-test-tool TOOL=get_crypto_portfolio
 ### Acciones Inmediatas
 
 1. **Auditar servicios no integrados**:
+
    ```bash
    grep -r "service" src/services/ | grep -v "test"
    ```
@@ -284,6 +304,7 @@ make mcp-test-tool TOOL=get_crypto_portfolio
    - Potencial de automatización
 
 3. **Establecer métricas base**:
+
    ```bash
    make mcp-metrics
    ```
@@ -312,6 +333,6 @@ El viaje desde 25 herramientas hasta un ecosistema completo de inteligencia empr
 
 ---
 
-*"The best way to predict the future is to invent it."* - Alan Kay
+_"The best way to predict the future is to invent it."_ - Alan Kay
 
 **Próximos pasos**: Revisar este documento con el equipo, priorizar Q3 2025, y comenzar la implementación de Crypto Intelligence.

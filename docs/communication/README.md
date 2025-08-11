@@ -5,16 +5,19 @@ This section contains all documentation related to communication systems in the 
 ## 📁 Structure
 
 ### [Telegram Bot](./telegram/)
+
 - **[Setup Guide](./telegram/setup.md)** - Initial Telegram bot configuration
 - **[Bot Setup](./telegram/bot-setup.md)** - Detailed bot implementation
 - **[Test Commands](./telegram/test-commands.md)** - Testing Telegram commands
 - **[Revenue Commands](./telegram/revenue-commands.md)** - Financial bot commands
 
 ### [MCP Bridge](./mcp-bridge/)
+
 - **[Proposal](./mcp-bridge/proposal.md)** - MCP Bridge architecture proposal
 - **[Future Plans](./mcp-bridge/future.md)** - Roadmap and future enhancements
 
 ### [Integrations](./integrations/)
+
 - **[Telegram-Slack](./integrations/telegram-slack.md)** - Cross-platform messaging
 
 ---
@@ -65,13 +68,15 @@ Este documento sirve como **centro de comunicación bidireccional** entre:
    └─────────┘             └─────────┘             └─────────┘
         │                        │                        │
         ├─ Database              ├─ Financial             ├─ Telegram
-        ├─ Express              ├─ Documents             ├─ Metrics  
+        ├─ Express              ├─ Documents             ├─ Metrics
         ├─ Health Check         └─ Workflows             └─ Alerts
         └─ Environment
 ```
 
 ### 🔴 CORE (Sistema Nervioso Central)
+
 **Estado**: OPERATIONAL | **Falla**: SISTEMA MUERTO
+
 - PostgreSQL Database Connection Pool
 - Express HTTP Server (Puerto 3003)
 - Environment Variables & Configuration
@@ -79,8 +84,10 @@ Este documento sirve como **centro de comunicación bidireccional** entre:
 
 ### 🧠 HEMISFERIOS (Sistemas Autónomos)
 
-#### **🏦 Hemisferio Financiero** 
+#### **🏦 Hemisferio Financiero**
+
 **Estado**: OPERATIONAL | **Falla**: HEMISFERIO DEGRADADO
+
 ```
 Financial Intelligence System
 ├── GoCardless Integration (Real Banking)
@@ -91,7 +98,9 @@ Financial Intelligence System
 ```
 
 #### **📄 Hemisferio Documental** ⭐ **NUEVO**
-**Estado**: OPERATIONAL | **Falla**: HEMISFERIO DEGRADADO  
+
+**Estado**: OPERATIONAL | **Falla**: HEMISFERIO DEGRADADO
+
 ```
 Document Intelligence System
 ├── Multi-format Ingestion (PDF, DOCX, TXT...)
@@ -102,9 +111,11 @@ Document Intelligence System
 ```
 
 #### **⚙️ Hemisferio Workflow**
+
 **Estado**: OPERATIONAL | **Falla**: DEGRADACIÓN PARCIAL
+
 ```
-Workflow Automation System  
+Workflow Automation System
 ├── AI Workflow Generation
 ├── Schema Validation (Joi)
 ├── Simulation Testing
@@ -113,7 +124,9 @@ Workflow Automation System
 ```
 
 #### **📈 Hemisferio Trading** ⭐ **NUEVO**
+
 **Estado**: OPERATIONAL | **Falla**: HEMISFERIO DEGRADADO
+
 ```
 Trading Intelligence System
 ├── Multi-Exchange Support (Binance, Coinbase)
@@ -127,13 +140,17 @@ Trading Intelligence System
 ### 🦾 EXTREMIDADES (Funcionalidades Opcionales)
 
 #### **📱 Comunicación**
+
 **Estado**: CONDITIONAL | **Falla**: SIN NOTIFICACIONES
+
 - Telegram Bot Multi-comando
 - Alertas Automáticas
 - Webhooks & Integraciones
 
-#### **📊 Métricas**  
+#### **📊 Métricas**
+
 **Estado**: OPERATIONAL | **Falla**: SIN VISIBILIDAD
+
 - Prometheus Metrics
 - Real-time Dashboards
 - Performance Monitoring
@@ -147,14 +164,14 @@ Trading Intelligence System
 ```
 ComponentType:
 ├── CORE ❤️        → Falla = Muerte del sistema
-├── HEMISPHERE 🧠  → Falla = Degradación funcional 
+├── HEMISPHERE 🧠  → Falla = Degradación funcional
 ├── EXTREMITY 🦾   → Falla = Pérdida opcional
 └── RAMIFICATION 🌿 → Falla = Sub-funcionalidad
 
 HealthStatus:
 ├── OPTIMAL 🟢     → 100% funcional
 ├── DEGRADED 🟡    → Funcional con limitaciones
-├── CRITICAL 🟠    → Barely functional  
+├── CRITICAL 🟠    → Barely functional
 └── OFFLINE 🔴     → No funcional
 ```
 
@@ -173,24 +190,28 @@ FALLA DETECTADA → EVALUACIÓN → DECISIÓN → REESTRUCTURACIÓN
 ### **Modos Operativos del Sistema**
 
 #### 🟢 **MODO COMPLETO** (Complete Mode)
+
 - Todos los hemisferios activos
-- Todas las extremidades funcionando  
+- Todas las extremidades funcionando
 - Capacidades completas de IA
 - **Estado ideal de operación**
 
 #### 🟡 **MODO ESENCIAL** (Essential Mode)
+
 - Core + Hemisferios básicos
 - Sin dependencias externas (OpenAI, APIs)
 - Solo datos locales y CRUD básico
 - **Degradación controlada**
 
 #### 🟠 **MODO CRÍTICO** (Critical Mode)
+
 - Solo Core + funcionalidades mínimas
 - Health check + Database básico
 - Sin hemisferios complejos
 - **Modo supervivencia**
 
 #### 🔴 **MODO EMERGENCIA** (Emergency Mode)
+
 - Core comprometido
 - Funcionalidad mínima esencial
 - Requiere intervención manual
@@ -247,7 +268,7 @@ POST /api/financial/categorize/auto
 POST /api/financial/transactions/{id}/categorize
 GET /api/financial/transactions/categorized
 
-# Reportes y Analytics  
+# Reportes y Analytics
 GET /api/financial/reports/comprehensive
 GET /api/financial/metrics/realtime
 GET /api/financial/analytics/monthly-summary
@@ -646,16 +667,16 @@ export function createWorkflowPrompt(description: string) {
 // src/services/validator.ts
 const SECURITY_POLICIES = {
   allowedNodeTypes: [
-    "n8n-nodes-base.start",
-    "n8n-nodes-base.httpRequest",
-    "n8n-nodes-base.set",
+    'n8n-nodes-base.start',
+    'n8n-nodes-base.httpRequest',
+    'n8n-nodes-base.set',
     // ... más tipos seguros
   ],
 
   forbiddenFunctions: [
-    "eval",
-    "exec",
-    "require",
+    'eval',
+    'exec',
+    'require',
     // ... funciones peligrosas
   ],
 };
@@ -810,12 +831,13 @@ const SECURITY_POLICIES = {
 ```yaml
 # Configuración Optimizada - docker-compose.synology.yml
 services:
-  postgres:     # Puerto 5433 (evita conflictos)
-  redis:        # Puerto 6380 (evita conflictos)  
-  ai-service:   # Puerto 3003 → 3000 (imagen k2600x/ai-service:latest)
+  postgres: # Puerto 5433 (evita conflictos)
+  redis: # Puerto 6380 (evita conflictos)
+  ai-service: # Puerto 3003 → 3000 (imagen k2600x/ai-service:latest)
 ```
 
 **Flujo de Deployment Exitoso:**
+
 1. Desarrollo local → GitHub push
 2. GitHub Actions → Docker build & push
 3. Portainer → Deploy stack con imagen pre-construida
@@ -824,16 +846,16 @@ services:
 
 #### **📱 Comandos Telegram Verificados**
 
-| Comando | Estado | Funcionalidad |
-|---------|--------|---------------|
-| `/start` | ✅ | Inicialización del bot |
-| `/help` | ✅ | Lista de comandos disponibles |
-| `/status` | ✅ | Estado del sistema y servicios |
-| `/balance` | ✅ | Balance de cuentas bancarias |
-| `/gastos` | ✅ | Gastos recientes por categoría |
-| `/reporte` | ✅ | Reportes automáticos |
-| `/sync` | ✅ | Sincronización bancaria |
-| `/dashboard` | ✅ | Enlace al dashboard web |
+| Comando      | Estado | Funcionalidad                  |
+| ------------ | ------ | ------------------------------ |
+| `/start`     | ✅     | Inicialización del bot         |
+| `/help`      | ✅     | Lista de comandos disponibles  |
+| `/status`    | ✅     | Estado del sistema y servicios |
+| `/balance`   | ✅     | Balance de cuentas bancarias   |
+| `/gastos`    | ✅     | Gastos recientes por categoría |
+| `/reporte`   | ✅     | Reportes automáticos           |
+| `/sync`      | ✅     | Sincronización bancaria        |
+| `/dashboard` | ✅     | Enlace al dashboard web        |
 
 ### 🔴 Pendientes para Funcionalidad Completa
 
@@ -902,6 +924,7 @@ services:
 ```
 
 **Performance:**
+
 - ✅ **Memory Usage**: 76MB (muy eficiente)
 - ✅ **Database**: Conectado y estable
 - ✅ **Uptime**: 54+ segundos sin reiniciar
@@ -918,7 +941,7 @@ services:
 **Estado actual**: ✅ **SISTEMA COMPLETAMENTE FUNCIONAL**
 
 - **✅ Base de datos PostgreSQL**: Conectada y estable
-- **✅ Servicio Telegram**: Bot operativo con 8 comandos  
+- **✅ Servicio Telegram**: Bot operativo con 8 comandos
 - **✅ Sistema Financiero**: Sincronización bancaria BBVA real
 - **✅ Dashboard**: Accesible en producción
 - **✅ Monitoreo**: Prometheus + Grafana desplegados
@@ -928,12 +951,12 @@ services:
 ```yaml
 # docker-compose.synology.yml - ACTUALIZADO
 services:
-  postgres:      ✅ Base de datos principal
-  redis:         ✅ Cache y sesiones
-  n8n:           ✅ Motor de workflows
-  prometheus:    ✅ Métricas del sistema
-  grafana:       ✅ Dashboard de monitoreo
-  ai-service:    ✅ Servicio principal con todas las integraciones
+  postgres: ✅ Base de datos principal
+  redis: ✅ Cache y sesiones
+  n8n: ✅ Motor de workflows
+  prometheus: ✅ Métricas del sistema
+  grafana: ✅ Dashboard de monitoreo
+  ai-service: ✅ Servicio principal con todas las integraciones
 ```
 
 #### **💰 Sistema Financiero - COMPLETAMENTE OPERATIVO**
@@ -1217,12 +1240,12 @@ El servicio AI está **completamente funcional** con todas las características 
 📊 **Analytics Empresariales** → Reportes y métricas en tiempo real  
 🎨 **Dashboard Profesional** → Interfaz visual moderna y responsive  
 🔄 **Sistema de Aprendizaje** → Mejora continua con feedback del usuario  
-🚀 **Escalabilidad Total** → Crypto-ready, multi-banco, multi-moneda  
+🚀 **Escalabilidad Total** → Crypto-ready, multi-banco, multi-moneda
 
 ### 🎯 IMPACTO INMEDIATO
 
 - **Gestión financiera personal** completamente automatizada
-- **Insights de gastos** que antes requerían horas de análisis manual  
+- **Insights de gastos** que antes requerían horas de análisis manual
 - **Categorización inteligente** que aprende de tus patrones
 - **Reportes profesionales** con un solo clic
 - **Base sólida** para expansión a funcionalidades de negocio
@@ -1230,6 +1253,7 @@ El servicio AI está **completamente funcional** con todas las características 
 ### 🚀 PRÓXIMA EVOLUCIÓN
 
 Con esta base sólida, ahora puedes expandir hacia:
+
 - **Comunicación Multi-Canal** (Telegram, Slack, WhatsApp)
 - **Análisis Predictivo** avanzado
 - **Automatización de Decisiones** financieras
@@ -1256,7 +1280,7 @@ _Este documento evoluciona con el proyecto. Última actualización: 2025-07-02_
 El servicio ya está funcionalmente completo. Solo necesitamos:
 
 - **Semana 1**: Integrar OpenAI API real + PostgreSQL real
-- **Semana 2**: Tests automatizados + Docker production 
+- **Semana 2**: Tests automatizados + Docker production
 - **Semana 3**: Deployment real + monitoreo producción
 
 **Estado actual**: MVP 100% funcional, solo faltan integraciones reales.
@@ -1274,6 +1298,7 @@ Dev Environment → Learning → Production Update → Auto-Deploy
 ```
 
 **Componentes clave**:
+
 - **Conocimiento persistente** en PostgreSQL
 - **Auto-learning** de patrones exitosos
 - **Auto-deployment** con tests automáticos
@@ -1286,8 +1311,9 @@ Dev Environment → Learning → Production Update → Auto-Deploy
 **🐳 Respuesta: Sí, pero evolucionar a sistema híbrido**
 
 **Estrategia recomendada**:
+
 - **Docker volumes** para desarrollo/staging
-- **PostgreSQL managed** para producción 
+- **PostgreSQL managed** para producción
 - **Redis cluster** para cache distribuido
 - **Backup automático** a S3/similar
 
@@ -1304,10 +1330,11 @@ const deployService = async (serviceSpec) => {
   await generateDockerCompose(serviceSpec);
   await deployWithKubernetes(serviceSpec);
   await setupMonitoring(serviceSpec);
-}
+};
 ```
 
 **Características implementadas**:
+
 - Auto-creación de volúmenes Docker
 - Generación dinámica de docker-compose
 - Deploy automático con Kubernetes/Swarm
@@ -1320,8 +1347,9 @@ const deployService = async (serviceSpec) => {
 **📡 Respuesta: Canal de comunicación multi-modal**
 
 **Sistema de comunicación**:
+
 - **Slack/Telegram bot** para alertas inmediatas
-- **Email reports** diarios/semanales  
+- **Email reports** diarios/semanales
 - **CENTRO_COMUNICACION.md** como centro de comunicación
 - **Dashboard web** para decisiones visuales
 - **WhatsApp integration** para urgencias
@@ -1346,12 +1374,14 @@ El proyecto debe evolucionar hacia ser una **amplificación cognitiva completa**
 ##### **1. 💼 Plataforma Financiera (Órgano Vital)**
 
 **Objetivo**: Capacidad de reaccionar y cambiar estrategias basado en:
+
 - Condiciones actuales del mercado
 - Métricas financieras propias
 - Análisis competitivo diario
 - Señales de trading automatizadas
 
 **Implementación próxima**:
+
 - Market data integration (APIs financieras)
 - Dashboard de métricas de negocio
 - Sistema de alertas financieras
@@ -1362,12 +1392,14 @@ El proyecto debe evolucionar hacia ser una **amplificación cognitiva completa**
 **Objetivo**: Ingesta y clasificación automática total
 
 **Capacidades requeridas**:
+
 - **Document ingestion**: PDF, Word, imágenes, audio, video
 - **Auto-categorización**: Ideas, proyectos, problemas, tareas
 - **Almacenamiento granular**: Cada pieza de información etiquetada
 - **Retrieval inteligente**: Devolver información contextual perfecta
 
 **Flujo típico**:
+
 ```
 Input (cualquier formato) → Análisis → Categorización → Storage → Retrieval
 ```
@@ -1377,6 +1409,7 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 **Objetivo**: Integración omnipresente
 
 **Canales a implementar**:
+
 - ✅ **Este documento** (CENTRO_COMUNICACION.md)
 - ⏳ **Telegram Bot** - Alertas inmediatas
 - ⏳ **Slack Integration** - Workspace communication
@@ -1385,6 +1418,7 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 - ⏳ **Signal Bot** - Comunicación segura
 
 **Protocolo de comunicación**:
+
 - **Inmediato**: Errores críticos, oportunidades financieras
 - **Diario**: Progress reports, métricas clave
 - **Semanal**: Análisis estratégico, planificación
@@ -1395,6 +1429,7 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 #### **Plan de Evolución Detallado**
 
 ##### **Fase 1: Producción Real (Semanas 1-2)**
+
 - [x] MVP funcional completo
 - [ ] OpenAI API real integration
 - [ ] PostgreSQL production setup
@@ -1402,18 +1437,21 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 - [ ] Telegram bot básico
 
 ##### **Fase 2: Cerebro Cognitivo (Semanas 3-4)**
+
 - [ ] Document ingestion system
 - [ ] Auto-categorización con embeddings
 - [ ] Knowledge graph construction
 - [ ] Multi-platform communication
 
 ##### **Fase 3: Plataforma Financiera (Mes 2)**
+
 - [ ] Market data integration
 - [ ] Financial metrics dashboard
 - [ ] Decision support system
 - [ ] Automated trading signals
 
 ##### **Fase 4: Auto-Evolución (Mes 3)**
+
 - [ ] Self-improving algorithms
 - [ ] Auto-deployment pipeline
 - [ ] Predictive analytics
@@ -1424,20 +1462,24 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 #### **Criterios de Priorización Estratégica**
 
 **🔥 Prioridad MÁXIMA** (Hacer Ya):
+
 - ✅ **¿Genera ingresos directos?**
 - ✅ **¿Amplifica capacidades cognitivas?**
 - ✅ **¿Mejora comunicación crítica?**
 
 **📈 Prioridad ALTA** (Planificar):
+
 - ✅ **¿Reduce tiempo de decisión?**
 - ✅ **¿Aumenta capacidad de procesamiento?**
 - ✅ **¿Mejora autonomía operativa?**
 
 **⚡ Prioridad MEDIA** (Evaluar):
+
 - ✅ **¿Mejora experiencia técnica?**
 - ✅ **¿Reduce overhead operativo?**
 
 **❌ Prioridad BAJA** (Solo si es gratis):
+
 - **UI/UX cosmético**
 - **Features técnicas sin impacto de negocio**
 - **Optimizaciones prematuras**
@@ -1447,15 +1489,19 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 ### 🚀 COMPROMISOS ESTRATÉGICOS
 
 #### **Compromiso 1: Comunicación Perfecta**
+
 **NUNCA** perder la comunicación. Redundancia total en todos los canales.
 
 #### **Compromiso 2: Datos Como Activo**
+
 **TODO** se almacena, categoriza y hace recuperable. Información = Poder.
 
 #### **Compromiso 3: Crecimiento Financiero**
+
 **CADA** decisión técnica debe evaluarse por su impacto en ingresos/crecimiento.
 
 #### **Compromiso 4: Autonomía Creciente**
+
 **AUTOMATIZAR** todo lo posible para amplificar capacidades humanas.
 
 ---
@@ -1463,23 +1509,25 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 ### 📊 KPIs Estratégicos
 
 #### **Métricas de Negocio**
+
 - **Monthly Recurring Revenue** (MRR)
 - **Customer Acquisition Cost** (CAC)
 - **Time to Decision** (TTD)
 - **Information Processing Rate** (IPR)
 
 #### **Métricas Técnicas**
+
 - **System Uptime** (>99.9%)
 - **Response Time** (<2s average)
 - **Data Processing Volume** (docs/day)
 - **Communication Success Rate** (100%)
 
 #### **Métricas de Amplificación Cognitiva**
+
 - **Ideas Captured vs Ideas Lost**
 - **Decision Quality Score**
 - **Information Retrieval Accuracy**
 - **Cognitive Load Reduction**
-
 
 ---
 
@@ -1522,12 +1570,14 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
    - Confidence scoring para cada match
 
 #### **🎯 Beneficios**:
+
 - Automatización del tracking de ingresos por cliente
 - Reducción de trabajo manual en conciliación
 - Base para reportes de revenue por cliente
 - Trazabilidad completa de pagos
 
 #### **📊 Métricas**:
+
 - Confidence threshold: 0.7 para auto-match
 - Soporte para override manual con historial
 - Tracking de match_type y criterios usados
@@ -1564,6 +1614,7 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 - **Gestión completa**: CRUD completo con interfaz intuitiva
 
 #### **📋 Próximos Pasos**:
+
 - [ ] Integrar con sistema de notificaciones Telegram
 - [ ] Añadir visualización de PDFs inline
 - [ ] Implementar búsqueda por voz
@@ -1602,6 +1653,7 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
    - Solución: Usar `ai-service:simple` en docker-compose
 
 #### **✅ Resultado Final**:
+
 - Frontend React+Vite: http://192.168.1.11:3003/ ✅
 - API funcional: http://192.168.1.11:3003/status ✅
 - Base de datos operacional con 7 tablas financieras ✅
@@ -1609,17 +1661,20 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 - Documentación completa de la batalla ✅
 
 #### **📚 Documentos Creados**:
+
 - `DEPLOY_BATTLE_REPORT.md` - Reporte épico de la batalla
 - `DEPLOY_LESSONS_LEARNED.md` - Lecciones para futuros deploys
 - `DEPLOY_FIX_SUMMARY.md` - Resumen de correcciones
 
 #### **🛠️ Mejoras Implementadas**:
+
 - Comando `make prod-build-image` para builds automatizados
 - Frontend servido correctamente en la raíz `/`
 - Inicialización lazy de schemas de base de datos
 - Configuración consistente de puertos y hosts
 
 #### **📊 Métricas de la Victoria**:
+
 - Tiempo total: ~2.5 horas
 - Problemas resueltos: 8/8 (100%)
 - Archivos modificados: 6
@@ -1630,7 +1685,7 @@ Input (cualquier formato) → Análisis → Categorización → Storage → Retr
 
 ## 🌉 MCP BRIDGE - Model Context Protocol
 
-### **Estado**: DEPLOYED | **Puerto**: 8080 | **URL**: https://mcp.anaxi.net | **Fecha**: 2025-07-18
+### **Estado**: DEPLOYED | **Puerto**: 8080 | **URL**: https://your-mcp-bridge.example.com | **Fecha**: 2025-07-18
 
 El MCP Bridge proporciona una interfaz estandarizada para que Claude Code y otros asistentes AI interactúen con las capacidades del AI Service.
 
@@ -1642,7 +1697,7 @@ El MCP Bridge proporciona una interfaz estandarizada para que Claude Code y otro
 │  (Client)       │◀────│   (Port 8080)   │◀────│   (Port 3000)   │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
          │                        │                        │
-         │              https://mcp.anaxi.net              │
+         │        https://your-mcp-bridge.example.com        │
          │                        │                        │
          │                   Dedicated                     │
          │                    Volume:                      │
@@ -1654,6 +1709,7 @@ El MCP Bridge proporciona una interfaz estandarizada para que Claude Code y otro
 ### **Herramientas Disponibles** (24 total)
 
 #### 💰 **Financial Tools** (9)
+
 - `get_financial_summary` - Resumen financiero completo
 - `get_account_balance` - Balances de cuentas
 - `analyze_expenses` - Análisis de gastos
@@ -1665,6 +1721,7 @@ El MCP Bridge proporciona una interfaz estandarizada para que Claude Code y otro
 - `sync_financial_data` - Sincronizar con GoCardless
 
 #### 📄 **Document Tools** (7)
+
 - `search_documents` - Búsqueda semántica
 - `analyze_document` - Análisis con IA
 - `ask_document_question` - Q&A sobre documentos
@@ -1674,6 +1731,7 @@ El MCP Bridge proporciona una interfaz estandarizada para que Claude Code y otro
 - `compare_documents` - Comparar documentos
 
 #### 🔧 **System Tools** (8)
+
 - `get_system_status` - Estado del sistema
 - `get_neural_status` - Estado neural
 - `get_system_metrics` - Métricas de rendimiento
@@ -1757,12 +1815,14 @@ SuperClaude es un framework que extiende las capacidades de Claude Code con coma
 ### **Estado de Implementación**
 
 ✅ **Completado**:
+
 - Instalación exitosa en ~/.claude
 - Framework core y comandos instalados
 - Archivos de configuración generados
 - Backup creado: ~/.claude/backups/
 
 ⚠️ **En Evaluación**:
+
 - Testing de comandos en contexto real
 - Medición de optimización de tokens
 - Evaluación de personas cognitivas
