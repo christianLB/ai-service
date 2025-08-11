@@ -72,7 +72,7 @@ export function createRateLimiter(type: keyof typeof rateLimitConfigs = 'standar
   const limiter = rateLimiters[type];
   const config = rateLimitConfigs[type];
 
-  return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Use user ID if authenticated, otherwise use IP
       const key = (req as any).user?.userId || req.ip;
@@ -124,7 +124,7 @@ export const searchRateLimit = createRateLimiter('search');
 export const databaseRateLimit = createRateLimiter('database');
 
 // Dynamic rate limiter based on endpoint
-export function dynamicRateLimit(req: Request, res: Response, _next: NextFunction: void {
+export function dynamicRateLimit(req: Request, res: Response, next: NextFunction): void {
   const path = req.path;
 
   // Determine which rate limiter to use based on endpoint

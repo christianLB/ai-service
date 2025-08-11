@@ -187,13 +187,6 @@
     ],
     "*.{json,md}": [
       "prettier --write"
-    ],
-    "frontend/src/**/*.{ts,tsx,js,jsx}": [
-      "cd frontend && eslint --fix",
-      "prettier --write"
-    ],
-    "frontend/*.{json,md}": [
-      "prettier --write"
     ]
   },
   "packageManager": "pnpm@10.12.1+sha1.4bd977ce548dc9fcd1ca0c62838c55646cea6847"
