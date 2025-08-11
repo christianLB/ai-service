@@ -118,7 +118,11 @@ dev-rebuild: ## Reconstruir imagen de desarrollo
 dev-refresh: ## Detiene, reconstruye y levanta el ambiente (down, build, up)
 	@echo "$(BLUE)🔄 Refrescando completamente el ambiente de desarrollo...$(NC)"
 	@echo "$(YELLOW)1. Deteniendo servicios...$(NC)"
-	@docker compose -f docker-compose.yml down
+	@docker compose -f docker-compose.yml down || true
+	@echo "$(YELLOW)1b. Eliminando contenedores colisionando...$(NC)"
+	@docker rm -f ai-service-frontend-dev 2>/dev/null || true
+	@docker rm -f ai-service-api-dev 2>/dev/null || true
+	@docker network rm ai-service_ai-service-network 2>/dev/null || true
 	@echo "$(YELLOW)2. Reconstruyendo imágenes...$(NC)"
 	@docker compose -f docker-compose.yml build --no-cache
 	@echo "$(YELLOW)3. Levantando servicios...$(NC)"
