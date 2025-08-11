@@ -51,10 +51,14 @@ CMD ["dumb-init", "npm", "run", "dev"]
 FROM base AS builder
 # Herramientas necesarias para compilar dependencias nativas (bcrypt, etc.)
 RUN apk add --no-cache python3 make g++ git
+# Copiar esquema de Prisma antes de instalar para que @prisma/client postinstall funcione
+COPY prisma/ ./prisma/
 RUN npm ci
 
 # Copiar archivos del proyecto
 COPY . .
+# Generar Prisma Client (tipos y cliente)
+RUN npx prisma generate || echo "Prisma generate skipped"
 
 # Instalar dependencias del frontend y construir
 RUN cd frontend && npm ci && cd ..
