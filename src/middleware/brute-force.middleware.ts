@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { Pool } from 'pg';
 
 interface BruteForceOptions {
@@ -15,7 +15,7 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
 
     if (!email) {
-      next();
+      _next();
       return;
     }
 
@@ -54,17 +54,17 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
 
           res.status(429).json({
             error: 'Too many failed login attempts. Please try again later.',
-            retryAfter: Math.ceil(blockDurationMs / 1000)
+            retryAfter: Math.ceil(blockDurationMs / 1000),
           });
           return;
         }
       }
 
-      next();
+      _next();
     } catch (error) {
       console.error('Brute force check error:', error);
       // Don't block on error, but log it
-      next();
+      _next();
     }
   };
 }
@@ -78,7 +78,7 @@ export async function cleanupLoginAttempts(pool: Pool, retentionDays: number = 7
     `;
 
     const result = await pool.query(query);
-    // console.log(`Cleaned up ${result.rowCount} old login attempts`);
+    console.log(`Cleaned up ${result.rowCount} old login attempts`);
   } catch (error) {
     console.error('Error cleaning up login attempts:', error);
   }

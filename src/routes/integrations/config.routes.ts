@@ -16,7 +16,7 @@ const validateRequest = (req: Request, res: Response, _next: NextFunction): void
     });
     return;
   }
-  next();
+  _next();
 };
 
 // GET /api/integrations/configs - Get all configurations

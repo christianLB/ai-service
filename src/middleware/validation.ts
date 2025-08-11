@@ -1,13 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { z } from 'zod';
 
-export const validateRequest = (req: Request, res: Response, _next: NextFunction): void => {
+export const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     res.status(400).json({
       success: false,
-      errors: errors.array()
+      errors: errors.array(),
     });
     return;
   }
@@ -15,7 +15,7 @@ export const validateRequest = (req: Request, res: Response, _next: NextFunction
 };
 
 export const validateZod = (schema: z.ZodSchema) => {
-  return (req: Request, res: Response, _next: NextFunction): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       schema.parse(req.body);
       next();
@@ -23,7 +23,7 @@ export const validateZod = (schema: z.ZodSchema) => {
       if (error instanceof z.ZodError) {
         res.status(400).json({
           success: false,
-          errors: error.errors
+          errors: error.errors,
         });
         return;
       }
@@ -37,7 +37,7 @@ export const validateBody = validateZod;
 
 // Validate query parameters
 export const validateQuery = (schema: z.ZodSchema) => {
-  return (req: Request, res: Response, _next: NextFunction): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       schema.parse(req.query);
       next();
@@ -45,7 +45,7 @@ export const validateQuery = (schema: z.ZodSchema) => {
       if (error instanceof z.ZodError) {
         res.status(400).json({
           success: false,
-          errors: error.errors
+          errors: error.errors,
         });
         return;
       }

@@ -44,7 +44,7 @@ router.post('/batch', batchRateLimit, async (req: Request, res: Response, _next:
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -70,7 +70,7 @@ router.post('/retag', batchRateLimit, async (req: Request, res: Response, _next:
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -94,7 +94,7 @@ router.post('/feedback', standardRateLimit, async (req: Request, res: Response, 
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -118,7 +118,7 @@ router.post('/learn', standardRateLimit, async (req: Request, res: Response, _ne
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -256,7 +256,7 @@ router.get('/accuracy', standardRateLimit, async (req: Request, res: Response, _
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -377,7 +377,7 @@ router.get('/tags/:id/metrics', standardRateLimit, async (req: Request, res: Res
       }
     });
   } catch (error) {
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -403,7 +403,7 @@ router.get('/relationships/:type/:id', standardRateLimit, async (req: Request, r
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -443,7 +443,7 @@ router.post('/suggest', standardRateLimit, async (req: Request, res: Response, _
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -480,7 +480,7 @@ router.post('/categorize', standardRateLimit, async (req: Request, res: Response
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -528,7 +528,7 @@ router.post('/batch-ai', batchRateLimit, async (req: Request, res: Response, _ne
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -567,7 +567,7 @@ router.post('/multilingual', standardRateLimit, async (req: Request, res: Respon
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -606,7 +606,7 @@ router.post('/contextual', standardRateLimit, async (req: Request, res: Response
       });
       return;
     }
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -623,7 +623,7 @@ router.get('/analytics', standardRateLimit, async (req: Request, res: Response, 
       data: analytics
     });
   } catch (error) {
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 
@@ -661,7 +661,7 @@ router.post('/improve-patterns', standardRateLimit, async (req: Request, res: Re
       }
     });
   } catch (error) {
-    next(handleTaggingError(error));
+    _next(handleTaggingError(error));
   }
 });
 

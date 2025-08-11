@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 import { Logger } from '../utils/logger';
 
 const logger = new Logger('CSRFMiddleware');
@@ -17,13 +17,13 @@ const generateToken = (): string => {
 export const csrfProtection = (req: Request, res: Response, _next: NextFunction): void => {
   // Skip CSRF for safe methods
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    next();
+    _next();
     return;
   }
 
   // Skip CSRF for auth endpoints (login, register, etc.)
   if (req.path.startsWith('/api/auth/')) {
-    next();
+    _next();
     return;
   }
 
@@ -31,10 +31,11 @@ export const csrfProtection = (req: Request, res: Response, _next: NextFunction)
   const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
 
   // Get token from request (header or body)
-  const requestToken = req.headers[CSRF_HEADER_NAME] ||
-                      req.headers['x-xsrf-token'] ||
-                      req.body?._csrf ||
-                      req.query?._csrf;
+  const requestToken =
+    req.headers[CSRF_HEADER_NAME] ||
+    req.headers['x-xsrf-token'] ||
+    req.body?._csrf ||
+    req.query?._csrf;
 
   // Validate tokens match
   if (!cookieToken || !requestToken || cookieToken !== requestToken) {
@@ -42,18 +43,23 @@ export const csrfProtection = (req: Request, res: Response, _next: NextFunction)
     res.status(403).json({
       success: false,
       error: 'Invalid CSRF token',
-      code: 'CSRF_VALIDATION_FAILED'
+      code: 'CSRF_VALIDATION_FAILED',
     });
     return;
   }
 
-  next();
+  _next();
 };
 
 // Error handler for CSRF token failures
-export const csrfErrorHandler = (err: any, req: Request, res: Response, _next: NextFunction): void => {
+export const csrfErrorHandler = (
+  err: any,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void => {
   // This is for compatibility with the app error handler structure
-  next(err);
+  _next(err);
 };
 
 // Middleware to send CSRF token to client
@@ -66,11 +72,11 @@ export const sendCSRFToken = (req: Request, res: Response): void => {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 86400000, // 24 hours
-    path: '/'
+    path: '/',
   });
 
   res.json({
     success: true,
-    csrfToken: token
+    csrfToken: token,
   });
 };

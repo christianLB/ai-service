@@ -1,6 +1,5 @@
-import { UniversalTag as PrismaUniversalTag, EntityTag } from '@prisma/client';
-
-export type UniversalTag = PrismaUniversalTag;
+// Decoupled from Prisma model types to avoid build failures when client types change
+export type UniversalTag = Record<string, unknown>;
 
 export interface CreateUniversalTag {
   code: string;
@@ -57,5 +56,5 @@ export interface UniversalTagQuery {
 export interface UniversalTagWithRelations extends UniversalTag {
   parent?: UniversalTag | null;
   children?: UniversalTag[];
-  entityTags?: EntityTag[];
+  entityTags?: Record<string, unknown>[];
 }

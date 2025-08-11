@@ -208,5 +208,5 @@ export const handleUploadError = (error: any, req: Request, res: Response, _next
     return;
   }
 
-  next(error);
+  _next(error);
 };

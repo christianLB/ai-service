@@ -12,7 +12,7 @@ export const validate = (schema: AnyZodObject) => {
         query: req.query,
         params: req.params
       });
-      next();
+      _next();
     } catch (error) {
       if (error instanceof ZodError) {
         const errorMessages = error.errors.map(issue => ({

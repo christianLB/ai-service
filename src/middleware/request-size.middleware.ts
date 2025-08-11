@@ -1,16 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { Logger } from '../utils/logger';
 
 const logger = new Logger('RequestSizeMiddleware');
 
 // Default size limits
 export const SIZE_LIMITS = {
-  json: '10mb',        // JSON payloads
-  urlencoded: '10mb',  // URL-encoded forms
-  raw: '10mb',         // Raw data
-  text: '1mb',         // Text data
-  api: '1mb',          // Strict API endpoints
-  upload: '50mb'       // File uploads
+  json: '10mb', // JSON payloads
+  urlencoded: '10mb', // URL-encoded forms
+  raw: '10mb', // Raw data
+  text: '1mb', // Text data
+  api: '1mb', // Strict API endpoints
+  upload: '50mb', // File uploads
 };
 
 // Create middleware for request size validation
@@ -19,7 +19,7 @@ export const createSizeLimitMiddleware = (limit: string | number) => {
     // Skip if no content-length header
     const contentLength = req.headers['content-length'];
     if (!contentLength) {
-      next();
+      _next();
       return;
     }
 
@@ -31,12 +31,12 @@ export const createSizeLimitMiddleware = (limit: string | number) => {
       res.status(413).json({
         success: false,
         error: 'Payload too large',
-        details: `Request size ${formatBytes(requestSize)} exceeds maximum allowed size of ${formatBytes(maxSize)}`
+        details: `Request size ${formatBytes(requestSize)} exceeds maximum allowed size of ${formatBytes(maxSize)}`,
       });
       return;
     }
 
-    next();
+    _next();
   };
 };
 
@@ -58,7 +58,7 @@ const parseSize = (size: string | number): number => {
     b: 1,
     kb: 1024,
     mb: 1024 * 1024,
-    gb: 1024 * 1024 * 1024
+    gb: 1024 * 1024 * 1024,
   };
 
   return Math.floor(value * (multipliers[unit] || 1));

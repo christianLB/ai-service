@@ -249,7 +249,7 @@ class MetricsService {
         );
       });
 
-      next();
+      _next();
     };
   }
 
