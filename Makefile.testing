@@ -1,0 +1,322 @@
+# Makefile.testing - Testing operations module
+# =============================================================================
+# Testing, validation, and quality assurance operations
+# =============================================================================
+
+# Load configuration
+-include .make.env
+
+# Variables
+TEST_TIMEOUT ?= 30000
+TEST_COVERAGE_THRESHOLD ?= 80
+
+# Colors
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+MAGENTA := \033[0;35m
+CYAN := \033[0;36m
+NC := \033[0m
+
+# =============================================================================
+# 🧪 UNIT TESTING
+# =============================================================================
+
+.PHONY: test
+test: ## Run all tests
+	@echo "$(BLUE)Running all tests...$(NC)"
+	@npm test
+	@echo "$(GREEN)✓ All tests passed$(NC)"
+
+.PHONY: test-unit
+test-unit: ## Run unit tests only
+	@echo "$(BLUE)Running unit tests...$(NC)"
+	@npm run test:unit
+	@echo "$(GREEN)✓ Unit tests passed$(NC)"
+
+.PHONY: test-integration
+test-integration: ## Run integration tests only
+	@echo "$(BLUE)Running integration tests...$(NC)"
+	@npm run test:integration
+	@echo "$(GREEN)✓ Integration tests passed$(NC)"
+
+.PHONY: test-e2e
+test-e2e: ## Run end-to-end tests
+	@echo "$(BLUE)Running E2E tests...$(NC)"
+	@npm run test:e2e
+	@echo "$(GREEN)✓ E2E tests passed$(NC)"
+
+.PHONY: test-watch
+test-watch: ## Run tests in watch mode
+	@echo "$(BLUE)Starting test watcher...$(NC)"
+	@npm run test:watch
+
+.PHONY: test-coverage
+test-coverage: ## Run tests with coverage report
+	@echo "$(BLUE)Running tests with coverage...$(NC)"
+	@npm run test:coverage
+	@echo "$(GREEN)✓ Coverage report generated$(NC)"
+	@echo "$(CYAN)Coverage report: coverage/index.html$(NC)"
+
+.PHONY: test-verbose
+test-verbose: ## Run tests with verbose output
+	@echo "$(BLUE)Running tests (verbose)...$(NC)"
+	@npm test -- --verbose
+
+# =============================================================================
+# 🎯 SPECIFIC TEST SUITES
+# =============================================================================
+
+.PHONY: test-api
+test-api: ## Test API endpoints
+	@echo "$(BLUE)Testing API endpoints...$(NC)"
+	@npm test -- src/routes/**/*.test.ts
+	@echo "$(GREEN)✓ API tests passed$(NC)"
+
+.PHONY: test-services
+test-services: ## Test service layer
+	@echo "$(BLUE)Testing services...$(NC)"
+	@npm test -- src/services/**/*.test.ts
+	@echo "$(GREEN)✓ Service tests passed$(NC)"
+
+.PHONY: test-frontend
+test-frontend: ## Test frontend components
+	@echo "$(BLUE)Testing frontend components...$(NC)"
+	@cd frontend && npm test
+	@echo "$(GREEN)✓ Frontend tests passed$(NC)"
+
+.PHONY: test-financial
+test-financial: ## Test financial module
+	@echo "$(BLUE)Testing financial module...$(NC)"
+	@npm test -- src/services/financial/**/*.test.ts
+	@echo "$(GREEN)✓ Financial module tests passed$(NC)"
+
+.PHONY: test-trading
+test-trading: ## Test trading module
+	@echo "$(BLUE)Testing trading module...$(NC)"
+	@npm test -- src/services/trading/**/*.test.ts
+	@echo "$(GREEN)✓ Trading module tests passed$(NC)"
+
+.PHONY: test-auth
+test-auth: ## Test authentication system
+	@echo "$(BLUE)Testing authentication...$(NC)"
+	@npm test -- src/services/auth/**/*.test.ts src/middleware/auth*.test.ts
+	@echo "$(GREEN)✓ Auth tests passed$(NC)"
+
+# =============================================================================
+# 🔍 CODE QUALITY
+# =============================================================================
+
+.PHONY: lint
+lint: ## Run ESLint on all code
+	@echo "$(BLUE)Running ESLint...$(NC)"
+	@npm run lint
+	@echo "$(GREEN)✓ Linting passed$(NC)"
+
+.PHONY: lint-fix
+lint-fix: ## Auto-fix ESLint issues
+	@echo "$(YELLOW)Auto-fixing ESLint issues...$(NC)"
+	@npm run lint:fix
+	@echo "$(GREEN)✓ ESLint fixes applied$(NC)"
+
+.PHONY: typecheck
+typecheck: ## Run TypeScript type checking
+	@echo "$(BLUE)Running TypeScript type check...$(NC)"
+	@npm run typecheck
+	@echo "$(GREEN)✓ Type check passed$(NC)"
+
+.PHONY: format
+format: ## Format code with Prettier
+	@echo "$(BLUE)Formatting code...$(NC)"
+	@npm run format
+	@echo "$(GREEN)✓ Code formatted$(NC)"
+
+.PHONY: format-check
+format-check: ## Check code formatting
+	@echo "$(BLUE)Checking code format...$(NC)"
+	@npm run format:check
+	@echo "$(GREEN)✓ Code format is correct$(NC)"
+
+# =============================================================================
+# 🛡️ SECURITY TESTING
+# =============================================================================
+
+.PHONY: test-security
+test-security: ## Run security tests
+	@echo "$(BLUE)Running security tests...$(NC)"
+	@npm audit
+	@echo "$(GREEN)✓ Security check complete$(NC)"
+
+.PHONY: test-security-fix
+test-security-fix: ## Fix security vulnerabilities
+	@echo "$(YELLOW)Fixing security vulnerabilities...$(NC)"
+	@npm audit fix
+	@echo "$(GREEN)✓ Security fixes applied$(NC)"
+
+.PHONY: test-owasp
+test-owasp: ## Run OWASP dependency check
+	@echo "$(BLUE)Running OWASP dependency check...$(NC)"
+	@if command -v dependency-check > /dev/null; then \
+		dependency-check --project "AI Service" --scan . --format HTML --out owasp-report.html; \
+		echo "$(GREEN)✓ OWASP report generated: owasp-report.html$(NC)"; \
+	else \
+		echo "$(YELLOW)dependency-check not installed. Install from: https://owasp.org/www-project-dependency-check/$(NC)"; \
+	fi
+
+# =============================================================================
+# 🚀 PERFORMANCE TESTING
+# =============================================================================
+
+.PHONY: test-performance
+test-performance: ## Run performance tests
+	@echo "$(BLUE)Running performance tests...$(NC)"
+	@npm run test:performance
+	@echo "$(GREEN)✓ Performance tests complete$(NC)"
+
+.PHONY: test-load
+test-load: ## Run load testing with k6
+	@echo "$(BLUE)Running load tests...$(NC)"
+	@if command -v k6 > /dev/null; then \
+		k6 run tests/load/api-load.js; \
+		echo "$(GREEN)✓ Load tests complete$(NC)"; \
+	else \
+		echo "$(YELLOW)k6 not installed. Install from: https://k6.io/docs/getting-started/installation/$(NC)"; \
+	fi
+
+.PHONY: test-stress
+test-stress: ## Run stress testing
+	@echo "$(BLUE)Running stress tests...$(NC)"
+	@if command -v k6 > /dev/null; then \
+		k6 run tests/stress/api-stress.js; \
+		echo "$(GREEN)✓ Stress tests complete$(NC)"; \
+	else \
+		echo "$(YELLOW)k6 not installed. Install from: https://k6.io/docs/getting-started/installation/$(NC)"; \
+	fi
+
+# =============================================================================
+# ✅ VALIDATION
+# =============================================================================
+
+.PHONY: validate
+validate: ## Run all validations
+	@echo "$(BLUE)Running all validations...$(NC)"
+	@$(MAKE) -f Makefile.testing validate-env
+	@$(MAKE) -f Makefile.testing validate-config
+	@$(MAKE) -f Makefile.testing validate-schema
+	@$(MAKE) -f Makefile.testing validate-api
+	@echo "$(GREEN)✓ All validations passed$(NC)"
+
+.PHONY: validate-env
+validate-env: ## Validate environment variables
+	@echo "$(BLUE)Validating environment variables...$(NC)"
+	@node scripts/validate-env.js
+	@echo "$(GREEN)✓ Environment valid$(NC)"
+
+.PHONY: validate-config
+validate-config: ## Validate configuration files
+	@echo "$(BLUE)Validating configuration...$(NC)"
+	@node scripts/validate-config.js
+	@echo "$(GREEN)✓ Configuration valid$(NC)"
+
+.PHONY: validate-schema
+validate-schema: ## Validate database schema
+	@echo "$(BLUE)Validating database schema...$(NC)"
+	@npx prisma validate
+	@echo "$(GREEN)✓ Schema valid$(NC)"
+
+.PHONY: validate-api
+validate-api: ## Validate API contracts
+	@echo "$(BLUE)Validating API contracts...$(NC)"
+	@npm run validate:api
+	@echo "$(GREEN)✓ API contracts valid$(NC)"
+
+# =============================================================================
+# 📊 REPORTING
+# =============================================================================
+
+.PHONY: test-report
+test-report: ## Generate test report
+	@echo "$(BLUE)Generating test report...$(NC)"
+	@npm run test:report
+	@echo "$(GREEN)✓ Test report generated$(NC)"
+	@echo "$(CYAN)Report: test-report.html$(NC)"
+
+.PHONY: coverage-report
+coverage-report: ## Open coverage report in browser
+	@echo "$(BLUE)Opening coverage report...$(NC)"
+	@open coverage/index.html || xdg-open coverage/index.html || echo "$(YELLOW)Please open coverage/index.html manually$(NC)"
+
+.PHONY: test-summary
+test-summary: ## Show test summary
+	@echo "$(BLUE)Test Summary:$(NC)"
+	@echo ""
+	@echo "$(CYAN)Unit Tests:$(NC)"
+	@npm test -- --listTests | grep -c ".test." || echo "0"
+	@echo ""
+	@echo "$(CYAN)Test Coverage:$(NC)"
+	@npm run test:coverage -- --silent | grep -A 4 "Coverage summary"
+	@echo ""
+	@echo "$(CYAN)Last Test Run:$(NC)"
+	@if [ -f ".test-timestamp" ]; then \
+		cat .test-timestamp; \
+	else \
+		echo "No recent test runs"; \
+	fi
+
+# =============================================================================
+# 🧹 CLEANUP
+# =============================================================================
+
+.PHONY: test-clean
+test-clean: ## Clean test artifacts
+	@echo "$(YELLOW)Cleaning test artifacts...$(NC)"
+	@rm -rf coverage
+	@rm -rf test-report.html
+	@rm -rf owasp-report.html
+	@rm -rf lighthouse-report.html
+	@rm -rf .nyc_output
+	@echo "$(GREEN)✓ Test artifacts cleaned$(NC)"
+
+# =============================================================================
+# 🔄 CI/CD HELPERS
+# =============================================================================
+
+.PHONY: ci-test
+ci-test: ## Run tests for CI/CD pipeline
+	@echo "$(BLUE)Running CI tests...$(NC)"
+	@npm run lint
+	@npm run typecheck
+	@npm run test:coverage
+	@if [ "$$(npm run test:coverage -- --silent | grep 'All files' | awk '{print $$10}' | sed 's/%//')" -lt "$(TEST_COVERAGE_THRESHOLD)" ]; then \
+		echo "$(RED)Coverage below threshold ($(TEST_COVERAGE_THRESHOLD)%)$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ CI tests passed$(NC)"
+
+.PHONY: pre-commit
+pre-commit: ## Run pre-commit checks
+	@echo "$(BLUE)Running pre-commit checks...$(NC)"
+	@npm run lint
+	@npm run typecheck
+	@npm run format:check
+	@npm test
+	@echo "$(GREEN)✓ Pre-commit checks passed$(NC)"
+
+.PHONY: pre-push
+pre-push: ## Run pre-push checks
+	@echo "$(BLUE)Running pre-push checks...$(NC)"
+	@$(MAKE) -f Makefile.testing ci-test
+	@echo "$(GREEN)✓ Pre-push checks passed$(NC)"
+
+# =============================================================================
+# 📘 HELP
+# =============================================================================
+
+.PHONY: help
+help: ## Show this help message
+	@echo "$(BLUE)Testing & Quality Commands:$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}' | \
+		sort

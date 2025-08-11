@@ -88,4 +88,4 @@ ENTRYPOINT ["/sbin/tini", "--"]
 
 # Start the API server
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/src/index.js"]

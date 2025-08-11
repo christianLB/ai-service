@@ -16,7 +16,7 @@ jest.mock('../../services/financial/transaction-import.service', () => ({
 jest.mock('../../middleware/auth', () => ({
   authMiddleware: (req: any, res: any, _next: any) => {
     req.user = { userId: 'test-user' };
-    next();
+    _next();
   },
 }));
 
@@ -40,7 +40,9 @@ describe('Financial Import Routes', () => {
 
     it('should successfully import transactions from JSON file', async () => {
       (transactionImportService.validateTransactions as jest.Mock).mockReturnValue([]);
-      (transactionImportService.importTransactions as jest.Mock).mockResolvedValue(mockImportResult);
+      (transactionImportService.importTransactions as jest.Mock).mockResolvedValue(
+        mockImportResult
+      );
 
       const mockFile = {
         transactions: [
@@ -106,12 +108,12 @@ describe('Financial Import Routes', () => {
         { row: 2, error: 'Invalid date format' },
       ];
 
-      (transactionImportService.validateTransactions as jest.Mock).mockReturnValue(validationErrors);
+      (transactionImportService.validateTransactions as jest.Mock).mockReturnValue(
+        validationErrors
+      );
 
       const mockFile = {
-        transactions: [
-          { description: 'Invalid transaction' },
-        ],
+        transactions: [{ description: 'Invalid transaction' }],
       };
 
       const response = await request(app)
@@ -193,8 +195,7 @@ describe('Financial Import Routes', () => {
         },
       }));
 
-      const response = await request(app)
-        .get('/api/financial/accounts');
+      const response = await request(app).get('/api/financial/accounts');
 
       expect(response.status).toBe(401);
     });

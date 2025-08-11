@@ -1,0 +1,299 @@
+# Makefile.frontend - Frontend operations module
+# =============================================================================
+# Frontend build, deployment, and development operations
+# =============================================================================
+
+# Load configuration
+-include .make.env
+
+# Variables
+NAS_HOST ?= 192.168.1.11
+NAS_USER ?= admin
+NAS_PATH ?= /volume1/docker/ai-service
+FRONTEND_DIR := frontend
+FRONTEND_BUILD_DIR := $(FRONTEND_DIR)/dist
+FRONTEND_PORT ?= 3000
+FRONTEND_URL := http://localhost:$(FRONTEND_PORT)
+
+# SSH configuration
+ifdef SSHPASS
+    SSH_CMD := sshpass -e ssh
+    SCP_CMD := sshpass -e scp
+else
+    SSH_CMD := ssh
+    SCP_CMD := scp
+endif
+
+# Colors
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+MAGENTA := \033[0;35m
+CYAN := \033[0;36m
+NC := \033[0m
+
+# =============================================================================
+# 🎨 DEVELOPMENT
+# =============================================================================
+
+.PHONY: frontend-dev
+frontend-dev: ## Start frontend development server with hot reload
+	@echo "$(BLUE)Starting frontend development server...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run dev
+	@echo "$(GREEN)✓ Frontend running at $(FRONTEND_URL)$(NC)"
+
+.PHONY: frontend-install
+frontend-install: ## Install frontend dependencies
+	@echo "$(BLUE)Installing frontend dependencies...$(NC)"
+	@cd $(FRONTEND_DIR) && npm ci
+	@echo "$(GREEN)✓ Dependencies installed$(NC)"
+
+.PHONY: frontend-update
+frontend-update: ## Update frontend dependencies
+	@echo "$(YELLOW)Updating frontend dependencies...$(NC)"
+	@cd $(FRONTEND_DIR) && npm update
+	@echo "$(GREEN)✓ Dependencies updated$(NC)"
+
+.PHONY: frontend-audit
+frontend-audit: ## Audit frontend dependencies for vulnerabilities
+	@echo "$(BLUE)Auditing frontend dependencies...$(NC)"
+	@cd $(FRONTEND_DIR) && npm audit
+	@echo "$(GREEN)✓ Audit complete$(NC)"
+
+.PHONY: frontend-audit-fix
+frontend-audit-fix: ## Fix frontend dependency vulnerabilities
+	@echo "$(YELLOW)Fixing dependency vulnerabilities...$(NC)"
+	@cd $(FRONTEND_DIR) && npm audit fix
+	@echo "$(GREEN)✓ Vulnerabilities fixed$(NC)"
+
+# =============================================================================
+# 🏗️ BUILD OPERATIONS
+# =============================================================================
+
+.PHONY: frontend-build
+frontend-build: ## Build frontend for production
+	@echo "$(BLUE)Building frontend for production...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run build
+	@echo "$(GREEN)✓ Frontend built successfully$(NC)"
+	@echo "$(CYAN)Build output: $(FRONTEND_BUILD_DIR)$(NC)"
+	@du -sh $(FRONTEND_BUILD_DIR)
+
+.PHONY: frontend-build-dev
+frontend-build-dev: ## Build frontend with development settings
+	@echo "$(BLUE)Building frontend (development mode)...$(NC)"
+	@cd $(FRONTEND_DIR) && NODE_ENV=development npm run build
+	@echo "$(GREEN)✓ Development build complete$(NC)"
+
+.PHONY: frontend-preview
+frontend-preview: ## Preview production build locally
+	@echo "$(BLUE)Starting preview server...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run preview
+	@echo "$(GREEN)✓ Preview server running$(NC)"
+
+.PHONY: frontend-analyze
+frontend-analyze: ## Analyze bundle size
+	@echo "$(BLUE)Analyzing bundle size...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run build -- --analyze
+	@echo "$(GREEN)✓ Bundle analysis complete$(NC)"
+
+# =============================================================================
+# 🚀 DEPLOYMENT
+# =============================================================================
+
+.PHONY: frontend-deploy
+frontend-deploy: frontend-build ## Build and deploy frontend to production
+	@echo "$(BLUE)Deploying frontend to production...$(NC)"
+	@echo "$(YELLOW)Creating deployment archive...$(NC)"
+	@tar -czf /tmp/frontend-dist.tar.gz -C $(FRONTEND_BUILD_DIR) .
+	@echo "$(YELLOW)Uploading to production server...$(NC)"
+	@$(SCP_CMD) /tmp/frontend-dist.tar.gz $(NAS_USER)@$(NAS_HOST):/tmp/
+	@echo "$(YELLOW)Extracting on production server...$(NC)"
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "\
+		sudo rm -rf $(NAS_PATH)/frontend/dist && \
+		sudo mkdir -p $(NAS_PATH)/frontend/dist && \
+		cd $(NAS_PATH)/frontend/dist && \
+		sudo tar -xzf /tmp/frontend-dist.tar.gz && \
+		sudo chown -R 1001:1001 . && \
+		sudo chmod -R 755 . && \
+		rm /tmp/frontend-dist.tar.gz"
+	@rm /tmp/frontend-dist.tar.gz
+	@echo "$(GREEN)✓ Frontend deployed to production$(NC)"
+
+.PHONY: frontend-deploy-verify
+frontend-deploy-verify: ## Verify frontend deployment
+	@echo "$(BLUE)Verifying frontend deployment...$(NC)"
+	@echo -n "Frontend accessible: "
+	@curl -s -o /dev/null -w "%{http_code}" http://$(NAS_HOST):3003 | grep -q "200" && \
+		echo "$(GREEN)✓ Yes$(NC)" || echo "$(RED)✗ No$(NC)"
+	@echo -n "Assets loading: "
+	@curl -s http://$(NAS_HOST):3003 | grep -q 'src="/assets/' && \
+		echo "$(GREEN)✓ Yes$(NC)" || echo "$(RED)✗ No$(NC)"
+	@echo -n "Build timestamp: "
+	@$(SSH_CMD) $(NAS_USER)@$(NAS_HOST) "stat -c '%y' $(NAS_PATH)/frontend/dist/index.html 2>/dev/null | cut -d' ' -f1,2" || echo "Unknown"
+
+# =============================================================================
+# 🧪 TESTING & QUALITY
+# =============================================================================
+
+.PHONY: frontend-test
+frontend-test: ## Run frontend tests
+	@echo "$(BLUE)Running frontend tests...$(NC)"
+	@cd $(FRONTEND_DIR) && npm test
+	@echo "$(GREEN)✓ Tests complete$(NC)"
+
+.PHONY: frontend-test-watch
+frontend-test-watch: ## Run tests in watch mode
+	@echo "$(BLUE)Starting test watcher...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run test:watch
+
+.PHONY: frontend-test-coverage
+frontend-test-coverage: ## Run tests with coverage report
+	@echo "$(BLUE)Running tests with coverage...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run test:coverage
+	@echo "$(GREEN)✓ Coverage report generated$(NC)"
+
+.PHONY: frontend-lint
+frontend-lint: ## Run ESLint on frontend code
+	@echo "$(BLUE)Running ESLint...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run lint
+	@echo "$(GREEN)✓ Linting complete$(NC)"
+
+.PHONY: frontend-lint-fix
+frontend-lint-fix: ## Auto-fix ESLint issues
+	@echo "$(YELLOW)Auto-fixing ESLint issues...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run lint:fix
+	@echo "$(GREEN)✓ ESLint fixes applied$(NC)"
+
+.PHONY: frontend-typecheck
+frontend-typecheck: ## Run TypeScript type checking
+	@echo "$(BLUE)Running TypeScript type check...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run typecheck
+	@echo "$(GREEN)✓ Type check complete$(NC)"
+
+.PHONY: frontend-format
+frontend-format: ## Format code with Prettier
+	@echo "$(BLUE)Formatting code with Prettier...$(NC)"
+	@cd $(FRONTEND_DIR) && npm run format
+	@echo "$(GREEN)✓ Code formatted$(NC)"
+
+# =============================================================================
+# 🔧 UTILITIES
+# =============================================================================
+
+.PHONY: frontend-clean
+frontend-clean: ## Clean build artifacts and node_modules
+	@echo "$(YELLOW)Cleaning frontend build artifacts...$(NC)"
+	@rm -rf $(FRONTEND_BUILD_DIR)
+	@rm -rf $(FRONTEND_DIR)/node_modules
+	@rm -rf $(FRONTEND_DIR)/.vite
+	@echo "$(GREEN)✓ Frontend cleaned$(NC)"
+
+.PHONY: frontend-clean-cache
+frontend-clean-cache: ## Clear frontend caches
+	@echo "$(YELLOW)Clearing frontend caches...$(NC)"
+	@cd $(FRONTEND_DIR) && npm cache clean --force
+	@rm -rf $(FRONTEND_DIR)/.vite
+	@echo "$(GREEN)✓ Caches cleared$(NC)"
+
+.PHONY: frontend-info
+frontend-info: ## Show frontend project information
+	@echo "$(BLUE)Frontend Project Information:$(NC)"
+	@echo "$(CYAN)Package:$(NC)"
+	@cd $(FRONTEND_DIR) && npm list --depth=0
+	@echo ""
+	@echo "$(CYAN)Scripts:$(NC)"
+	@cd $(FRONTEND_DIR) && npm run
+	@echo ""
+	@echo "$(CYAN)Build size:$(NC)"
+	@if [ -d "$(FRONTEND_BUILD_DIR)" ]; then \
+		du -sh $(FRONTEND_BUILD_DIR); \
+		find $(FRONTEND_BUILD_DIR) -name "*.js" -o -name "*.css" | xargs du -ch | tail -1; \
+	else \
+		echo "No build found. Run 'make frontend-build' first."; \
+	fi
+
+.PHONY: frontend-serve
+frontend-serve: ## Serve built frontend with simple HTTP server
+	@echo "$(BLUE)Serving frontend build...$(NC)"
+	@echo "$(YELLOW)Starting server at http://localhost:8080$(NC)"
+	@cd $(FRONTEND_BUILD_DIR) && python3 -m http.server 8080
+
+# =============================================================================
+# 🎯 CODE GENERATION
+# =============================================================================
+
+.PHONY: frontend-generate-component
+frontend-generate-component: ## Generate a new React component (use: make frontend-generate-component NAME=MyComponent)
+	@if [ -z "$(NAME)" ]; then \
+		echo "$(RED)Error: NAME is required$(NC)"; \
+		echo "Usage: make frontend-generate-component NAME=ComponentName"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Generating component: $(NAME)$(NC)"
+	@cd $(FRONTEND_DIR) && npm run generate:component $(NAME)
+	@echo "$(GREEN)✓ Component $(NAME) generated$(NC)"
+
+.PHONY: frontend-generate-page
+frontend-generate-page: ## Generate a new page component (use: make frontend-generate-page NAME=MyPage)
+	@if [ -z "$(NAME)" ]; then \
+		echo "$(RED)Error: NAME is required$(NC)"; \
+		echo "Usage: make frontend-generate-page NAME=PageName"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Generating page: $(NAME)$(NC)"
+	@cd $(FRONTEND_DIR) && npm run generate:page $(NAME)
+	@echo "$(GREEN)✓ Page $(NAME) generated$(NC)"
+
+.PHONY: frontend-generate-hook
+frontend-generate-hook: ## Generate a new React hook (use: make frontend-generate-hook NAME=useMyHook)
+	@if [ -z "$(NAME)" ]; then \
+		echo "$(RED)Error: NAME is required$(NC)"; \
+		echo "Usage: make frontend-generate-hook NAME=useHookName"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Generating hook: $(NAME)$(NC)"
+	@cd $(FRONTEND_DIR) && npm run generate:hook $(NAME)
+	@echo "$(GREEN)✓ Hook $(NAME) generated$(NC)"
+
+# =============================================================================
+# 📊 MONITORING
+# =============================================================================
+
+.PHONY: frontend-lighthouse
+frontend-lighthouse: ## Run Lighthouse performance audit
+	@echo "$(BLUE)Running Lighthouse audit...$(NC)"
+	@if ! command -v lighthouse > /dev/null; then \
+		echo "$(YELLOW)Installing Lighthouse...$(NC)"; \
+		npm install -g lighthouse; \
+	fi
+	@lighthouse $(FRONTEND_URL) --output html --output-path ./lighthouse-report.html
+	@echo "$(GREEN)✓ Lighthouse report generated: lighthouse-report.html$(NC)"
+
+.PHONY: frontend-bundle-stats
+frontend-bundle-stats: ## Show bundle statistics
+	@echo "$(BLUE)Bundle Statistics:$(NC)"
+	@if [ -d "$(FRONTEND_BUILD_DIR)" ]; then \
+		echo "$(CYAN)JavaScript files:$(NC)"; \
+		find $(FRONTEND_BUILD_DIR) -name "*.js" -exec ls -lh {} \; | awk '{print $$9, $$5}'; \
+		echo ""; \
+		echo "$(CYAN)CSS files:$(NC)"; \
+		find $(FRONTEND_BUILD_DIR) -name "*.css" -exec ls -lh {} \; | awk '{print $$9, $$5}'; \
+		echo ""; \
+		echo "$(CYAN)Total size:$(NC)"; \
+		du -sh $(FRONTEND_BUILD_DIR); \
+	else \
+		echo "No build found. Run 'make frontend-build' first."; \
+	fi
+
+# =============================================================================
+# 📘 HELP
+# =============================================================================
+
+.PHONY: help
+help: ## Show this help message
+	@echo "$(BLUE)Frontend Operations Commands:$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-25s$(NC) %s\n", $$1, $$2}' | \
+		sort

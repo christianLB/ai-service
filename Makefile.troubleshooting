@@ -1,0 +1,319 @@
+# Makefile.troubleshooting - Troubleshooting operations module
+# =============================================================================
+# Diagnostic, debugging, and problem-fixing operations
+# =============================================================================
+
+# Load configuration
+-include .make.env
+
+# Variables
+NAS_HOST ?= 192.168.1.11
+NAS_USER ?= admin
+NAS_PATH ?= /volume1/docker/ai-service
+CONTAINER_NAME ?= ai-postgres
+DB_NAME ?= ai_service
+DB_USER ?= ai_user
+
+# SSH configuration
+ifdef SSHPASS
+    SSH_CMD := sshpass -e ssh
+    SCP_CMD := sshpass -e scp
+else
+    SSH_CMD := ssh
+    SCP_CMD := scp
+endif
+
+# Colors
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+BLUE := \033[0;34m
+MAGENTA := \033[0;35m
+CYAN := \033[0;36m
+NC := \033[0m
+
+# =============================================================================
+# 🔍 DIAGNOSTICS
+# =============================================================================
+
+.PHONY: diagnose
+diagnose: ## Run complete system diagnostics
+	@echo "$(BLUE)=== SYSTEM DIAGNOSTICS ===$(NC)"
+	@$(MAKE) -f Makefile.troubleshooting diagnose-services
+	@$(MAKE) -f Makefile.troubleshooting diagnose-database
+	@$(MAKE) -f Makefile.troubleshooting diagnose-frontend
+	@$(MAKE) -f Makefile.troubleshooting diagnose-network
+	@echo "$(GREEN)=== DIAGNOSTICS COMPLETE ===$(NC)"
+
+.PHONY: diagnose-services
+diagnose-services: ## Diagnose service health
+	@echo "$(BLUE)Service Diagnostics:$(NC)"
+	@echo "$(CYAN)Container Status:$(NC)"
+	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+	@echo ""
+	@echo "$(CYAN)API Health:$(NC)"
+	@curl -s http://localhost:3001/health | jq '.' 2>/dev/null || echo "$(RED)API not responding$(NC)"
+	@echo ""
+	@echo "$(CYAN)Frontend Status:$(NC)"
+	@curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:3000
+
+.PHONY: diagnose-database
+diagnose-database: ## Diagnose database issues
+	@echo "$(BLUE)Database Diagnostics:$(NC)"
+	@echo "$(CYAN)Connection Test:$(NC)"
+	@docker exec $(CONTAINER_NAME) pg_isready -U $(DB_USER) && \
+		echo "$(GREEN)✓ Database is ready$(NC)" || \
+		echo "$(RED)✗ Database not ready$(NC)"
+	@echo ""
+	@echo "$(CYAN)Table Count:$(NC)"
+	@docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -t -c \
+		"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema');" 2>/dev/null || echo "0"
+	@echo ""
+	@echo "$(CYAN)Active Connections:$(NC)"
+	@docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -t -c \
+		"SELECT COUNT(*) FROM pg_stat_activity;" 2>/dev/null || echo "0"
+
+.PHONY: diagnose-frontend
+diagnose-frontend: ## Diagnose frontend issues
+	@echo "$(BLUE)Frontend Diagnostics:$(NC)"
+	@echo "$(CYAN)Build Status:$(NC)"
+	@if [ -d "frontend/dist" ]; then \
+		echo "$(GREEN)✓ Build exists$(NC)"; \
+		echo "Build size: $$(du -sh frontend/dist | cut -f1)"; \
+		echo "Files: $$(find frontend/dist -type f | wc -l)"; \
+	else \
+		echo "$(RED)✗ No build found$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(CYAN)Node Modules:$(NC)"
+	@if [ -d "frontend/node_modules" ]; then \
+		echo "$(GREEN)✓ Dependencies installed$(NC)"; \
+		echo "Packages: $$(ls frontend/node_modules | wc -l)"; \
+	else \
+		echo "$(RED)✗ Dependencies not installed$(NC)"; \
+	fi
+
+.PHONY: diagnose-network
+diagnose-network: ## Diagnose network connectivity
+	@echo "$(BLUE)Network Diagnostics:$(NC)"
+	@echo "$(CYAN)Port Status:$(NC)"
+	@netstat -an | grep -E "3000|3001|5432" | grep LISTEN || echo "No ports listening"
+	@echo ""
+	@echo "$(CYAN)Docker Networks:$(NC)"
+	@docker network ls
+	@echo ""
+	@echo "$(CYAN)Container Connectivity:$(NC)"
+	@docker exec ai-service-api ping -c 1 ai-postgres 2>/dev/null && \
+		echo "$(GREEN)✓ API can reach database$(NC)" || \
+		echo "$(RED)✗ API cannot reach database$(NC)"
+
+# =============================================================================
+# 🔧 FIX OPERATIONS
+# =============================================================================
+
+.PHONY: fix-all
+fix-all: ## Fix all known issues
+	@echo "$(BLUE)=== FIXING ALL KNOWN ISSUES ===$(NC)"
+	@$(MAKE) -f Makefile.troubleshooting fix-permissions
+	@$(MAKE) -f Makefile.troubleshooting fix-database
+	@$(MAKE) -f Makefile.troubleshooting fix-frontend
+	@$(MAKE) -f Makefile.troubleshooting fix-docker
+	@echo "$(GREEN)=== ALL FIXES APPLIED ===$(NC)"
+
+.PHONY: fix-permissions
+fix-permissions: ## Fix file permissions
+	@echo "$(YELLOW)Fixing file permissions...$(NC)"
+	@chmod -R 755 scripts/
+	@chmod 600 .env* 2>/dev/null || true
+	@if [ -d "storage" ]; then chmod -R 777 storage/; fi
+	@if [ -d "logs" ]; then chmod -R 777 logs/; fi
+	@echo "$(GREEN)✓ Permissions fixed$(NC)"
+
+.PHONY: fix-database
+fix-database: ## Fix database issues
+	@echo "$(YELLOW)Fixing database issues...$(NC)"
+	@docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c \
+		"SELECT 1;" > /dev/null 2>&1 || \
+		(echo "$(RED)Database connection failed. Restarting...$(NC)" && \
+		 docker restart $(CONTAINER_NAME) && sleep 5)
+	@echo "$(GREEN)✓ Database fixes applied$(NC)"
+
+.PHONY: fix-frontend
+fix-frontend: ## Fix frontend issues
+	@echo "$(YELLOW)Fixing frontend issues...$(NC)"
+	@cd frontend && npm install
+	@cd frontend && npm run build
+	@echo "$(GREEN)✓ Frontend fixed$(NC)"
+
+.PHONY: fix-docker
+fix-docker: ## Fix Docker issues
+	@echo "$(YELLOW)Fixing Docker issues...$(NC)"
+	@docker system prune -f
+	@docker-compose down
+	@docker-compose up -d
+	@echo "$(GREEN)✓ Docker fixed$(NC)"
+
+.PHONY: fix-ports
+fix-ports: ## Fix port conflicts
+	@echo "$(YELLOW)Checking for port conflicts...$(NC)"
+	@for port in 3000 3001 5432; do \
+		pid=$$(lsof -ti :$$port); \
+		if [ -n "$$pid" ]; then \
+			echo "$(YELLOW)Port $$port in use by PID $$pid$(NC)"; \
+			read -p "Kill process? (y/N): " confirm; \
+			if [ "$$confirm" = "y" ]; then \
+				kill -9 $$pid; \
+				echo "$(GREEN)✓ Port $$port freed$(NC)"; \
+			fi; \
+		else \
+			echo "$(GREEN)✓ Port $$port is free$(NC)"; \
+		fi; \
+	done
+
+# =============================================================================
+# 🚨 EMERGENCY FIXES
+# =============================================================================
+
+.PHONY: emergency-restart
+emergency-restart: ## Emergency restart all services
+	@echo "$(RED)EMERGENCY RESTART$(NC)"
+	@docker-compose down -v
+	@docker system prune -f
+	@docker-compose up -d
+	@echo "$(GREEN)✓ Emergency restart complete$(NC)"
+
+.PHONY: emergency-backup
+emergency-backup: ## Create emergency backup
+	@echo "$(RED)CREATING EMERGENCY BACKUP$(NC)"
+	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
+	mkdir -p backups/emergency; \
+	docker exec $(CONTAINER_NAME) pg_dumpall -U postgres > backups/emergency/emergency_$$TIMESTAMP.sql; \
+	tar -czf backups/emergency/emergency_$$TIMESTAMP.tar.gz \
+		--exclude='node_modules' \
+		--exclude='dist' \
+		--exclude='.git' \
+		.env* src/ frontend/src/ scripts/; \
+	echo "$(GREEN)✓ Emergency backup: backups/emergency/emergency_$$TIMESTAMP.tar.gz$(NC)"
+
+.PHONY: emergency-restore
+emergency-restore: ## Restore from emergency backup
+	@echo "$(RED)EMERGENCY RESTORE$(NC)"
+	@echo "$(YELLOW)Available backups:$(NC)"
+	@ls -1t backups/emergency/*.tar.gz 2>/dev/null | head -5 || echo "No backups found"
+	@read -p "Enter backup filename: " BACKUP; \
+	if [ -f "$$BACKUP" ]; then \
+		tar -xzf $$BACKUP; \
+		echo "$(GREEN)✓ Restored from $$BACKUP$(NC)"; \
+	else \
+		echo "$(RED)Backup not found$(NC)"; \
+	fi
+
+# =============================================================================
+# 📊 HEALTH CHECKS
+# =============================================================================
+
+.PHONY: health
+health: ## Complete health check
+	@echo "$(BLUE)System Health Check:$(NC)"
+	@echo ""
+	@echo "$(CYAN)Services:$(NC)"
+	@docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "ai-|NAME"
+	@echo ""
+	@echo "$(CYAN)Endpoints:$(NC)"
+	@echo -n "API: "
+	@curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health | \
+		grep -q "200" && echo "$(GREEN)✓ Healthy$(NC)" || echo "$(RED)✗ Unhealthy$(NC)"
+	@echo -n "Frontend: "
+	@curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | \
+		grep -q "200" && echo "$(GREEN)✓ Accessible$(NC)" || echo "$(RED)✗ Inaccessible$(NC)"
+	@echo -n "Database: "
+	@docker exec $(CONTAINER_NAME) pg_isready -U $(DB_USER) > /dev/null 2>&1 && \
+		echo "$(GREEN)✓ Ready$(NC)" || echo "$(RED)✗ Not ready$(NC)"
+
+.PHONY: health-api
+health-api: ## Check API health details
+	@echo "$(BLUE)API Health Details:$(NC)"
+	@curl -s http://localhost:3001/health | jq '.' || echo "$(RED)API not responding$(NC)"
+
+.PHONY: health-db
+health-db: ## Check database health details
+	@echo "$(BLUE)Database Health Details:$(NC)"
+	@docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c "\
+		SELECT 'Version' as metric, version() as value \
+		UNION ALL \
+		SELECT 'Uptime', now() - pg_postmaster_start_time() \
+		UNION ALL \
+		SELECT 'Active Connections', count(*)::text FROM pg_stat_activity \
+		UNION ALL \
+		SELECT 'Database Size', pg_size_pretty(pg_database_size('$(DB_NAME)'));"
+
+# =============================================================================
+# 🐛 DEBUG OPERATIONS
+# =============================================================================
+
+.PHONY: debug-env
+debug-env: ## Debug environment variables
+	@echo "$(BLUE)Environment Variables:$(NC)"
+	@echo "$(CYAN)Critical Variables:$(NC)"
+	@env | grep -E "DATABASE_URL|NODE_ENV|PORT|JWT_SECRET" | sed 's/=.*password.*/:***HIDDEN***/i' | sort
+	@echo ""
+	@echo "$(CYAN)Service URLs:$(NC)"
+	@env | grep -E "_URL|_HOST|_PORT" | grep -v PASSWORD | sort
+
+.PHONY: debug-logs
+debug-logs: ## Show all recent logs
+	@echo "$(BLUE)Recent Logs:$(NC)"
+	@echo "$(CYAN)API Logs (last 50 lines):$(NC)"
+	@docker logs --tail=50 ai-service-api 2>&1 | tail -20
+	@echo ""
+	@echo "$(CYAN)Database Logs (last 50 lines):$(NC)"
+	@docker logs --tail=50 $(CONTAINER_NAME) 2>&1 | tail -20
+
+.PHONY: debug-connections
+debug-connections: ## Debug database connections
+	@echo "$(BLUE)Database Connections:$(NC)"
+	@docker exec $(CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c "\
+		SELECT pid, usename, application_name, client_addr, state, query \
+		FROM pg_stat_activity \
+		WHERE state != 'idle' \
+		ORDER BY backend_start;"
+
+# =============================================================================
+# 🔄 RESET OPERATIONS
+# =============================================================================
+
+.PHONY: reset-docker
+reset-docker: ## Reset Docker environment
+	@echo "$(YELLOW)Resetting Docker environment...$(NC)"
+	@docker-compose down -v
+	@docker system prune -af
+	@echo "$(GREEN)✓ Docker reset complete$(NC)"
+
+.PHONY: reset-database
+reset-database: ## Reset database (DESTRUCTIVE!)
+	@echo "$(RED)⚠️  This will DELETE ALL DATA!$(NC)"
+	@read -p "Type 'DELETE' to confirm: " confirm && [ "$$confirm" = "DELETE" ] || exit 1
+	@docker exec $(CONTAINER_NAME) psql -U postgres -c "DROP DATABASE IF EXISTS $(DB_NAME);"
+	@docker exec $(CONTAINER_NAME) psql -U postgres -c "CREATE DATABASE $(DB_NAME) OWNER $(DB_USER);"
+	@npx prisma migrate deploy
+	@echo "$(GREEN)✓ Database reset complete$(NC)"
+
+.PHONY: reset-frontend
+reset-frontend: ## Reset frontend build
+	@echo "$(YELLOW)Resetting frontend...$(NC)"
+	@rm -rf frontend/node_modules frontend/dist frontend/.vite
+	@cd frontend && npm ci
+	@cd frontend && npm run build
+	@echo "$(GREEN)✓ Frontend reset complete$(NC)"
+
+# =============================================================================
+# 📘 HELP
+# =============================================================================
+
+.PHONY: help
+help: ## Show this help message
+	@echo "$(BLUE)Troubleshooting & Diagnostic Commands:$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}' | \
+		sort
