@@ -6,13 +6,15 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY frontend/package*.json ./
 COPY frontend/tsconfig*.json ./
-COPY frontend/vite.config.dev.ts ./vite.config.ts
 
 # Install dependencies
 RUN npm ci --legacy-peer-deps
 
 # Copy source files (will be overridden by volume mounts)
 COPY frontend/ ./
+
+# IMPORTANT: Copy the dev config AFTER copying all files to ensure it overwrites the regular config
+COPY frontend/vite.config.dev.ts ./vite.config.ts
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
