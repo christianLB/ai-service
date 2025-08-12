@@ -172,6 +172,25 @@ prod-migrate-reset: ## DANGER: Reset database and apply all migrations
 	@$(MAKE) -f Makefile.production prod-migrate-reset
 
 # =============================================================================
+# 🚨 PRODUCTION RECOVERY
+# =============================================================================
+
+.PHONY: prod-recovery
+prod-recovery: ## Run complete production recovery (fixes bad gateway, migrations, etc)
+	@echo "Starting comprehensive production recovery..."
+	@./scripts/production-recovery.sh
+
+.PHONY: prod-emergency-schema
+prod-emergency-schema: ## Apply emergency schema if migrations fail
+	@echo "Applying emergency schema to production..."
+	@./scripts/apply-emergency-schema.sh
+
+.PHONY: prod-diagnose
+prod-diagnose: ## Diagnose production issues
+	@echo "Running production diagnostics..."
+	@./scripts/diagnose-production.sh
+
+# =============================================================================
 # 👤 PRODUCTION ADMIN SHORTCUTS
 # =============================================================================
 
