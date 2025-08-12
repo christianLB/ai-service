@@ -29,6 +29,10 @@ SCP := scp
 # 👤 USER MANAGEMENT
 # =============================================================================
 
+.PHONY: prod-create-admin-simple
+prod-create-admin-simple: ## Create admin user (simple version with temp password)
+	@./scripts/prod-create-admin.sh
+
 .PHONY: prod-create-admin
 prod-create-admin: ## Create admin user in production database
 	@echo "$(BLUE)👤 Creating admin user in production...$(NC)"
@@ -48,12 +52,13 @@ prod-create-admin: ## Create admin user in production database
 	read -p "Enter full name [System Administrator]: " ADMIN_NAME; \
 	ADMIN_NAME=$${ADMIN_NAME:-System Administrator}; \
 	echo "$(YELLOW)🔐 Hashing password...$(NC)"; \
-	TEMP_SCRIPT=$$(mktemp); \
-	echo "const bcrypt = require('bcrypt'); bcrypt.hash('$$ADMIN_PASS', 10).then(h => console.log(h));" > $$TEMP_SCRIPT; \
-	HASH=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "docker run --rm -v /tmp:/tmp node:20-alpine sh -c 'cd /tmp && npm install bcrypt >/dev/null 2>&1 && node' < /dev/stdin" < $$TEMP_SCRIPT); \
-	rm $$TEMP_SCRIPT; \
+	HASH=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker run --rm node:20-alpine sh -c \"npm install -g bcrypt-cli >/dev/null 2>&1 && echo '$$ADMIN_PASS' | bcrypt-cli 10\"" | tail -1); \
+	if [ -z "$$HASH" ]; then \
+		echo "$(RED)❌ Failed to hash password$(NC)"; \
+		exit 1; \
+	fi; \
 	echo "$(YELLOW)📝 Creating user in database...$(NC)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"INSERT INTO \\\"User\\\" (email, password_hash, full_name, role, is_active) VALUES ('$$ADMIN_EMAIL', '$$HASH', '$$ADMIN_NAME', 'admin', true) ON CONFLICT (email) DO UPDATE SET password_hash='$$HASH', full_name='$$ADMIN_NAME', role='admin', updated_at=now() RETURNING email, full_name, role;\"" || exit 1; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"INSERT INTO \\\"User\\\" (email, password_hash, full_name, role, is_active) VALUES ('$$ADMIN_EMAIL', '$$HASH', '$$ADMIN_NAME', 'admin', true) ON CONFLICT (email) DO UPDATE SET password_hash='$$HASH', full_name='$$ADMIN_NAME', role='admin', updated_at=now() RETURNING email, full_name, role;\"" || exit 1; \
 	echo "$(GREEN)✅ Admin user created/updated successfully$(NC)"; \
 	echo "$(CYAN)📧 Email: $$ADMIN_EMAIL$(NC)"; \
 	echo "$(CYAN)👤 Name: $$ADMIN_NAME$(NC)"; \
@@ -68,7 +73,7 @@ prod-reset-password: ## Reset user password in production
 		exit 1; \
 	fi; \
 	echo "$(YELLOW)🔍 Checking if user exists...$(NC)"; \
-	USER_EXISTS=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -t -c \"SELECT COUNT(*) FROM \\\"User\\\" WHERE email='$$USER_EMAIL';\"" | tr -d ' '); \
+	USER_EXISTS=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -t -c \"SELECT COUNT(*) FROM \\\"User\\\" WHERE email='$$USER_EMAIL';\"" | tr -d ' '); \
 	if [ "$$USER_EXISTS" = "0" ]; then \
 		echo "$(RED)❌ User not found: $$USER_EMAIL$(NC)"; \
 		exit 1; \
@@ -90,19 +95,20 @@ prod-reset-password: ## Reset user password in production
 		exit 1; \
 	fi; \
 	echo "$(YELLOW)🔐 Hashing password...$(NC)"; \
-	TEMP_SCRIPT=$$(mktemp); \
-	echo "const bcrypt = require('bcrypt'); bcrypt.hash('$$NEW_PASS', 10).then(h => console.log(h));" > $$TEMP_SCRIPT; \
-	HASH=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "docker run --rm -v /tmp:/tmp node:20-alpine sh -c 'cd /tmp && npm install bcrypt >/dev/null 2>&1 && node' < /dev/stdin" < $$TEMP_SCRIPT); \
-	rm $$TEMP_SCRIPT; \
+	HASH=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker run --rm node:20-alpine sh -c \"npm install -g bcrypt-cli >/dev/null 2>&1 && echo '$$NEW_PASS' | bcrypt-cli 10\"" | tail -1); \
+	if [ -z "$$HASH" ]; then \
+		echo "$(RED)❌ Failed to hash password$(NC)"; \
+		exit 1; \
+	fi; \
 	echo "$(YELLOW)📝 Updating password in database...$(NC)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"UPDATE \\\"User\\\" SET password_hash='$$HASH', updated_at=now() WHERE email='$$USER_EMAIL' RETURNING email, full_name;\"" || exit 1; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"UPDATE \\\"User\\\" SET password_hash='$$HASH', updated_at=now() WHERE email='$$USER_EMAIL' RETURNING email, full_name;\"" || exit 1; \
 	echo "$(GREEN)✅ Password reset successfully$(NC)"; \
 	echo "$(CYAN)📧 User: $$USER_EMAIL$(NC)"
 
 .PHONY: prod-list-users
 prod-list-users: ## List all users in production
 	@echo "$(BLUE)👥 Listing all users in production...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"SELECT email, full_name, role, is_active, last_login, created_at FROM \\\"User\\\" ORDER BY created_at DESC;\""
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"SELECT email, full_name, role, is_active, last_login, created_at FROM \\\"User\\\" ORDER BY created_at DESC;\""
 
 # =============================================================================
 # 🔐 DATABASE PASSWORD MANAGEMENT
@@ -131,16 +137,16 @@ prod-change-db-password: ## Change PostgreSQL password in production
 	echo "$(YELLOW)📋 Creating backup of current .env...$(NC)"; \
 	$(SSH) $(PROD_USER)@$(PROD_HOST) "cp $(PROD_PATH)/.env.production $(PROD_PATH)/.env.production.backup-$$(date +%Y%m%d-%H%M%S)" || true; \
 	echo "$(YELLOW)🔄 Updating PostgreSQL password...$(NC)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"ALTER USER $(PROD_DB_USER) PASSWORD '$$NEW_DB_PASS';\"" || exit 1; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"ALTER USER $(PROD_DB_USER) PASSWORD '$$NEW_DB_PASS';\"" || exit 1; \
 	echo "$(YELLOW)📝 Updating .env.production...$(NC)"; \
 	$(SSH) $(PROD_USER)@$(PROD_HOST) "sed -i.bak 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$NEW_DB_PASS/' $(PROD_PATH)/.env.production" || exit 1; \
 	$(SSH) $(PROD_USER)@$(PROD_HOST) "sed -i 's|^DATABASE_URL=.*|DATABASE_URL=postgresql://$(PROD_DB_USER):$$NEW_DB_PASS@ai-postgres:5432/$(PROD_DB_NAME)|' $(PROD_PATH)/.env.production" || exit 1; \
 	echo "$(YELLOW)🔄 Restarting services...$(NC)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo docker-compose -f docker-compose.production.yml down" || exit 1; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo docker-compose -f docker-compose.production.yml up -d" || exit 1; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose -f docker-compose.production.yml down" || exit 1; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose -f docker-compose.production.yml up -d" || exit 1; \
 	sleep 10; \
 	echo "$(YELLOW)✅ Verifying connectivity...$(NC)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_API_CONTAINER) wget -qO- http://localhost:3000/health" > /dev/null && \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_API_CONTAINER) wget -qO- http://localhost:3000/health" > /dev/null && \
 	echo "$(GREEN)✅ Database password changed successfully$(NC)" || \
 	echo "$(RED)❌ Service health check failed - please check logs$(NC)"
 
@@ -163,21 +169,21 @@ prod-set-api-keys: ## Set API keys through Integration Service
 			read -s -p "Enter OpenAI API Key: " OPENAI_KEY; echo; \
 			if [ -n "$$OPENAI_KEY" ]; then \
 				echo "$(YELLOW)Setting OpenAI key...$(NC)"; \
-				$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_API_CONTAINER) node -e \"const axios = require('axios'); axios.post('http://localhost:3000/api/integrations/configs', {type: 'openai', key: 'api_key', value: '$$OPENAI_KEY', metadata: {provider: 'openai'}}, {headers: {'Content-Type': 'application/json'}}).then(() => console.log('✅ OpenAI key set')).catch(err => console.error('❌ Failed:', err.message));\"" || true; \
+				$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_API_CONTAINER) node -e \"const axios = require('axios'); axios.post('http://localhost:3000/api/integrations/configs', {type: 'openai', key: 'api_key', value: '$$OPENAI_KEY', metadata: {provider: 'openai'}}, {headers: {'Content-Type': 'application/json'}}).then(() => console.log('✅ OpenAI key set')).catch(err => console.error('❌ Failed:', err.message));\"" || true; \
 			fi; \
 			;& \
 		2|4) \
 			read -s -p "Enter Claude API Key: " CLAUDE_KEY; echo; \
 			if [ -n "$$CLAUDE_KEY" ]; then \
 				echo "$(YELLOW)Setting Claude key...$(NC)"; \
-				$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_API_CONTAINER) node -e \"const axios = require('axios'); axios.post('http://localhost:3000/api/integrations/configs', {type: 'claude', key: 'api_key', value: '$$CLAUDE_KEY', metadata: {provider: 'anthropic'}}, {headers: {'Content-Type': 'application/json'}}).then(() => console.log('✅ Claude key set')).catch(err => console.error('❌ Failed:', err.message));\"" || true; \
+				$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_API_CONTAINER) node -e \"const axios = require('axios'); axios.post('http://localhost:3000/api/integrations/configs', {type: 'claude', key: 'api_key', value: '$$CLAUDE_KEY', metadata: {provider: 'anthropic'}}, {headers: {'Content-Type': 'application/json'}}).then(() => console.log('✅ Claude key set')).catch(err => console.error('❌ Failed:', err.message));\"" || true; \
 			fi; \
 			;& \
 		3|4) \
 			read -s -p "Enter GoCardless Access Token: " GOCARDLESS_TOKEN; echo; \
 			if [ -n "$$GOCARDLESS_TOKEN" ]; then \
 				echo "$(YELLOW)Setting GoCardless token...$(NC)"; \
-				$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_API_CONTAINER) node -e \"const axios = require('axios'); axios.post('http://localhost:3000/api/integrations/configs', {type: 'gocardless', key: 'access_token', value: '$$GOCARDLESS_TOKEN', metadata: {environment: 'live'}}, {headers: {'Content-Type': 'application/json'}}).then(() => console.log('✅ GoCardless token set')).catch(err => console.error('❌ Failed:', err.message));\"" || true; \
+				$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_API_CONTAINER) node -e \"const axios = require('axios'); axios.post('http://localhost:3000/api/integrations/configs', {type: 'gocardless', key: 'access_token', value: '$$GOCARDLESS_TOKEN', metadata: {environment: 'live'}}, {headers: {'Content-Type': 'application/json'}}).then(() => console.log('✅ GoCardless token set')).catch(err => console.error('❌ Failed:', err.message));\"" || true; \
 			fi; \
 			;; \
 		*) \
@@ -199,7 +205,7 @@ prod-backup-full: ## Complete backup of database and configuration
 	echo "$(YELLOW)📁 Creating backup directory: $$BACKUP_DIR$(NC)"; \
 	$(SSH) $(PROD_USER)@$(PROD_HOST) "mkdir -p $$BACKUP_DIR" || exit 1; \
 	echo "$(YELLOW)🗄️ Backing up database...$(NC)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_DB_CONTAINER) pg_dump -U $(PROD_DB_USER) -d $(PROD_DB_NAME) --no-owner --no-acl | gzip > $$BACKUP_DIR/database.sql.gz" || exit 1; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) pg_dump -U $(PROD_DB_USER) -d $(PROD_DB_NAME) --no-owner --no-acl | gzip > $$BACKUP_DIR/database.sql.gz" || exit 1; \
 	echo "$(YELLOW)📋 Backing up configuration files...$(NC)"; \
 	$(SSH) $(PROD_USER)@$(PROD_HOST) "cp $(PROD_PATH)/.env.production $$BACKUP_DIR/ 2>/dev/null || true" || true; \
 	$(SSH) $(PROD_USER)@$(PROD_HOST) "cp $(PROD_PATH)/docker-compose.production.yml $$BACKUP_DIR/" || true; \
@@ -225,10 +231,10 @@ prod-list-backups: ## List available backups
 prod-health-check: ## Comprehensive health check of all services
 	@echo "$(BLUE)🏥 Running comprehensive health check...$(NC)"
 	@echo "$(YELLOW)🐳 Container Status:$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo docker-compose -f docker-compose.production.yml ps"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose -f docker-compose.production.yml ps"
 	@echo ""
 	@echo "$(YELLOW)💾 Database Status:$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c 'SELECT current_database(), version();'" 2>/dev/null || echo "$(RED)Database connection failed$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c 'SELECT current_database(), version();'" 2>/dev/null || echo "$(RED)Database connection failed$(NC)"
 	@echo ""
 	@echo "$(YELLOW)🌐 API Health:$(NC)"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "curl -s http://localhost:3001/health | python3 -m json.tool" 2>/dev/null || echo "$(RED)API health check failed$(NC)"
@@ -240,12 +246,12 @@ prod-health-check: ## Comprehensive health check of all services
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "free -h && df -h $(PROD_PATH)"
 	@echo ""
 	@echo "$(YELLOW)📊 Container Resources:$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker stats --no-stream"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker stats --no-stream"
 
 .PHONY: prod-logs-tail
 prod-logs-tail: ## Tail logs from all containers
 	@echo "$(BLUE)📋 Tailing production logs...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo docker-compose -f docker-compose.production.yml logs -f --tail=50"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "cd $(PROD_PATH) && sudo /usr/local/bin/docker-compose -f docker-compose.production.yml logs -f --tail=50"
 
 # =============================================================================
 # 🛠️ MAINTENANCE
@@ -255,14 +261,14 @@ prod-logs-tail: ## Tail logs from all containers
 prod-optimize-db: ## Run VACUUM and ANALYZE on database
 	@echo "$(BLUE)🛠️ Optimizing database...$(NC)"
 	@echo "$(YELLOW)Running VACUUM ANALYZE...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c 'VACUUM ANALYZE;'" || exit 1
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c 'VACUUM ANALYZE;'" || exit 1
 	@echo "$(GREEN)✅ Database optimization complete$(NC)"
 
 .PHONY: prod-clean-logs
 prod-clean-logs: ## Clean old logs and temporary files
 	@echo "$(BLUE)🧹 Cleaning old logs...$(NC)"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "find $(PROD_PATH)/logs -type f -name '*.log' -mtime +30 -delete 2>/dev/null || true"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo docker exec $(PROD_API_CONTAINER) sh -c 'find /app/logs -type f -name '*.log' -mtime +30 -delete 2>/dev/null || true'"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_API_CONTAINER) sh -c 'find /app/logs -type f -name '*.log' -mtime +30 -delete 2>/dev/null || true'"
 	@echo "$(GREEN)✅ Logs cleaned$(NC)"
 
 # =============================================================================

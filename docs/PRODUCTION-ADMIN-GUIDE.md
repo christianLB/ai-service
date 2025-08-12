@@ -28,7 +28,7 @@ This command will:
 
 - Prompt for email (default: admin@ai-service.local)
 - Prompt for password (min 12 chars) or generate a secure one
-- Hash the password using bcrypt
+- Hash the password using bcrypt-cli in a Docker container
 - Create or update the user in the database
 
 **Example:**

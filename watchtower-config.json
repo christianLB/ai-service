@@ -1,0 +1,7 @@
+{
+  "auths": {
+    "ghcr.io": {
+      "auth": "REPLACE_THIS_WITH_BASE64_STRING"
+    }
+  }
+}
