@@ -68,6 +68,47 @@ fi
 
 echo "✅ Data directories ready"
 
+# Run Prisma migrations if DATABASE_URL is set
+if [ -n "$DATABASE_URL" ]; then
+    echo "🔄 Checking database migrations..."
+    
+    # Wait for database to be ready
+    MAX_RETRIES=30
+    RETRY_COUNT=0
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if npx prisma migrate status 2>/dev/null | grep -q "Database schema is up to date"; then
+            echo "✅ Database schema is up to date"
+            break
+        elif npx prisma migrate status 2>/dev/null | grep -q "Following migrations have not yet been applied"; then
+            echo "📦 Applying pending migrations..."
+            if npx prisma migrate deploy; then
+                echo "✅ Migrations applied successfully"
+            else
+                echo "❌ Migration failed! Check logs for details"
+                exit 1
+            fi
+            break
+        else
+            echo "⏳ Waiting for database to be ready... ($RETRY_COUNT/$MAX_RETRIES)"
+            sleep 2
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+        fi
+    done
+    
+    if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+        echo "❌ Database connection timeout after $MAX_RETRIES attempts"
+        echo "   Please check DATABASE_URL and database availability"
+        exit 1
+    fi
+    
+    # Generate Prisma client (in case it's missing)
+    echo "🔧 Ensuring Prisma client is generated..."
+    npx prisma generate 2>/dev/null || echo "⚠️  Prisma generate skipped (client may already exist)"
+else
+    echo "⚠️  DATABASE_URL not set - skipping migrations"
+    echo "   This may cause database-related errors!"
+fi
+
 # Start the application
 echo "🎯 Starting Node.js application..."
 exec node dist/src/index.js

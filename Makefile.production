@@ -386,6 +386,64 @@ prod-restore-from-dev: ## PELIGRO: Restaurar producción con schema de desarroll
 	@$(MAKE) -f Makefile.production prod-status
 
 # =============================================================================
+# 🔄 PRISMA MIGRATIONS (Database Schema Management)
+# =============================================================================
+
+.PHONY: prod-migrate-status
+prod-migrate-status: ## Check Prisma migration status in production
+	@echo "$(BLUE)🔍 Checking migration status in production...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec ai-service sh -c 'DATABASE_URL=postgresql://$(PROD_DB_USER):\$$POSTGRES_PASSWORD@ai-postgres:5432/$(PROD_DB) npx prisma migrate status' 2>&1" || \
+	echo "$(YELLOW)⚠️  If migrations are missing, run: make prod-migrate-deploy$(NC)"
+
+.PHONY: prod-migrate-deploy
+prod-migrate-deploy: ## Apply pending Prisma migrations to production (SAFE)
+	@echo "$(BLUE)🚀 Applying Prisma migrations to production...$(NC)"
+	@echo "$(YELLOW)This will apply all pending migrations from prisma/migrations$(NC)"
+	@echo "$(YELLOW)Continue? (y/N):$(NC)"
+	@read CONFIRM && [ "$$CONFIRM" = "y" ] || (echo "$(GREEN)Cancelled$(NC)" && exit 1)
+	@echo "$(BLUE)Creating backup first...$(NC)"
+	@$(MAKE) prod-backup
+	@echo "$(BLUE)Applying migrations...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec ai-service sh -c 'DATABASE_URL=postgresql://$(PROD_DB_USER):\$$POSTGRES_PASSWORD@ai-postgres:5432/$(PROD_DB) npx prisma migrate deploy' 2>&1" && \
+	echo "$(GREEN)✅ Migrations applied successfully!$(NC)" || \
+	(echo "$(RED)❌ Migration failed! Check logs above$(NC)" && exit 1)
+	@echo "$(BLUE)Verifying schema...$(NC)"
+	@$(MAKE) prod-check-db
+
+.PHONY: prod-migrate-reset
+prod-migrate-reset: ## DANGER: Reset database and apply all migrations from scratch
+	@echo "$(RED)⚠️  WARNING: This will DELETE ALL DATA and recreate the schema!$(NC)"
+	@echo "$(RED)Host: $(PROD_HOST)$(NC)"
+	@echo "$(RED)Database: $(PROD_DB)$(NC)"
+	@echo "$(YELLOW)Type 'RESET DATABASE' to continue:$(NC)"
+	@read CONFIRM && [ "$$CONFIRM" = "RESET DATABASE" ] || (echo "$(GREEN)Cancelled$(NC)" && exit 1)
+	@echo "$(BLUE)Creating final backup...$(NC)"
+	@$(MAKE) prod-backup
+	@echo "$(RED)Resetting database...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec ai-service sh -c 'DATABASE_URL=postgresql://$(PROD_DB_USER):\$$POSTGRES_PASSWORD@ai-postgres:5432/$(PROD_DB) npx prisma migrate reset --force' 2>&1" && \
+	echo "$(GREEN)✅ Database reset and migrations applied!$(NC)" || \
+	(echo "$(RED)❌ Reset failed!$(NC)" && exit 1)
+
+.PHONY: prod-migrate-create
+prod-migrate-create: ## Create a new migration from local development
+	@echo "$(BLUE)📝 Creating new migration from current schema...$(NC)"
+	@read -p "Enter migration name (e.g., add_new_field): " NAME; \
+	if [ -z "$$NAME" ]; then \
+		echo "$(RED)❌ Migration name is required$(NC)"; \
+		exit 1; \
+	fi; \
+	npx prisma migrate dev --name $$NAME --create-only && \
+	echo "$(GREEN)✅ Migration created: prisma/migrations/*_$$NAME$(NC)" && \
+	echo "$(YELLOW)Review the migration, then run 'make prod-migrate-deploy' to apply$(NC)"
+
+.PHONY: prod-prisma-generate
+prod-prisma-generate: ## Generate Prisma client in production container
+	@echo "$(BLUE)🔧 Generating Prisma client in production...$(NC)"
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec ai-service npx prisma generate" && \
+	echo "$(GREEN)✅ Prisma client generated$(NC)" || \
+	echo "$(RED)❌ Failed to generate Prisma client$(NC)"
+
+# =============================================================================
 # 🔐 TEST DE AUTENTICACIÓN
 # =============================================================================
 

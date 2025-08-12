@@ -156,6 +156,22 @@ prod-health: ## Check production health
 	@$(MAKE) -f Makefile.production health
 
 # =============================================================================
+# 🔄 PRODUCTION MIGRATION SHORTCUTS
+# =============================================================================
+
+.PHONY: prod-migrate-status
+prod-migrate-status: ## Check Prisma migration status in production
+	@$(MAKE) -f Makefile.production prod-migrate-status
+
+.PHONY: prod-migrate-deploy
+prod-migrate-deploy: ## Apply pending Prisma migrations to production (SAFE)
+	@$(MAKE) -f Makefile.production prod-migrate-deploy
+
+.PHONY: prod-migrate-reset
+prod-migrate-reset: ## DANGER: Reset database and apply all migrations
+	@$(MAKE) -f Makefile.production prod-migrate-reset
+
+# =============================================================================
 # 👤 PRODUCTION ADMIN SHORTCUTS
 # =============================================================================
 
