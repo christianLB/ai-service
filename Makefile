@@ -156,6 +156,34 @@ prod-health: ## Check production health
 	@$(MAKE) -f Makefile.production health
 
 # =============================================================================
+# 👤 PRODUCTION ADMIN SHORTCUTS
+# =============================================================================
+
+.PHONY: prod-create-admin
+prod-create-admin: ## Create admin user in production
+	@$(MAKE) -f Makefile.prod-admin prod-create-admin
+
+.PHONY: prod-reset-password
+prod-reset-password: ## Reset user password in production
+	@$(MAKE) -f Makefile.prod-admin prod-reset-password
+
+.PHONY: prod-change-db-password
+prod-change-db-password: ## Change database password in production
+	@$(MAKE) -f Makefile.prod-admin prod-change-db-password
+
+.PHONY: prod-set-api-keys
+prod-set-api-keys: ## Set API keys in production
+	@$(MAKE) -f Makefile.prod-admin prod-set-api-keys
+
+.PHONY: prod-backup-full
+prod-backup-full: ## Full backup of production
+	@$(MAKE) -f Makefile.prod-admin prod-backup-full
+
+.PHONY: prod-health-check
+prod-health-check: ## Comprehensive health check
+	@$(MAKE) -f Makefile.prod-admin prod-health-check
+
+# =============================================================================
 # 🔍 TROUBLESHOOTING SHORTCUTS
 # =============================================================================
 
@@ -282,6 +310,8 @@ help-prod: ## Show all production commands
 	@$(MAKE) -f Makefile.production help
 	@echo ""
 	@$(MAKE) -f Makefile.nas help
+	@echo ""
+	@$(MAKE) -f Makefile.prod-admin help
 
 .PHONY: help-db
 help-db: ## Show all database commands
