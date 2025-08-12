@@ -151,6 +151,47 @@ prod-change-db-password: ## Change PostgreSQL password in production
 	echo "$(RED)❌ Service health check failed - please check logs$(NC)"
 
 # =============================================================================
+# 🔐 AUTHENTICATION
+# =============================================================================
+
+.PHONY: prod-login
+prod-login: ## Login to production and get auth token
+	@echo "$(BLUE)🔐 Logging in to production API...$(NC)"
+	@read -p "Email [admin@ai-service.local]: " EMAIL; \
+	EMAIL=$${EMAIL:-admin@ai-service.local}; \
+	read -s -p "Password [admin123]: " PASS; echo; \
+	PASS=$${PASS:-admin123}; \
+	echo "$(YELLOW)Authenticating...$(NC)"; \
+	RESPONSE=$$(curl -s -X POST http://$(PROD_HOST):3001/api/auth/login \
+		-H "Content-Type: application/json" \
+		-d "{\"email\":\"$$EMAIL\",\"password\":\"$$PASS\"}"); \
+	if echo "$$RESPONSE" | grep -q "accessToken"; then \
+		TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p'); \
+		echo "$(GREEN)✅ Login successful$(NC)"; \
+		echo "$(CYAN)Access Token:$(NC)"; \
+		echo "$$TOKEN"; \
+		echo ""; \
+		echo "$(YELLOW)Use with:$(NC)"; \
+		echo "curl -H \"Authorization: Bearer $$TOKEN\" http://$(PROD_HOST):3001/api/..."; \
+	else \
+		echo "$(RED)❌ Login failed$(NC)"; \
+		echo "$$RESPONSE"; \
+		exit 1; \
+	fi
+
+.PHONY: prod-token
+prod-token: ## Get production auth token quickly (uses default admin credentials)
+	@RESPONSE=$$(curl -s -X POST http://$(PROD_HOST):3001/api/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"email":"admin@ai-service.local","password":"admin123"}'); \
+	if echo "$$RESPONSE" | grep -q "accessToken"; then \
+		echo "$$RESPONSE" | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p'; \
+	else \
+		echo "Error: Login failed. Check credentials." >&2; \
+		exit 1; \
+	fi
+
+# =============================================================================
 # 🔑 API KEY MANAGEMENT
 # =============================================================================
 

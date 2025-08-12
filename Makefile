@@ -235,6 +235,14 @@ emergency-restart: ## Emergency restart all services
 auth-token: ## Get development auth token
 	@$(MAKE) -f Makefile.auth get-token
 
+.PHONY: prod-login  
+prod-login: ## Login to production and get auth token
+	@$(MAKE) -f Makefile.prod-admin prod-login
+
+.PHONY: prod-token
+prod-token: ## Get production auth token quickly
+	@$(MAKE) -f Makefile.prod-admin prod-token
+
 .PHONY: auth-test
 auth-test: ## Test authentication
 	@$(MAKE) -f Makefile.auth test

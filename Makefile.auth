@@ -91,6 +91,9 @@ auth-dev-login:
 	echo "" && \
 	echo "Use with: curl -H \"Authorization: Bearer $$TOKEN\" ..."
 
+# Alias for auth-dev-login (referenced in main Makefile)
+get-token: auth-dev-login
+
 # Production helpers
 auth-prod-check:
 	@echo "🔍 Checking production auth configuration..."
