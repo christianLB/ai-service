@@ -19,7 +19,7 @@ PROD_PATH ?= /volume1/docker/ai-service
 PROD_DB_CONTAINER := ai-postgres
 PROD_DB_USER := ai_user
 PROD_DB_NAME := ai_service
-PROD_API_CONTAINER := ai-service
+PROD_API_CONTAINER := ai-service-api
 
 # SSH and SCP commands
 SSH := ssh
@@ -52,13 +52,13 @@ prod-create-admin: ## Create admin user in production database
 	read -p "Enter full name [System Administrator]: " ADMIN_NAME; \
 	ADMIN_NAME=$${ADMIN_NAME:-System Administrator}; \
 	echo "$(YELLOW)🔐 Hashing password...$(NC)"; \
-	HASH=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker run --rm node:20-alpine sh -c \"npm install -g bcrypt-cli >/dev/null 2>&1 && echo '$$ADMIN_PASS' | bcrypt-cli 10\"" | tail -1); \
+	HASH=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_API_CONTAINER) node -e \"const bcrypt = require('bcrypt'); bcrypt.hash('$$ADMIN_PASS', 10).then(hash => console.log(hash));\""); \
 	if [ -z "$$HASH" ]; then \
 		echo "$(RED)❌ Failed to hash password$(NC)"; \
 		exit 1; \
 	fi; \
 	echo "$(YELLOW)📝 Creating user in database...$(NC)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"INSERT INTO \\\"User\\\" (email, password_hash, full_name, role, is_active) VALUES ('$$ADMIN_EMAIL', '$$HASH', '$$ADMIN_NAME', 'admin', true) ON CONFLICT (email) DO UPDATE SET password_hash='$$HASH', full_name='$$ADMIN_NAME', role='admin', updated_at=now() RETURNING email, full_name, role;\"" || exit 1; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"INSERT INTO users (email, password_hash, full_name, role, is_active) VALUES ('$$ADMIN_EMAIL', '$$HASH', '$$ADMIN_NAME', 'admin', true) ON CONFLICT (email) DO UPDATE SET password_hash='$$HASH', full_name='$$ADMIN_NAME', role='admin', updated_at=now() RETURNING email, full_name, role;\"" || exit 1; \
 	echo "$(GREEN)✅ Admin user created/updated successfully$(NC)"; \
 	echo "$(CYAN)📧 Email: $$ADMIN_EMAIL$(NC)"; \
 	echo "$(CYAN)👤 Name: $$ADMIN_NAME$(NC)"; \
@@ -73,7 +73,7 @@ prod-reset-password: ## Reset user password in production
 		exit 1; \
 	fi; \
 	echo "$(YELLOW)🔍 Checking if user exists...$(NC)"; \
-	USER_EXISTS=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -t -c \"SELECT COUNT(*) FROM \\\"User\\\" WHERE email='$$USER_EMAIL';\"" | tr -d ' '); \
+	USER_EXISTS=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -t -c \"SELECT COUNT(*) FROM users WHERE email='$$USER_EMAIL';\"" | tr -d ' '); \
 	if [ "$$USER_EXISTS" = "0" ]; then \
 		echo "$(RED)❌ User not found: $$USER_EMAIL$(NC)"; \
 		exit 1; \
@@ -95,20 +95,20 @@ prod-reset-password: ## Reset user password in production
 		exit 1; \
 	fi; \
 	echo "$(YELLOW)🔐 Hashing password...$(NC)"; \
-	HASH=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker run --rm node:20-alpine sh -c \"npm install -g bcrypt-cli >/dev/null 2>&1 && echo '$$NEW_PASS' | bcrypt-cli 10\"" | tail -1); \
+	HASH=$$($(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_API_CONTAINER) node -e \"const bcrypt = require('bcrypt'); bcrypt.hash('$$NEW_PASS', 10).then(hash => console.log(hash));\""); \
 	if [ -z "$$HASH" ]; then \
 		echo "$(RED)❌ Failed to hash password$(NC)"; \
 		exit 1; \
 	fi; \
 	echo "$(YELLOW)📝 Updating password in database...$(NC)"; \
-	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"UPDATE \\\"User\\\" SET password_hash='$$HASH', updated_at=now() WHERE email='$$USER_EMAIL' RETURNING email, full_name;\"" || exit 1; \
+	$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"UPDATE users SET password_hash='$$HASH', updated_at=now() WHERE email='$$USER_EMAIL' RETURNING email, full_name;\"" || exit 1; \
 	echo "$(GREEN)✅ Password reset successfully$(NC)"; \
 	echo "$(CYAN)📧 User: $$USER_EMAIL$(NC)"
 
 .PHONY: prod-list-users
 prod-list-users: ## List all users in production
 	@echo "$(BLUE)👥 Listing all users in production...$(NC)"
-	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"SELECT email, full_name, role, is_active, last_login, created_at FROM \\\"User\\\" ORDER BY created_at DESC;\""
+	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec $(PROD_DB_CONTAINER) psql -U $(PROD_DB_USER) -d $(PROD_DB_NAME) -c \"SELECT email, full_name, role, is_active, last_login, created_at FROM users ORDER BY created_at DESC;\""
 
 # =============================================================================
 # 🔐 DATABASE PASSWORD MANAGEMENT

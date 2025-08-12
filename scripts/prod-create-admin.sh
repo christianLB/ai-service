@@ -53,7 +53,7 @@ TEMP_PASS='admin123'
 echo -e "${YELLOW}📝 Creating user in database...${NC}"
 
 # Create the SQL command
-SQL_CMD="INSERT INTO \\\"User\\\" (email, password_hash, full_name, role, is_active) 
+SQL_CMD="INSERT INTO users (email, password_hash, full_name, role, is_active) 
          VALUES ('$ADMIN_EMAIL', '$HASH', '$ADMIN_NAME', 'admin', true) 
          ON CONFLICT (email) DO UPDATE 
          SET password_hash='$HASH', full_name='$ADMIN_NAME', role='admin', updated_at=now() 
