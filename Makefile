@@ -183,6 +183,30 @@ prod-backup-full: ## Full backup of production
 prod-health-check: ## Comprehensive health check
 	@$(MAKE) -f Makefile.prod-admin prod-health-check
 
+.PHONY: prod-list-users
+prod-list-users: ## List all users in production
+	@$(MAKE) -f Makefile.prod-admin prod-list-users
+
+.PHONY: prod-create-admin-simple
+prod-create-admin-simple: ## Create admin user (simple version)
+	@$(MAKE) -f Makefile.prod-admin prod-create-admin-simple
+
+.PHONY: prod-optimize-db
+prod-optimize-db: ## Optimize production database
+	@$(MAKE) -f Makefile.prod-admin prod-optimize-db
+
+.PHONY: prod-list-backups
+prod-list-backups: ## List available backups
+	@$(MAKE) -f Makefile.prod-admin prod-list-backups
+
+.PHONY: prod-logs-tail
+prod-logs-tail: ## Tail production logs
+	@$(MAKE) -f Makefile.prod-admin prod-logs-tail
+
+.PHONY: prod-clean-logs
+prod-clean-logs: ## Clean old logs
+	@$(MAKE) -f Makefile.prod-admin prod-clean-logs
+
 # =============================================================================
 # 🔍 TROUBLESHOOTING SHORTCUTS
 # =============================================================================
