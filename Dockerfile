@@ -79,6 +79,9 @@ COPY --from=builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
+# Copiar Prisma schema y migrations para poder ejecutar migraciones
+COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
+
 # Copiar entrypoint script
 COPY --chown=nodejs:nodejs entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh

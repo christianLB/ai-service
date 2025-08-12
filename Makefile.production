@@ -402,13 +402,13 @@ prod-migrate-deploy: ## Apply pending Prisma migrations to production (SAFE)
 	@echo "$(YELLOW)Continue? (y/N):$(NC)"
 	@read CONFIRM && [ "$$CONFIRM" = "y" ] || (echo "$(GREEN)Cancelled$(NC)" && exit 1)
 	@echo "$(BLUE)Creating backup first...$(NC)"
-	@$(MAKE) prod-backup
+	@$(MAKE) -f Makefile.production prod-backup
 	@echo "$(BLUE)Applying migrations...$(NC)"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec ai-service sh -c 'DATABASE_URL=postgresql://$(PROD_DB_USER):\$$POSTGRES_PASSWORD@ai-postgres:5432/$(PROD_DB) npx prisma migrate deploy' 2>&1" && \
 	echo "$(GREEN)✅ Migrations applied successfully!$(NC)" || \
 	(echo "$(RED)❌ Migration failed! Check logs above$(NC)" && exit 1)
 	@echo "$(BLUE)Verifying schema...$(NC)"
-	@$(MAKE) prod-check-db
+	@$(MAKE) -f Makefile.production prod-check-db
 
 .PHONY: prod-migrate-reset
 prod-migrate-reset: ## DANGER: Reset database and apply all migrations from scratch
@@ -418,7 +418,7 @@ prod-migrate-reset: ## DANGER: Reset database and apply all migrations from scra
 	@echo "$(YELLOW)Type 'RESET DATABASE' to continue:$(NC)"
 	@read CONFIRM && [ "$$CONFIRM" = "RESET DATABASE" ] || (echo "$(GREEN)Cancelled$(NC)" && exit 1)
 	@echo "$(BLUE)Creating final backup...$(NC)"
-	@$(MAKE) prod-backup
+	@$(MAKE) -f Makefile.production prod-backup
 	@echo "$(RED)Resetting database...$(NC)"
 	@$(SSH) $(PROD_USER)@$(PROD_HOST) "sudo /usr/local/bin/docker exec ai-service sh -c 'DATABASE_URL=postgresql://$(PROD_DB_USER):\$$POSTGRES_PASSWORD@ai-postgres:5432/$(PROD_DB) npx prisma migrate reset --force' 2>&1" && \
 	echo "$(GREEN)✅ Database reset and migrations applied!$(NC)" || \
