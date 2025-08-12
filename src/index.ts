@@ -291,10 +291,10 @@ app.use('/api/integrations', integrationRoutes);
 // Trading routes removed
 
 // Servir archivos estáticos del frontend
-// En producción, los archivos están en /app/frontend/dist
+// En producción, el volumen se monta en /app/public según docker-compose.production.yml
 const frontendPath =
   process.env.NODE_ENV === 'production'
-    ? path.join(__dirname, '../../frontend/dist')
+    ? path.join(__dirname, '../public')
     : path.join(__dirname, '../frontend/dist');
 logger.info(`Serving static files from: ${frontendPath}`);
 
@@ -319,7 +319,7 @@ app.use(express.static(frontendPath));
 app.get('*', (_req: express.Request, res: express.Response) => {
   const indexPath =
     process.env.NODE_ENV === 'production'
-      ? path.join(__dirname, '../../frontend/dist/index.html')
+      ? path.join(__dirname, '../public/index.html')
       : path.join(__dirname, '../frontend/dist/index.html');
   res.sendFile(indexPath);
 });

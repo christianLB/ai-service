@@ -116,13 +116,33 @@ services:
       - ./logs:/app/logs
       - ./config:/app/config:ro
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     networks:
       - ai-service-network
+
+  # Frontend Application
+  ai-service-frontend:
+    image: ghcr.io/christianlb/ai-service-frontend:latest
+    container_name: ai-service-frontend
+    restart: unless-stopped
+    ports:
+      - "3030:8080"
+    volumes:
+      - ./nginx/frontend-prod.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - ai-service-network
+    depends_on:
+      - ai-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 networks:
   ai-service-network:
