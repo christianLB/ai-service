@@ -21,27 +21,21 @@ client.collectDefaultMetrics({ register });
 const pool = new Pool({ connectionString: env.DATABASE_URL });
 const redis = new Redis(env.REDIS_URL);
 
-// Ensure minimal schema exists (idempotent)
-async function ensureSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS financial_accounts (
-      id UUID PRIMARY KEY,
-      provider TEXT NOT NULL,
-      name TEXT NOT NULL,
-      iban TEXT,
-      currency CHAR(3) NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  // Seed one demo account if empty (CI smoke tests rely on at least one row)
-  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM financial_accounts`);
-  const total = (count.rows[0]?.total as number) ?? 0;
-  if (total === 0) {
-    await pool.query(
-      `INSERT INTO financial_accounts (id, provider, name, iban, currency)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [randomUUID(), "demo", "FinSvc Account", null, "USD"]
-    );
+// Dev-only seed: ensure at least one account exists in financial.accounts for smoke tests
+async function ensureDevSeed() {
+  if (process.env.NODE_ENV === 'production') return;
+  try {
+    const count = await pool.query(`SELECT COUNT(*)::int AS total FROM financial.accounts`);
+    const total = (count.rows[0]?.total as number) ?? 0;
+    if (total === 0) {
+      await pool.query(
+        `INSERT INTO financial.accounts (id, account_id, name, type, institution, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [randomUUID(), `acc_${Date.now()}`, "FinSvc Demo Account", "checking", "demo"]
+      );
+    }
+  } catch (e) {
+    console.error("[financial-svc] ensureDevSeed error", e);
   }
 }
 
@@ -74,13 +68,22 @@ app.get("/api/financial/accounts", async (req, res) => {
   const provider = typeof req.query.provider === 'string' ? req.query.provider : undefined;
   try {
     const params: string[] = [];
-    const where = provider ? (params.push(provider), `WHERE provider = $${params.length}`) : '';
+    const where = provider ? (params.push(provider), `WHERE a.institution = $${params.length}`) : '';
     const rows = await pool.query(
-      `SELECT id::text, provider, name, iban, currency, created_at FROM financial_accounts ${where} ORDER BY created_at DESC`,
+      `SELECT a.id::text,
+              a.institution AS provider,
+              a.name,
+              a.iban,
+              COALESCE(c.code, 'USD') AS currency,
+              a.created_at
+       FROM financial.accounts a
+       LEFT JOIN financial.currencies c ON c.id = a.currency_id
+       ${where}
+       ORDER BY a.created_at DESC`,
       params
     );
     const count = await pool.query(
-      `SELECT COUNT(*)::int AS total FROM financial_accounts ${where}`,
+      `SELECT COUNT(*)::int AS total FROM financial.accounts a ${where}`,
       params
     );
     const body: ListAccounts200 = {
@@ -106,7 +109,16 @@ app.get("/api/financial/accounts/:id", async (req, res) => {
   const id = req.params.id;
   try {
     const q = await pool.query(
-      `SELECT id::text, provider, name, iban, currency, created_at FROM financial_accounts WHERE id = $1 LIMIT 1`,
+      `SELECT a.id::text,
+              a.institution AS provider,
+              a.name,
+              a.iban,
+              COALESCE(c.code, 'USD') AS currency,
+              a.created_at
+       FROM financial.accounts a
+       LEFT JOIN financial.currencies c ON c.id = a.currency_id
+       WHERE a.id = $1
+       LIMIT 1`,
       [id]
     );
     if (q.rowCount === 0) {
@@ -130,7 +142,7 @@ app.get("/api/financial/accounts/:id", async (req, res) => {
 
 const port = Number(process.env.PORT ?? 3001);
 app.listen(port, () => {
-  ensureSchema()
-    .then(() => console.log(`[financial-svc] schema ensured, listening on :${port}`))
-    .catch((e) => console.error("[financial-svc] schema error", e));
+  ensureDevSeed()
+    .then(() => console.log(`[financial-svc] listening on :${port}`))
+    .catch((e) => console.error("[financial-svc] dev seed error", e));
 });
