@@ -10,7 +10,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 PROD_HOST="192.168.1.11"
-PROD_USER="synoadmin"
+PROD_USER="k2600x"
 
 echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${YELLOW}║           EMERGENCY SCHEMA APPLICATION                       ║${NC}"
