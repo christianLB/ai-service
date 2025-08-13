@@ -5,6 +5,7 @@ import client from "prom-client";
 import { Pool } from "pg";
 import Redis from "ioredis";
 import { env } from "@ai/config";
+import type { AiServicePaths } from "@ai/contracts";
 
 const app = express();
 app.use(helmet());
@@ -42,8 +43,27 @@ app.get("/metrics", async (_req, res) => {
   }
 });
 
+// Typed contract route for accounts (matches OpenAPI spec used by gateway)
+type ListAccounts200 = AiServicePaths["/api/financial/accounts"]["get"]["responses"][200]["content"]["application/json"];
+app.get("/api/financial/accounts", async (req, res) => {
+  // TODO: Replace with real DB-backed data
+  const provider = typeof req.query.provider === 'string' ? req.query.provider : undefined;
+  const body: ListAccounts200 = {
+    accounts: [
+      {
+        id: "00000000-0000-0000-0000-000000000001",
+        provider: provider ?? "demo",
+        name: "FinSvc Account",
+        currency: "USD",
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    total: 1,
+  };
+  res.json(body);
+});
+
 const port = Number(process.env.PORT ?? 3001);
 app.listen(port, () => {
-  // eslint-disable-next-line no-console
   console.log(`[financial-svc] listening on :${port}`);
 });

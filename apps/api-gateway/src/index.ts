@@ -6,6 +6,7 @@ import { Pool } from "pg";
 import Redis from "ioredis";
 import { env } from "@ai/config";
 import type { AiServicePaths } from "@ai/contracts";
+import { createAiServiceClient } from "@ai/contracts";
 
 const app = express();
 app.use(helmet());
@@ -43,24 +44,26 @@ app.get("/metrics", async (_req, res) => {
   }
 });
 
-// Contract-first example endpoint (typed by OpenAPI)
+// Contract-first endpoint proxied to financial-svc
 type ListAccounts200 = AiServicePaths["/api/financial/accounts"]["get"]["responses"][200]["content"]["application/json"];
+const financialSvcBase = process.env.FINANCIAL_SVC_URL || "http://financial-svc:3001";
+const financialClient = createAiServiceClient(financialSvcBase);
+
 app.get("/api/financial/accounts", async (req, res) => {
-  // In a future step, proxy to financial-svc or aggregate DB results.
   const provider = typeof req.query.provider === 'string' ? req.query.provider : undefined;
-  const body: ListAccounts200 = {
-    accounts: [
-      {
-        id: "00000000-0000-0000-0000-000000000000",
-        provider: provider ?? "demo",
-        name: "Demo Account",
-        currency: "USD",
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    total: 1,
-  };
-  res.json(body);
+  try {
+    const result = await financialClient.GET("/api/financial/accounts" as const, {
+      params: { query: provider ? { provider } : undefined },
+    });
+    if (result.error) {
+      res.status(502).json({ ok: false });
+      return;
+    }
+    const data = result.data as ListAccounts200 | undefined;
+    res.json(data ?? { accounts: [], total: 0 });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: (err as Error).message });
+  }
 });
 
 const port = env.PORT || 3000;
