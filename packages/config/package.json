@@ -8,5 +8,8 @@
   "scripts": {
     "build": "tsc -b",
     "clean": "rimraf dist || true"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
   }
 }

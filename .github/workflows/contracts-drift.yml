@@ -1,0 +1,36 @@
+name: Contracts Drift Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/**
+
+jobs:
+  contracts-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+          run_install: true
+
+      - name: Generate contracts
+        run: pnpm contracts:generate
+
+      - name: Build contracts
+        run: pnpm contracts:build
+
+      - name: Check for drift
+        run: pnpm contracts:check

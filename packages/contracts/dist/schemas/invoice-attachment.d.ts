@@ -1,0 +1,211 @@
+import { z } from 'zod';
+/**
+ * Zod schemas for InvoiceAttachment model
+ * Auto-generated from Prisma schema
+ */
+export declare const InvoiceAttachmentSchema: z.ZodObject<{
+    id: z.ZodString;
+    invoiceId: z.ZodString;
+    fileName: z.ZodString;
+    filePath: z.ZodString;
+    fileSize: z.ZodString;
+    fileType: z.ZodString;
+    description: z.ZodOptional<z.ZodString>;
+    uploadedBy: z.ZodString;
+    uploadedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
+    isDeleted: z.ZodBoolean;
+    deletedAt: z.ZodOptional<z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>>;
+    deletedBy: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    invoiceId: string;
+    fileName: string;
+    filePath: string;
+    fileSize: string;
+    fileType: string;
+    uploadedBy: string;
+    uploadedAt: Date;
+    isDeleted: boolean;
+    description?: string | undefined;
+    deletedAt?: Date | undefined;
+    deletedBy?: string | undefined;
+}, {
+    id: string;
+    invoiceId: string;
+    fileName: string;
+    filePath: string;
+    fileSize: string;
+    fileType: string;
+    uploadedBy: string;
+    uploadedAt: string | Date;
+    isDeleted: boolean;
+    description?: string | undefined;
+    deletedAt?: string | Date | undefined;
+    deletedBy?: string | undefined;
+}>;
+export declare const InvoiceAttachmentCreateSchema: z.ZodObject<Omit<{
+    id: z.ZodString;
+    invoiceId: z.ZodString;
+    fileName: z.ZodString;
+    filePath: z.ZodString;
+    fileSize: z.ZodString;
+    fileType: z.ZodString;
+    description: z.ZodOptional<z.ZodString>;
+    uploadedBy: z.ZodString;
+    uploadedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
+    isDeleted: z.ZodBoolean;
+    deletedAt: z.ZodOptional<z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>>;
+    deletedBy: z.ZodOptional<z.ZodString>;
+}, "id" | "uploadedAt" | "isDeleted">, "strip", z.ZodTypeAny, {
+    invoiceId: string;
+    fileName: string;
+    filePath: string;
+    fileSize: string;
+    fileType: string;
+    uploadedBy: string;
+    description?: string | undefined;
+    deletedAt?: Date | undefined;
+    deletedBy?: string | undefined;
+}, {
+    invoiceId: string;
+    fileName: string;
+    filePath: string;
+    fileSize: string;
+    fileType: string;
+    uploadedBy: string;
+    description?: string | undefined;
+    deletedAt?: string | Date | undefined;
+    deletedBy?: string | undefined;
+}>;
+export declare const InvoiceAttachmentUpdateSchema: z.ZodObject<{
+    description: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    invoiceId: z.ZodOptional<z.ZodString>;
+    fileName: z.ZodOptional<z.ZodString>;
+    filePath: z.ZodOptional<z.ZodString>;
+    fileSize: z.ZodOptional<z.ZodString>;
+    fileType: z.ZodOptional<z.ZodString>;
+    uploadedBy: z.ZodOptional<z.ZodString>;
+    deletedAt: z.ZodOptional<z.ZodOptional<z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>>>;
+    deletedBy: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+}, "strip", z.ZodTypeAny, {
+    description?: string | undefined;
+    invoiceId?: string | undefined;
+    fileName?: string | undefined;
+    filePath?: string | undefined;
+    fileSize?: string | undefined;
+    fileType?: string | undefined;
+    uploadedBy?: string | undefined;
+    deletedAt?: Date | undefined;
+    deletedBy?: string | undefined;
+}, {
+    description?: string | undefined;
+    invoiceId?: string | undefined;
+    fileName?: string | undefined;
+    filePath?: string | undefined;
+    fileSize?: string | undefined;
+    fileType?: string | undefined;
+    uploadedBy?: string | undefined;
+    deletedAt?: string | Date | undefined;
+    deletedBy?: string | undefined;
+}>;
+export declare const InvoiceAttachmentResponseSchema: z.ZodObject<{
+    id: z.ZodString;
+    invoiceId: z.ZodString;
+    fileName: z.ZodString;
+    filePath: z.ZodString;
+    fileSize: z.ZodString;
+    fileType: z.ZodString;
+    description: z.ZodOptional<z.ZodString>;
+    uploadedBy: z.ZodString;
+    uploadedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
+    isDeleted: z.ZodBoolean;
+    deletedAt: z.ZodOptional<z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>>;
+    deletedBy: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    invoiceId: string;
+    fileName: string;
+    filePath: string;
+    fileSize: string;
+    fileType: string;
+    uploadedBy: string;
+    uploadedAt: Date;
+    isDeleted: boolean;
+    description?: string | undefined;
+    deletedAt?: Date | undefined;
+    deletedBy?: string | undefined;
+}, {
+    id: string;
+    invoiceId: string;
+    fileName: string;
+    filePath: string;
+    fileSize: string;
+    fileType: string;
+    uploadedBy: string;
+    uploadedAt: string | Date;
+    isDeleted: boolean;
+    description?: string | undefined;
+    deletedAt?: string | Date | undefined;
+    deletedBy?: string | undefined;
+}>;
+export declare const InvoiceAttachmentQuerySchema: z.ZodObject<{
+    page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
+    limit: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
+    sortBy: z.ZodOptional<z.ZodEnum<["id", "invoiceId", "fileName", "filePath", "fileSize", "fileType", "description", "uploadedBy", "uploadedAt", "isDeleted", "deletedAt", "deletedBy"]>>;
+    sortOrder: z.ZodDefault<z.ZodOptional<z.ZodEnum<["asc", "desc"]>>>;
+    search: z.ZodOptional<z.ZodString>;
+    invoiceId: z.ZodOptional<z.ZodString>;
+    fileName: z.ZodOptional<z.ZodString>;
+    filePath: z.ZodOptional<z.ZodString>;
+    fileSize: z.ZodOptional<z.ZodAny>;
+    fileType: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodString>;
+    uploadedBy: z.ZodOptional<z.ZodString>;
+    uploadedAt: z.ZodOptional<z.ZodAny>;
+    isDeleted: z.ZodOptional<z.ZodBoolean>;
+    deletedAt: z.ZodOptional<z.ZodAny>;
+    deletedBy: z.ZodOptional<z.ZodString>;
+    include: z.ZodOptional<z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>>;
+}, "strip", z.ZodTypeAny, {
+    page: number;
+    limit: number;
+    sortOrder: "asc" | "desc";
+    search?: string | undefined;
+    sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
+    include?: {} | undefined;
+    description?: string | undefined;
+    invoiceId?: string | undefined;
+    fileName?: string | undefined;
+    filePath?: string | undefined;
+    fileSize?: any;
+    fileType?: string | undefined;
+    uploadedBy?: string | undefined;
+    uploadedAt?: any;
+    isDeleted?: boolean | undefined;
+    deletedAt?: any;
+    deletedBy?: string | undefined;
+}, {
+    page?: number | undefined;
+    limit?: number | undefined;
+    sortOrder?: "asc" | "desc" | undefined;
+    search?: string | undefined;
+    sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
+    include?: {} | undefined;
+    description?: string | undefined;
+    invoiceId?: string | undefined;
+    fileName?: string | undefined;
+    filePath?: string | undefined;
+    fileSize?: any;
+    fileType?: string | undefined;
+    uploadedBy?: string | undefined;
+    uploadedAt?: any;
+    isDeleted?: boolean | undefined;
+    deletedAt?: any;
+    deletedBy?: string | undefined;
+}>;
+export type InvoiceAttachment = z.infer<typeof InvoiceAttachmentSchema>;
+export type InvoiceAttachmentCreate = z.infer<typeof InvoiceAttachmentCreateSchema>;
+export type InvoiceAttachmentUpdate = z.infer<typeof InvoiceAttachmentUpdateSchema>;
+export type InvoiceAttachmentResponse = z.infer<typeof InvoiceAttachmentResponseSchema>;
+export type InvoiceAttachmentQuery = z.infer<typeof InvoiceAttachmentQuerySchema>;
+//# sourceMappingURL=invoice-attachment.d.ts.map

@@ -4,6 +4,25 @@
 
 ---
 
+### Estado actual de implementación (WIP)
+
+- **Branch:** `feat/architectural-leveling-epic`.
+- **apps/api-gateway** creado con endpoints `GET /health/live`, `GET /health/ready`, `GET /metrics`. Usa `packages/config` (zod) + `pg` + `ioredis`.
+- **packages/config** creado y publica tipos (TS `declarations`) para evitar errores de import.
+- **infra/compose/docker-compose.dev.yml** creado con `db`, `redis`, `api-gateway` y healthchecks con arranque ordenado (healthchecks migrados a `node -e "fetch(...)"` para evitar dependencias externas como `curl/wget`).
+- **Redis en compose** ajustado para aceptar conexiones intra‑red: `--bind 0.0.0.0` y `--protected-mode no`.
+- **Puertos en host**: evitamos exponer `db`/`redis` al host para no colisionar; `api-gateway` se expone en `3005` (redirige al `3000` interno).
+- **Dockerfiles de servicios**: usan patrón `pnpm deploy` con argumento posicional de directorio y flag `--legacy` requerido por pnpm v10 para despliegue no-inyectado; el runtime es autocontenido (sin symlinks de workspace).
+- **Módulos Node**: todas las apps usan `"type": "commonjs"` para alinear con salida CJS de TypeScript y evitar errores `exports is not defined` en ESM.
+
+Próximos pasos inmediatos:
+
+1. Verificar salud de todos los servicios (gateway, dominios y workers) tras ajustes de build/runtime.
+2. OpenAPI SSOT por dominio + codegen en `packages/contracts` y chequeo de drift en CI.
+3. Baseline de colas (Redis/BullMQ) y FSM mínima de trading.
+
+---
+
 ### 1) Topología de servicios (dentro del mismo repo y compose)
 
 **Edge / Gateway / Dominios / Workers / Infra**
@@ -29,6 +48,12 @@
                                               ↓
                                            Postgres
 ```
+
+Notas:
+
+- No publicamos puertos de `db`/`redis` hacia el host para evitar conflictos con instancias locales.
+- El gateway queda accesible desde el host en `http://localhost:3005`.
+- Los servicios de dominio se pueden añadir con el mismo patrón de `build.context` y `dockerfile`.
 
 ---
 
@@ -89,7 +114,7 @@ ANTHROPIC_API_KEY=
 
 ### 4) Docker Compose con healthchecks y arranque ordenado
 
-`infra/compose/docker-compose.dev.yml` (extracto):
+`infra/compose/docker-compose.dev.yml` (extracto, healthchecks con fetch):
 
 ```yaml
 services:
@@ -106,6 +131,7 @@ services:
 
   redis:
     image: redis:7
+    command: ['redis-server', '--bind', '0.0.0.0', '--protected-mode', 'no']
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -113,17 +139,22 @@ services:
       retries: 20
 
   api-gateway:
-    build: ../../apps/api-gateway
+    build:
+      context: ../..
+      dockerfile: apps/api-gateway/Dockerfile
+    environment:
+      # Fallbacks si `.env` no está presente localmente
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:postgres@db:5432/ai_service
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '3005:3000'
     env_file: ../../.env
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
-      financial-svc: { condition: service_healthy }
-      trading-svc: { condition: service_healthy }
-      comm-svc: { condition: service_healthy }
-      ai-core: { condition: service_healthy }
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost:3000/health/ready']
+      test: ['CMD-SHELL', 'node -e "fetch(\'http://localhost:3000/health/ready\').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -134,7 +165,7 @@ services:
     depends_on:
       db: { condition: service_healthy }
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost:3001/health/ready']
+      test: ['CMD-SHELL', 'node -e "fetch(\'http://localhost:3001/health/ready\').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -146,7 +177,7 @@ services:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost:3002/health/ready']
+      test: ['CMD-SHELL', 'node -e "fetch(\'http://localhost:3002/health/ready\').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -157,7 +188,7 @@ services:
     depends_on:
       redis: { condition: service_healthy }
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost:3003/health/ready']
+      test: ['CMD-SHELL', 'node -e "fetch(\'http://localhost:3003/health/ready\').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -168,7 +199,7 @@ services:
     depends_on:
       redis: { condition: service_healthy }
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost:3004/health/ready']
+      test: ['CMD-SHELL', 'node -e "fetch(\'http://localhost:3004/health/ready\').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -231,6 +262,7 @@ KPIs sugeridos:
 
 - `openapi-typescript` → `src/generated.ts` (tipos de rutas por dominio).
 - `openapi-fetch` → cliente tipado por dominio y para gateway.
+- Scripts raíz disponibles: `pnpm contracts:generate` y `pnpm contracts:build`.
 - Target Makefile: `make contracts.generate` re‑genera todo y falla en CI si hay drift.
 
 **Prisma como verdad del modelo:**
@@ -327,6 +359,20 @@ Worker **worker-trading**:
 - **Dev**: `make db.up && pnpm i && make contracts.generate && docker compose -f infra/compose/docker-compose.dev.yml up`.
 - **Build**: cada app con Dockerfile propio; entrada `entrypoint.sh` con `migrate deploy`.
 - **Prod/NAS**: mismo compose (production) con imágenes versionadas, secrets por entorno y backups programados.
+
+Recomendación de build para apps Node (evitar symlinks de workspace en runtime):
+
+```
+# Etapa build
+RUN pnpm --filter @ai/config build \
+ && pnpm --filter api-gateway build \
+ && mkdir -p ./apps/api-gateway/deploy \
+ && pnpm --filter api-gateway deploy ./apps/api-gateway/deploy --prod --legacy
+
+# Etapa runtime
+WORKDIR /app/apps/api-gateway/deploy
+CMD ["node", "dist/index.js"]
+```
 
 ---
 

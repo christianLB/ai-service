@@ -72,7 +72,10 @@
     "migration:rollback:dry": "node scripts/migration/financial-dashboard-rollback.js --dry-run",
     "migration:test": "./test-prisma-dashboard.sh",
     "migration:monitor": "node scripts/migration/monitor-performance.js",
-    "prepare": "husky"
+    "prepare": "husky",
+    "contracts:generate": "pnpm --filter @ai/contracts generate",
+    "contracts:build": "pnpm --filter @ai/contracts build",
+    "contracts:check": "pnpm contracts:generate && git diff --exit-code -- packages/contracts/src/generated || (echo '\nContracts drift detected. Run: pnpm contracts:generate && pnpm contracts:build' && exit 1)"
   },
   "keywords": [],
   "author": "",

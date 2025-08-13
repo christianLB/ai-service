@@ -1,0 +1,49 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const helmet_1 = __importDefault(require("helmet"));
+const prom_client_1 = __importDefault(require("prom-client"));
+const pg_1 = require("pg");
+const ioredis_1 = __importDefault(require("ioredis"));
+const config_1 = require("@ai/config");
+const app = (0, express_1.default)();
+app.use((0, helmet_1.default)());
+app.use((0, cors_1.default)());
+app.use(express_1.default.json());
+// Metrics
+const register = new prom_client_1.default.Registry();
+prom_client_1.default.collectDefaultMetrics({ register });
+// DB and Redis clients
+const pool = new pg_1.Pool({ connectionString: config_1.env.DATABASE_URL });
+const redis = new ioredis_1.default(config_1.env.REDIS_URL);
+app.get("/health/live", (_req, res) => {
+    res.json({ ok: true });
+});
+app.get("/health/ready", async (_req, res) => {
+    try {
+        await pool.query("SELECT 1");
+        await redis.ping();
+        res.json({ ok: true });
+    }
+    catch (err) {
+        res.status(503).json({ ok: false, error: err.message });
+    }
+});
+app.get("/metrics", async (_req, res) => {
+    try {
+        res.set("Content-Type", register.contentType);
+        res.end(await register.metrics());
+    }
+    catch (err) {
+        res.status(500).end(String(err));
+    }
+});
+const port = config_1.env.PORT || 3000;
+app.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`[api-gateway] listening on :${port}`);
+});

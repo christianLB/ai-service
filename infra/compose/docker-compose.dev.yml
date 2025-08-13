@@ -4,18 +4,117 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ai_service
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-ai_service}"]
       interval: 5s
       timeout: 3s
       retries: 20
 
+  worker-financial:
+    build:
+      context: ../..
+      dockerfile: apps/worker-financial/Dockerfile
+    env_file: ../../.env
+    environment:
+      PORT: 3101
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+      financial-svc:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3101/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  worker-trading:
+    build:
+      context: ../..
+      dockerfile: apps/worker-trading/Dockerfile
+    env_file: ../../.env
+    environment:
+      PORT: 3102
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+      trading-svc:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3102/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  comm-svc:
+    build:
+      context: ../..
+      dockerfile: apps/comm-svc/Dockerfile
+    env_file: ../../.env
+    environment:
+      PORT: 3003
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3003/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  ai-core:
+    build:
+      context: ../..
+      dockerfile: apps/ai-core/Dockerfile
+    env_file: ../../.env
+    environment:
+      PORT: 3004
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3004/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  trading-svc:
+    build:
+      context: ../..
+      dockerfile: apps/trading-svc/Dockerfile
+    env_file: ../../.env
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgres://postgres:postgres@db:5432/ai_service
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3002/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   redis:
     image: redis:7
-    ports:
-      - "6379:6379"
+    command: ["redis-server", "--bind", "0.0.0.0", "--protected-mode", "no"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -23,7 +122,9 @@ services:
       retries: 20
 
   api-gateway:
-    build: ../../apps/api-gateway
+    build:
+      context: ../..
+      dockerfile: apps/api-gateway/Dockerfile
     env_file: ../../.env
     environment:
       # Fallbacks if .env not provided
@@ -31,14 +132,38 @@ services:
       DATABASE_URL: postgres://postgres:postgres@db:5432/ai_service
       REDIS_URL: redis://redis:6379
     ports:
-      - "3000:3000"
+      - "3005:3000"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health/ready"]
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  financial-svc:
+    build:
+      context: ../..
+      dockerfile: apps/financial-svc/Dockerfile
+    env_file: ../../.env
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://postgres:postgres@db:5432/ai_service
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://localhost:3001/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 5s
       timeout: 3s
       retries: 20
