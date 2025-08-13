@@ -51,22 +51,49 @@
                             "format": "date-time"
                           }
                         },
-                        "required": [
-                          "id",
-                          "provider",
-                          "name",
-                          "currency"
-                        ]
+                        "required": ["id", "provider", "name", "currency"]
                       }
                     },
                     "total": {
                       "type": "number"
                     }
                   },
-                  "required": [
-                    "accounts",
-                    "total"
-                  ]
+                  "required": ["accounts", "total"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/financial/accounts/{id}": {
+      "get": {
+        "summary": "Get account by id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "operationId": "getAccountById",
+        "responses": {
+          "200": {
+            "description": "200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "provider": { "type": "string" },
+                    "name": { "type": "string" },
+                    "iban": { "type": "string" },
+                    "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                  },
+                  "required": ["id", "provider", "name", "currency"]
                 }
               }
             }

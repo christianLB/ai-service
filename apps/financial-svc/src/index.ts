@@ -63,6 +63,21 @@ app.get("/api/financial/accounts", async (req, res) => {
   res.json(body);
 });
 
+// Typed route: get account by id
+type GetAccount200 = AiServicePaths["/api/financial/accounts/{id}"]["get"]["responses"][200]["content"]["application/json"];
+app.get("/api/financial/accounts/:id", async (req, res) => {
+  const id = req.params.id;
+  // TODO: Replace with DB lookup by id
+  const body: GetAccount200 = {
+    id,
+    provider: "demo",
+    name: "FinSvc Account",
+    currency: "USD",
+    createdAt: new Date().toISOString(),
+  };
+  res.json(body);
+});
+
 const port = Number(process.env.PORT ?? 3001);
 app.listen(port, () => {
   console.log(`[financial-svc] listening on :${port}`);

@@ -17,6 +17,24 @@ app.use(express.json());
 const register = new client.Registry();
 client.collectDefaultMetrics({ register });
 
+// Proxy: get account by id
+type GetAccount200 = AiServicePaths["/api/financial/accounts/{id}"]["get"]["responses"][200]["content"]["application/json"];
+app.get("/api/financial/accounts/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await financialClient.GET("/api/financial/accounts/{id}" as const, {
+      params: { path: { id } },
+    });
+    if (result.error) {
+      res.status(502).json({ ok: false });
+      return;
+    }
+    res.json((result.data as GetAccount200 | undefined) ?? null);
+  } catch (err) {
+    res.status(502).json({ ok: false, error: (err as Error).message });
+  }
+});
+
 // DB and Redis clients
 const pool = new Pool({ connectionString: env.DATABASE_URL });
 const redis = new Redis(env.REDIS_URL);
