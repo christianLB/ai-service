@@ -1,0 +1,38 @@
+name: CI Build
+
+on:
+  push:
+    branches: [ main, feat/** ]
+  pull_request:
+    branches: [ main, feat/** ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm -w install --no-frozen-lockfile
+
+      - name: Generate and build contracts
+        run: |
+          pnpm contracts:generate
+          pnpm contracts:build
+
+      - name: Contracts drift check
+        run: pnpm contracts:check
+
+      - name: Build all apps
+        run: pnpm -r --filter "./apps/*" build
