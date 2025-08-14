@@ -20,6 +20,9 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      - name: Ensure pnpm via Corepack (fallback)
+        run: corepack enable && corepack prepare pnpm@10.12.1 --activate
+
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:

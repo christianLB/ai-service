@@ -4,6 +4,9 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 
+# Avoid Git hooks during CI/container builds
+ENV HUSKY=0 CI=true NPM_CONFIG_FUND=false
+
 # Copy workspace files
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY tsconfig.json tsconfig.build.json ./
@@ -13,8 +16,10 @@ COPY apps/api-gateway ./apps/api-gateway
 # Install deps at root to leverage workspace (avoid running root scripts)
 RUN pnpm install --frozen-lockfile
 
-# Build config and gateway
-RUN pnpm --filter @ai/config build && pnpm --filter api-gateway build
+# Build shared packages and gateway (ensure contracts are built)
+RUN pnpm --filter @ai/config build \
+ && pnpm --filter @ai/contracts build \
+ && pnpm --filter api-gateway build
 
 # Create a self-contained deploy directory without workspace symlinks
 RUN mkdir -p ./apps/api-gateway/deploy \
