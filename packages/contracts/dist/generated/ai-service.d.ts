@@ -108,7 +108,12 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        Error: {
+            code?: string;
+            message: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -121,6 +126,8 @@ export interface operations {
         parameters: {
             query?: {
                 provider?: string;
+                page?: number;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -146,7 +153,18 @@ export interface operations {
                             createdAt?: string;
                         }[];
                         total: number;
+                        page: number;
+                        limit: number;
                     };
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
         };
@@ -187,6 +205,8 @@ export interface operations {
             query?: {
                 email?: string;
                 name?: string;
+                page?: number;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -210,7 +230,18 @@ export interface operations {
                             createdAt?: string;
                         }[];
                         total: number;
+                        page: number;
+                        limit: number;
                     };
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
         };
@@ -256,6 +287,8 @@ export interface operations {
             query?: {
                 clientId?: string;
                 status?: string;
+                page?: number;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -280,7 +313,18 @@ export interface operations {
                             issueDate: string;
                         }[];
                         total: number;
+                        page: number;
+                        limit: number;
                     };
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
         };

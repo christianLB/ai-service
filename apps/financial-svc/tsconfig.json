@@ -4,7 +4,11 @@
     "outDir": "dist",
     "rootDir": "src",
     "composite": true,
-    "declaration": true
+    "declaration": true,
+    "paths": {
+      "@ai/http-utils": ["../../packages/http-utils/src"],
+      "@ai/http-utils/*": ["../../packages/http-utils/src/*"]
+    }
   },
   "include": ["src/**/*"]
 }

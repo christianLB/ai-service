@@ -12,6 +12,16 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
           }
         ],
         "operationId": "listAccounts",
@@ -54,13 +64,19 @@
                         "required": ["id", "provider", "name", "currency"]
                       }
                     },
-                    "total": {
-                      "type": "number"
-                    }
+                    "total": { "type": "number" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
                   },
-                  "required": ["accounts", "total"]
+                  "required": ["accounts", "total", "page", "limit"]
                 }
               }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
             }
           }
         }
@@ -106,7 +122,17 @@
         "summary": "List clients",
         "parameters": [
           { "name": "email", "in": "query", "schema": { "type": "string" } },
-          { "name": "name", "in": "query", "schema": { "type": "string" } }
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          }
         ],
         "operationId": "listClients",
         "responses": {
@@ -131,11 +157,19 @@
                         "required": ["id", "name", "email", "status"]
                       }
                     },
-                    "total": { "type": "number" }
+                    "total": { "type": "number" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
                   },
-                  "required": ["clients", "total"]
+                  "required": ["clients", "total", "page", "limit"]
                 }
               }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
             }
           }
         }
@@ -176,7 +210,17 @@
         "summary": "List invoices",
         "parameters": [
           { "name": "clientId", "in": "query", "schema": { "type": "string" } },
-          { "name": "status", "in": "query", "schema": { "type": "string" } }
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          }
         ],
         "operationId": "listInvoices",
         "responses": {
@@ -202,11 +246,19 @@
                         "required": ["id", "invoiceNumber", "status", "total", "issueDate"]
                       }
                     },
-                    "total": { "type": "number" }
+                    "total": { "type": "number" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
                   },
-                  "required": ["invoices", "total"]
+                  "required": ["invoices", "total", "page", "limit"]
                 }
               }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
             }
           }
         }
@@ -252,5 +304,17 @@
     {
       "url": "http://localhost:3000"
     }
-  ]
+  ],
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        },
+        "required": ["message"]
+      }
+    }
+  }
 }

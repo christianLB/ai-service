@@ -1,0 +1,15 @@
+{
+  "name": "@ai/http-utils",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rimraf dist || true"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}

@@ -7,6 +7,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { env } from "@ai/config";
 import { randomUUID } from "crypto";
 import type { AiServicePaths } from "@ai/contracts";
+import { parsePagination } from "@ai/http-utils";
 
 const app = express();
 app.use(helmet());
@@ -108,6 +109,7 @@ app.get("/api/financial/clients", async (req, res) => {
   const email = typeof req.query.email === 'string' ? req.query.email : undefined;
   const name = typeof req.query.name === 'string' ? req.query.name : undefined;
   try {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const where: Prisma.ClientWhereInput = {};
     if (email) where.email = { contains: email, mode: Prisma.QueryMode.insensitive };
     if (name) where.name = { contains: name, mode: Prisma.QueryMode.insensitive };
@@ -116,6 +118,8 @@ app.get("/api/financial/clients", async (req, res) => {
         where,
         orderBy: { createdAt: 'desc' },
         select: { id: true, name: true, email: true, status: true, createdAt: true },
+        skip,
+        take: limit,
       }),
       prisma.client.count({ where }),
     ]);
@@ -128,10 +132,14 @@ app.get("/api/financial/clients", async (req, res) => {
         createdAt: (r.createdAt as Date).toISOString(),
       })),
       total,
+      page,
+      limit,
     };
     res.json(body);
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    const e = err as Error & { statusCode?: number };
+    if (e.statusCode === 400) return res.status(400).json({ message: e.message });
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -157,7 +165,9 @@ app.get("/api/financial/clients/:id", async (req, res) => {
     };
     res.json(body);
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    const e = err as Error & { statusCode?: number };
+    if (e.statusCode === 400) return res.status(400).json({ message: e.message });
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -167,6 +177,8 @@ app.get("/api/financial/invoices", async (req, res) => {
   const clientId = typeof req.query.clientId === 'string' ? req.query.clientId : undefined;
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;
   try {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
+
     const where: Prisma.InvoiceWhereInput = {};
     if (clientId) where.clientId = clientId;
     if (status) where.status = status;
@@ -175,6 +187,8 @@ app.get("/api/financial/invoices", async (req, res) => {
         where,
         orderBy: { issueDate: 'desc' },
         select: { id: true, invoiceNumber: true, clientId: true, status: true, total: true, issueDate: true },
+        skip,
+        take: limit,
       }),
       prisma.invoice.count({ where }),
     ]);
@@ -188,10 +202,14 @@ app.get("/api/financial/invoices", async (req, res) => {
         issueDate: (r.issueDate as Date).toISOString().slice(0, 10),
       })),
       total,
+      page,
+      limit,
     };
     res.json(body);
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    const e = err as Error & { statusCode?: number };
+    if (e.statusCode === 400) return res.status(400).json({ message: e.message });
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -218,7 +236,9 @@ app.get("/api/financial/invoices/:id", async (req, res) => {
     };
     res.json(body);
   } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
+    const e = err as Error & { statusCode?: number };
+    if (e.statusCode === 400) return res.status(400).json({ message: e.message });
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -236,6 +256,8 @@ type ListAccounts200 = AiServicePaths["/api/financial/accounts"]["get"]["respons
 app.get("/api/financial/accounts", async (req, res) => {
   const provider = typeof req.query.provider === 'string' ? req.query.provider : undefined;
   try {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
+
     const whereClause = provider ? { institution: provider } : {};
     const [rows, total] = await Promise.all([
       prisma.accounts.findMany({
@@ -249,6 +271,8 @@ app.get("/api/financial/accounts", async (req, res) => {
           created_at: true,
           currencies: { select: { code: true } },
         },
+        skip,
+        take: limit,
       }),
       prisma.accounts.count({ where: whereClause }),
     ]);
@@ -263,6 +287,8 @@ app.get("/api/financial/accounts", async (req, res) => {
         createdAt: (r.created_at as Date).toISOString(),
       })),
       total,
+      page,
+      limit,
     };
     res.json(body);
   } catch (err) {
