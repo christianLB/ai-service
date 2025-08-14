@@ -7,6 +7,7 @@ RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 # Copy workspace files
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY tsconfig.json tsconfig.build.json ./
+COPY prisma ./prisma
 COPY packages ./packages
 COPY apps/financial-svc ./apps/financial-svc
 
