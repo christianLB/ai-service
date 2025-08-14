@@ -97,7 +97,7 @@ services:
     env_file: ../../.env
     environment:
       PORT: 3002
-      DATABASE_URL: postgres://postgres:postgres@db:5432/ai_service
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/ai_service
       REDIS_URL: redis://redis:6379
     depends_on:
       db:
@@ -129,7 +129,7 @@ services:
     environment:
       # Fallbacks if .env not provided
       PORT: 3000
-      DATABASE_URL: postgres://postgres:postgres@db:5432/ai_service
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/ai_service
       REDIS_URL: redis://redis:6379
       FINANCIAL_SVC_URL: http://financial-svc:3001
     ports:
@@ -154,7 +154,7 @@ services:
     env_file: ../../.env
     environment:
       PORT: 3001
-      DATABASE_URL: postgres://postgres:postgres@db:5432/ai_service
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/ai_service
       REDIS_URL: redis://redis:6379
     depends_on:
       db:
