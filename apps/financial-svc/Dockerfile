@@ -16,6 +16,7 @@ COPY tsconfig.json tsconfig.build.json ./
 COPY prisma ./prisma
 COPY packages ./packages
 COPY apps/financial-svc ./apps/financial-svc
+COPY apps/financial-svc/entrypoint.sh ./apps/financial-svc/entrypoint.sh
 
 # Install deps at root to leverage workspace
 RUN pnpm install --frozen-lockfile
@@ -28,13 +29,19 @@ RUN pnpm --filter @ai/config build \
 # Create a self-contained deploy directory without workspace symlinks
 RUN mkdir -p ./apps/financial-svc/deploy \
  && pnpm --filter financial-svc deploy ./apps/financial-svc/deploy --prod --legacy
+RUN cp ./apps/financial-svc/entrypoint.sh ./apps/financial-svc/deploy/entrypoint.sh \
+ && chmod +x ./apps/financial-svc/deploy/entrypoint.sh
 
 # --- Runtime image (slim, self-contained) ---
 FROM node:22-alpine
 ENV NODE_ENV=production
 WORKDIR /app/apps/financial-svc/deploy
 
+# Runtime deps required for Prisma engines on Alpine as well
+RUN apk add --no-cache openssl libc6-compat
+
 # Copy only the deployed artifact
 COPY --from=base /app/apps/financial-svc/deploy .
+COPY --from=base /app/prisma /app/prisma
 
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["sh", "/app/apps/financial-svc/deploy/entrypoint.sh"]
