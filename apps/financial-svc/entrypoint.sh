@@ -6,7 +6,17 @@ SCHEMA_PATH="/app/prisma/schema.prisma"
 RETRIES=${RETRIES:-60}
 SLEEP=${SLEEP:-2}
 
-echo "[financial-svc] entrypoint: applying Prisma migrations before start"
+echo "[financial-svc] entrypoint: generating Prisma client and applying migrations before start"
+
+# Generate Prisma client (idempotent). This ensures node_modules/.prisma/client exists in runtime image
+if ! npx prisma generate --schema "$SCHEMA_PATH"; then
+  echo "[financial-svc] WARNING: prisma generate failed once, retrying in ${SLEEP}s..."
+  sleep "$SLEEP"
+  npx prisma generate --schema "$SCHEMA_PATH" || {
+    echo "[financial-svc] ERROR: prisma generate failed" >&2
+    exit 1
+  }
+fi
 
 # Try to apply migrations until it succeeds or retries exhausted
 i=0
