@@ -4,6 +4,12 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 
+# Avoid Git hooks during CI/container builds
+ENV HUSKY=0 CI=true NPM_CONFIG_FUND=false
+
+# System deps required for Prisma on Alpine (openssl, libc compat)
+RUN apk add --no-cache openssl libc6-compat
+
 # Copy workspace files
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY tsconfig.json tsconfig.build.json ./
@@ -14,8 +20,10 @@ COPY apps/financial-svc ./apps/financial-svc
 # Install deps at root to leverage workspace
 RUN pnpm install --frozen-lockfile
 
-# Build shared config and the service
-RUN pnpm --filter @ai/config build && pnpm --filter financial-svc build
+# Build shared packages and the service (ensure contracts are built)
+RUN pnpm --filter @ai/config build \
+ && pnpm --filter @ai/contracts build \
+ && pnpm --filter financial-svc build
 
 # Create a self-contained deploy directory without workspace symlinks
 RUN mkdir -p ./apps/financial-svc/deploy \
