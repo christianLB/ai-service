@@ -100,6 +100,148 @@
           }
         }
       }
+    },
+    "/api/financial/clients": {
+      "get": {
+        "summary": "List clients",
+        "parameters": [
+          { "name": "email", "in": "query", "schema": { "type": "string" } },
+          { "name": "name", "in": "query", "schema": { "type": "string" } }
+        ],
+        "operationId": "listClients",
+        "responses": {
+          "200": {
+            "description": "200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clients": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "name": { "type": "string" },
+                          "email": { "type": "string" },
+                          "status": { "type": "string" },
+                          "createdAt": { "type": "string", "format": "date-time" }
+                        },
+                        "required": ["id", "name", "email", "status"]
+                      }
+                    },
+                    "total": { "type": "number" }
+                  },
+                  "required": ["clients", "total"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/financial/clients/{id}": {
+      "get": {
+        "summary": "Get client by id",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "operationId": "getClientById",
+        "responses": {
+          "200": {
+            "description": "200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "email": { "type": "string" },
+                    "status": { "type": "string" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                  },
+                  "required": ["id", "name", "email", "status"]
+                }
+              }
+            }
+          },
+          "404": { "description": "Not Found" }
+        }
+      }
+    },
+    "/api/financial/invoices": {
+      "get": {
+        "summary": "List invoices",
+        "parameters": [
+          { "name": "clientId", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } }
+        ],
+        "operationId": "listInvoices",
+        "responses": {
+          "200": {
+            "description": "200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invoices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "invoiceNumber": { "type": "string" },
+                          "clientId": { "type": "string" },
+                          "status": { "type": "string" },
+                          "total": { "type": "number" },
+                          "issueDate": { "type": "string", "format": "date" }
+                        },
+                        "required": ["id", "invoiceNumber", "status", "total", "issueDate"]
+                      }
+                    },
+                    "total": { "type": "number" }
+                  },
+                  "required": ["invoices", "total"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/financial/invoices/{id}": {
+      "get": {
+        "summary": "Get invoice by id",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "operationId": "getInvoiceById",
+        "responses": {
+          "200": {
+            "description": "200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "invoiceNumber": { "type": "string" },
+                    "clientId": { "type": "string" },
+                    "status": { "type": "string" },
+                    "total": { "type": "number" },
+                    "issueDate": { "type": "string", "format": "date" }
+                  },
+                  "required": ["id", "invoiceNumber", "status", "total", "issueDate"]
+                }
+              }
+            }
+          },
+          "404": { "description": "Not Found" }
+        }
+      }
     }
   },
   "info": {

@@ -57,6 +57,126 @@ app.get("/health/ready", async (_req, res) => {
   }
 });
 
+// Clients: list
+type ListClients200 = AiServicePaths["/api/financial/clients"]["get"]["responses"][200]["content"]["application/json"];
+app.get("/api/financial/clients", async (req, res) => {
+  const email = typeof req.query.email === 'string' ? req.query.email : undefined;
+  const name = typeof req.query.name === 'string' ? req.query.name : undefined;
+  try {
+    const where: any = {};
+    if (email) where.email = { contains: email, mode: 'insensitive' as const };
+    if (name) where.name = { contains: name, mode: 'insensitive' as const };
+    const [rows, total] = await Promise.all([
+      prisma.client.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, email: true, status: true, createdAt: true },
+      }),
+      prisma.client.count({ where }),
+    ]);
+    const body: ListClients200 = {
+      clients: rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        status: r.status,
+        createdAt: (r.createdAt as Date).toISOString(),
+      })),
+      total,
+    };
+    res.json(body);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: (err as Error).message });
+  }
+});
+
+// Clients: get by id
+type GetClient200 = AiServicePaths["/api/financial/clients/{id}"]["get"]["responses"][200]["content"]["application/json"];
+app.get("/api/financial/clients/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    const r = await prisma.client.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true, status: true, createdAt: true },
+    });
+    if (!r) {
+      res.status(404).json({ ok: false, error: "Not found" });
+      return;
+    }
+    const body: GetClient200 = {
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      status: r.status,
+      createdAt: (r.createdAt as Date).toISOString(),
+    };
+    res.json(body);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: (err as Error).message });
+  }
+});
+
+// Invoices: list
+type ListInvoices200 = AiServicePaths["/api/financial/invoices"]["get"]["responses"][200]["content"]["application/json"];
+app.get("/api/financial/invoices", async (req, res) => {
+  const clientId = typeof req.query.clientId === 'string' ? req.query.clientId : undefined;
+  const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+  try {
+    const where: any = {};
+    if (clientId) where.clientId = clientId;
+    if (status) where.status = status;
+    const [rows, total] = await Promise.all([
+      prisma.invoice.findMany({
+        where,
+        orderBy: { issueDate: 'desc' },
+        select: { id: true, invoiceNumber: true, clientId: true, status: true, total: true, issueDate: true },
+      }),
+      prisma.invoice.count({ where }),
+    ]);
+    const body: ListInvoices200 = {
+      invoices: rows.map(r => ({
+        id: r.id,
+        invoiceNumber: r.invoiceNumber,
+        clientId: r.clientId ?? undefined,
+        status: r.status,
+        total: Number(r.total),
+        issueDate: (r.issueDate as Date).toISOString().slice(0, 10),
+      })),
+      total,
+    };
+    res.json(body);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: (err as Error).message });
+  }
+});
+
+// Invoices: get by id
+type GetInvoice200 = AiServicePaths["/api/financial/invoices/{id}"]["get"]["responses"][200]["content"]["application/json"];
+app.get("/api/financial/invoices/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    const r = await prisma.invoice.findUnique({
+      where: { id },
+      select: { id: true, invoiceNumber: true, clientId: true, status: true, total: true, issueDate: true },
+    });
+    if (!r) {
+      res.status(404).json({ ok: false, error: "Not found" });
+      return;
+    }
+    const body: GetInvoice200 = {
+      id: r.id,
+      invoiceNumber: r.invoiceNumber,
+      clientId: r.clientId ?? undefined,
+      status: r.status,
+      total: Number(r.total),
+      issueDate: (r.issueDate as Date).toISOString().slice(0, 10),
+    };
+    res.json(body);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: (err as Error).message });
+  }
+});
+
 app.get("/metrics", async (_req, res) => {
   try {
     res.set("Content-Type", register.contentType);
