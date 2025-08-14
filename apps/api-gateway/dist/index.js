@@ -34,6 +34,88 @@ app.get("/api/financial/accounts/:id", async (req, res) => {
         res.status(502).json({ ok: false, error: err.message });
     }
 });
+app.get("/api/financial/clients", async (req, res) => {
+    const email = typeof req.query.email === 'string' ? req.query.email : undefined;
+    const name = typeof req.query.name === 'string' ? req.query.name : undefined;
+    const pageStr = typeof req.query.page === 'string' ? req.query.page : undefined;
+    const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+    const page = pageStr ? parseInt(pageStr, 10) : undefined;
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    try {
+        const query = (email || name || page || limit)
+            ? { ...(email ? { email } : {}), ...(name ? { name } : {}), ...(page != null ? { page } : {}), ...(limit != null ? { limit } : {}) }
+            : undefined;
+        const result = await financialClient.GET("/api/financial/clients", {
+            params: { query },
+        });
+        if (result.error) {
+            res.status(502).json({ ok: false });
+            return;
+        }
+        const data = result.data;
+        res.json(data ?? { clients: [], total: 0 });
+    }
+    catch (err) {
+        res.status(502).json({ ok: false, error: err.message });
+    }
+});
+app.get("/api/financial/clients/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        const result = await financialClient.GET("/api/financial/clients/{id}", {
+            params: { path: { id } },
+        });
+        if (result.error) {
+            res.status(502).json({ ok: false });
+            return;
+        }
+        res.json(result.data ?? null);
+    }
+    catch (err) {
+        res.status(502).json({ ok: false, error: err.message });
+    }
+});
+app.get("/api/financial/invoices", async (req, res) => {
+    const clientId = typeof req.query.clientId === 'string' ? req.query.clientId : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const pageStr = typeof req.query.page === 'string' ? req.query.page : undefined;
+    const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+    const page = pageStr ? parseInt(pageStr, 10) : undefined;
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    try {
+        const query = (clientId || status || page || limit)
+            ? { ...(clientId ? { clientId } : {}), ...(status ? { status } : {}), ...(page != null ? { page } : {}), ...(limit != null ? { limit } : {}) }
+            : undefined;
+        const result = await financialClient.GET("/api/financial/invoices", {
+            params: { query },
+        });
+        if (result.error) {
+            res.status(502).json({ ok: false });
+            return;
+        }
+        const data = result.data;
+        res.json(data ?? { invoices: [], total: 0 });
+    }
+    catch (err) {
+        res.status(502).json({ ok: false, error: err.message });
+    }
+});
+app.get("/api/financial/invoices/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        const result = await financialClient.GET("/api/financial/invoices/{id}", {
+            params: { path: { id } },
+        });
+        if (result.error) {
+            res.status(502).json({ ok: false });
+            return;
+        }
+        res.json(result.data ?? null);
+    }
+    catch (err) {
+        res.status(502).json({ ok: false, error: err.message });
+    }
+});
 // DB and Redis clients
 const pool = new pg_1.Pool({ connectionString: config_1.env.DATABASE_URL });
 const redis = new ioredis_1.default(config_1.env.REDIS_URL);
@@ -63,9 +145,13 @@ const financialSvcBase = process.env.FINANCIAL_SVC_URL || "http://financial-svc:
 const financialClient = (0, contracts_1.createAiServiceClient)(financialSvcBase);
 app.get("/api/financial/accounts", async (req, res) => {
     const provider = typeof req.query.provider === 'string' ? req.query.provider : undefined;
+    const pageStr = typeof req.query.page === 'string' ? req.query.page : undefined;
+    const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+    const page = pageStr ? parseInt(pageStr, 10) : undefined;
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
     try {
         const result = await financialClient.GET("/api/financial/accounts", {
-            params: { query: provider ? { provider } : undefined },
+            params: { query: (provider || page != null || limit != null) ? { ...(provider ? { provider } : {}), ...(page != null ? { page } : {}), ...(limit != null ? { limit } : {}) } : undefined },
         });
         if (result.error) {
             res.status(502).json({ ok: false });

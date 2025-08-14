@@ -99,6 +99,42 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
+      - name: Smoke - accounts pagination valid
+        run: |
+          set -e
+          resp=$(curl -sf "http://localhost:3005/api/financial/accounts?page=2&limit=1")
+          echo "$resp" | jq -e '.page == 2 and .limit == 1' >/dev/null
+
+      - name: Smoke - accounts pagination invalid (page=0)
+        run: |
+          set -e
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3005/api/financial/accounts?page=0&limit=10")
+          test "$code" = "400"
+
+      - name: Smoke - clients pagination valid
+        run: |
+          set -e
+          resp=$(curl -sf "http://localhost:3005/api/financial/clients?page=1&limit=2")
+          echo "$resp" | jq -e '.page == 1 and .limit == 2 and (.clients | type == "array")' >/dev/null
+
+      - name: Smoke - clients pagination invalid (limit=0)
+        run: |
+          set -e
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3005/api/financial/clients?page=1&limit=0")
+          test "$code" = "400"
+
+      - name: Smoke - invoices pagination valid
+        run: |
+          set -e
+          resp=$(curl -sf "http://localhost:3005/api/financial/invoices?page=1&limit=1")
+          echo "$resp" | jq -e '.page == 1 and .limit == 1 and (.invoices | type == "array")' >/dev/null
+
+      - name: Smoke - invoices pagination invalid (page=0)
+        run: |
+          set -e
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3005/api/financial/invoices?page=0&limit=10")
+          test "$code" = "400"
+
       - name: Smoke - get account by id (skip if none)
         run: |
           set -e

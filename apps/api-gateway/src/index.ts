@@ -40,9 +40,15 @@ type ListClients200 = AiServicePaths["/api/financial/clients"]["get"]["responses
 app.get("/api/financial/clients", async (req, res) => {
   const email = typeof req.query.email === 'string' ? req.query.email : undefined;
   const name = typeof req.query.name === 'string' ? req.query.name : undefined;
+  const pageStr = typeof req.query.page === 'string' ? req.query.page : undefined;
+  const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+  const page = pageStr ? parseInt(pageStr, 10) : undefined;
+  const limit = limitStr ? parseInt(limitStr, 10) : undefined;
   try {
-    type ClientsQuery = { email?: string; name?: string };
-    const query: ClientsQuery | undefined = email || name ? { ...(email ? { email } : {}), ...(name ? { name } : {}) } : undefined;
+    type ClientsQuery = { email?: string; name?: string; page?: number; limit?: number };
+    const query: ClientsQuery | undefined = (email || name || page || limit)
+      ? { ...(email ? { email } : {}), ...(name ? { name } : {}), ...(page != null ? { page } : {}), ...(limit != null ? { limit } : {}) }
+      : undefined;
     const result = await financialClient.GET("/api/financial/clients" as const, {
       params: { query },
     });
@@ -80,9 +86,15 @@ type ListInvoices200 = AiServicePaths["/api/financial/invoices"]["get"]["respons
 app.get("/api/financial/invoices", async (req, res) => {
   const clientId = typeof req.query.clientId === 'string' ? req.query.clientId : undefined;
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+  const pageStr = typeof req.query.page === 'string' ? req.query.page : undefined;
+  const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+  const page = pageStr ? parseInt(pageStr, 10) : undefined;
+  const limit = limitStr ? parseInt(limitStr, 10) : undefined;
   try {
-    type InvoicesQuery = { clientId?: string; status?: string };
-    const query: InvoicesQuery | undefined = clientId || status ? { ...(clientId ? { clientId } : {}), ...(status ? { status } : {}) } : undefined;
+    type InvoicesQuery = { clientId?: string; status?: string; page?: number; limit?: number };
+    const query: InvoicesQuery | undefined = (clientId || status || page || limit)
+      ? { ...(clientId ? { clientId } : {}), ...(status ? { status } : {}), ...(page != null ? { page } : {}), ...(limit != null ? { limit } : {}) }
+      : undefined;
     const result = await financialClient.GET("/api/financial/invoices" as const, {
       params: { query },
     });
@@ -149,9 +161,13 @@ const financialClient = createAiServiceClient(financialSvcBase);
 
 app.get("/api/financial/accounts", async (req, res) => {
   const provider = typeof req.query.provider === 'string' ? req.query.provider : undefined;
+  const pageStr = typeof req.query.page === 'string' ? req.query.page : undefined;
+  const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+  const page = pageStr ? parseInt(pageStr, 10) : undefined;
+  const limit = limitStr ? parseInt(limitStr, 10) : undefined;
   try {
     const result = await financialClient.GET("/api/financial/accounts" as const, {
-      params: { query: provider ? { provider } : undefined },
+      params: { query: (provider || page != null || limit != null) ? { ...(provider ? { provider } : {}), ...(page != null ? { page } : {}), ...(limit != null ? { limit } : {}) } : undefined },
     });
     if (result.error) {
       res.status(502).json({ ok: false });

@@ -287,7 +287,10 @@ app.get("/api/financial/accounts", async (req, res) => {
         res.json(body);
     }
     catch (err) {
-        res.status(500).json({ ok: false, error: err.message });
+        const e = err;
+        if (e.statusCode === 400)
+            return res.status(400).json({ message: e.message });
+        res.status(500).json({ ok: false, error: e.message });
     }
 });
 app.get("/api/financial/accounts/:id", async (req, res) => {
