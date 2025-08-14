@@ -57,7 +57,7 @@ app.get("/api/financial/clients", async (req, res) => {
       return;
     }
     const data = result.data as ListClients200 | undefined;
-    res.json(data ?? { clients: [], total: 0 });
+    res.json(data ?? { clients: [], total: 0, page: 1, limit: 20 });
   } catch (err) {
     res.status(502).json({ ok: false, error: (err as Error).message });
   }
@@ -103,7 +103,7 @@ app.get("/api/financial/invoices", async (req, res) => {
       return;
     }
     const data = result.data as ListInvoices200 | undefined;
-    res.json(data ?? { invoices: [], total: 0 });
+    res.json(data ?? { invoices: [], total: 0, page: 1, limit: 20 });
   } catch (err) {
     res.status(502).json({ ok: false, error: (err as Error).message });
   }
@@ -174,7 +174,7 @@ app.get("/api/financial/accounts", async (req, res) => {
       return;
     }
     const data = result.data as ListAccounts200 | undefined;
-    res.json(data ?? { accounts: [], total: 0 });
+    res.json(data ?? { accounts: [], total: 0, page: 1, limit: 20 });
   } catch (err) {
     res.status(502).json({ ok: false, error: (err as Error).message });
   }
