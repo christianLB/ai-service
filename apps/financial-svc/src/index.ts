@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import client from "prom-client";
-import { Pool } from "pg";
 import Redis from "ioredis";
+import { PrismaClient } from "@prisma/client";
 import { env } from "@ai/config";
 import { randomUUID } from "crypto";
 import type { AiServicePaths } from "@ai/contracts";
@@ -18,21 +18,25 @@ const register = new client.Registry();
 client.collectDefaultMetrics({ register });
 
 // DB and Redis clients
-const pool = new Pool({ connectionString: env.DATABASE_URL });
+const prisma = new PrismaClient();
 const redis = new Redis(env.REDIS_URL);
 
 // Dev-only seed: ensure at least one account exists in financial.accounts for smoke tests
 async function ensureDevSeed() {
   if (process.env.NODE_ENV === 'production') return;
   try {
-    const count = await pool.query(`SELECT COUNT(*)::int AS total FROM financial.accounts`);
-    const total = (count.rows[0]?.total as number) ?? 0;
+    const total = await prisma.accounts.count();
     if (total === 0) {
-      await pool.query(
-        `INSERT INTO financial.accounts (id, account_id, name, type, institution, created_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [randomUUID(), `acc_${Date.now()}`, "FinSvc Demo Account", "checking", "demo"]
-      );
+      await prisma.accounts.create({
+        data: {
+          id: randomUUID(),
+          account_id: `acc_${Date.now()}`,
+          name: "FinSvc Demo Account",
+          type: "checking",
+          institution: "demo",
+          created_at: new Date(),
+        },
+      });
     }
   } catch (e) {
     console.error("[financial-svc] ensureDevSeed error", e);
@@ -45,7 +49,7 @@ app.get("/health/live", (_req, res) => {
 
 app.get("/health/ready", async (_req, res) => {
   try {
-    await pool.query("SELECT 1");
+    await prisma.$queryRawUnsafe("SELECT 1");
     await redis.ping();
     res.json({ ok: true });
   } catch (err) {
@@ -67,35 +71,33 @@ type ListAccounts200 = AiServicePaths["/api/financial/accounts"]["get"]["respons
 app.get("/api/financial/accounts", async (req, res) => {
   const provider = typeof req.query.provider === 'string' ? req.query.provider : undefined;
   try {
-    const params: string[] = [];
-    const where = provider ? (params.push(provider), `WHERE a.institution = $${params.length}`) : '';
-    const rows = await pool.query(
-      `SELECT a.id::text,
-              a.institution AS provider,
-              a.name,
-              a.iban,
-              COALESCE(c.code, 'USD') AS currency,
-              a.created_at
-       FROM financial.accounts a
-       LEFT JOIN financial.currencies c ON c.id = a.currency_id
-       ${where}
-       ORDER BY a.created_at DESC`,
-      params
-    );
-    const count = await pool.query(
-      `SELECT COUNT(*)::int AS total FROM financial.accounts a ${where}`,
-      params
-    );
+    const whereClause = provider ? { institution: provider } : {};
+    const [rows, total] = await Promise.all([
+      prisma.accounts.findMany({
+        where: whereClause,
+        orderBy: { created_at: "desc" },
+        select: {
+          id: true,
+          institution: true,
+          name: true,
+          iban: true,
+          created_at: true,
+          currencies: { select: { code: true } },
+        },
+      }),
+      prisma.accounts.count({ where: whereClause }),
+    ]);
+
     const body: ListAccounts200 = {
-      accounts: rows.rows.map(r => ({
+      accounts: rows.map((r) => ({
         id: r.id,
-        provider: r.provider,
+        provider: r.institution ?? "unknown",
         name: r.name,
         iban: r.iban ?? undefined,
-        currency: r.currency,
+        currency: r.currencies?.code ?? "USD",
         createdAt: (r.created_at as Date).toISOString(),
       })),
-      total: (count.rows[0]?.total as number) ?? 0,
+      total,
     };
     res.json(body);
   } catch (err) {
@@ -108,30 +110,27 @@ type GetAccount200 = AiServicePaths["/api/financial/accounts/{id}"]["get"]["resp
 app.get("/api/financial/accounts/:id", async (req, res) => {
   const id = req.params.id;
   try {
-    const q = await pool.query(
-      `SELECT a.id::text,
-              a.institution AS provider,
-              a.name,
-              a.iban,
-              COALESCE(c.code, 'USD') AS currency,
-              a.created_at
-       FROM financial.accounts a
-       LEFT JOIN financial.currencies c ON c.id = a.currency_id
-       WHERE a.id = $1
-       LIMIT 1`,
-      [id]
-    );
-    if (q.rowCount === 0) {
+    const r = await prisma.accounts.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        institution: true,
+        name: true,
+        iban: true,
+        created_at: true,
+        currencies: { select: { code: true } },
+      },
+    });
+    if (!r) {
       res.status(404).json({ ok: false, error: "Not found" });
       return;
     }
-    const r = q.rows[0];
     const body: GetAccount200 = {
       id: r.id,
-      provider: r.provider,
+      provider: r.institution ?? "unknown",
       name: r.name,
       iban: r.iban ?? undefined,
-      currency: r.currency,
+      currency: r.currencies?.code ?? "USD",
       createdAt: (r.created_at as Date).toISOString(),
     };
     res.json(body);

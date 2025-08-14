@@ -334,6 +334,9 @@ importers:
       '@ai/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@ai/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -392,6 +395,12 @@ importers:
       '@ai/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@ai/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@prisma/client':
+        specifier: ^6.12.0
+        version: 6.13.0(prisma@6.13.0(typescript@5.9.2))(typescript@5.9.2)
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -404,9 +413,9 @@ importers:
       ioredis:
         specifier: ^5.7.0
         version: 5.7.0
-      pg:
-        specifier: ^8.12.0
-        version: 8.16.3
+      prisma:
+        specifier: ^6.12.0
+        version: 6.13.0(typescript@5.9.2)
       prom-client:
         specifier: ^15.1.2
         version: 15.1.3

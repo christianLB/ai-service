@@ -10,6 +10,7 @@ const prom_client_1 = __importDefault(require("prom-client"));
 const pg_1 = require("pg");
 const ioredis_1 = __importDefault(require("ioredis"));
 const config_1 = require("@ai/config");
+const contracts_1 = require("@ai/contracts");
 const app = (0, express_1.default)();
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)());
@@ -17,6 +18,22 @@ app.use(express_1.default.json());
 // Metrics
 const register = new prom_client_1.default.Registry();
 prom_client_1.default.collectDefaultMetrics({ register });
+app.get("/api/financial/accounts/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        const result = await financialClient.GET("/api/financial/accounts/{id}", {
+            params: { path: { id } },
+        });
+        if (result.error) {
+            res.status(502).json({ ok: false });
+            return;
+        }
+        res.json(result.data ?? null);
+    }
+    catch (err) {
+        res.status(502).json({ ok: false, error: err.message });
+    }
+});
 // DB and Redis clients
 const pool = new pg_1.Pool({ connectionString: config_1.env.DATABASE_URL });
 const redis = new ioredis_1.default(config_1.env.REDIS_URL);
@@ -42,8 +59,26 @@ app.get("/metrics", async (_req, res) => {
         res.status(500).end(String(err));
     }
 });
+const financialSvcBase = process.env.FINANCIAL_SVC_URL || "http://financial-svc:3001";
+const financialClient = (0, contracts_1.createAiServiceClient)(financialSvcBase);
+app.get("/api/financial/accounts", async (req, res) => {
+    const provider = typeof req.query.provider === 'string' ? req.query.provider : undefined;
+    try {
+        const result = await financialClient.GET("/api/financial/accounts", {
+            params: { query: provider ? { provider } : undefined },
+        });
+        if (result.error) {
+            res.status(502).json({ ok: false });
+            return;
+        }
+        const data = result.data;
+        res.json(data ?? { accounts: [], total: 0 });
+    }
+    catch (err) {
+        res.status(502).json({ ok: false, error: err.message });
+    }
+});
 const port = config_1.env.PORT || 3000;
 app.listen(port, () => {
-    // eslint-disable-next-line no-console
     console.log(`[api-gateway] listening on :${port}`);
 });
