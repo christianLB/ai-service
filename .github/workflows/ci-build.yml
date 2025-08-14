@@ -68,11 +68,29 @@ jobs:
         run: |
           docker compose -f docker-compose.dev.yml up -d --build
 
+      - name: Show compose status
+        run: |
+          docker compose -f infra/compose/docker-compose.dev.yml ps
+
       - name: Wait for gateway readiness
         run: |
           for i in {1..60}; do
             if curl -sf http://localhost:3005/health/ready > /dev/null; then
               echo "gateway ready"; exit 0; fi; sleep 2; done; echo "gateway not ready"; docker compose -f infra/compose/docker-compose.dev.yml logs api-gateway || true; exit 1
+
+      - name: On failure - dump failing container logs
+        if: failure()
+        run: |
+          echo "==== docker ps ===="
+          docker ps -a || true
+          echo "==== compose ps ===="
+          docker compose -f infra/compose/docker-compose.dev.yml ps || true
+          echo "==== financial-svc logs ===="
+          docker compose -f infra/compose/docker-compose.dev.yml logs financial-svc || true
+          echo "==== db logs ===="
+          docker compose -f infra/compose/docker-compose.dev.yml logs db || true
+          echo "==== gateway logs ===="
+          docker compose -f infra/compose/docker-compose.dev.yml logs api-gateway || true
 
       - name: Smoke - list accounts
         run: |
