@@ -14,14 +14,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Ensure pnpm exists before any step that might use pnpm (including setup-node cache)
+      - name: Ensure pnpm via Corepack (fallback)
+        run: corepack enable && corepack prepare pnpm@10.12.1 --activate
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'pnpm'
-
-      - name: Ensure pnpm via Corepack (fallback)
-        run: corepack enable && corepack prepare pnpm@10.12.1 --activate
+          # Remove pnpm cache usage here to avoid requiring pnpm in PATH during this step
+          # cache: 'pnpm'
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
