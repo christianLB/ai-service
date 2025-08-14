@@ -41,8 +41,10 @@ app.get("/api/financial/clients", async (req, res) => {
   const email = typeof req.query.email === 'string' ? req.query.email : undefined;
   const name = typeof req.query.name === 'string' ? req.query.name : undefined;
   try {
+    type ClientsQuery = { email?: string; name?: string };
+    const query: ClientsQuery | undefined = email || name ? { ...(email ? { email } : {}), ...(name ? { name } : {}) } : undefined;
     const result = await financialClient.GET("/api/financial/clients" as const, {
-      params: { query: { ...(email ? { email } : {}), ...(name ? { name } : {}) } as any },
+      params: { query },
     });
     if (result.error) {
       res.status(502).json({ ok: false });
@@ -79,8 +81,10 @@ app.get("/api/financial/invoices", async (req, res) => {
   const clientId = typeof req.query.clientId === 'string' ? req.query.clientId : undefined;
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;
   try {
+    type InvoicesQuery = { clientId?: string; status?: string };
+    const query: InvoicesQuery | undefined = clientId || status ? { ...(clientId ? { clientId } : {}), ...(status ? { status } : {}) } : undefined;
     const result = await financialClient.GET("/api/financial/invoices" as const, {
-      params: { query: { ...(clientId ? { clientId } : {}), ...(status ? { status } : {}) } as any },
+      params: { query },
     });
     if (result.error) {
       res.status(502).json({ ok: false });

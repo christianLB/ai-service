@@ -3,7 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import client from "prom-client";
 import Redis from "ioredis";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { env } from "@ai/config";
 import { randomUUID } from "crypto";
 import type { AiServicePaths } from "@ai/contracts";
@@ -38,6 +38,51 @@ async function ensureDevSeed() {
         },
       });
     }
+    // Ensure a demo user exists (required by Client.userId and Invoice.userId)
+    let demoUser = await prisma.user.findFirst({ where: { email: "demo.user@local.test" } });
+    if (!demoUser) {
+      demoUser = await prisma.user.create({
+        data: {
+          email: "demo.user@local.test",
+          password_hash: "dev-only",
+          full_name: "Demo User",
+        },
+      });
+    }
+
+    const clients = await prisma.client.count();
+    if (clients === 0) {
+      const c = await prisma.client.create({
+        data: {
+          id: randomUUID(),
+          name: "Acme Corp",
+          email: `demo.client@acme.test`,
+          taxId: "TAX-DEMO-0001",
+          status: "active",
+          userId: demoUser.id,
+          createdAt: new Date(),
+        },
+      });
+      const invoices = await prisma.invoice.count();
+      if (invoices === 0) {
+        const issueDate = new Date();
+        const dueDate = new Date(issueDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        await prisma.invoice.create({
+          data: {
+            id: randomUUID(),
+            invoiceNumber: `INV-${Date.now()}`,
+            clientId: c.id,
+            clientName: c.name,
+            clientTaxId: c.taxId,
+            status: "draft",
+            total: new Prisma.Decimal(100),
+            issueDate,
+            dueDate,
+            userId: demoUser.id,
+          },
+        });
+      }
+    }
   } catch (e) {
     console.error("[financial-svc] ensureDevSeed error", e);
   }
@@ -63,9 +108,9 @@ app.get("/api/financial/clients", async (req, res) => {
   const email = typeof req.query.email === 'string' ? req.query.email : undefined;
   const name = typeof req.query.name === 'string' ? req.query.name : undefined;
   try {
-    const where: any = {};
-    if (email) where.email = { contains: email, mode: 'insensitive' as const };
-    if (name) where.name = { contains: name, mode: 'insensitive' as const };
+    const where: Prisma.ClientWhereInput = {};
+    if (email) where.email = { contains: email, mode: Prisma.QueryMode.insensitive };
+    if (name) where.name = { contains: name, mode: Prisma.QueryMode.insensitive };
     const [rows, total] = await Promise.all([
       prisma.client.findMany({
         where,
@@ -122,7 +167,7 @@ app.get("/api/financial/invoices", async (req, res) => {
   const clientId = typeof req.query.clientId === 'string' ? req.query.clientId : undefined;
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;
   try {
-    const where: any = {};
+    const where: Prisma.InvoiceWhereInput = {};
     if (clientId) where.clientId = clientId;
     if (status) where.status = status;
     const [rows, total] = await Promise.all([
