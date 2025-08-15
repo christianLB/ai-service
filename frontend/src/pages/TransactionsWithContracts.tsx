@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import { Card, Row, Col, Typography, Space, Button, Statistic, message } from 'antd';
-import type { TablePaginationConfig } from 'antd/es/table';
+// TODO: Restore when pagination is implemented
+// import type { TablePaginationConfig } from 'antd/es/table';
 import {
   TransactionOutlined,
   FilterOutlined,
@@ -10,7 +11,18 @@ import {
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { gatewayClient, handleApiError } from '../services/contractsApi';
-import type { Transaction, Account } from '../services/contractsApi';
+import type { Account } from '../services/contractsApi';
+
+// Define Transaction type locally since contractsApi doesn't export it
+// TODO: Uncomment when Transaction type is needed
+// interface Transaction {
+//   id: string;
+//   account_id: string;
+//   amount: number;
+//   description?: string;
+//   date: string;
+//   [key: string]: unknown;
+// }
 import { useWebSocket } from '../hooks/useWebSocket';
 // import TransactionsList from '../components/financial/transactions/TransactionsList';
 // import TransactionFilters from '../components/financial/transactions/TransactionFilters';
@@ -35,26 +47,28 @@ interface TransactionStats {
 
 const TransactionsWithContracts: FC = () => {
   const [searchParams] = useSearchParams();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // TODO: Uncomment when TransactionsList component is implemented
+  // const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<ITransactionFilters>({});
+  const [filters] = useState<ITransactionFilters>({}); // TODO: Add setFilters when filter functionality is implemented
   const [stats, setStats] = useState<TransactionStats>({
     totalCount: 0,
     totalIncome: 0,
     totalExpenses: 0,
     filteredCount: 0,
   });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [currentPage] = useState(1); // TODO: Add setCurrentPage when pagination is implemented
+  const [pageSize] = useState(20); // TODO: Add setPageSize when pagination is implemented
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [filtersVisible, setFiltersVisible] = useState(false);
-  const [pagination, setPagination] = useState<TablePaginationConfig>({
-    current: 1,
-    pageSize: 20,
-    total: 0,
-    showSizeChanger: true,
-    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} transactions`,
-  });
+  // TODO: Uncomment when pagination is implemented
+  // const [pagination, setPagination] = useState<TablePaginationConfig>({
+  //   current: 1,
+  //   pageSize: 20,
+  //   total: 0,
+  //   showSizeChanger: true,
+  //   showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} transactions`,
+  // });
 
   const { subscribe } = useWebSocket();
 
@@ -110,25 +124,26 @@ const TransactionsWithContracts: FC = () => {
       });
 
       if (result.data) {
+        // TODO: Uncomment when transactions state is restored
         // Map transactions with account names
-        const mappedTransactions = result.data.transactions.map((t: any) => ({
-          ...t,
-          accountName: accounts.find((a) => a.id === t.account_id)?.name,
-        }));
-
-        setTransactions(mappedTransactions);
+        // const mappedTransactions = result.data.transactions.map((t: Transaction) => ({
+        //   ...t,
+        //   accountName: accounts.find((a) => a.id === t.account_id)?.name,
+        // }));
+        // setTransactions(mappedTransactions);
         setStats({
           totalCount: result.data.total,
           totalIncome: result.data.stats?.totalIncome || 0,
           totalExpenses: result.data.stats?.totalExpenses || 0,
           filteredCount: result.data.total,
         });
-        setPagination((prev) => ({
-          ...prev,
-          total: result.data!.total,
-          current: result.data!.page,
-          pageSize: result.data!.limit,
-        }));
+        // TODO: Uncomment when pagination state is restored
+        // setPagination((prev) => ({
+        //   ...prev,
+        //   total: result.data!.total,
+        //   current: result.data!.page,
+        //   pageSize: result.data!.limit,
+        // }));
       } else if (result.error) {
         const apiError = handleApiError(result.error);
         message.error(apiError.message);
@@ -142,16 +157,18 @@ const TransactionsWithContracts: FC = () => {
   }, [currentPage, pageSize, filters, accounts]);
 
   // Handle pagination changes
-  const handleTableChange = (paginationConfig: TablePaginationConfig) => {
-    setCurrentPage(paginationConfig.current || 1);
-    setPageSize(paginationConfig.pageSize || 20);
-  };
+  // TODO: Uncomment when TransactionsList component is implemented
+  // const handleTableChange = (paginationConfig: TablePaginationConfig) => {
+  //   setCurrentPage(paginationConfig.current || 1);
+  //   setPageSize(paginationConfig.pageSize || 20);
+  // };
 
   // Handle filter changes
-  const handleFilterChange = (newFilters: ITransactionFilters) => {
-    setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
-  };
+  // TODO: Uncomment when TransactionFilters component is implemented
+  // const handleFilterChange = (newFilters: ITransactionFilters) => {
+  //   setFilters(newFilters);
+  //   setCurrentPage(1); // Reset to first page when filters change
+  // };
 
   // Handle export using typed contracts
   const handleExport = async (format: 'csv' | 'json' = 'csv') => {
@@ -213,7 +230,8 @@ const TransactionsWithContracts: FC = () => {
   useEffect(() => {
     const accountId = searchParams.get('accountId');
     if (accountId) {
-      setFilters((prev) => ({ ...prev, accountIds: [accountId] }));
+      // TODO: Uncomment when setFilters is restored
+      // setFilters((prev) => ({ ...prev, accountIds: [accountId] }));
     }
   }, [searchParams]);
 
@@ -328,7 +346,7 @@ const TransactionsWithContracts: FC = () => {
               {/* <TransactionFilters
                 accounts={accounts}
                 filters={filters}
-                onChange={handleFilterChange}
+                onChange={handleFilterChange} // TODO: Uncomment when function is restored
               /> */}
               <div>Filters component not implemented yet</div>
             </Card>
@@ -342,7 +360,7 @@ const TransactionsWithContracts: FC = () => {
               transactions={transactions}
               loading={loading}
               pagination={pagination}
-              onChange={handleTableChange}
+              onChange={handleTableChange} // TODO: Uncomment when function is restored
             /> */}
             <div>Transactions list component not implemented yet</div>
           </Card>
