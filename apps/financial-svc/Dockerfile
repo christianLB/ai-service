@@ -24,11 +24,11 @@ RUN pnpm install --frozen-lockfile
 # Build shared packages and the service (ensure contracts are built)
 RUN pnpm --filter @ai/config build \
  && pnpm --filter @ai/contracts build \
- && pnpm --filter financial-svc build
+ && pnpm --filter ./apps/financial-svc build
 
 # Create a self-contained deploy directory without workspace symlinks
 RUN mkdir -p ./apps/financial-svc/deploy \
- && pnpm --filter financial-svc deploy ./apps/financial-svc/deploy --prod --legacy
+ && pnpm --filter ./apps/financial-svc deploy ./apps/financial-svc/deploy --prod --legacy
 RUN cp ./apps/financial-svc/entrypoint.sh ./apps/financial-svc/deploy/entrypoint.sh \
  && chmod +x ./apps/financial-svc/deploy/entrypoint.sh
 

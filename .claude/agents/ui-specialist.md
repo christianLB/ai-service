@@ -1,20 +1,8 @@
 ---
 name: ui-specialist
-description: "Frontend development expert specializing in React, TypeScript, TanStack Query, Tailwind CSS, and responsive dashboard design"
-tools: file_read,file_write,terminal
-priority: medium
-environment: production
-patterns:
-  - "react"
-  - "component"
-  - "frontend"
-  - "ui"
-  - "dashboard"
-  - "tailwind"
-  - "responsive"
-  - "form"
-  - "table"
-  - "chart"
+description: Frontend development expert specializing in React, TypeScript, TanStack Query, Tailwind CSS, and responsive dashboard design
+tools: file_read, file_write, terminal
+model: opus
 ---
 
 # Frontend Development Specialist

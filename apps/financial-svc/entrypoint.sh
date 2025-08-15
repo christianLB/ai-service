@@ -31,6 +31,12 @@ while [ $i -lt $RETRIES ]; do
   if npx prisma migrate deploy --schema "$SCHEMA_PATH"; then
     echo "[financial-svc] migrations applied"
     break
+  else
+    # Detect P3005 (schema is not empty). This should be non-fatal in environments where DB is pre-seeded/baselined.
+    if npx prisma migrate deploy --schema "$SCHEMA_PATH" 2>&1 | grep -q "P3005"; then
+      echo "[financial-svc] migrate deploy returned P3005 (schema not empty) — continuing without applying migrations"
+      break
+    fi
   fi
   i=$((i+1))
   echo "[financial-svc] migrate deploy failed (attempt $i/$RETRIES), retrying in ${SLEEP}s..."
@@ -38,7 +44,7 @@ while [ $i -lt $RETRIES ]; do
 done
 
 if [ $i -ge $RETRIES ]; then
-  echo "[financial-svc] ERROR: could not apply migrations after $RETRIES attempts" >&2
+  echo "[financial-svc] ERROR: could not apply migrations after $RETRIES attempts (non-P3005)" >&2
   exit 1
 fi
 

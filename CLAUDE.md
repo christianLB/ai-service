@@ -202,6 +202,10 @@ This philosophy has been proven through real challenges (like achieving 100% Cod
 - `npm run typecheck` = 0 errors (not "mostly passing")
 - `npm run build` must succeed
 - "Works on my machine" isn't verification
+- **ENFORCEMENT**: Claude MUST spawn qa-specialist in parallel for EVERY code change
+- qa-specialist runs: typecheck, lint, build
+- If qa-specialist reports ANY issues → FIX before continuing
+- NO EXCEPTIONS - broken builds are unacceptable
 
 **5. Atomic, Complete Deliveries**
 - One cohesive solution, not fragments
@@ -262,6 +266,45 @@ UNDERSTAND COMPLETELY → PLAN SYSTEMICALLY → EXECUTE FULLY → VERIFY THOROUG
 ```
 
 **Remember**: This philosophy turned 5 failed security attempts into one complete success. Apply it to EVERY challenge.
+
+## 🚨 MANDATORY QUALITY GATES - NO EXCEPTIONS
+
+### BEFORE marking ANY task complete:
+1. **Run TypeScript check**: `npm run typecheck` MUST return 0 errors
+2. **Run ESLint**: `npm run lint` MUST pass without warnings  
+3. **Check unused imports**: No unused imports allowed
+4. **Ban 'any' types**: Replace ALL 'any' with proper types
+5. **Run build**: `npm run build` MUST succeed
+
+### PARALLEL QA EXECUTION (REQUIRED):
+When writing code, ALWAYS spawn qa-specialist in parallel:
+- Task 1: Main development work
+- Task 2: qa-specialist running lint/typecheck/build in parallel
+- NEVER mark complete until qa-specialist confirms clean build
+
+### FAILURE = INCOMPLETE
+If ANY of these fail, the task is NOT complete:
+- TypeScript errors > 0 → FIX IMMEDIATELY
+- ESLint warnings > 0 → FIX IMMEDIATELY  
+- Build fails → FIX IMMEDIATELY
+- Any 'any' types → REPLACE WITH PROPER TYPES
+- Unused imports → REMOVE IMMEDIATELY
+
+### Quality Check Commands:
+```bash
+# Backend quality checks
+npm run typecheck       # Must return 0 errors
+npm run lint           # Must pass without warnings
+npm run build          # Must succeed
+
+# Frontend quality checks  
+cd frontend && npm run typecheck  # Must return 0 errors
+cd frontend && npm run lint       # Must pass without warnings
+cd frontend && npm run build      # Must succeed
+
+# Parallel execution (ALWAYS use this):
+npm run typecheck & npm run lint & (cd frontend && npm run typecheck) & (cd frontend && npm run lint) & wait
+```
 
 ## 🔒 Critical Safety Rules
 
@@ -413,6 +456,22 @@ make claude-config        # Install Claude Code config
 
 **Location**: `/mcp-local/` - Complete local MCP implementation
 **Docs**: See `mcp-local/README.md` for detailed setup
+
+## ⚠️ CRITICAL INCIDENT - LESSON LEARNED (2025-08-15)
+
+**What happened**: During a push attempt, I saw TypeScript build errors and immediately tried to DELETE files (`git rm`) that were causing issues, without understanding that:
+- These were NEW files added as part of the feature being committed
+- The errors were due to missing dependencies, NOT bad code
+- Deleting files loses important work
+
+**The lesson**:
+- **NEVER DELETE FILES TO "FIX" BUILD ERRORS** - Understand the root cause first
+- **CHECK DEPENDENCIES FIRST** - Build errors often mean missing packages, not bad code
+- **PRESERVE WORK AT ALL COSTS** - User's code is sacred, never delete without explicit permission
+- **THINK BEFORE ACTING** - Quick "fixes" that delete code are NEVER the solution
+- **ADD MISSING DEPENDENCIES** - If imports fail, add the packages, don't delete the files
+
+This was completely unprofessional. The correct approach: Add missing dependencies, fix actual errors, preserve all work.
 
 ## ⚠️ CRITICAL INCIDENT - LESSON LEARNED (2025-07-30)
 

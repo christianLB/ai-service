@@ -15,10 +15,25 @@
 - **Dockerfiles de servicios**: usan patrón `pnpm deploy` con argumento posicional de directorio y flag `--legacy` requerido por pnpm v10 para despliegue no-inyectado; el runtime es autocontenido (sin symlinks de workspace).
 - **Módulos Node**: todas las apps usan `"type": "commonjs"` para alinear con salida CJS de TypeScript y evitar errores `exports is not defined` en ESM.
 
+### ✅ Completed Tasks
+
+#### Task 01 - Contracts and Shared Validation (Completed)
+
+- **packages/http-utils** enhanced with comprehensive validation utilities:
+  - `parsePagination` - Validates page/limit parameters with bounds (1-100)
+  - `formatError` - Standardizes error responses to match OpenAPI Error schema
+  - `validateRequest` - Zod-based middleware for body/query/params validation
+  - Additional utilities for date ranges, sorting, and paginated responses
+- **OpenAPI specifications** verified with pagination parameters and 400 error responses
+- **financial-svc** already uses parsePagination for all list endpoints (accounts, clients, invoices)
+- **api-gateway** properly propagates errors with status preservation and standardized shapes
+- **Contracts verified**: `pnpm contracts:check` passes with no drift
+- **Documentation**: Created comprehensive patterns guide at `/docs/CONTRACTS_AND_VALIDATION_PATTERNS.md`
+
 Próximos pasos inmediatos:
 
-1. Verificar salud de todos los servicios (gateway, dominios y workers) tras ajustes de build/runtime.
-2. OpenAPI SSOT por dominio + codegen en `packages/contracts` y chequeo de drift en CI.
+1. ~~OpenAPI SSOT por dominio + codegen en `packages/contracts` y chequeo de drift en CI.~~ ✅ Completed
+2. Verificar salud de todos los servicios (gateway, dominios y workers) tras ajustes de build/runtime.
 3. Baseline de colas (Redis/BullMQ) y FSM mínima de trading.
 
 ---

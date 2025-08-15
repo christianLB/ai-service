@@ -295,6 +295,54 @@ financial-backup: ## Backup financial data
 	@$(MAKE) -f Makefile.financial-sync financial-backup-prod
 
 # =============================================================================
+# 🔌 GATEWAY SHORTCUTS (DEV)
+# =============================================================================
+
+.PHONY: dev-build-gateway
+dev-build-gateway: ## Build api-gateway image (no cache)
+	@$(MAKE) -f Makefile.docker dev-build-gateway
+
+.PHONY: dev-up-gateway
+dev-up-gateway: ## Recreate api-gateway container
+	@$(MAKE) -f Makefile.docker dev-up-gateway
+
+.PHONY: dev-logs-gateway
+dev-logs-gateway: ## Tail api-gateway logs
+	@$(MAKE) -f Makefile.docker dev-logs-gateway
+
+.PHONY: dev-exec-gateway
+dev-exec-gateway: ## Exec into api-gateway container
+	@$(MAKE) -f Makefile.docker dev-exec-gateway
+
+.PHONY: dev-ready-gateway
+dev-ready-gateway: ## Wait for api-gateway readiness
+	@$(MAKE) -f Makefile.docker dev-ready-gateway
+
+# =============================================================================
+# 💸 FINANCIAL-SVC SHORTCUTS (DEV)
+# =============================================================================
+
+.PHONY: dev-build-financial
+dev-build-financial: ## Build financial-svc image (no cache)
+	@$(MAKE) -f Makefile.docker dev-build-financial
+
+.PHONY: dev-up-financial
+dev-up-financial: ## Recreate financial-svc container
+	@$(MAKE) -f Makefile.docker dev-up-financial
+
+.PHONY: dev-logs-financial
+dev-logs-financial: ## Tail financial-svc logs
+	@$(MAKE) -f Makefile.docker dev-logs-financial
+
+.PHONY: dev-exec-financial
+dev-exec-financial: ## Exec into financial-svc container
+	@$(MAKE) -f Makefile.docker dev-exec-financial
+
+.PHONY: dev-ready-financial
+dev-ready-financial: ## Wait for financial-svc readiness
+	@$(MAKE) -f Makefile.docker dev-ready-financial
+
+# =============================================================================
 # 🌐 MCP BRIDGE SHORTCUTS
 # =============================================================================
 

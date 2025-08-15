@@ -12,6 +12,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY tsconfig.json tsconfig.build.json ./
 COPY packages ./packages
 COPY apps/api-gateway ./apps/api-gateway
+# Bust cache: 2025-08-15-v2
 
 # Install deps at root to leverage workspace (avoid running root scripts)
 RUN pnpm install --frozen-lockfile
@@ -32,5 +33,10 @@ WORKDIR /app/apps/api-gateway/deploy
 
 # Copy only the deployed artifact
 COPY --from=base /app/apps/api-gateway/deploy .
+# Install runtime dependencies for entrypoint (psql, nc)
+RUN apk add --no-cache postgresql-client netcat-openbsd
+# Copy entrypoint script and make it executable
+COPY apps/api-gateway/entrypoint.sh /app/apps/api-gateway/deploy/entrypoint.sh
+RUN chmod +x /app/apps/api-gateway/deploy/entrypoint.sh
 
-CMD ["node", "dist/index.js"]
+CMD ["/app/apps/api-gateway/deploy/entrypoint.sh"]

@@ -1,18 +1,7 @@
 ---
 name: qa-specialist
-description: "Testing and quality assurance expert specializing in Jest, Supertest, E2E testing, and code quality metrics"
-tools: file_read,file_write,terminal
-priority: medium
-environment: production
-patterns:
-  - "test"
-  - "spec"
-  - "jest"
-  - "quality"
-  - "coverage"
-  - "e2e"
-  - "unit"
-  - "integration"
+description: Testing and quality assurance expert specializing in Jest, Supertest, E2E testing, and code quality metrics
+tools: file_read, file_write, terminal
 ---
 
 # Testing & Quality Specialist

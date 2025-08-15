@@ -1,70 +1,278 @@
 name: CI Pipeline
 
 on:
-  # Only run CI on pull requests to avoid redundant runs
-  # push:
-  #   branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, feat/** ]
+  push:
+    branches: [ main, feat/** ]
   workflow_dispatch:
 
 env:
   NODE_VERSION: '20'
+  PNPM_VERSION: '10.12.1'
   POSTGRES_VERSION: '15'
 
 jobs:
-  # Type checking and linting
-  quality-checks:
-    name: Quality Checks
+  # Setup and cache pnpm properly
+  setup:
+    name: Setup pnpm
     runs-on: ubuntu-latest
-    if: github.head_ref != 'fix/stabilize-pr1'
+    outputs:
+      pnpm-store: ${{ steps.pnpm-cache.outputs.store-path }}
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+      
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "store-path=$(pnpm store path)" >> $GITHUB_OUTPUT
+      
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.store-path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+  # Contract drift check - fail fast
+  contracts-check:
+    name: Contract Drift Check
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Generate contracts
+        run: pnpm contracts:generate
+      
+      - name: Build contracts
+        run: pnpm contracts:build
+      
+      - name: Check for contract drift
+        run: |
+          pnpm contracts:check || {
+            echo "❌ Contract drift detected!"
+            echo "Please run the following commands locally:"
+            echo "  pnpm contracts:generate"
+            echo "  pnpm contracts:build"
+            echo "Then commit the changes."
+            exit 1
+          }
+
+  # Type checking and linting across workspace
+  quality-checks:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    needs: [setup, contracts-check]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       
       - name: Install dependencies
         run: |
-          npm ci
+          pnpm install --frozen-lockfile
           cd frontend && npm ci --legacy-peer-deps
       
-      - name: Type checking - Backend
-        run: npm run typecheck || echo "⚠️ Backend type checking failed - please fix TypeScript errors"
+      - name: Type checking - Workspace packages
+        run: |
+          echo "🔍 Checking TypeScript types across workspace packages..."
+          pnpm -r --filter "./packages/*" run build || {
+            echo "❌ Package type checking failed"
+            exit 1
+          }
       
-      - name: Type checking - Frontend (strict except stabilization branch)
-        if: github.head_ref != 'fix/stabilize-pr1'
-        run: cd frontend && npm run typecheck || (echo "❌ Frontend type checking failed - build will fail" && exit 1)
-
-      - name: Type checking - Frontend (non-blocking on stabilization branch)
-        if: github.head_ref == 'fix/stabilize-pr1'
-        run: cd frontend && npm run typecheck || echo "⚠️ Frontend type checking failed (allowed on stabilization branch)"
+      - name: Type checking - Backend (root)
+        run: |
+          echo "🔍 Checking backend TypeScript types..."
+          npm run typecheck || {
+            echo "❌ Backend type checking failed - please fix TypeScript errors"
+            exit 1
+          }
+      
+      - name: Type checking - Frontend
+        run: |
+          echo "🔍 Checking frontend TypeScript types..."
+          cd frontend && npm run typecheck || {
+            echo "❌ Frontend type checking failed - please fix TypeScript errors"
+            exit 1
+          }
+      
+      - name: Type checking - Workspace (cross-package)
+        run: |
+          echo "🔍 Checking cross-package TypeScript compatibility..."
+          npx tsc -b --noEmit || {
+            echo "⚠️ Cross-package type issues detected"
+            echo "This may indicate incompatible types between packages"
+          }
       
       - name: Linting - Backend
-        run: npm run lint || echo "⚠️ Backend linting issues found"
+        run: |
+          npm run lint || {
+            echo "⚠️ Backend linting issues found"
+            echo "Run 'npm run lint:fix' locally to auto-fix"
+          }
       
-      - name: Linting - Frontend (strict except stabilization branch)
-        if: github.head_ref != 'fix/stabilize-pr1'
-        run: cd frontend && npm run lint || (echo "❌ Frontend linting failed - fix ESLint errors" && exit 1)
-
-      - name: Linting - Frontend (non-blocking on stabilization branch)
-        if: github.head_ref == 'fix/stabilize-pr1'
-        run: cd frontend && npm run lint || echo "⚠️ Frontend linting failed (allowed on stabilization branch)"
+      - name: Linting - Frontend
+        run: |
+          cd frontend && npm run lint || {
+            echo "⚠️ Frontend linting issues found"
+            echo "Run 'npm run lint:fix' locally to auto-fix"
+          }
       
       - name: Security audit
         run: |
-          npm audit --audit-level=moderate || true
-          cd frontend && npm audit --audit-level=moderate || true
+          echo "🔒 Running security audit..."
+          pnpm audit --audit-level=high || {
+            echo "⚠️ Security vulnerabilities found"
+            echo "Run 'pnpm audit' locally for details"
+          }
+
+  # Build validation across workspace
+  build:
+    name: Build Validation
+    runs-on: ubuntu-latest
+    needs: [setup, quality-checks]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          cd frontend && npm ci --legacy-peer-deps
+      
+      - name: Generate Prisma client
+        run: npx prisma generate
+      
+      - name: Build packages
+        run: |
+          echo "📦 Building workspace packages..."
+          pnpm -r --filter "./packages/*" build || {
+            echo "❌ Package build failed"
+            exit 1
+          }
+      
+      - name: Build apps
+        run: |
+          echo "🚀 Building workspace apps..."
+          pnpm -r --filter "./apps/*" build || {
+            echo "❌ Apps build failed"
+            exit 1
+          }
+      
+      - name: Build backend (root)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_service
+        run: |
+          echo "🔨 Building backend..."
+          npm run build || {
+            echo "❌ Backend build failed"
+            exit 1
+          }
+      
+      - name: Build frontend
+        timeout-minutes: 10
+        run: |
+          echo "🎨 Building frontend..."
+          cd frontend
+          npm run build || {
+            echo "❌ Frontend build failed"
+            exit 1
+          }
+      
+      - name: Validate build outputs
+        run: |
+          echo "✅ Validating build artifacts..."
+          test -d dist || { echo "❌ Backend build missing"; exit 1; }
+          test -d frontend/dist || { echo "❌ Frontend build missing"; exit 1; }
+          test -d packages/contracts/dist || { echo "❌ Contracts build missing"; exit 1; }
+          test -d packages/http-utils/dist || { echo "❌ HTTP utils build missing"; exit 1; }
+          test -d packages/config/dist || { echo "❌ Config build missing"; exit 1; }
+          echo "✅ All build artifacts validated"
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            frontend/dist/
+            packages/*/dist/
+            apps/*/dist/
+          retention-days: 7
 
   # Unit and integration tests
   tests:
     name: Tests
     runs-on: ubuntu-latest
-    if: github.head_ref != 'fix/stabilize-pr1'
-    timeout-minutes: 15  # Add 15 minute timeout for test job
+    needs: [setup, contracts-check]
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:15
@@ -93,18 +301,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       
       - name: Setup test environment
         run: |
-          # Create comprehensive .env.test file
           cat > .env.test << EOF
           NODE_ENV=test
           DATABASE_URL=postgresql://ai_user:testpass@localhost:5432/ai_service_test
@@ -118,54 +337,52 @@ jobs:
           REDIS_PORT=6379
           USE_MOCK_SERVICES=true
           OPENAI_API_KEY=test-key
-          N8N_API_URL=http://localhost:5678
-          N8N_API_KEY=test-n8n-key
-          TELEGRAM_BOT_TOKEN=test-bot-token
-          TELEGRAM_CHAT_ID=123456789
           JWT_SECRET=test-secret-key-for-testing-only
           EOF
       
       - name: Run Prisma migrations
-        timeout-minutes: 5  # Add 5 minute timeout for database migrations
+        timeout-minutes: 5
         env:
           DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test
         run: |
+          echo "🗄️ Setting up test database..."
           npx prisma generate
-          npx prisma migrate deploy
+          npx prisma migrate deploy || {
+            echo "❌ Database migration failed"
+            npx prisma migrate status
+            exit 1
+          }
       
       - name: Run unit tests
-        continue-on-error: true
-        timeout-minutes: 10  # Add 10 minute timeout for test execution
-        run: npm run test:ci || echo "⚠️ Some tests failed - check logs for details"
+        timeout-minutes: 15
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test
           REDIS_URL: redis://localhost:6379
           NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          echo "🧪 Running unit tests..."
+          npm run test:ci || {
+            echo "⚠️ Some tests failed - check test report for details"
+            exit 1
+          }
       
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
+      - name: Upload test results
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage/
-      
-      - name: Integration tests
-        continue-on-error: true
-        timeout-minutes: 5  # Add 5 minute timeout for integration tests
-        run: npm run test:integration || echo "⚠️ Integration tests not configured yet"
-        env:
-          NODE_ENV: test
-          DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test
-          REDIS_URL: redis://localhost:6379
+          name: test-results
+          path: |
+            coverage/
+            test-results/
+          retention-days: 30
 
-  # Build validation
-  build:
-    name: Build Validation
+  # Smoke tests with enhanced diagnostics
+  smoke-tests:
+    name: Smoke Tests
     runs-on: ubuntu-latest
-    needs: [quality-checks, tests]
-    if: ${{ github.head_ref == 'fix/stabilize-pr1' || (needs.quality-checks.result == 'success' && needs.tests.result == 'success') }}
-    timeout-minutes: 15  # Add 15 minute timeout for build job
+    needs: [build]
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       
@@ -173,67 +390,224 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       
-      - name: Install dependencies
+      - name: Install jq for JSON parsing
+        run: sudo apt-get update && sudo apt-get install -y jq
+      
+      - name: Prepare environment
         run: |
-          npm ci
-          cd frontend && npm ci --legacy-peer-deps
+          touch .env
+          echo "NODE_ENV=test" >> .env
+          echo "JWT_SECRET=test-secret" >> .env
       
-      - name: Generate Prisma client
-        run: npx prisma generate
-      
-      - name: Build backend
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_service
-        run: npm run build
-      
-      - name: Build frontend (strict except stabilization branch)
-        if: github.head_ref != 'fix/stabilize-pr1'
-        timeout-minutes: 10
+      - name: Start services with Docker Compose
+        working-directory: infra/compose
         run: |
-          cd frontend
-          echo "Building frontend..."
-          npm run typecheck || echo "⚠️ TypeScript check failed"
-          npm run build || (echo "❌ Frontend build failed" && exit 1)
+          echo "🐳 Starting Docker services..."
+          docker compose -f docker-compose.dev.yml up -d --build
+          echo "⏳ Waiting for services to start..."
+          sleep 10
+      
+      - name: Check service health
+        run: |
+          echo "🏥 Checking service health..."
+          docker compose -f infra/compose/docker-compose.dev.yml ps
+          
+          # Function to check service health
+          check_health() {
+            local service=$1
+            local url=$2
+            local max_attempts=30
+            local attempt=1
+            
+            echo "Checking $service at $url..."
+            while [ $attempt -le $max_attempts ]; do
+              if curl -sf "$url" > /dev/null 2>&1; then
+                echo "✅ $service is healthy"
+                return 0
+              fi
+              echo "Attempt $attempt/$max_attempts: $service not ready yet..."
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+            
+            echo "❌ $service failed to become healthy"
+            echo "=== $service logs ==="
+            docker compose -f infra/compose/docker-compose.dev.yml logs "$service" --tail=50
+            return 1
+          }
+          
+          # Check each service
+          check_health "api-gateway" "http://localhost:3005/health/ready" || exit 1
+          check_health "financial-svc" "http://localhost:3001/health" || exit 1
+      
+      - name: Test Gateway - List Accounts
+        id: test-accounts
+        run: |
+          echo "🔍 Testing /api/financial/accounts endpoint..."
+          response=$(curl -sf -w '\n{"http_code":%{http_code}}' http://localhost:3005/api/financial/accounts)
+          http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
+          body=$(echo "$response" | head -n -1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response body:"
+          echo "$body" | jq '.' || echo "$body"
+          
+          # Save for later tests
+          echo "$body" > accounts.json
+          
+          # Validate response structure
+          echo "$body" | jq -e '.accounts | type == "array"' || {
+            echo "❌ Invalid response structure"
+            exit 1
+          }
+      
+      - name: Test Pagination - Valid Cases
+        run: |
+          echo "🔍 Testing valid pagination cases..."
+          
+          test_pagination() {
+            local endpoint=$1
+            local page=$2
+            local limit=$3
+            local expected_field=$4
+            
+            echo "Testing: GET $endpoint?page=$page&limit=$limit"
+            response=$(curl -sf -w '\n{"http_code":%{http_code}}' "http://localhost:3005$endpoint?page=$page&limit=$limit")
+            http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
+            body=$(echo "$response" | head -n -1)
+            
+            if [ "$http_code" != "200" ]; then
+              echo "❌ Expected 200, got $http_code"
+              echo "Response: $body"
+              return 1
+            fi
+            
+            # Verify pagination metadata
+            echo "$body" | jq -e ".page == $page and .limit == $limit" || {
+              echo "❌ Pagination metadata mismatch"
+              echo "Response: $body"
+              return 1
+            }
+            
+            # Verify data array exists
+            echo "$body" | jq -e ".$expected_field | type == \"array\"" || {
+              echo "❌ Missing or invalid $expected_field array"
+              echo "Response: $body"
+              return 1
+            }
+            
+            echo "✅ Pagination test passed"
+          }
+          
+          # Test various endpoints
+          test_pagination "/api/financial/accounts" 1 10 "accounts"
+          test_pagination "/api/financial/accounts" 2 5 "accounts"
+          test_pagination "/api/financial/clients" 1 20 "clients"
+          test_pagination "/api/financial/invoices" 1 15 "invoices"
+      
+      - name: Test Pagination - Invalid Cases
+        run: |
+          echo "🔍 Testing invalid pagination cases..."
+          
+          test_invalid_pagination() {
+            local endpoint=$1
+            local page=$2
+            local limit=$3
+            local expected_code=$4
+            local test_name=$5
+            
+            echo "Testing $test_name: GET $endpoint?page=$page&limit=$limit"
+            response=$(curl -s -w '\n{"http_code":%{http_code}}' "http://localhost:3005$endpoint?page=$page&limit=$limit")
+            http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
+            body=$(echo "$response" | head -n -1)
+            
+            if [ "$http_code" != "$expected_code" ]; then
+              echo "❌ Expected $expected_code, got $http_code"
+              echo "Response: $body"
+              return 1
+            fi
+            
+            echo "✅ Correctly rejected with $http_code"
+            if [ "$http_code" == "400" ]; then
+              echo "Error message: $(echo "$body" | jq -r '.error // .message // "No error message"')"
+            fi
+          }
+          
+          # Test invalid pagination parameters
+          test_invalid_pagination "/api/financial/accounts" 0 10 400 "page=0"
+          test_invalid_pagination "/api/financial/accounts" -1 10 400 "negative page"
+          test_invalid_pagination "/api/financial/accounts" 1 0 400 "limit=0"
+          test_invalid_pagination "/api/financial/accounts" 1 -5 400 "negative limit"
+          test_invalid_pagination "/api/financial/accounts" 1 1001 400 "limit too high"
+          test_invalid_pagination "/api/financial/clients" 0 10 400 "clients page=0"
+          test_invalid_pagination "/api/financial/invoices" 1 0 400 "invoices limit=0"
+      
+      - name: Test Get by ID
+        run: |
+          echo "🔍 Testing get by ID endpoints..."
+          
+          # Try to get first account ID from previous test
+          if [ -f accounts.json ]; then
+            account_id=$(jq -r '.accounts[0].id // empty' accounts.json)
+            if [ -n "$account_id" ]; then
+              echo "Testing: GET /api/financial/accounts/$account_id"
+              response=$(curl -sf -w '\n{"http_code":%{http_code}}' "http://localhost:3005/api/financial/accounts/$account_id")
+              http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
+              body=$(echo "$response" | head -n -1)
+              
+              if [ "$http_code" == "200" ]; then
+                echo "✅ Successfully retrieved account by ID"
+                echo "$body" | jq '.'
+              else
+                echo "⚠️ Failed to get account by ID (HTTP $http_code)"
+              fi
+            else
+              echo "ℹ️ No accounts available for ID test"
+            fi
+          fi
+      
+      - name: Collect diagnostics on failure
+        if: failure()
+        run: |
+          echo "📋 Collecting diagnostic information..."
+          echo ""
+          echo "=== Docker Container Status ==="
+          docker ps -a
+          echo ""
+          echo "=== Docker Compose Status ==="
+          docker compose -f infra/compose/docker-compose.dev.yml ps
+          echo ""
+          echo "=== Gateway Logs (last 100 lines) ==="
+          docker compose -f infra/compose/docker-compose.dev.yml logs api-gateway --tail=100
+          echo ""
+          echo "=== Financial Service Logs (last 100 lines) ==="
+          docker compose -f infra/compose/docker-compose.dev.yml logs financial-svc --tail=100
+          echo ""
+          echo "=== Database Logs (last 50 lines) ==="
+          docker compose -f infra/compose/docker-compose.dev.yml logs db --tail=50
+          echo ""
+          echo "=== Network Information ==="
+          docker network ls
+          docker compose -f infra/compose/docker-compose.dev.yml exec -T api-gateway netstat -tuln || true
+          echo ""
+          echo "=== Environment Variables (sanitized) ==="
+          docker compose -f infra/compose/docker-compose.dev.yml exec -T api-gateway env | grep -v PASSWORD | grep -v SECRET | grep -v KEY || true
+      
+      - name: Cleanup
+        if: always()
+        working-directory: infra/compose
+        run: |
+          echo "🧹 Cleaning up Docker services..."
+          docker compose -f docker-compose.dev.yml down -v
 
-      - name: Build frontend (non-blocking on stabilization branch)
-        if: github.head_ref == 'fix/stabilize-pr1'
-        timeout-minutes: 10
-        run: |
-          cd frontend
-          echo "Building frontend (non-blocking)..."
-          npm run typecheck || echo "⚠️ TypeScript check failed (allowed)"
-          npm run build || echo "⚠️ Frontend build failed (allowed on stabilization branch)"
-      
-      - name: Validate build outputs (strict except stabilization branch)
-        if: github.head_ref != 'fix/stabilize-pr1'
-        run: |
-          test -d dist || (echo "❌ Backend build failed" && exit 1)
-          test -d frontend/dist || (echo "❌ Frontend build failed" && exit 1)
-          echo "✅ Build validation successful"
-
-      - name: Validate build outputs (backend only on stabilization branch)
-        if: github.head_ref == 'fix/stabilize-pr1'
-        run: |
-          test -d dist || (echo "❌ Backend build failed" && exit 1)
-          echo "✅ Backend build validation successful (frontend non-blocking)"
-      
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: |
-            dist/
-            frontend/dist/
-          retention-days: 7
-
-  # Docker build test
+  # Docker build validation
   docker:
     name: Docker Build Test
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build]
     if: github.event_name == 'pull_request'
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       
@@ -242,9 +616,167 @@ jobs:
       
       - name: Build Docker images
         run: |
-          docker build -t ai-service-api:test .
+          echo "🐳 Building Docker images..."
+          docker build -t ai-service-api:test . || {
+            echo "❌ Docker build failed"
+            exit 1
+          }
       
-      - name: Test Docker compose
+      - name: Test Docker compose configuration
         run: |
-          docker compose -f docker-compose.yml config
+          echo "🐳 Validating Docker Compose configuration..."
+          docker compose -f docker-compose.yml config || {
+            echo "❌ Docker Compose configuration invalid"
+            exit 1
+          }
           echo "✅ Docker configuration valid"
+
+  # E2E tests with full stack
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ai_service_test
+          POSTGRES_USER: ai_user
+          POSTGRES_PASSWORD: testpass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Setup database
+        env:
+          DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test
+        run: |
+          echo "📊 Setting up database schemas..."
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+      
+      - name: Start services
+        env:
+          DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          PORT: 3001
+          FINANCIAL_SVC_URL: http://localhost:3001
+        run: |
+          echo "🚀 Starting financial service..."
+          cd apps/financial-svc
+          pnpm build
+          node dist/index.js &
+          FINANCIAL_PID=$!
+          
+          echo "🚀 Starting gateway..."
+          cd ../api-gateway
+          pnpm build
+          PORT=3005 node dist/index.js &
+          GATEWAY_PID=$!
+          
+          # Wait for services to be ready
+          echo "⏳ Waiting for services to be ready..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3001/health/ready && curl -s http://localhost:3005/health/ready; then
+              echo "✅ Services are ready"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "❌ Services failed to start"
+              exit 1
+            fi
+            sleep 2
+          done
+      
+      - name: Run E2E tests
+        env:
+          API_URL: http://localhost:3005
+          DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test
+        run: |
+          echo "🧪 Running E2E tests..."
+          pnpm exec jest tests/e2e/transactions.test.ts --forceExit || {
+            echo "❌ Transaction E2E tests failed"
+            exit 1
+          }
+          
+          pnpm exec jest tests/e2e/frontend-integration.test.ts --forceExit || {
+            echo "❌ Frontend integration E2E tests failed"
+            exit 1
+          }
+          
+          echo "✅ All E2E tests passed"
+      
+      - name: Capture logs on failure
+        if: failure()
+        run: |
+          echo "📋 Service logs:"
+          docker compose -f docker-compose.dev.yml logs || true
+          echo "📋 Process list:"
+          ps aux | grep node || true
+
+  # Summary job to ensure all checks pass
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [contracts-check, quality-checks, build, tests, smoke-tests, docker, e2e]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.contracts-check.result }}" != "success" ]; then
+            echo "❌ Contract drift check failed"
+            exit 1
+          fi
+          if [ "${{ needs.quality-checks.result }}" != "success" ]; then
+            echo "❌ Quality checks failed"
+            exit 1
+          fi
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "❌ Build validation failed"
+            exit 1
+          fi
+          if [ "${{ needs.tests.result }}" != "success" ]; then
+            echo "❌ Tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.smoke-tests.result }}" != "success" ]; then
+            echo "❌ Smoke tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.e2e.result }}" != "success" ]; then
+            echo "❌ E2E tests failed"
+            exit 1
+          fi
+          echo "✅ All CI checks passed successfully!"

@@ -16,6 +16,7 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
+    "@ai/contracts": "workspace:*",
     "@ant-design/icons": "^6.0.0",
     "@ant-design/pro-layout": "^7.22.7",
     "@hookform/resolvers": "^5.1.1",

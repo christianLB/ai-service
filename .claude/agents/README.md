@@ -36,21 +36,29 @@ This directory contains specialized sub-agents for the AI Service project. Each 
 
 ### Core Domain Specialists
 
-#### 1. `financial-specialist` 
+#### 1. `architecture-consultant` 🔴 **NEW**
+**Focus**: Architecture assessment, technical debt, microservices migration
+- Provides brutally honest architectural critiques
+- Identifies systemic problems and anti-patterns
+- Creates actionable refactoring strategies
+- Uses Opus model for deep analysis
+- **When to use**: Architecture reviews, technical debt assessment, migration planning, when things are "a fucking mess"
+
+#### 2. `financial-specialist` 
 **Focus**: GoCardless, invoices, clients, transactions
 - Expert in financial module operations
 - Handles banking integrations and payment processing
 - Manages invoice generation and client relationships
 - **When to use**: Any financial feature, banking integration, invoice/payment work
 
-#### 2. `trading-specialist`
+#### 3. `trading-specialist`
 **Focus**: Crypto/stock trading, arbitrage, market analysis  
 - Develops trading strategies and algorithms
 - Manages exchange integrations (Binance, Coinbase, Alpaca)
 - Optimizes arbitrage bot for $500-$1,000/month target
 - **When to use**: Trading features, market analysis, exchange integration
 
-#### 3. `prisma-specialist`
+#### 4. `prisma-specialist`
 **Focus**: Database schema, migrations, PostgreSQL optimization
 - Manages multi-schema architecture (financial, public, trading)
 - Creates safe migrations and optimizes queries

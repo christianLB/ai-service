@@ -1,0 +1,123 @@
+openapi: 3.0.3
+info:
+  title: API Gateway
+  version: 1.0.0
+  description: Central API Gateway that routes to various domain services
+
+servers:
+  - url: http://localhost:3005
+    description: Local development gateway
+
+paths:
+  /health/live:
+    get:
+      summary: Liveness probe
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /health/ready:
+    get:
+      summary: Readiness probe
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '503':
+          description: Service not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  # Financial service proxies
+  /api/financial/accounts:
+    $ref: './financial.yaml#/paths/~1api~1financial~1accounts'
+  
+  /api/financial/accounts/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1accounts~1{id}'
+  
+  /api/financial/clients:
+    $ref: './financial.yaml#/paths/~1api~1financial~1clients'
+  
+  /api/financial/clients/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1clients~1{id}'
+  
+  /api/financial/invoices:
+    $ref: './financial.yaml#/paths/~1api~1financial~1invoices'
+  
+  /api/financial/invoices/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1invoices~1{id}'
+  
+  /api/financial/transactions:
+    $ref: './financial.yaml#/paths/~1api~1financial~1transactions'
+  
+  /api/financial/transactions/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1transactions~1{id}'
+  
+  /api/financial/transactions/export:
+    $ref: './financial.yaml#/paths/~1api~1financial~1transactions~1export'
+  
+  /api/financial/attachments:
+    $ref: './financial.yaml#/paths/~1api~1financial~1attachments'
+  
+  /api/financial/attachments/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1attachments~1{id}'
+
+components:
+  schemas:
+    # Import schemas from financial service
+    Error:
+      $ref: './financial.yaml#/components/schemas/Error'
+    PaginationInfo:
+      $ref: './financial.yaml#/components/schemas/PaginationInfo'
+    Account:
+      $ref: './financial.yaml#/components/schemas/Account'
+    AccountListResponse:
+      $ref: './financial.yaml#/components/schemas/AccountListResponse'
+    Client:
+      $ref: './financial.yaml#/components/schemas/Client'
+    ClientListResponse:
+      $ref: './financial.yaml#/components/schemas/ClientListResponse'
+    Invoice:
+      $ref: './financial.yaml#/components/schemas/Invoice'
+    InvoiceListResponse:
+      $ref: './financial.yaml#/components/schemas/InvoiceListResponse'
+    Transaction:
+      $ref: './financial.yaml#/components/schemas/Transaction'
+    TransactionListResponse:
+      $ref: './financial.yaml#/components/schemas/TransactionListResponse'
+    Attachment:
+      $ref: './financial.yaml#/components/schemas/Attachment'
+    AttachmentListResponse:
+      $ref: './financial.yaml#/components/schemas/AttachmentListResponse'

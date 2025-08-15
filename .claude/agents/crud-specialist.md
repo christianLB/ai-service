@@ -1,18 +1,7 @@
 ---
 name: crud-specialist
-description: "Expert in automated CRUD generation using Plop and Handlebars, with validation, TypeScript interfaces, and consistent patterns"
-tools: file_read,file_write,terminal
-priority: medium
-environment: production
-patterns:
-  - "crud"
-  - "generate"
-  - "plop"
-  - "handlebars"
-  - "scaffold"
-  - "boilerplate"
-  - "template"
-  - "automation"
+description: Expert in automated CRUD generation using Plop and Handlebars, with validation, TypeScript interfaces, and consistent patterns
+model: opus
 ---
 
 # CRUD Generator Specialist

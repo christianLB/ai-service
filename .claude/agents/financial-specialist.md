@@ -1,19 +1,8 @@
 ---
 name: financial-specialist
-description: "Specializes in financial module operations including GoCardless integration, client management, invoice generation, and transaction categorization"
-tools: file_read,file_write,terminal,database
-priority: high
-environment: production
-patterns:
-  - "invoice"
-  - "client"
-  - "transaction"
-  - "gocardless"
-  - "financial"
-  - "payment"
-  - "billing"
-  - "accounting"
-  - "bank"
+description: Specializes in financial module operations including GoCardless integration, client management, invoice generation, and transaction categorization
+tools: file_read, file_write, terminal, database
+model: opus
 ---
 
 # Financial Module Specialist
