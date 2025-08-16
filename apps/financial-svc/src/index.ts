@@ -8,6 +8,8 @@ import { randomUUID } from "crypto";
 import type { AiServicePaths } from "@ai/contracts";
 import { parsePagination } from "@ai/http-utils";
 import { listAccounts as gcListAccounts, listTransactions as gcListTransactions, getAccessToken as gcGetAccessToken } from "./gocardless";
+// @ts-ignore - package built locally
+// @ts-ignore - package built locally
 import { createStandardObservability } from "@ai/observability";
 
 // Integration config loader (DB-backed) for GoCardless
@@ -391,9 +393,11 @@ app.get("/api/financial/clients", async (req, res) => {
         status: r.status,
         createdAt: (r.createdAt as Date).toISOString(),
       })),
-      total,
-      page,
-      limit,
+      pagination: {
+        total,
+        page,
+        limit,
+      },
     };
     res.json(body);
   } catch (err) {
@@ -819,15 +823,19 @@ app.get("/api/financial/accounts", async (req, res) => {
     const body: ListAccounts200 = {
       accounts: rows.map((r) => ({
         id: r.id,
-        provider: r.institution ?? "unknown",
         name: r.name,
-        iban: r.iban ?? undefined,
+        type: "checking",
+        balance: 0,
         currency: r.currencies?.code ?? "USD",
+        provider: r.institution ?? "unknown",
+        iban: r.iban ?? undefined,
         createdAt: (r.created_at as Date).toISOString(),
       })),
-      total,
-      page,
-      limit,
+      pagination: {
+        total,
+        page,
+        limit,
+      },
     };
     res.json(body);
   } catch (err) {

@@ -34,46 +34,46 @@ export interface ApiError {
     statusCode: number;
     details?: Record<string, any>;
 }
-export interface AiServicePaths {
-    "/api/financial/clients": {
+export interface GatewayPaths {
+    "/api/financial/transactions": {
         get: {
             responses: {
                 200: {
                     content: {
-                        "application/json": PaginatedResponse<any>;
+                        "application/json": {
+                            transactions: Array<{
+                                id: string;
+                                accountId: string;
+                                amount: number;
+                                currency: string;
+                                description: string;
+                                date: string;
+                                category?: string;
+                                [key: string]: any;
+                            }>;
+                            pagination?: any;
+                        };
                     };
                 };
             };
         };
     };
-    "/api/financial/clients/{id}": {
+    "/api/financial/attachments": {
         get: {
             responses: {
                 200: {
                     content: {
-                        "application/json": ApiResponse<any>;
-                    };
-                };
-            };
-        };
-    };
-    "/api/financial/invoices": {
-        get: {
-            responses: {
-                200: {
-                    content: {
-                        "application/json": PaginatedResponse<any>;
-                    };
-                };
-            };
-        };
-    };
-    "/api/financial/invoices/{id}": {
-        get: {
-            responses: {
-                200: {
-                    content: {
-                        "application/json": ApiResponse<any>;
+                        "application/json": {
+                            attachments: Array<{
+                                id: string;
+                                fileName: string;
+                                fileSize: number;
+                                mimeType: string;
+                                uploadedAt: string;
+                                [key: string]: any;
+                            }>;
+                            pagination?: any;
+                        };
                     };
                 };
             };
@@ -84,18 +84,37 @@ export interface AiServicePaths {
             responses: {
                 200: {
                     content: {
-                        "application/json": PaginatedResponse<any>;
+                        "application/json": {
+                            accounts: Array<{
+                                id: string;
+                                name: string;
+                                type: string;
+                                balance: number;
+                                currency: string;
+                                [key: string]: any;
+                            }>;
+                            pagination?: any;
+                        };
                     };
                 };
             };
         };
     };
-    "/api/financial/accounts/{id}": {
+    "/api/financial/clients": {
         get: {
             responses: {
                 200: {
                     content: {
-                        "application/json": ApiResponse<any>;
+                        "application/json": {
+                            clients: Array<{
+                                id: string;
+                                name: string;
+                                email?: string;
+                                phone?: string;
+                                [key: string]: any;
+                            }>;
+                            pagination?: any;
+                        };
                     };
                 };
             };
@@ -103,9 +122,19 @@ export interface AiServicePaths {
     };
     [key: string]: any;
 }
+export type AiServicePaths = GatewayPaths;
 export declare function createAiServiceClient(baseUrl: string): {
     baseUrl: string;
     get: (path: string) => Promise<any>;
+    GET: (path: string) => Promise<any>;
     post: (path: string, body: any) => Promise<any>;
+    POST: (path: string, body: any) => Promise<any>;
+};
+export declare function createGatewayClient(baseUrl: string): {
+    baseUrl: string;
+    get: (path: string) => Promise<any>;
+    GET: (path: string) => Promise<any>;
+    post: (path: string, body: any) => Promise<any>;
+    POST: (path: string, body: any) => Promise<any>;
 };
 //# sourceMappingURL=index.d.ts.map

@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import Redis from "ioredis";
 import { env } from "@ai/config";
+// @ts-ignore - package built locally
 import { createStandardObservability } from "@ai/observability";
 
 // Redis client (ai orchestration could use queues/cache)

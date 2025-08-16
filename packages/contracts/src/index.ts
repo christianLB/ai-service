@@ -49,47 +49,47 @@ export interface ApiError {
   details?: Record<string, any>;
 }
 
-// Export placeholder for AiServicePaths until OpenAPI generation is complete
-export interface AiServicePaths {
-  "/api/financial/clients": {
+// Export GatewayPaths as an alias for AiServicePaths (frontend compatibility)
+export interface GatewayPaths {
+  "/api/financial/transactions": {
     get: {
       responses: {
         200: {
           content: {
-            "application/json": PaginatedResponse<any>;
+            "application/json": {
+              transactions: Array<{
+                id: string;
+                accountId: string;
+                amount: number;
+                currency: string;
+                description: string;
+                date: string;
+                category?: string;
+                [key: string]: any;
+              }>;
+              pagination?: any;
+            };
           };
         };
       };
     };
   };
-  "/api/financial/clients/{id}": {
+  "/api/financial/attachments": {
     get: {
       responses: {
         200: {
           content: {
-            "application/json": ApiResponse<any>;
-          };
-        };
-      };
-    };
-  };
-  "/api/financial/invoices": {
-    get: {
-      responses: {
-        200: {
-          content: {
-            "application/json": PaginatedResponse<any>;
-          };
-        };
-      };
-    };
-  };
-  "/api/financial/invoices/{id}": {
-    get: {
-      responses: {
-        200: {
-          content: {
-            "application/json": ApiResponse<any>;
+            "application/json": {
+              attachments: Array<{
+                id: string;
+                fileName: string;
+                fileSize: number;
+                mimeType: string;
+                uploadedAt: string;
+                [key: string]: any;
+              }>;
+              pagination?: any;
+            };
           };
         };
       };
@@ -100,18 +100,37 @@ export interface AiServicePaths {
       responses: {
         200: {
           content: {
-            "application/json": PaginatedResponse<any>;
+            "application/json": {
+              accounts: Array<{
+                id: string;
+                name: string;
+                type: string;
+                balance: number;
+                currency: string;
+                [key: string]: any;
+              }>;
+              pagination?: any;
+            };
           };
         };
       };
     };
   };
-  "/api/financial/accounts/{id}": {
+  "/api/financial/clients": {
     get: {
       responses: {
         200: {
           content: {
-            "application/json": ApiResponse<any>;
+            "application/json": {
+              clients: Array<{
+                id: string;
+                name: string;
+                email?: string;
+                phone?: string;
+                [key: string]: any;
+              }>;
+              pagination?: any;
+            };
           };
         };
       };
@@ -120,11 +139,18 @@ export interface AiServicePaths {
   [key: string]: any;
 }
 
+// Keep AiServicePaths as alias for backward compatibility
+export type AiServicePaths = GatewayPaths;
+
 // Export placeholder client creator
 export function createAiServiceClient(baseUrl: string) {
   return {
     baseUrl,
     get: async (path: string) => {
+      const response = await fetch(`${baseUrl}${path}`);
+      return response.json();
+    },
+    GET: async (path: string) => {
       const response = await fetch(`${baseUrl}${path}`);
       return response.json();
     },
@@ -136,5 +162,18 @@ export function createAiServiceClient(baseUrl: string) {
       });
       return response.json();
     },
+    POST: async (path: string, body: any) => {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return response.json();
+    },
   };
+}
+
+// Export createGatewayClient for frontend compatibility
+export function createGatewayClient(baseUrl: string) {
+  return createAiServiceClient(baseUrl);
 }

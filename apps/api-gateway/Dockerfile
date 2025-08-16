@@ -18,7 +18,8 @@ COPY apps/api-gateway ./apps/api-gateway
 RUN pnpm install --frozen-lockfile
 
 # Build shared packages and gateway (ensure contracts are built)
-RUN pnpm --filter @ai/config build \
+RUN pnpm --filter @ai/observability build \
+ && pnpm --filter @ai/config build \
  && pnpm --filter @ai/contracts build \
  && pnpm --filter api-gateway build
 

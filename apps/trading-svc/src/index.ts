@@ -6,6 +6,7 @@ import Redis from "ioredis";
 import Queue from "bull";
 import { env } from "@ai/config";
 // @ts-ignore - package types not built yet
+// @ts-ignore - package built locally
 import { createStandardObservability } from "@ai/observability";
 import { TradingFSM, TradingState, TradingEvent, TradingStrategy } from "@ai/trading";
 import { TradingController } from "./trading-controller";

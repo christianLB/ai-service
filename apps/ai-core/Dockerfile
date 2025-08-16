@@ -14,7 +14,7 @@ COPY apps/ai-core ./apps/ai-core
 RUN pnpm install --frozen-lockfile
 
 # Build shared config and the service
-RUN pnpm --filter @ai/config build && pnpm --filter ai-core build
+RUN pnpm --filter @ai/observability build && pnpm --filter @ai/config build && pnpm --filter ai-core build
 
 # Create a self-contained deploy directory without workspace symlinks
 RUN mkdir -p ./apps/ai-core/deploy \

@@ -22,7 +22,8 @@ COPY apps/financial-svc/entrypoint.sh ./apps/financial-svc/entrypoint.sh
 RUN pnpm install --frozen-lockfile
 
 # Build shared packages and the service (ensure contracts are built)
-RUN pnpm --filter @ai/config build \
+RUN pnpm --filter @ai/observability build \
+ && pnpm --filter @ai/config build \
  && pnpm --filter @ai/contracts build \
  && pnpm --filter ./apps/financial-svc build
 

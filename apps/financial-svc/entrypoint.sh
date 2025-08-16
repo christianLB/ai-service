@@ -126,27 +126,29 @@ while [ $i -lt $RETRIES ]; do
   if npx prisma migrate deploy --schema "$SCHEMA_PATH" 2>&1 | tee /tmp/migrate.log; then
     echo "[$SERVICE_NAME] ✅ Migrations applied successfully"
     break
-  else
-    # Check for P3005 error (schema not empty - non-fatal in production)
-    if grep -q "P3005" /tmp/migrate.log; then
-      echo "[$SERVICE_NAME] Schema not empty (P3005) - continuing without applying migrations"
-      break
-    fi
-    # Check for P3009 error (migrations already applied)
-    if grep -q "P3009" /tmp/migrate.log; then
-      echo "[$SERVICE_NAME] Migrations already applied (P3009) - continuing"
-      break
-    fi
   fi
+  
+  # Check for P3005 error (schema not empty - non-fatal in dev/prod)
+  if grep -q "P3005" /tmp/migrate.log; then
+    echo "[$SERVICE_NAME] Schema not empty (P3005) - continuing without applying migrations"
+    break
+  fi
+  
+  # Check for P3009 error (migrations already applied)
+  if grep -q "P3009" /tmp/migrate.log; then
+    echo "[$SERVICE_NAME] Migrations already applied (P3009) - continuing"
+    break
+  fi
+  
   i=$((i+1))
-  echo "[$SERVICE_NAME] Migration failed (attempt $i/$RETRIES), retrying in ${SLEEP}s..."
+  if [ $i -ge $RETRIES ]; then
+    echo "[$SERVICE_NAME] ERROR: could not apply migrations after $RETRIES attempts"
+    exit 1
+  fi
+  
+  echo "[$SERVICE_NAME] migrate deploy failed (attempt $i/$RETRIES), retrying in ${SLEEP}s..."
   sleep "$SLEEP"
 done
-
-if [ $i -ge $RETRIES ]; then
-  echo "[$SERVICE_NAME] ERROR: Could not apply migrations after $RETRIES attempts" >&2
-  exit 1
-fi
 
 # ============================================================================
 # Step 7: Start Application

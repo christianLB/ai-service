@@ -72,7 +72,7 @@
     "migration:rollback:dry": "node scripts/migration/financial-dashboard-rollback.js --dry-run",
     "migration:test": "./test-prisma-dashboard.sh",
     "migration:monitor": "node scripts/migration/monitor-performance.js",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "contracts:generate": "tsx scripts/generate-contracts.ts && pnpm --filter @ai/contracts build",
     "contracts:validate": "tsx scripts/validate-contracts.ts",
     "contracts:build": "pnpm --filter @ai/contracts build",

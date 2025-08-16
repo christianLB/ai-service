@@ -16,7 +16,7 @@ COPY prisma ./prisma
 RUN pnpm install --frozen-lockfile
 
 # Build shared config and the service
-RUN pnpm --filter @ai/config build && pnpm --filter trading-svc build
+RUN pnpm --filter @ai/observability build && pnpm --filter @ai/config build && pnpm --filter trading-svc build
 
 # Create a self-contained deploy directory without workspace symlinks
 RUN mkdir -p ./apps/trading-svc/deploy \

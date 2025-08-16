@@ -14,7 +14,7 @@ COPY apps/comm-svc ./apps/comm-svc
 RUN pnpm install --frozen-lockfile
 
 # Build shared config and the service
-RUN pnpm --filter @ai/config build && pnpm --filter comm-svc build
+RUN pnpm --filter @ai/observability build && pnpm --filter @ai/config build && pnpm --filter comm-svc build
 
 # Create a self-contained deploy directory without workspace symlinks
 RUN mkdir -p ./apps/comm-svc/deploy \

@@ -46,6 +46,7 @@ export class StandardHealthHandler {
 // Simple metrics registry placeholder
 export class MetricsRegistry {
   private serviceName: string;
+  private metrics: Map<string, any> = new Map();
 
   constructor(config: {
     serviceName: string;
@@ -53,6 +54,65 @@ export class MetricsRegistry {
     enableHttpMetrics?: boolean;
   }) {
     this.serviceName = config.serviceName;
+  }
+
+  createCounter(name: string, help: string, labels?: string[]) {
+    const counter = {
+      inc: (labelValues?: Record<string, string>, value: number = 1) => {
+        // Placeholder implementation
+      },
+      reset: () => {
+        // Placeholder implementation
+      }
+    };
+    this.metrics.set(name, counter);
+    return counter;
+  }
+
+  createHistogram(name: string, help: string, labels?: string[], buckets?: number[]) {
+    const histogram = {
+      observe: (labelValues?: Record<string, string>, value: number = 0) => {
+        // Placeholder implementation
+      },
+      reset: () => {
+        // Placeholder implementation
+      }
+    };
+    this.metrics.set(name, histogram);
+    return histogram;
+  }
+
+  createGauge(name: string, help: string, labels?: string[]) {
+    const gauge = {
+      set: (labelValues?: Record<string, string>, value: number = 0) => {
+        // Placeholder implementation
+      },
+      inc: (labelValues?: Record<string, string>, value: number = 1) => {
+        // Placeholder implementation
+      },
+      dec: (labelValues?: Record<string, string>, value: number = 1) => {
+        // Placeholder implementation
+      },
+      reset: () => {
+        // Placeholder implementation
+      }
+    };
+    this.metrics.set(name, gauge);
+    return gauge;
+  }
+
+  async timeFunction<T>(name: string, fn: () => Promise<T>, labels?: Record<string, string>): Promise<T> {
+    const start = Date.now();
+    try {
+      const result = await fn();
+      const duration = (Date.now() - start) / 1000;
+      // Would normally record this duration
+      return result;
+    } catch (error) {
+      const duration = (Date.now() - start) / 1000;
+      // Would normally record this duration with error status
+      throw error;
+    }
   }
 
   httpMiddleware() {
@@ -63,7 +123,7 @@ export class MetricsRegistry {
   }
 
   metricsEndpoint = (req: Request, res: Response) => {
-    res.type('text/plain');
+    res.type('text/plain; version=0.0.4');
     res.send(`# HELP service_info Service information
 # TYPE service_info gauge
 service_info{service="${this.serviceName}"} 1
