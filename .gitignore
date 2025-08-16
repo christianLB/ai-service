@@ -10,9 +10,15 @@ logs
 workflows
 !/.github/workflows
 !/.github/workflows/**
+*.pid
+.server-*.pid
 
 # Build outputs
 /dist
+dist/
+build/
+*.tsbuildinfo
+.turbo/
 
 # Test files
 frontend/src/test-compilation.tsx
@@ -45,6 +51,11 @@ docker-compose.override.yml
 .tmp/
 temp/
 .make.env
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 
 # Logs
 *.log

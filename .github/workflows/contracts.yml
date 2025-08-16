@@ -1,0 +1,128 @@
+name: Contract Validation
+
+on:
+  push:
+    branches: [main, develop, feat/architectural-leveling-epic]
+    paths:
+      - 'openapi/**'
+      - 'packages/contracts/**'
+      - 'packages/sdk-client/**'
+      - 'scripts/generate-contracts.ts'
+      - 'scripts/validate-contracts.ts'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'openapi/**'
+      - 'packages/contracts/**'
+      - 'packages/sdk-client/**'
+
+jobs:
+  validate:
+    name: Validate OpenAPI Contracts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.12.1
+      
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+      
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Validate OpenAPI specifications
+        run: npm run contracts:validate
+      
+      - name: Generate contracts
+        run: npm run contracts:generate
+      
+      - name: Check for contract drift
+        run: |
+          git diff --exit-code packages/contracts/src/generated || (
+            echo "::error::Contract drift detected! OpenAPI specs and generated types are out of sync."
+            echo "Please run 'npm run contracts:generate' locally and commit the changes."
+            exit 1
+          )
+      
+      - name: Build contracts package
+        run: npm run contracts:build
+      
+      - name: Build SDK client
+        run: npm run sdk:build
+      
+      - name: Run contract tests (if any)
+        run: |
+          if [ -f "packages/contracts/package.json" ] && grep -q '"test"' packages/contracts/package.json; then
+            pnpm --filter @ai/contracts test
+          fi
+        continue-on-error: true
+
+  generate:
+    name: Auto-generate contracts (main branch only)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: validate
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.12.1
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Generate contracts
+        run: npm run contracts:generate
+      
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if git diff --quiet packages/contracts/src/generated; then
+            echo "No changes to commit"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push changes
+        if: steps.check-changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add packages/contracts/src/generated
+          git commit -m "chore: auto-generate contracts from OpenAPI specs [skip ci]"
+          git push

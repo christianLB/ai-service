@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import client from "prom-client";
 import Redis from "ioredis";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { env } from "@ai/config";
@@ -9,6 +8,7 @@ import { randomUUID } from "crypto";
 import type { AiServicePaths } from "@ai/contracts";
 import { parsePagination } from "@ai/http-utils";
 import { listAccounts as gcListAccounts, listTransactions as gcListTransactions, getAccessToken as gcGetAccessToken } from "./gocardless";
+import { createStandardObservability } from "@ai/observability";
 
 // Integration config loader (DB-backed) for GoCardless
 async function getGoCardlessCreds() {
@@ -33,18 +33,68 @@ async function getGoCardlessCreds() {
   return { baseUrl, accessToken };
 }
 
+// DB and Redis clients
+const prisma = new PrismaClient();
+const redis = new Redis(env.REDIS_URL);
+
+// Create observability setup
+const observability = createStandardObservability({
+  serviceName: 'financial-svc',
+  version: process.env.npm_package_version,
+  environment: process.env.NODE_ENV,
+  dependencies: {
+    database: { connectionString: env.DATABASE_URL },
+    redis: { url: env.REDIS_URL }
+  }
+});
+
+const { metricsRegistry } = observability;
+
+// Create business-specific metrics for Financial Service
+const transactionsProcessed = metricsRegistry!.createCounter(
+  'transactions_processed_total',
+  'Total number of transactions processed',
+  ['source', 'type', 'status']
+);
+
+const gocardlessSyncDuration = metricsRegistry!.createHistogram(
+  'gocardless_sync_duration_seconds',
+  'Duration of GoCardless sync operations',
+  ['operation', 'status'],
+  [0.1, 0.5, 1, 2, 5, 10, 30, 60]
+);
+
+const accountsTotal = metricsRegistry!.createGauge(
+  'accounts_total',
+  'Total number of accounts by provider',
+  ['provider', 'type']
+);
+
+const invoicesTotal = metricsRegistry!.createGauge(
+  'invoices_total',
+  'Total number of invoices by status',
+  ['status']
+);
+
+const clientsTotal = metricsRegistry!.createGauge(
+  'clients_total',
+  'Total number of clients by status',
+  ['status']
+);
+
+const databaseOperations = metricsRegistry!.createCounter(
+  'database_operations_total',
+  'Total database operations',
+  ['table', 'operation', 'status']
+);
+
 const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Metrics
-const register = new client.Registry();
-client.collectDefaultMetrics({ register });
-
-// DB and Redis clients
-const prisma = new PrismaClient();
-const redis = new Redis(env.REDIS_URL);
+// Setup observability middleware
+observability.setupExpress(app);
 
 // Dev-only seed: ensure at least one account exists in financial.accounts for smoke tests
 async function ensureDevSeed() {
@@ -113,25 +163,72 @@ async function ensureDevSeed() {
   }
 }
 
-app.get("/health/live", (_req, res) => {
-  res.json({ ok: true });
-});
-
-app.get("/health/ready", async (_req, res) => {
+// Function to update gauge metrics periodically
+async function updateGaugeMetrics() {
   try {
-    await prisma.$queryRawUnsafe("SELECT 1");
-    await redis.ping();
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(503).json({ ok: false, error: (err as Error).message });
+    // Update accounts total by provider and type
+    const accountStats = await prisma.accounts.groupBy({
+      by: ['institution', 'type'],
+      _count: { id: true }
+    });
+    
+    // Clear previous values
+    accountsTotal.reset();
+    for (const stat of accountStats) {
+      accountsTotal.set(
+        { provider: stat.institution || 'unknown', type: stat.type || 'unknown' },
+        stat._count.id
+      );
+    }
+
+    // Update invoices total by status
+    const invoiceStats = await prisma.invoice.groupBy({
+      by: ['status'],
+      _count: { id: true }
+    });
+    
+    invoicesTotal.reset();
+    for (const stat of invoiceStats) {
+      invoicesTotal.set({ status: stat.status }, stat._count.id);
+    }
+
+    // Update clients total by status
+    const clientStats = await prisma.client.groupBy({
+      by: ['status'],
+      _count: { id: true }
+    });
+    
+    clientsTotal.reset();
+    for (const stat of clientStats) {
+      clientsTotal.set({ status: stat.status }, stat._count.id);
+    }
+
+    databaseOperations.inc({ table: 'accounts', operation: 'group_by', status: 'success' });
+    databaseOperations.inc({ table: 'invoices', operation: 'group_by', status: 'success' });
+    databaseOperations.inc({ table: 'clients', operation: 'group_by', status: 'success' });
+  } catch (error) {
+    console.error('Failed to update gauge metrics:', error);
+    databaseOperations.inc({ table: 'multiple', operation: 'group_by', status: 'error' });
   }
-});
+}
+
+// Update metrics every 30 seconds
+setInterval(updateGaugeMetrics, 30000);
+// Initial update
+updateGaugeMetrics();
 
 // GoCardless: sync accounts into financial.accounts
 app.post("/api/financial/gocardless/sync/accounts", async (_req, res) => {
+  const startTime = Date.now();
   try {
     const { baseUrl, accessToken } = await getGoCardlessCreds();
-    const accounts = await gcListAccounts(baseUrl, accessToken);
+    
+    const accounts = await metricsRegistry!.timeFunction(
+      'gocardless_sync_duration_seconds',
+      () => gcListAccounts(baseUrl, accessToken),
+      { operation: 'list_accounts', status: 'success' }
+    );
+    
     let upserted = 0;
     for (const a of accounts) {
       // Try to find by provider account_id
@@ -159,9 +256,18 @@ app.post("/api/financial/gocardless/sync/accounts", async (_req, res) => {
         });
       }
       upserted += 1;
+      databaseOperations.inc({ table: 'accounts', operation: 'upsert', status: 'success' });
     }
+    
+    const duration = (Date.now() - startTime) / 1000;
+    gocardlessSyncDuration.observe({ operation: 'sync_accounts', status: 'success' }, duration);
+    
     res.json({ ok: true, count: upserted });
   } catch (err) {
+    const duration = (Date.now() - startTime) / 1000;
+    gocardlessSyncDuration.observe({ operation: 'sync_accounts', status: 'error' }, duration);
+    databaseOperations.inc({ table: 'accounts', operation: 'upsert', status: 'error' });
+    
     const e = err as Error & { statusCode?: number };
     const status = e.statusCode && e.statusCode >= 400 && e.statusCode < 600 ? e.statusCode : 500;
     res.status(status).json({ ok: false, error: e.message });
@@ -171,6 +277,7 @@ app.post("/api/financial/gocardless/sync/accounts", async (_req, res) => {
 // GoCardless: sync transactions for a given GoCardless account id
 // Body: { accountId: string }
 app.post("/api/financial/gocardless/sync/transactions", async (req, res) => {
+  const startTime = Date.now();
   try {
     const accountId = typeof req.body?.accountId === "string" ? req.body.accountId : undefined;
     if (!accountId) {
@@ -194,7 +301,13 @@ app.post("/api/financial/gocardless/sync/transactions", async (req, res) => {
     }
 
     const { baseUrl, accessToken } = await getGoCardlessCreds();
-    const txs = await gcListTransactions(baseUrl, accessToken, accountId);
+    
+    const txs = await metricsRegistry!.timeFunction(
+      'gocardless_sync_duration_seconds',
+      () => gcListTransactions(baseUrl, accessToken, accountId),
+      { operation: 'list_transactions', status: 'success' }
+    );
+    
     let upserts = 0;
     for (const t of txs) {
       const bookingDate = t.booking_date || t.value_date || undefined;
@@ -231,9 +344,19 @@ app.post("/api/financial/gocardless/sync/transactions", async (req, res) => {
         });
       }
       upserts += 1;
+      transactionsProcessed.inc({ source: 'gocardless', type: t.status || 'unknown', status: 'success' });
+      databaseOperations.inc({ table: 'transactions', operation: 'upsert', status: 'success' });
     }
+    
+    const duration = (Date.now() - startTime) / 1000;
+    gocardlessSyncDuration.observe({ operation: 'sync_transactions', status: 'success' }, duration);
+    
     res.json({ ok: true, count: upserts });
   } catch (err) {
+    const duration = (Date.now() - startTime) / 1000;
+    gocardlessSyncDuration.observe({ operation: 'sync_transactions', status: 'error' }, duration);
+    databaseOperations.inc({ table: 'transactions', operation: 'upsert', status: 'error' });
+    
     const e = err as Error & { statusCode?: number };
     const status = e.statusCode && e.statusCode >= 400 && e.statusCode < 600 ? e.statusCode : 500;
     res.status(status).json({ ok: false, error: e.message });
@@ -666,14 +789,6 @@ app.get("/api/financial/attachments/:id", async (req, res) => {
   }
 });
 
-app.get("/metrics", async (_req, res) => {
-  try {
-    res.set("Content-Type", register.contentType);
-    res.end(await register.metrics());
-  } catch (err) {
-    res.status(500).end(String(err));
-  }
-});
 
 // Typed contract route for accounts (matches OpenAPI spec used by gateway)
 type ListAccounts200 = AiServicePaths["/api/financial/accounts"]["get"]["responses"][200]["content"]["application/json"];

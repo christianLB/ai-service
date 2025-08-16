@@ -1,18 +1,66 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import client from "prom-client";
 import { Pool } from "pg";
 import Redis from "ioredis";
 import { env } from "@ai/config";
 import type { AiServicePaths } from "@ai/contracts";
 import { createAiServiceClient } from "@ai/contracts";
 import crypto from "crypto";
+import { createStandardObservability, MetricsRegistry, createDependencyCheckers } from "@ai/observability";
+
+// DB and Redis clients
+const pool = new Pool({ connectionString: env.DATABASE_URL });
+const redis = new Redis(env.REDIS_URL);
+
+// Create observability setup
+const observability = createStandardObservability({
+  serviceName: 'api-gateway',
+  version: process.env.npm_package_version,
+  environment: process.env.NODE_ENV,
+  dependencies: {
+    database: { connectionString: env.DATABASE_URL },
+    redis: { url: env.REDIS_URL },
+    services: [
+      { name: 'financial-svc', url: process.env.FINANCIAL_SVC_URL || "http://financial-svc:3001" }
+    ]
+  }
+});
+
+const { metricsRegistry } = observability;
+
+// Create custom metrics for API Gateway
+const proxyRequestsTotal = metricsRegistry!.createCounter(
+  'proxy_requests_total',
+  'Total number of proxy requests to downstream services',
+  ['service', 'endpoint', 'status']
+);
+
+const proxyRequestDuration = metricsRegistry!.createHistogram(
+  'proxy_request_duration_seconds',
+  'Duration of proxy requests to downstream services',
+  ['service', 'endpoint', 'status'],
+  [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+);
+
+const integrationConfigOps = metricsRegistry!.createCounter(
+  'integration_config_operations_total',
+  'Total integration configuration operations',
+  ['operation', 'integration_type', 'status']
+);
+
+const csrfTokensGenerated = metricsRegistry!.createCounter(
+  'csrf_tokens_generated_total',
+  'Total CSRF tokens generated'
+);
 
 const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Setup observability middleware
+observability.setupExpress(app);
 
 // Helper function to parse pagination query parameters
 function parsePaginationQuery(query: any): { page?: number; limit?: number } {
@@ -24,8 +72,13 @@ function parsePaginationQuery(query: any): { page?: number; limit?: number } {
 }
 
 // Helper function to handle proxy errors with status preservation
-function handleProxyError(err: any, res: express.Response): void {
+function handleProxyError(err: any, res: express.Response, service?: string, endpoint?: string): void {
   const error = err as Error & { statusCode?: number };
+  
+  // Record error metrics
+  if (service && endpoint) {
+    proxyRequestsTotal.inc({ service, endpoint, status: 'error' });
+  }
   
   // Preserve status code from upstream service
   if (error.statusCode) {
@@ -42,9 +95,18 @@ function handleProxyError(err: any, res: express.Response): void {
   }
 }
 
-// Metrics
-const register = new client.Registry();
-client.collectDefaultMetrics({ register });
+// Helper function to time proxy requests
+async function timedProxyRequest<T>(
+  service: string,
+  endpoint: string,
+  requestFn: () => Promise<T>
+): Promise<T> {
+  return await metricsRegistry!.timeFunction(
+    'proxy_request_duration_seconds',
+    requestFn,
+    { service, endpoint }
+  );
+}
 
 // Financial service base/client (available for routes below)
 const financialSvcBase = process.env.FINANCIAL_SVC_URL || "http://financial-svc:3001";
@@ -52,6 +114,7 @@ const financialClient = createAiServiceClient(financialSvcBase);
 
 // CSRF token endpoint for frontend axios interceptor compatibility
 app.get("/api/csrf-token", (_req, res) => {
+  csrfTokensGenerated.inc();
   const token = crypto.randomBytes(16).toString("hex");
   res.cookie("x-csrf-token", token, {
     httpOnly: false,
@@ -67,12 +130,16 @@ type GetAccount200 = AiServicePaths["/api/financial/accounts/{id}"]["get"]["resp
 app.get("/api/financial/accounts/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    const result = await financialClient.GET("/api/financial/accounts/{id}" as const, {
-      params: { path: { id } },
+    const result = await timedProxyRequest('financial-svc', 'accounts/{id}', async () => {
+      return await financialClient.GET("/api/financial/accounts/{id}" as const, {
+        params: { path: { id } },
+      });
     });
     
     if (!result.data) {
       const status = result.response?.status || 502;
+      proxyRequestsTotal.inc({ service: 'financial-svc', endpoint: 'accounts/{id}', status: String(status) });
+      
       if (status === 404) {
         res.status(404).json({ 
           message: 'Account not found',
@@ -92,9 +159,10 @@ app.get("/api/financial/accounts/:id", async (req, res) => {
       return;
     }
     
+    proxyRequestsTotal.inc({ service: 'financial-svc', endpoint: 'accounts/{id}', status: '200' });
     res.json(result.data as GetAccount200);
   } catch (err) {
-    handleProxyError(err, res);
+    handleProxyError(err, res, 'financial-svc', 'accounts/{id}');
   }
 });
 
@@ -366,32 +434,6 @@ app.get("/api/financial/attachments/:id", async (req, res) => {
   }
 });
 
-// DB and Redis clients
-const pool = new Pool({ connectionString: env.DATABASE_URL });
-const redis = new Redis(env.REDIS_URL);
-
-app.get("/health/live", (_req, res) => {
-  res.json({ ok: true });
-});
-
-app.get("/health/ready", async (_req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    await redis.ping();
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(503).json({ ok: false, error: (err as Error).message });
-  }
-});
-
-app.get("/metrics", async (_req, res) => {
-  try {
-    res.set("Content-Type", register.contentType);
-    res.end(await register.metrics());
-  } catch (err) {
-    res.status(500).end(String(err));
-  }
-});
 
 
 // ------------------------------------------------------------
@@ -438,6 +480,7 @@ function decrypt(stored: string): string {
 // Provide at least gocardless with expected keys
 app.get("/api/integrations/types", async (_req, res) => {
   try {
+    integrationConfigOps.inc({ operation: 'list_types', integration_type: 'all', status: 'success' });
     const types = [
       {
         type: "gocardless",
@@ -479,6 +522,7 @@ app.get("/api/integrations/types", async (_req, res) => {
     // For now, return all regardless of category; frontend passes 'integrations'
     res.json({ success: true, data: types });
   } catch (err) {
+    integrationConfigOps.inc({ operation: 'list_types', integration_type: 'all', status: 'error' });
     res.status(500).json({ success: false, message: (err as Error).message });
   }
 });

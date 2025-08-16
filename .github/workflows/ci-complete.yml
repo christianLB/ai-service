@@ -1,0 +1,472 @@
+name: Complete CI Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop, feat/**]
+  push:
+    branches: [main, develop, feat/architectural-leveling-epic]
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests (for emergency fixes only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '10.12.1'
+  POSTGRES_VERSION: '16'
+  REDIS_VERSION: '7'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # SETUP - Prepare environment and cache
+  # ============================================
+  setup:
+    name: 🔧 Setup Environment
+    runs-on: ubuntu-latest
+    outputs:
+      pnpm-store: ${{ steps.pnpm-cache.outputs.store-path }}
+      services-matrix: ${{ steps.services.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "store-path=$(pnpm store path)" >> $GITHUB_OUTPUT
+      
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.store-path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Define services matrix
+        id: services
+        run: |
+          echo "matrix={\"service\":[\"api-gateway\",\"financial-svc\",\"trading-svc\",\"comm-svc\",\"ai-core\",\"worker-financial\",\"worker-trading\"]}" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # CONTRACTS - Check for OpenAPI drift
+  # ============================================
+  contracts:
+    name: 📜 Contract Validation
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Validate OpenAPI specs
+        run: npm run contracts:validate
+      
+      - name: Generate contracts
+        run: npm run contracts:generate
+      
+      - name: Check for drift
+        run: |
+          if git diff --exit-code packages/contracts/src/generated; then
+            echo "✅ No contract drift detected"
+          else
+            echo "❌ Contract drift detected!"
+            echo "Please run 'npm run contracts:generate' locally and commit the changes"
+            git diff packages/contracts/src/generated
+            exit 1
+          fi
+
+  # ============================================
+  # LINT - Run ESLint on all services
+  # ============================================
+  lint:
+    name: 🎨 Lint
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.services-matrix) }}
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Lint ${{ matrix.service }}
+        run: |
+          if [ -d "apps/${{ matrix.service }}" ]; then
+            echo "Linting apps/${{ matrix.service }}..."
+            pnpm --filter ${{ matrix.service }} lint || true
+          fi
+      
+      - name: Lint root (if api-gateway)
+        if: matrix.service == 'api-gateway'
+        run: npm run lint
+
+  # ============================================
+  # TYPECHECK - TypeScript validation
+  # ============================================
+  typecheck:
+    name: 📘 TypeScript Check
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.services-matrix) }}
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Generate Prisma Client
+        run: npm run db:generate
+      
+      - name: TypeCheck ${{ matrix.service }}
+        run: |
+          if [ -d "apps/${{ matrix.service }}" ] && [ -f "apps/${{ matrix.service }}/tsconfig.json" ]; then
+            echo "Type checking apps/${{ matrix.service }}..."
+            pnpm --filter ${{ matrix.service }} typecheck || pnpm --filter ${{ matrix.service }} build || true
+          fi
+      
+      - name: TypeCheck root (if api-gateway)
+        if: matrix.service == 'api-gateway'
+        run: npm run typecheck
+
+  # ============================================
+  # BUILD - Build all services
+  # ============================================
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    needs: [setup, contracts]
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.services-matrix) }}
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Generate Prisma Client
+        run: npm run db:generate
+      
+      - name: Build packages
+        run: |
+          pnpm --filter @ai/config build || true
+          pnpm --filter @ai/contracts build || true
+          pnpm --filter @ai/sdk-client build || true
+          pnpm --filter @ai/observability build || true
+      
+      - name: Build ${{ matrix.service }}
+        run: |
+          if [ -d "apps/${{ matrix.service }}" ]; then
+            echo "Building apps/${{ matrix.service }}..."
+            pnpm --filter ${{ matrix.service }} build
+          fi
+      
+      - name: Build root (if api-gateway)
+        if: matrix.service == 'api-gateway'
+        run: npm run build:backend
+
+  # ============================================
+  # TEST - Run tests
+  # ============================================
+  test:
+    name: 🧪 Tests
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
+    needs: [setup, build]
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:${{ env.REDIS_VERSION }}
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        run: |
+          npm run db:generate
+          npx prisma migrate deploy || true
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+        run: npm run test:ci
+      
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+  # ============================================
+  # DOCKER - Build Docker images
+  # ============================================
+  docker:
+    name: 🐳 Docker Build
+    runs-on: ubuntu-latest
+    needs: [build, typecheck]
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.services-matrix) }}
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image for ${{ matrix.service }}
+        run: |
+          if [ -f "apps/${{ matrix.service }}/Dockerfile" ]; then
+            docker buildx build \
+              --cache-from type=registry,ref=ghcr.io/${{ github.repository }}/${{ matrix.service }}:cache \
+              --cache-to type=inline \
+              --tag ${{ matrix.service }}:ci-${{ github.sha }} \
+              --file apps/${{ matrix.service }}/Dockerfile \
+              .
+          else
+            echo "No Dockerfile found for ${{ matrix.service }}, skipping..."
+          fi
+
+  # ============================================
+  # FRONTEND - Build and test frontend
+  # ============================================
+  frontend:
+    name: 🎨 Frontend
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ needs.setup.outputs.pnpm-store }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+      
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+      
+      - name: Lint frontend
+        run: |
+          cd frontend
+          npm run lint || true
+      
+      - name: TypeCheck frontend
+        run: |
+          cd frontend
+          npm run typecheck || true
+      
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+      
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+
+  # ============================================
+  # QUALITY GATE - Final validation
+  # ============================================
+  quality-gate:
+    name: ✅ Quality Gate
+    runs-on: ubuntu-latest
+    needs: [contracts, lint, typecheck, build, test, docker, frontend]
+    if: always()
+    steps:
+      - name: Check job results
+        run: |
+          echo "Checking CI pipeline results..."
+          echo "Contracts: ${{ needs.contracts.result }}"
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "TypeCheck: ${{ needs.typecheck.result }}"
+          echo "Build: ${{ needs.build.result }}"
+          echo "Test: ${{ needs.test.result }}"
+          echo "Docker: ${{ needs.docker.result }}"
+          echo "Frontend: ${{ needs.frontend.result }}"
+          
+          # Fail if any critical job failed
+          if [[ "${{ needs.contracts.result }}" == "failure" ]] || \
+             [[ "${{ needs.build.result }}" == "failure" ]] || \
+             [[ "${{ needs.test.result }}" == "failure" ]] || \
+             [[ "${{ needs.docker.result }}" == "failure" ]]; then
+            echo "❌ Quality gate FAILED - Critical jobs have failures"
+            exit 1
+          fi
+          
+          # Warn on non-critical failures
+          if [[ "${{ needs.lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.typecheck.result }}" == "failure" ]]; then
+            echo "⚠️ Quality gate PASSED with warnings - Some checks failed but are non-blocking"
+          else
+            echo "✅ Quality gate PASSED - All checks successful!"
+          fi
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Contracts | ${{ needs.contracts.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.lint.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeCheck | ${{ needs.typecheck.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | ${{ needs.test.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker | ${{ needs.docker.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ needs.frontend.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY

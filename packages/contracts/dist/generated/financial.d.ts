@@ -4,191 +4,48 @@
  */
 export interface paths {
     "/api/financial/accounts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** List bank accounts */
         get: operations["listAccounts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/accounts/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** Get account by ID */
         get: operations["getAccount"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/clients": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** List clients */
         get: operations["listClients"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/clients/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** Get client by ID */
         get: operations["getClient"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/invoices": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** List invoices */
         get: operations["listInvoices"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/invoices/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** Get invoice by ID */
         get: operations["getInvoice"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/transactions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** List transactions */
         get: operations["listTransactions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/transactions/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** Get transaction by ID */
         get: operations["getTransaction"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/transactions/export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** Export transactions */
         get: operations["exportTransactions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/attachments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** List attachments */
         get: operations["listAttachments"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
     "/api/financial/attachments/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /** Get attachment by ID */
         get: operations["getAttachment"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
     };
 }
 export type webhooks = Record<string, never>;
@@ -349,7 +206,9 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
+export type external = Record<string, never>;
 export interface operations {
+    /** List bank accounts */
     listAccounts: {
         parameters: {
             query?: {
@@ -358,63 +217,45 @@ export interface operations {
                 /** @description Items per page */
                 limit?: number;
             };
-            header?: never;
-            path?: never;
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description List of accounts */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["AccountListResponse"];
                 };
             };
             /** @description Invalid parameters */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** Get account by ID */
     getAccount: {
         parameters: {
-            query?: never;
-            header?: never;
             path: {
                 id: string;
             };
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Account details */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Account"];
                 };
             };
             /** @description Account not found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** List clients */
     listClients: {
         parameters: {
             query?: {
@@ -423,63 +264,45 @@ export interface operations {
                 email?: string;
                 name?: string;
             };
-            header?: never;
-            path?: never;
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description List of clients */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["ClientListResponse"];
                 };
             };
             /** @description Invalid parameters */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** Get client by ID */
     getClient: {
         parameters: {
-            query?: never;
-            header?: never;
             path: {
                 id: string;
             };
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Client details */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Client"];
                 };
             };
             /** @description Client not found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** List invoices */
     listInvoices: {
         parameters: {
             query?: {
@@ -488,63 +311,45 @@ export interface operations {
                 clientId?: string;
                 status?: "draft" | "sent" | "paid" | "overdue" | "cancelled";
             };
-            header?: never;
-            path?: never;
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description List of invoices */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["InvoiceListResponse"];
                 };
             };
             /** @description Invalid parameters */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** Get invoice by ID */
     getInvoice: {
         parameters: {
-            query?: never;
-            header?: never;
             path: {
                 id: string;
             };
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Invoice details */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Invoice"];
                 };
             };
             /** @description Invoice not found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** List transactions */
     listTransactions: {
         parameters: {
             query?: {
@@ -559,63 +364,45 @@ export interface operations {
                 maxAmount?: number;
                 search?: string;
             };
-            header?: never;
-            path?: never;
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description List of transactions */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["TransactionListResponse"];
                 };
             };
             /** @description Invalid parameters */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** Get transaction by ID */
     getTransaction: {
         parameters: {
-            query?: never;
-            header?: never;
             path: {
                 id: string;
             };
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Transaction details */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Transaction"];
                 };
             };
             /** @description Transaction not found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** Export transactions */
     exportTransactions: {
         parameters: {
             query?: {
@@ -624,17 +411,10 @@ export interface operations {
                 dateFrom?: string;
                 dateTo?: string;
             };
-            header?: never;
-            path?: never;
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Exported transactions */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "text/csv": string;
                     "application/json": components["schemas"]["Transaction"][];
@@ -642,15 +422,13 @@ export interface operations {
             };
             /** @description Invalid parameters */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** List attachments */
     listAttachments: {
         parameters: {
             query?: {
@@ -659,57 +437,38 @@ export interface operations {
                 invoiceId?: string;
                 fileType?: string;
             };
-            header?: never;
-            path?: never;
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description List of attachments */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["AttachmentListResponse"];
                 };
             };
             /** @description Invalid parameters */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
         };
     };
+    /** Get attachment by ID */
     getAttachment: {
         parameters: {
-            query?: never;
-            header?: never;
             path: {
                 id: string;
             };
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Attachment details */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Attachment"];
                 };
             };
             /** @description Attachment not found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };

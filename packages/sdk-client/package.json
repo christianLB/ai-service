@@ -1,0 +1,21 @@
+{
+  "name": "@ai/sdk-client",
+  "version": "1.0.0",
+  "description": "TypeScript SDK client for AI Service API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.9.8"
+  },
+  "devDependencies": {
+    "@ai/contracts": "workspace:*",
+    "typescript": "^5.8.0"
+  },
+  "files": [
+    "dist"
+  ]
+}

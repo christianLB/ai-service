@@ -1,11 +1,50 @@
-import createClient from 'openapi-fetch';
-export { createClient };
-import type { paths as AiServicePaths } from './generated/ai-service';
-export type { paths as AiServicePaths } from './generated/ai-service';
-export const createAiServiceClient = (baseUrl: string) => createClient<AiServicePaths>({ baseUrl });
-import type { paths as FinancialPaths } from './generated/financial';
-export type { paths as FinancialPaths } from './generated/financial';
-export const createFinancialClient = (baseUrl: string) => createClient<FinancialPaths>({ baseUrl });
-import type { paths as GatewayPaths } from './generated/gateway';
-export type { paths as GatewayPaths } from './generated/gateway';
-export const createGatewayClient = (baseUrl: string) => createClient<GatewayPaths>({ baseUrl });
+/**
+ * @ai/contracts - OpenAPI contracts and generated types for AI Service
+ * 
+ * This package contains:
+ * - Generated TypeScript types from OpenAPI specifications
+ * - Shared request/response interfaces
+ * - Validation schemas
+ */
+
+// Re-export generated types (will be created by openapi-typescript)
+// export * from './generated/gateway';
+// export * from './generated/auth';
+// export * from './generated/financial';
+// export * from './generated/trading';
+// export * from './generated/ai-core';
+// export * from './generated/comm';
+
+// Export contract version for runtime checks
+export const CONTRACT_VERSION = '1.0.0';
+
+// Export placeholder types until generation is complete
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  meta?: {
+    timestamp: string;
+    version: string;
+  };
+}
+
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface ApiError {
+  code: string;
+  message: string;
+  statusCode: number;
+  details?: Record<string, any>;
+}

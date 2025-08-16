@@ -1252,3 +1252,32 @@ model signals {
   @@index([symbol], map: "idx_trading_signals_symbol")
   @@schema("trading")
 }
+
+// Event logging table for audit trail and distributed tracing
+model EventLog {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  traceId      String    @map("trace_id") @db.VarChar(64)
+  spanId       String?   @map("span_id") @db.VarChar(64)
+  parentSpanId String?   @map("parent_span_id") @db.VarChar(64)
+  service      String    @db.VarChar(50)
+  operation    String    @db.VarChar(100)
+  level        String    @default("info") @db.VarChar(20) // debug, info, warn, error, critical
+  userId       String?   @map("user_id") @db.Uuid
+  method       String?   @db.VarChar(10) // GET, POST, PUT, DELETE, etc
+  path         String?   @db.VarChar(255)
+  statusCode   Int?      @map("status_code")
+  duration     Int?      // milliseconds
+  message      String    @db.Text
+  metadata     Json?     @default("{}")
+  error        Json?
+  ip           String?   @db.VarChar(45) // IPv4 or IPv6
+  userAgent    String?   @map("user_agent") @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([traceId])
+  @@index([service, level])
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("event_logs")
+  @@schema("public")
+}

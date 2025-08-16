@@ -17,7 +17,11 @@
     "prom-client": "^15.1.2",
     "pg": "^8.12.0",
     "ioredis": "^5.7.0",
-    "@ai/config": "workspace:*"
+    "@ai/config": "workspace:*",
+    "@ai/observability": "workspace:*",
+    "@ai/queue-system": "workspace:*",
+    "@ai/trading": "workspace:*",
+    "bull": "^4.16.3"
   },
   "devDependencies": {
     "tslib": "^2.6.2",

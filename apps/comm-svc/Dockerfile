@@ -27,5 +27,10 @@ WORKDIR /app/apps/comm-svc/deploy
 
 # Copy only the deployed artifact
 COPY --from=base /app/apps/comm-svc/deploy .
+# Install runtime dependencies for entrypoint
+RUN apk add --no-cache netcat-openbsd
+# Copy entrypoint script and make it executable
+COPY apps/comm-svc/entrypoint.sh /app/apps/comm-svc/deploy/entrypoint.sh
+RUN chmod +x /app/apps/comm-svc/deploy/entrypoint.sh
 
-CMD ["node", "dist/index.js"]
+CMD ["/app/apps/comm-svc/deploy/entrypoint.sh"]

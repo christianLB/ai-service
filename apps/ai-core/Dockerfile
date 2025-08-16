@@ -27,5 +27,10 @@ WORKDIR /app/apps/ai-core/deploy
 
 # Copy only the deployed artifact
 COPY --from=base /app/apps/ai-core/deploy .
+# Install runtime dependencies for entrypoint
+RUN apk add --no-cache netcat-openbsd
+# Copy entrypoint script and make it executable
+COPY apps/ai-core/entrypoint.sh /app/apps/ai-core/deploy/entrypoint.sh
+RUN chmod +x /app/apps/ai-core/deploy/entrypoint.sh
 
-CMD ["node", "dist/index.js"]
+CMD ["/app/apps/ai-core/deploy/entrypoint.sh"]

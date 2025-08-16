@@ -1,0 +1,25 @@
+{
+  "name": "@ai/trading",
+  "version": "1.0.0",
+  "description": "Trading FSM and strategy execution",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "bull": "^4.16.3",
+    "ioredis": "^5.4.1",
+    "@prisma/client": "^5.18.0",
+    "@ai/config": "workspace:*",
+    "@ai/queue-system": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

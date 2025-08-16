@@ -1,0 +1,940 @@
+openapi: 3.0.3
+info:
+  title: AI Service Communication API
+  description: Telegram bot, email notifications, WebSocket events, and alert management
+  version: 1.0.0
+  contact:
+    name: AI Service Communication Team
+    email: comm@ai-service.local
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development server
+  - url: https://api.ai-service.com/api
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Telegram
+    description: Telegram bot operations
+  - name: Email
+    description: Email notification services  
+  - name: WebSocket
+    description: Real-time WebSocket events
+  - name: Alerts
+    description: Alert management system
+
+paths:
+  /telegram/webhook:
+    post:
+      tags:
+        - Telegram
+      summary: Receive Telegram webhook
+      description: Endpoint for Telegram bot updates
+      operationId: telegramWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelegramUpdate'
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /telegram/send-message:
+    post:
+      tags:
+        - Telegram
+      summary: Send Telegram message
+      operationId: sendTelegramMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendTelegramMessageRequest'
+      responses:
+        '200':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /telegram/send-alert:
+    post:
+      tags:
+        - Telegram
+      summary: Send system alert via Telegram
+      operationId: sendTelegramAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendAlertRequest'
+      responses:
+        '200':
+          description: Alert sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /telegram/setup-webhook:
+    post:
+      tags:
+        - Telegram
+      summary: Configure Telegram webhook
+      operationId: setupTelegramWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetupWebhookRequest'
+      responses:
+        '200':
+          description: Webhook configured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /telegram/status:
+    get:
+      tags:
+        - Telegram
+      summary: Get Telegram service status
+      operationId: getTelegramStatus
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /email/send-invoice:
+    post:
+      tags:
+        - Email
+      summary: Send invoice email
+      operationId: sendInvoiceEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendInvoiceEmailRequest'
+      responses:
+        '200':
+          description: Email sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /email/send-reminder:
+    post:
+      tags:
+        - Email
+      summary: Send payment reminder
+      operationId: sendPaymentReminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendReminderRequest'
+      responses:
+        '200':
+          description: Reminder sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /email/send-receipt:
+    post:
+      tags:
+        - Email
+      summary: Send payment receipt
+      operationId: sendPaymentReceipt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendReceiptRequest'
+      responses:
+        '200':
+          description: Receipt sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /email/templates:
+    get:
+      tags:
+        - Email
+      summary: List email templates
+      operationId: listEmailTemplates
+      parameters:
+        - in: query
+          name: language
+          schema:
+            type: string
+            enum: [en, es]
+          description: Template language
+      responses:
+        '200':
+          description: Templates retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailTemplateListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /websocket/send-to-user:
+    post:
+      tags:
+        - WebSocket
+      summary: Send WebSocket message to user
+      operationId: sendWebSocketToUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendWebSocketMessageRequest'
+      responses:
+        '200':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /websocket/broadcast:
+    post:
+      tags:
+        - WebSocket
+      summary: Broadcast WebSocket message
+      operationId: broadcastWebSocket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BroadcastWebSocketRequest'
+      responses:
+        '200':
+          description: Message broadcast successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BroadcastResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /websocket/connected-users:
+    get:
+      tags:
+        - WebSocket
+      summary: Get connected users
+      operationId: getConnectedUsers
+      responses:
+        '200':
+          description: Connected users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectedUsersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /websocket/user-status/{userId}:
+    get:
+      tags:
+        - WebSocket
+      summary: Check user connection status
+      operationId: getUserConnectionStatus
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: User ID to check
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserConnectionStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /alerts:
+    get:
+      tags:
+        - Alerts
+      summary: List alerts
+      operationId: listAlerts
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - in: query
+          name: type
+          schema:
+            $ref: '#/components/schemas/AlertType'
+          description: Filter by alert type
+        - in: query
+          name: priority
+          schema:
+            $ref: '#/components/schemas/AlertPriority'
+          description: Filter by priority
+        - in: query
+          name: acknowledged
+          schema:
+            type: boolean
+          description: Filter by acknowledgment status
+      responses:
+        '200':
+          description: Alerts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Alerts
+      summary: Create alert
+      operationId: createAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertRequest'
+      responses:
+        '201':
+          description: Alert created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /alerts/{alertId}/acknowledge:
+    post:
+      tags:
+        - Alerts
+      summary: Acknowledge alert
+      operationId: acknowledgeAlert
+      parameters:
+        - in: path
+          name: alertId
+          required: true
+          schema:
+            type: string
+          description: Alert ID
+      responses:
+        '200':
+          description: Alert acknowledged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number
+    
+    LimitParam:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Items per page
+
+  schemas:
+    TelegramUpdate:
+      type: object
+      description: Telegram bot update object
+      properties:
+        update_id:
+          type: integer
+        message:
+          type: object
+          properties:
+            message_id:
+              type: integer
+            from:
+              type: object
+              properties:
+                id:
+                  type: integer
+                first_name:
+                  type: string
+                username:
+                  type: string
+            chat:
+              type: object
+              properties:
+                id:
+                  type: integer
+                type:
+                  type: string
+            text:
+              type: string
+            date:
+              type: integer
+
+    SendTelegramMessageRequest:
+      type: object
+      required:
+        - chatId
+        - text
+      properties:
+        chatId:
+          type: string
+          description: Telegram chat ID
+        text:
+          type: string
+          description: Message text
+        parseMode:
+          type: string
+          enum: [Markdown, HTML]
+          description: Text parsing mode
+        replyMarkup:
+          type: object
+          description: Inline keyboard markup
+
+    SendAlertRequest:
+      type: object
+      required:
+        - type
+        - message
+        - priority
+      properties:
+        type:
+          $ref: '#/components/schemas/AlertType'
+        message:
+          type: string
+        priority:
+          $ref: '#/components/schemas/AlertPriority'
+        details:
+          type: object
+          additionalProperties: true
+
+    SetupWebhookRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Webhook URL
+        allowedUpdates:
+          type: array
+          items:
+            type: string
+          description: Update types to receive
+
+    TelegramStatus:
+      type: object
+      properties:
+        botUsername:
+          type: string
+        webhookUrl:
+          type: string
+        isActive:
+          type: boolean
+        lastUpdate:
+          type: string
+          format: date-time
+        pendingUpdates:
+          type: integer
+
+    SendInvoiceEmailRequest:
+      type: object
+      required:
+        - to
+        - invoiceId
+      properties:
+        to:
+          type: string
+          format: email
+        invoiceId:
+          type: string
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+        language:
+          type: string
+          enum: [en, es]
+          default: en
+        attachPdf:
+          type: boolean
+          default: true
+
+    SendReminderRequest:
+      type: object
+      required:
+        - to
+        - invoiceId
+        - daysOverdue
+      properties:
+        to:
+          type: string
+          format: email
+        invoiceId:
+          type: string
+        daysOverdue:
+          type: integer
+        language:
+          type: string
+          enum: [en, es]
+          default: en
+
+    SendReceiptRequest:
+      type: object
+      required:
+        - to
+        - paymentId
+        - amount
+      properties:
+        to:
+          type: string
+          format: email
+        paymentId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+          default: EUR
+        language:
+          type: string
+          enum: [en, es]
+          default: en
+
+    EmailTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        subject:
+          type: string
+        language:
+          type: string
+        variables:
+          type: array
+          items:
+            type: string
+
+    EmailResult:
+      type: object
+      properties:
+        messageId:
+          type: string
+        accepted:
+          type: array
+          items:
+            type: string
+        rejected:
+          type: array
+          items:
+            type: string
+
+    SendWebSocketMessageRequest:
+      type: object
+      required:
+        - userId
+        - event
+        - data
+      properties:
+        userId:
+          type: string
+        event:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+
+    BroadcastWebSocketRequest:
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+        userIds:
+          type: array
+          items:
+            type: string
+          description: Optional list of user IDs to broadcast to
+
+    ConnectedUser:
+      type: object
+      properties:
+        userId:
+          type: string
+        socketId:
+          type: string
+        connectedAt:
+          type: string
+          format: date-time
+        rooms:
+          type: array
+          items:
+            type: string
+
+    AlertType:
+      type: string
+      enum: [transaction, sync_error, unusual_spending, system_error, security, performance]
+
+    AlertPriority:
+      type: string
+      enum: [critical, high, medium, low]
+
+    Alert:
+      type: object
+      required:
+        - id
+        - type
+        - message
+        - priority
+        - createdAt
+      properties:
+        id:
+          type: string
+        type:
+          $ref: '#/components/schemas/AlertType'
+        message:
+          type: string
+        priority:
+          $ref: '#/components/schemas/AlertPriority'
+        details:
+          type: object
+          additionalProperties: true
+        acknowledged:
+          type: boolean
+        acknowledgedBy:
+          type: string
+        acknowledgedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateAlertRequest:
+      type: object
+      required:
+        - type
+        - message
+        - priority
+      properties:
+        type:
+          $ref: '#/components/schemas/AlertType'
+        message:
+          type: string
+        priority:
+          $ref: '#/components/schemas/AlertPriority'
+        details:
+          type: object
+          additionalProperties: true
+        channels:
+          type: array
+          items:
+            type: string
+            enum: [telegram, email, websocket]
+          description: Notification channels
+
+    # Response schemas
+    TelegramMessageResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            messageId:
+              type: integer
+            chatId:
+              type: string
+
+    TelegramStatusResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/TelegramStatus'
+
+    EmailResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/EmailResult'
+
+    EmailTemplateListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailTemplate'
+
+    BroadcastResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            delivered:
+              type: integer
+            failed:
+              type: integer
+
+    ConnectedUsersResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConnectedUser'
+
+    UserConnectionStatusResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            isConnected:
+              type: boolean
+            lastSeen:
+              type: string
+              format: date-time
+
+    AlertResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Alert'
+
+    AlertListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    MessageResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    PaginationMeta:
+      type: object
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

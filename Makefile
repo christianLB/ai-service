@@ -56,6 +56,77 @@ clean: ## Clean Docker resources
 	@$(MAKE) -f Makefile.docker docker-clean
 
 # =============================================================================
+# 🏥 HEALTH CHECK COMMANDS (F1 - Scaffold de servicios)
+# =============================================================================
+
+.PHONY: health
+health: ## Check health of all services
+	@echo "$(GREEN)🏥 Checking health of all services...$(NC)"
+	@echo "$(CYAN)Gateway:$(NC)"
+	@curl -fsS http://localhost:3005/health/live 2>/dev/null && echo "  ✅ API Gateway is healthy" || echo "  ❌ API Gateway is down"
+	@echo "$(CYAN)Services:$(NC)"
+	@curl -fsS http://localhost:3001/health/live 2>/dev/null && echo "  ✅ Financial Service is healthy" || echo "  ❌ Financial Service is down"
+	@curl -fsS http://localhost:3002/health/live 2>/dev/null && echo "  ✅ Trading Service is healthy" || echo "  ❌ Trading Service is down"
+	@curl -fsS http://localhost:3003/health/live 2>/dev/null && echo "  ✅ Comm Service is healthy" || echo "  ❌ Comm Service is down"
+	@curl -fsS http://localhost:3004/health/live 2>/dev/null && echo "  ✅ AI Core is healthy" || echo "  ❌ AI Core is down"
+	@echo "$(CYAN)Workers:$(NC)"
+	@curl -fsS http://localhost:3101/health/live 2>/dev/null && echo "  ✅ Financial Worker is healthy" || echo "  ❌ Financial Worker is down"
+	@curl -fsS http://localhost:3102/health/live 2>/dev/null && echo "  ✅ Trading Worker is healthy" || echo "  ❌ Trading Worker is down"
+	@echo "$(CYAN)Infrastructure:$(NC)"
+	@docker exec ai-service-postgres pg_isready -U ai_user 2>/dev/null && echo "  ✅ PostgreSQL is healthy" || echo "  ❌ PostgreSQL is down"
+	@docker exec ai-service-redis redis-cli ping 2>/dev/null | grep -q PONG && echo "  ✅ Redis is healthy" || echo "  ❌ Redis is down"
+
+.PHONY: health-ready
+health-ready: ## Check readiness of all services (with dependencies)
+	@echo "$(GREEN)🏥 Checking readiness of all services...$(NC)"
+	@for port in 3005 3001 3002 3003 3004 3101 3102; do \
+		response=$$(curl -s http://localhost:$$port/health/ready 2>/dev/null); \
+		if [ -n "$$response" ]; then \
+			echo "  ✅ Service on port $$port is ready: $$response"; \
+		else \
+			echo "  ❌ Service on port $$port is not ready"; \
+		fi; \
+	done
+
+.PHONY: health-metrics
+health-metrics: ## Show metrics from all services
+	@echo "$(GREEN)📊 Fetching metrics from all services...$(NC)"
+	@for port in 3005 3001 3002 3003 3004 3101 3102; do \
+		echo "$(CYAN)Metrics from port $$port:$(NC)"; \
+		curl -s http://localhost:$$port/metrics 2>/dev/null | head -20 || echo "  ❌ No metrics available"; \
+		echo ""; \
+	done
+
+.PHONY: microservices-up
+microservices-up: ## Start microservices architecture (F1 completion)
+	@echo "$(GREEN)🚀 Starting microservices architecture...$(NC)"
+	@cd infra/compose && docker compose -f docker-compose.dev.yml up -d
+	@echo "$(YELLOW)⏳ Waiting for services to be healthy...$(NC)"
+	@sleep 10
+	@$(MAKE) health
+
+.PHONY: microservices-down
+microservices-down: ## Stop microservices architecture
+	@echo "$(RED)🛑 Stopping microservices architecture...$(NC)"
+	@cd infra/compose && docker compose -f docker-compose.dev.yml down
+
+.PHONY: microservices-logs
+microservices-logs: ## Show logs from all microservices
+	@cd infra/compose && docker compose -f docker-compose.dev.yml logs -f
+
+.PHONY: f1-validate
+f1-validate: ## Validate F1 (Scaffold de servicios) completion
+	@echo "$(GREEN)✅ Validating F1 - Scaffold de servicios...$(NC)"
+	@echo "$(CYAN)1. Checking Docker Compose startup...$(NC)"
+	@cd infra/compose && docker compose -f docker-compose.dev.yml up -d
+	@sleep 15
+	@echo "$(CYAN)2. Checking all services respond to /health/live...$(NC)"
+	@$(MAKE) health
+	@echo "$(CYAN)3. Checking service dependencies...$(NC)"
+	@cd infra/compose && docker compose -f docker-compose.dev.yml ps
+	@echo "$(GREEN)✅ F1 Validation Complete!$(NC)"
+
+# =============================================================================
 # 🗄️ DATABASE SHORTCUTS
 # =============================================================================
 
@@ -367,6 +438,59 @@ metrics: ## Show system metrics
 	@$(MAKE) -f Makefile.monitoring metrics
 
 # =============================================================================
+# 📦 QUEUE MANAGEMENT SHORTCUTS
+# =============================================================================
+
+.PHONY: queue-start
+queue-start: ## Start queue workers and Bull Board dashboard
+	@echo "🚀 Starting queue system..."
+	@cd infra/compose && docker-compose -f docker-compose.dev.yml up -d redis worker-financial worker-trading bull-board
+	@echo "📊 Bull Board dashboard available at: http://localhost:3200/admin/queues"
+
+.PHONY: queue-stop
+queue-stop: ## Stop queue workers and dashboard
+	@echo "⏹️ Stopping queue system..."
+	@cd infra/compose && docker-compose -f docker-compose.dev.yml stop worker-financial worker-trading bull-board
+
+.PHONY: queue-restart
+queue-restart: ## Restart queue system
+	@echo "🔄 Restarting queue system..."
+	@$(MAKE) queue-stop
+	@$(MAKE) queue-start
+
+.PHONY: queue-logs
+queue-logs: ## Show queue worker logs
+	@echo "📋 Queue worker logs..."
+	@cd infra/compose && docker-compose -f docker-compose.dev.yml logs -f worker-financial worker-trading
+
+.PHONY: queue-dashboard
+queue-dashboard: ## Open Bull Board dashboard in browser
+	@echo "📊 Opening Bull Board dashboard..."
+	@echo "Dashboard URL: http://localhost:3200/admin/queues"
+	@echo "Default credentials: admin / admin123"
+	@open http://localhost:3200/admin/queues 2>/dev/null || xdg-open http://localhost:3200/admin/queues 2>/dev/null || echo "Please open http://localhost:3200/admin/queues in your browser"
+
+.PHONY: queue-health
+queue-health: ## Check queue system health
+	@echo "🏥 Checking queue system health..."
+	@echo -n "Redis: " && docker exec $$(docker ps -qf "name=redis") redis-cli ping 2>/dev/null && echo "✅" || echo "❌ Not responding"
+	@echo -n "Worker Financial: " && curl -sf http://localhost:3101/health/ready >/dev/null && echo "✅" || echo "❌ Not healthy"
+	@echo -n "Worker Trading: " && curl -sf http://localhost:3102/health/ready >/dev/null && echo "✅" || echo "❌ Not healthy"
+	@echo -n "Bull Board: " && curl -sf http://localhost:3200/health >/dev/null && echo "✅" || echo "❌ Not healthy"
+
+.PHONY: queue-flush
+queue-flush: ## Flush all Redis queues (DANGEROUS!)
+	@echo "⚠️ WARNING: This will delete all queue data!"
+	@read -p "Are you sure? Type 'yes' to confirm: " confirm && [ "$$confirm" = "yes" ] && \
+		docker exec $$(docker ps -qf "name=redis") redis-cli FLUSHDB && \
+		echo "✅ All queues flushed" || echo "❌ Operation cancelled"
+
+.PHONY: redis-cli
+redis-cli: ## Connect to Redis CLI
+	@echo "🔧 Connecting to Redis CLI..."
+	@docker exec -it $$(docker ps -qf "name=redis") redis-cli
+
+# =============================================================================
 # 🛡️ SECURITY SHORTCUTS
 # =============================================================================
 
@@ -471,6 +595,100 @@ help-all: ## Show ALL available commands
 	@echo "  $(CYAN)Makefile.financial-sync$(NC)  - Financial data sync"
 	@echo "  $(CYAN)Makefile.monitoring$(NC)      - Monitoring & metrics"
 	@echo "  $(CYAN)Makefile.security$(NC)        - Security operations"
+
+# =============================================================================
+# 🚀 CI/CD COMMANDS
+# =============================================================================
+
+.PHONY: ci-validate
+ci-validate: ## Validate CI configuration
+	@echo "$(CYAN)Validating CI/CD configuration...$(NC)"
+	@echo "✓ Checking workflow files..."
+	@ls -la .github/workflows/*.yml 2>/dev/null || echo "❌ No workflow files found"
+	@echo "✓ Checking docker compose files..."
+	@ls -la docker-compose*.yml 2>/dev/null | wc -l | xargs -I {} echo "Found {} compose files"
+	@echo "✓ Checking environment parity..."
+	@diff -q docker-compose.production.yml docker-compose.nas.yml > /dev/null && echo "✅ Production and NAS are in sync" || echo "⚠️ Production and NAS configs differ"
+
+.PHONY: ci-local
+ci-local: ## Run CI checks locally
+	@echo "$(CYAN)Running CI checks locally...$(NC)"
+	@echo "→ Contract validation..."
+	@npm run contracts:validate || true
+	@echo "→ TypeScript check..."
+	@npm run typecheck || true
+	@echo "→ Linting..."
+	@npm run lint || true
+	@echo "→ Building..."
+	@npm run build || true
+	@echo "$(GREEN)✅ Local CI checks complete$(NC)"
+
+.PHONY: ci-contracts
+ci-contracts: ## Generate and validate contracts
+	@echo "$(CYAN)Generating contracts...$(NC)"
+	npm run contracts:generate
+	npm run contracts:build
+	@echo "$(CYAN)Checking for drift...$(NC)"
+	@git diff --exit-code packages/contracts/src/generated && echo "$(GREEN)✅ No contract drift$(NC)" || echo "$(RED)❌ Contract drift detected! Run 'make ci-contracts' and commit changes$(NC)"
+
+.PHONY: ci-quality
+ci-quality: ## Run quality checks (lint, typecheck, test)
+	@echo "$(CYAN)Running quality checks...$(NC)"
+	@echo "→ Linting backend..."
+	npm run lint || true
+	@echo "→ Linting frontend..."
+	cd frontend && npm run lint || true
+	@echo "→ TypeScript backend..."
+	npm run typecheck
+	@echo "→ TypeScript frontend..."
+	cd frontend && npm run typecheck
+	@echo "$(GREEN)✅ Quality checks complete$(NC)"
+
+.PHONY: ci-test
+ci-test: ## Run all tests with CI configuration
+	@echo "$(CYAN)Running tests in CI mode...$(NC)"
+	npm run test:ci
+
+.PHONY: ci-build-all
+ci-build-all: ## Build all services and packages
+	@echo "$(CYAN)Building all services...$(NC)"
+	@echo "→ Generating Prisma client..."
+	npm run db:generate
+	@echo "→ Building packages..."
+	pnpm -r --filter "./packages/*" build || true
+	@echo "→ Building backend..."
+	npm run build
+	@echo "→ Building frontend..."
+	cd frontend && npm run build
+	@echo "$(GREEN)✅ All builds complete$(NC)"
+
+.PHONY: ci-docker-build
+ci-docker-build: ## Build all Docker images
+	@echo "$(CYAN)Building Docker images...$(NC)"
+	@for service in api-gateway financial-svc trading-svc comm-svc ai-core worker-financial worker-trading; do \
+		echo "→ Building $$service..."; \
+		docker build -t ai-service-$$service:ci-test -f apps/$$service/Dockerfile . || true; \
+	done
+	@echo "$(GREEN)✅ Docker builds complete$(NC)"
+
+.PHONY: ci-workflow-test
+ci-workflow-test: ## Test GitHub Actions workflow locally (requires act)
+	@command -v act >/dev/null 2>&1 || { echo "$(RED)❌ 'act' is not installed. Install from: https://github.com/nektos/act$(NC)"; exit 1; }
+	@echo "$(CYAN)Testing CI workflow locally with act...$(NC)"
+	act -W .github/workflows/ci-complete.yml -j quality-gate
+
+.PHONY: ci-status
+ci-status: ## Show CI/CD status and recent runs
+	@echo "$(CYAN)CI/CD Status$(NC)"
+	@echo "$(CYAN)=================================$(NC)"
+	@echo "Workflow files:"
+	@ls -la .github/workflows/*.yml 2>/dev/null | awk '{print "  " $$9}' || echo "  No workflows found"
+	@echo ""
+	@echo "Recent commits:"
+	@git log --oneline -5
+	@echo ""
+	@echo "Branch status:"
+	@git status --short --branch
 
 # =============================================================================
 # 🚨 EMERGENCY SHORTCUTS

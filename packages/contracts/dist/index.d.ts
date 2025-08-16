@@ -1,12 +1,37 @@
-import createClient from 'openapi-fetch';
-export { createClient };
-import type { paths as AiServicePaths } from './generated/ai-service';
-export type { paths as AiServicePaths } from './generated/ai-service';
-export declare const createAiServiceClient: (baseUrl: string) => import("openapi-fetch").Client<AiServicePaths, `${string}/${string}`>;
-import type { paths as FinancialPaths } from './generated/financial';
-export type { paths as FinancialPaths } from './generated/financial';
-export declare const createFinancialClient: (baseUrl: string) => import("openapi-fetch").Client<FinancialPaths, `${string}/${string}`>;
-import type { paths as GatewayPaths } from './generated/gateway';
-export type { paths as GatewayPaths } from './generated/gateway';
-export declare const createGatewayClient: (baseUrl: string) => import("openapi-fetch").Client<GatewayPaths, `${string}/${string}`>;
+/**
+ * @ai/contracts - OpenAPI contracts and generated types for AI Service
+ *
+ * This package contains:
+ * - Generated TypeScript types from OpenAPI specifications
+ * - Shared request/response interfaces
+ * - Validation schemas
+ */
+export declare const CONTRACT_VERSION = "1.0.0";
+export interface ApiResponse<T = any> {
+    success: boolean;
+    data?: T;
+    error?: {
+        code: string;
+        message: string;
+        details?: any;
+    };
+    meta?: {
+        timestamp: string;
+        version: string;
+    };
+}
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
+}
+export interface ApiError {
+    code: string;
+    message: string;
+    statusCode: number;
+    details?: Record<string, any>;
+}
 //# sourceMappingURL=index.d.ts.map
