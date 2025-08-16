@@ -34,4 +34,78 @@ export interface ApiError {
     statusCode: number;
     details?: Record<string, any>;
 }
+export interface AiServicePaths {
+    "/api/financial/clients": {
+        get: {
+            responses: {
+                200: {
+                    content: {
+                        "application/json": PaginatedResponse<any>;
+                    };
+                };
+            };
+        };
+    };
+    "/api/financial/clients/{id}": {
+        get: {
+            responses: {
+                200: {
+                    content: {
+                        "application/json": ApiResponse<any>;
+                    };
+                };
+            };
+        };
+    };
+    "/api/financial/invoices": {
+        get: {
+            responses: {
+                200: {
+                    content: {
+                        "application/json": PaginatedResponse<any>;
+                    };
+                };
+            };
+        };
+    };
+    "/api/financial/invoices/{id}": {
+        get: {
+            responses: {
+                200: {
+                    content: {
+                        "application/json": ApiResponse<any>;
+                    };
+                };
+            };
+        };
+    };
+    "/api/financial/accounts": {
+        get: {
+            responses: {
+                200: {
+                    content: {
+                        "application/json": PaginatedResponse<any>;
+                    };
+                };
+            };
+        };
+    };
+    "/api/financial/accounts/{id}": {
+        get: {
+            responses: {
+                200: {
+                    content: {
+                        "application/json": ApiResponse<any>;
+                    };
+                };
+            };
+        };
+    };
+    [key: string]: any;
+}
+export declare function createAiServiceClient(baseUrl: string): {
+    baseUrl: string;
+    get: (path: string) => Promise<any>;
+    post: (path: string, body: any) => Promise<any>;
+};
 //# sourceMappingURL=index.d.ts.map

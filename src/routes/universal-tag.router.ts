@@ -267,7 +267,7 @@ export function setupUniversalTagRoutes(app: Express) {
           body: { success: false, error: 'Bulk delete not implemented' },
         }) as any,
     },
-    app
+    app as any
   );
 
   logger.info('UniversalTag routes initialized with ts-rest');

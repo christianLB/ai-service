@@ -307,7 +307,7 @@ export function setupContractRoutes(app: Express) {
         },
       },
     } as any,
-    app
+    app as any
   );
 
   logger.info('Contract routes initialized with ts-rest');

@@ -9,6 +9,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CONTRACT_VERSION = void 0;
+exports.createAiServiceClient = createAiServiceClient;
 // Re-export generated types (will be created by openapi-typescript)
 // export * from './generated/gateway';
 // export * from './generated/auth';
@@ -18,3 +19,21 @@ exports.CONTRACT_VERSION = void 0;
 // export * from './generated/comm';
 // Export contract version for runtime checks
 exports.CONTRACT_VERSION = '1.0.0';
+// Export placeholder client creator
+function createAiServiceClient(baseUrl) {
+    return {
+        baseUrl,
+        get: async (path) => {
+            const response = await fetch(`${baseUrl}${path}`);
+            return response.json();
+        },
+        post: async (path, body) => {
+            const response = await fetch(`${baseUrl}${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            return response.json();
+        },
+    };
+}
