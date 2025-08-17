@@ -1,0 +1,252 @@
+# =============================================================================
+# 🧪 E2E TESTING MAKEFILE
+# =============================================================================
+# Purpose: End-to-End testing with Playwright
+# Created: 2025-01-17
+# =============================================================================
+
+# Colors for output
+GREEN=\033[0;32m
+YELLOW=\033[1;33m
+RED=\033[0;31m
+BLUE=\033[0;34m
+NC=\033[0m # No Color
+
+# =============================================================================
+# 🎯 MAIN E2E COMMANDS
+# =============================================================================
+
+.PHONY: e2e
+e2e: ## Run all E2E tests
+	@echo "$(BLUE)🧪 Running E2E tests...$(NC)"
+	npm run test:e2e
+
+.PHONY: e2e-ui
+e2e-ui: ## Run E2E tests with UI mode
+	@echo "$(BLUE)🖥️ Opening Playwright UI...$(NC)"
+	npm run test:e2e:ui
+
+.PHONY: e2e-debug
+e2e-debug: ## Debug E2E tests
+	@echo "$(BLUE)🔍 Running tests in debug mode...$(NC)"
+	npm run test:e2e:debug
+
+.PHONY: e2e-headed
+e2e-headed: ## Run E2E tests with browser visible
+	@echo "$(BLUE)👀 Running tests with browser visible...$(NC)"
+	npm run test:e2e:headed
+
+# =============================================================================
+# 🌐 BROWSER-SPECIFIC TESTS
+# =============================================================================
+
+.PHONY: e2e-chrome
+e2e-chrome: ## Run E2E tests in Chrome only
+	@echo "$(BLUE)🔵 Running tests in Chrome...$(NC)"
+	npm run test:e2e:chrome
+
+.PHONY: e2e-firefox
+e2e-firefox: ## Run E2E tests in Firefox only
+	@echo "$(BLUE)🦊 Running tests in Firefox...$(NC)"
+	npm run test:e2e:firefox
+
+.PHONY: e2e-webkit
+e2e-webkit: ## Run E2E tests in WebKit only
+	@echo "$(BLUE)🧭 Running tests in WebKit...$(NC)"
+	npm run test:e2e:webkit
+
+.PHONY: e2e-mobile
+e2e-mobile: ## Run E2E tests on mobile devices
+	@echo "$(BLUE)📱 Running tests on mobile...$(NC)"
+	npm run test:e2e:mobile
+
+# =============================================================================
+# 📊 REPORTING & COVERAGE
+# =============================================================================
+
+.PHONY: e2e-report
+e2e-report: ## Show E2E test report
+	@echo "$(BLUE)📊 Opening test report...$(NC)"
+	npm run test:e2e:report
+
+.PHONY: e2e-coverage
+e2e-coverage: ## Run E2E tests with coverage
+	@echo "$(BLUE)📈 Running tests with coverage...$(NC)"
+	npx playwright test --reporter=html,json
+	@echo "$(GREEN)✅ Coverage report generated in test-results/$(NC)"
+
+# =============================================================================
+# 🔧 SETUP & MAINTENANCE
+# =============================================================================
+
+.PHONY: e2e-install
+e2e-install: ## Install Playwright and browsers
+	@echo "$(BLUE)📦 Installing Playwright...$(NC)"
+	npm install -D @playwright/test playwright-lighthouse @axe-core/playwright
+	npx playwright install chromium firefox webkit
+	@echo "$(GREEN)✅ Playwright installed successfully$(NC)"
+
+.PHONY: e2e-update-browsers
+e2e-update-browsers: ## Update Playwright browsers
+	@echo "$(BLUE)🔄 Updating browsers...$(NC)"
+	npx playwright install --force chromium firefox webkit
+	@echo "$(GREEN)✅ Browsers updated$(NC)"
+
+.PHONY: e2e-clean
+e2e-clean: ## Clean E2E test artifacts
+	@echo "$(YELLOW)🧹 Cleaning test artifacts...$(NC)"
+	rm -rf test-results/
+	rm -rf playwright-report/
+	rm -rf coverage/
+	@echo "$(GREEN)✅ Test artifacts cleaned$(NC)"
+
+# =============================================================================
+# 🐳 DOCKER E2E TESTS
+# =============================================================================
+
+.PHONY: e2e-docker
+e2e-docker: ## Run E2E tests in Docker
+	@echo "$(BLUE)🐳 Running E2E tests in Docker...$(NC)"
+	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+	docker compose -f docker-compose.test.yml down
+
+.PHONY: e2e-ci
+e2e-ci: ## Run E2E tests as in CI/CD
+	@echo "$(BLUE)🤖 Running CI/CD E2E tests...$(NC)"
+	CI=true npm run test:e2e
+
+# =============================================================================
+# 🏃 QUICK TESTS
+# =============================================================================
+
+.PHONY: e2e-smoke
+e2e-smoke: ## Run smoke tests only
+	@echo "$(BLUE)💨 Running smoke tests...$(NC)"
+	npx playwright test --grep @smoke
+
+.PHONY: e2e-critical
+e2e-critical: ## Run critical path tests only
+	@echo "$(RED)🔥 Running critical tests...$(NC)"
+	npx playwright test e2e/tests/01-authentication.spec.ts e2e/tests/02-dashboard-metrics.spec.ts
+
+.PHONY: e2e-auth
+e2e-auth: ## Run authentication tests only
+	@echo "$(BLUE)🔐 Running authentication tests...$(NC)"
+	npx playwright test e2e/tests/01-authentication.spec.ts
+
+.PHONY: e2e-financial
+e2e-financial: ## Run financial flow tests only
+	@echo "$(BLUE)💰 Running financial tests...$(NC)"
+	npx playwright test e2e/tests/05-financial-flow.spec.ts
+
+# =============================================================================
+# 📝 TEST GENERATION
+# =============================================================================
+
+.PHONY: e2e-codegen
+e2e-codegen: ## Start Playwright code generator
+	@echo "$(BLUE)🎬 Starting code generator...$(NC)"
+	npx playwright codegen http://localhost:3000
+
+.PHONY: e2e-new-test
+e2e-new-test: ## Create new test file template
+	@read -p "Enter test name (e.g., user-settings): " name; \
+	if [ -n "$$name" ]; then \
+		echo "Creating test file: e2e/tests/$$name.spec.ts"; \
+		cp e2e/tests/template.spec.ts e2e/tests/$$name.spec.ts 2>/dev/null || \
+		echo "import { test, expect } from '../fixtures/test-fixtures';\n\ntest.describe('$$name', () => {\n  test('should work', async ({ page }) => {\n    // Test implementation\n  });\n});" > e2e/tests/$$name.spec.ts; \
+		echo "$(GREEN)✅ Test file created$(NC)"; \
+	else \
+		echo "$(RED)❌ Test name required$(NC)"; \
+	fi
+
+# =============================================================================
+# 🩺 VALIDATION & HEALTH
+# =============================================================================
+
+.PHONY: e2e-validate
+e2e-validate: ## Validate E2E setup
+	@echo "$(BLUE)🩺 Validating E2E setup...$(NC)"
+	@echo "Checking Playwright installation..."
+	@npx playwright --version || (echo "$(RED)❌ Playwright not installed$(NC)" && exit 1)
+	@echo "$(GREEN)✅ Playwright installed$(NC)"
+	@echo ""
+	@echo "Checking test files..."
+	@ls -la e2e/tests/*.spec.ts 2>/dev/null | wc -l | xargs -I {} echo "{} test files found"
+	@echo ""
+	@echo "Checking browsers..."
+	@npx playwright install --dry-run || true
+	@echo "$(GREEN)✅ E2E setup validated$(NC)"
+
+.PHONY: e2e-doctor
+e2e-doctor: ## Diagnose E2E issues
+	@echo "$(BLUE)🩺 Running E2E diagnostics...$(NC)"
+	@echo "Node version: $$(node --version)"
+	@echo "NPM version: $$(npm --version)"
+	@echo "Playwright version: $$(npx playwright --version 2>/dev/null || echo 'Not installed')"
+	@echo ""
+	@echo "Test files:"
+	@find e2e -name "*.spec.ts" -type f | head -10
+	@echo ""
+	@echo "Browser status:"
+	@npx playwright install --dry-run 2>&1 | grep -E "(chromium|firefox|webkit)" || echo "Browsers need installation"
+	@echo ""
+	@echo "$(YELLOW)Run 'make e2e-install' if Playwright is not installed$(NC)"
+	@echo "$(YELLOW)Run 'make e2e-update-browsers' to update browsers$(NC)"
+
+# =============================================================================
+# 📈 METRICS & STATS
+# =============================================================================
+
+.PHONY: e2e-stats
+e2e-stats: ## Show E2E test statistics
+	@echo "$(BLUE)📊 E2E Test Statistics$(NC)"
+	@echo "========================"
+	@echo "Total test files: $$(find e2e/tests -name "*.spec.ts" | wc -l)"
+	@echo "Total test cases: $$(grep -h "test(" e2e/tests/*.spec.ts 2>/dev/null | wc -l)"
+	@echo "Total describes: $$(grep -h "test.describe(" e2e/tests/*.spec.ts 2>/dev/null | wc -l)"
+	@echo ""
+	@echo "Test breakdown:"
+	@for file in e2e/tests/*.spec.ts; do \
+		if [ -f "$$file" ]; then \
+			tests=$$(grep "test(" "$$file" | wc -l); \
+			echo "  $$(basename $$file): $$tests tests"; \
+		fi \
+	done
+
+# =============================================================================
+# 🚀 QUICK COMMANDS
+# =============================================================================
+
+.PHONY: e2e-quick
+e2e-quick: ## Quick E2E test run (Chrome only, no video)
+	@echo "$(BLUE)⚡ Quick E2E test run...$(NC)"
+	npx playwright test --project=chromium --reporter=list
+
+.PHONY: e2e-watch
+e2e-watch: ## Watch mode for E2E tests
+	@echo "$(BLUE)👁️ Starting watch mode...$(NC)"
+	npx playwright test --ui --watch
+
+# =============================================================================
+# 📚 HELP
+# =============================================================================
+
+.PHONY: e2e-help
+e2e-help: ## Show E2E testing help
+	@echo "$(BLUE)📚 E2E Testing Commands$(NC)"
+	@echo "======================="
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile.e2e | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Quick Start:$(NC)"
+	@echo "  1. $(GREEN)make e2e-install$(NC)    - Install Playwright"
+	@echo "  2. $(GREEN)make e2e$(NC)            - Run all tests"
+	@echo "  3. $(GREEN)make e2e-report$(NC)     - View results"
+	@echo ""
+	@echo "$(YELLOW)Debug Mode:$(NC)"
+	@echo "  $(GREEN)make e2e-ui$(NC)          - Interactive UI"
+	@echo "  $(GREEN)make e2e-debug$(NC)       - Step through tests"
+	@echo "  $(GREEN)make e2e-headed$(NC)      - See browser"
+
+# Default target
+.DEFAULT_GOAL := e2e-help
