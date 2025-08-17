@@ -98,6 +98,33 @@ app.use(express.json());
 // Setup observability middleware
 observability.setupExpress(app);
 
+// Add health endpoints directly
+app.get('/health', (_req, res) => {
+  res.json({ status: 'healthy', service: 'financial-svc' });
+});
+
+app.get('/health/live', (_req, res) => {
+  res.json({ ok: true });
+});
+
+app.get('/health/ready', async (_req, res) => {
+  try {
+    // Check database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(503).json({ ok: false, error: 'Database not ready' });
+  }
+});
+
+app.get('/metrics', (_req, res) => {
+  res.type('text/plain; version=0.0.4');
+  res.send(`# HELP service_info Service information
+# TYPE service_info gauge
+service_info{service="financial-svc"} 1
+`);
+});
+
 // Dev-only seed: ensure at least one account exists in financial.accounts for smoke tests
 async function ensureDevSeed() {
   if (process.env.NODE_ENV === 'production') return;

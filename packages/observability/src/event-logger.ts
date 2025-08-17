@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -7,10 +6,10 @@ import { v4 as uuidv4 } from 'uuid';
  * Integrates with the EventLog table in the database
  */
 export class EventLogger {
-  private prisma: PrismaClient;
+  private prisma: any;
   
-  constructor(prisma?: PrismaClient) {
-    this.prisma = prisma || new PrismaClient();
+  constructor(prisma?: any) {
+    this.prisma = prisma || null;
   }
 
   /**
@@ -103,6 +102,11 @@ export class EventLogger {
     ip?: string;
     userAgent?: string;
   }) {
+    if (!this.prisma) {
+      // Just log to console if Prisma is not available
+      console.log(`[EventLog] ${event.level || 'info'}: ${event.message}`);
+      return;
+    }
     try {
       await this.prisma.eventLog.create({
         data: {
@@ -206,6 +210,7 @@ export class EventLogger {
    * Query events by trace ID
    */
   async getTraceEvents(traceId: string) {
+    if (!this.prisma) return [];
     return await this.prisma.eventLog.findMany({
       where: { traceId },
       orderBy: { createdAt: 'asc' },
@@ -221,6 +226,7 @@ export class EventLogger {
     endTime: Date,
     level?: string
   ) {
+    if (!this.prisma) return [];
     return await this.prisma.eventLog.findMany({
       where: {
         service,
@@ -238,6 +244,7 @@ export class EventLogger {
    * Clean up old events (retention policy)
    */
   async cleanupOldEvents(retentionDays: number = 30) {
+    if (!this.prisma) return 0;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
     
@@ -253,5 +260,5 @@ export class EventLogger {
   }
 }
 
-// Export a singleton instance
+// Export a singleton instance (without Prisma for now)
 export const eventLogger = new EventLogger();

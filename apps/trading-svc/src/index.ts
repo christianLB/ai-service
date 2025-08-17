@@ -85,6 +85,34 @@ app.use(express.json());
 // Setup observability middleware
 observability.setupExpress(app);
 
+// Add health endpoints directly
+app.get('/health', (_req, res) => {
+  res.json({ status: 'healthy', service: 'trading-svc' });
+});
+
+app.get('/health/live', (_req, res) => {
+  res.json({ ok: true });
+});
+
+app.get('/health/ready', async (_req, res) => {
+  try {
+    // Check database and redis
+    await pool.query('SELECT 1');
+    await redis.ping();
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(503).json({ ok: false, error: 'Dependencies not ready' });
+  }
+});
+
+app.get('/metrics', (_req, res) => {
+  res.type('text/plain; version=0.0.4');
+  res.send(`# HELP service_info Service information
+# TYPE service_info gauge
+service_info{service="trading-svc"} 1
+`);
+});
+
 // =============================================================================
 // F4 TRADING FSM ENDPOINTS - Required for F4 completion
 // =============================================================================

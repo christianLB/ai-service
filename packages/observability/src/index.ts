@@ -184,13 +184,12 @@ export function createStandardObservability(config: {
     traceMiddleware: undefined,
     eventLogger: undefined,
     setupExpress: (app: any) => {
+      // Only setup middleware, not routes (services define routes directly)
       if (metricsRegistry) {
         app.use(metricsRegistry.httpMiddleware());
-        app.get('/metrics', metricsRegistry.metricsEndpoint);
       }
-      app.get('/health', healthHandler.health);
-      app.get('/health/live', healthHandler.liveness);
-      app.get('/health/ready', healthHandler.readiness);
+      // Services should define their own health/metrics endpoints
+      // This prevents route conflicts and gives services control
     },
   };
 }

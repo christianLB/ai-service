@@ -74,6 +74,33 @@ app.use(express.json());
 // Setup observability middleware
 observability.setupExpress(app);
 
+// Add health endpoints directly
+app.get('/health', (_req, res) => {
+  res.json({ status: 'healthy', service: 'ai-core' });
+});
+
+app.get('/health/live', (_req, res) => {
+  res.json({ ok: true });
+});
+
+app.get('/health/ready', async (_req, res) => {
+  try {
+    // Check redis connection
+    await redis.ping();
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(503).json({ ok: false, error: 'Redis not ready' });
+  }
+});
+
+app.get('/metrics', (_req, res) => {
+  res.type('text/plain; version=0.0.4');
+  res.send(`# HELP service_info Service information
+# TYPE service_info gauge
+service_info{service="ai-core"} 1
+`);
+});
+
 // AI Core endpoints with metrics
 
 // Mock inference endpoint
