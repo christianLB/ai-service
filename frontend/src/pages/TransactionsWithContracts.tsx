@@ -75,7 +75,7 @@ const TransactionsWithContracts: FC = () => {
   // Fetch accounts for filter dropdown
   const fetchAccounts = useCallback(async () => {
     try {
-      const result = await gatewayClient.GET('/api/financial/accounts', {});
+      const result = await gatewayClient.GET('/api/financial/accounts');
 
       if (result.data) {
         setAccounts(result.data.accounts);
@@ -117,7 +117,7 @@ const TransactionsWithContracts: FC = () => {
         query.search = filters.searchTerm;
       }
 
-      const result = await gatewayClient.GET('/api/financial/transactions', {});
+      const result = await gatewayClient.GET('/api/financial/transactions');
 
       if (result.data) {
         // TODO: Uncomment when transactions state is restored
@@ -180,7 +180,7 @@ const TransactionsWithContracts: FC = () => {
         query.dateTo = filters.dateRange[1];
       }
 
-      const result = await gatewayClient.GET('/api/financial/transactions/export', {});
+      const result = await gatewayClient.GET('/api/financial/transactions/export');
 
       if (result.data) {
         if (format === 'csv') {
