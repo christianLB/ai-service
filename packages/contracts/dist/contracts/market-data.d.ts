@@ -1,7 +1,6 @@
 import { z } from 'zod';
 export declare const marketDataContract: {
     getAll: {
-        method: "GET";
         query: z.ZodObject<{
             page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
             limit: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -24,9 +23,9 @@ export declare const marketDataContract: {
             page: number;
             limit: number;
             sortOrder: "asc" | "desc";
-            search?: string | undefined;
-            sortBy?: "id" | "metadata" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
             metadata?: any;
+            search?: string | undefined;
+            sortBy?: "metadata" | "id" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
             exchangeId?: string | undefined;
             tradingPairId?: string | undefined;
             timestamp?: any;
@@ -39,12 +38,12 @@ export declare const marketDataContract: {
             trades?: number | undefined;
             timeframe?: string | undefined;
         }, {
+            metadata?: any;
+            search?: string | undefined;
             page?: number | undefined;
             limit?: number | undefined;
+            sortBy?: "metadata" | "id" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
             sortOrder?: "asc" | "desc" | undefined;
-            search?: string | undefined;
-            sortBy?: "id" | "metadata" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
-            metadata?: any;
             exchangeId?: string | undefined;
             tradingPairId?: string | undefined;
             timestamp?: any;
@@ -58,6 +57,7 @@ export declare const marketDataContract: {
             timeframe?: string | undefined;
         }>;
         summary: "Get all marketdatas with optional filtering and pagination";
+        method: "GET";
         path: "/api/public/market-datas";
         responses: {
             200: z.ZodObject<{
@@ -111,14 +111,14 @@ export declare const marketDataContract: {
                     limit: z.ZodNumber;
                     totalPages: z.ZodNumber;
                 }, "strip", z.ZodTypeAny, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }>;
             }, "strip", z.ZodTypeAny, {
@@ -139,9 +139,9 @@ export declare const marketDataContract: {
                     trades?: number | undefined;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }, {
@@ -162,9 +162,9 @@ export declare const marketDataContract: {
                     trades?: number | undefined;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }>;
@@ -197,7 +197,6 @@ export declare const marketDataContract: {
         };
     };
     getById: {
-        method: "GET";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -206,6 +205,7 @@ export declare const marketDataContract: {
             id: string;
         }>;
         summary: "Get a marketdata by ID";
+        method: "GET";
         path: "/api/public/market-datas/:id";
         responses: {
             200: z.ZodObject<{
@@ -317,6 +317,8 @@ export declare const marketDataContract: {
         };
     };
     create: {
+        summary: "Create a new marketdata";
+        method: "POST";
         body: z.ZodObject<Omit<{
             id: z.ZodString;
             exchangeId: z.ZodString;
@@ -331,7 +333,7 @@ export declare const marketDataContract: {
             trades: z.ZodOptional<z.ZodNumber>;
             timeframe: z.ZodString;
             metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
-        }, "id" | "metadata">, "strip", z.ZodTypeAny, {
+        }, "metadata" | "id">, "strip", z.ZodTypeAny, {
             exchangeId: string;
             tradingPairId: string;
             timestamp: Date;
@@ -356,8 +358,6 @@ export declare const marketDataContract: {
             quoteVolume?: string | number | undefined;
             trades?: number | undefined;
         }>;
-        method: "POST";
-        summary: "Create a new marketdata";
         path: "/api/public/market-datas";
         responses: {
             201: z.ZodObject<{
@@ -469,6 +469,15 @@ export declare const marketDataContract: {
         };
     };
     update: {
+        pathParams: z.ZodObject<{
+            id: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+        }, {
+            id: string;
+        }>;
+        summary: "Update a marketdata";
+        method: "PUT";
         body: z.ZodObject<{
             exchangeId: z.ZodOptional<z.ZodString>;
             tradingPairId: z.ZodOptional<z.ZodString>;
@@ -506,15 +515,6 @@ export declare const marketDataContract: {
             trades?: number | undefined;
             timeframe?: string | undefined;
         }>;
-        method: "PUT";
-        pathParams: z.ZodObject<{
-            id: z.ZodString;
-        }, "strip", z.ZodTypeAny, {
-            id: string;
-        }, {
-            id: string;
-        }>;
-        summary: "Update a marketdata";
         path: "/api/public/market-datas/:id";
         responses: {
             200: z.ZodObject<{
@@ -639,7 +639,6 @@ export declare const marketDataContract: {
         };
     };
     delete: {
-        method: "DELETE";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -648,6 +647,7 @@ export declare const marketDataContract: {
             id: string;
         }>;
         summary: "Delete a marketdata";
+        method: "DELETE";
         path: "/api/public/market-datas/:id";
         responses: {
             200: z.ZodObject<{
@@ -689,6 +689,8 @@ export declare const marketDataContract: {
         };
     };
     bulkCreate: {
+        summary: "Create multiple marketdatas";
+        method: "POST";
         body: z.ZodObject<{
             data: z.ZodArray<z.ZodObject<Omit<{
                 id: z.ZodString;
@@ -704,7 +706,7 @@ export declare const marketDataContract: {
                 trades: z.ZodOptional<z.ZodNumber>;
                 timeframe: z.ZodString;
                 metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
-            }, "id" | "metadata">, "strip", z.ZodTypeAny, {
+            }, "metadata" | "id">, "strip", z.ZodTypeAny, {
                 exchangeId: string;
                 tradingPairId: string;
                 timestamp: Date;
@@ -758,8 +760,6 @@ export declare const marketDataContract: {
                 trades?: number | undefined;
             }[];
         }>;
-        method: "POST";
-        summary: "Create multiple marketdatas";
         path: "/api/public/market-datas/bulk";
         responses: {
             201: z.ZodObject<{
@@ -874,6 +874,8 @@ export declare const marketDataContract: {
         };
     };
     bulkUpdate: {
+        summary: "Update multiple marketdatas";
+        method: "PUT";
         body: z.ZodObject<{
             where: z.ZodObject<{
                 page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -897,9 +899,9 @@ export declare const marketDataContract: {
                 page: number;
                 limit: number;
                 sortOrder: "asc" | "desc";
-                search?: string | undefined;
-                sortBy?: "id" | "metadata" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
                 metadata?: any;
+                search?: string | undefined;
+                sortBy?: "metadata" | "id" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
                 exchangeId?: string | undefined;
                 tradingPairId?: string | undefined;
                 timestamp?: any;
@@ -912,12 +914,12 @@ export declare const marketDataContract: {
                 trades?: number | undefined;
                 timeframe?: string | undefined;
             }, {
+                metadata?: any;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
+                sortBy?: "metadata" | "id" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
                 sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                sortBy?: "id" | "metadata" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
-                metadata?: any;
                 exchangeId?: string | undefined;
                 tradingPairId?: string | undefined;
                 timestamp?: any;
@@ -985,9 +987,9 @@ export declare const marketDataContract: {
                 page: number;
                 limit: number;
                 sortOrder: "asc" | "desc";
-                search?: string | undefined;
-                sortBy?: "id" | "metadata" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
                 metadata?: any;
+                search?: string | undefined;
+                sortBy?: "metadata" | "id" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
                 exchangeId?: string | undefined;
                 tradingPairId?: string | undefined;
                 timestamp?: any;
@@ -1015,12 +1017,12 @@ export declare const marketDataContract: {
                 timeframe?: string | undefined;
             };
             where: {
+                metadata?: any;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
+                sortBy?: "metadata" | "id" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
                 sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                sortBy?: "id" | "metadata" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
-                metadata?: any;
                 exchangeId?: string | undefined;
                 tradingPairId?: string | undefined;
                 timestamp?: any;
@@ -1034,8 +1036,6 @@ export declare const marketDataContract: {
                 timeframe?: string | undefined;
             };
         }>;
-        method: "PUT";
-        summary: "Update multiple marketdatas";
         path: "/api/public/market-datas/bulk";
         responses: {
             200: z.ZodObject<{
@@ -1077,6 +1077,8 @@ export declare const marketDataContract: {
         };
     };
     bulkDelete: {
+        summary: "Delete multiple marketdatas";
+        method: "DELETE";
         body: z.ZodObject<{
             ids: z.ZodArray<z.ZodString, "many">;
         }, "strip", z.ZodTypeAny, {
@@ -1084,8 +1086,6 @@ export declare const marketDataContract: {
         }, {
             ids: string[];
         }>;
-        method: "DELETE";
-        summary: "Delete multiple marketdatas";
         path: "/api/public/market-datas/bulk";
         responses: {
             200: z.ZodObject<{

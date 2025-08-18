@@ -28,12 +28,12 @@ export declare const EntityTagSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     method: string;
     id: string;
-    entityType: string;
-    entityId: string;
     confidence: number;
-    isVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
+    entityType: string;
+    entityId: string;
+    isVerified: boolean;
     tagId: string;
     appliedBy?: string | undefined;
     aiProvider?: string | undefined;
@@ -50,12 +50,12 @@ export declare const EntityTagSchema: z.ZodObject<{
 }, {
     method: string;
     id: string;
-    entityType: string;
-    entityId: string;
     confidence: number;
-    isVerified: boolean;
     createdAt: string | Date;
     updatedAt: string | Date;
+    entityType: string;
+    entityId: string;
+    isVerified: boolean;
     tagId: string;
     appliedBy?: string | undefined;
     aiProvider?: string | undefined;
@@ -92,7 +92,7 @@ export declare const EntityTagCreateSchema: z.ZodObject<Omit<{
     createdAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
     updatedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
     tagId: z.ZodString;
-}, "id" | "confidence" | "isVerified" | "createdAt" | "updatedAt">, "strip", z.ZodTypeAny, {
+}, "id" | "confidence" | "createdAt" | "updatedAt" | "isVerified">, "strip", z.ZodTypeAny, {
     method: string;
     entityType: string;
     entityId: string;
@@ -204,12 +204,12 @@ export declare const EntityTagResponseSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     method: string;
     id: string;
-    entityType: string;
-    entityId: string;
     confidence: number;
-    isVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
+    entityType: string;
+    entityId: string;
+    isVerified: boolean;
     tagId: string;
     appliedBy?: string | undefined;
     aiProvider?: string | undefined;
@@ -226,12 +226,12 @@ export declare const EntityTagResponseSchema: z.ZodObject<{
 }, {
     method: string;
     id: string;
-    entityType: string;
-    entityId: string;
     confidence: number;
-    isVerified: boolean;
     createdAt: string | Date;
     updatedAt: string | Date;
+    entityType: string;
+    entityId: string;
+    isVerified: boolean;
     tagId: string;
     appliedBy?: string | undefined;
     aiProvider?: string | undefined;
@@ -277,11 +277,15 @@ export declare const EntityTagQuerySchema: z.ZodObject<{
     page: number;
     limit: number;
     sortOrder: "asc" | "desc";
-    search?: string | undefined;
     method?: string | undefined;
+    search?: string | undefined;
+    confidence?: number | undefined;
+    createdAt?: any;
+    updatedAt?: any;
+    sortBy?: "method" | "id" | "confidence" | "createdAt" | "updatedAt" | "entityType" | "entityId" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "tagId" | undefined;
+    include?: {} | undefined;
     entityType?: string | undefined;
     entityId?: string | undefined;
-    confidence?: number | undefined;
     appliedBy?: string | undefined;
     aiProvider?: string | undefined;
     aiModel?: string | undefined;
@@ -295,20 +299,20 @@ export declare const EntityTagQuerySchema: z.ZodObject<{
     sourceEntityType?: string | undefined;
     sourceEntityId?: string | undefined;
     relationshipType?: string | undefined;
-    createdAt?: any;
-    updatedAt?: any;
     tagId?: string | undefined;
-    sortBy?: "method" | "id" | "entityType" | "entityId" | "confidence" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "createdAt" | "updatedAt" | "tagId" | undefined;
-    include?: {} | undefined;
 }, {
+    method?: string | undefined;
+    search?: string | undefined;
     page?: number | undefined;
     limit?: number | undefined;
+    confidence?: number | undefined;
+    createdAt?: any;
+    updatedAt?: any;
+    sortBy?: "method" | "id" | "confidence" | "createdAt" | "updatedAt" | "entityType" | "entityId" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "tagId" | undefined;
     sortOrder?: "asc" | "desc" | undefined;
-    search?: string | undefined;
-    method?: string | undefined;
+    include?: {} | undefined;
     entityType?: string | undefined;
     entityId?: string | undefined;
-    confidence?: number | undefined;
     appliedBy?: string | undefined;
     aiProvider?: string | undefined;
     aiModel?: string | undefined;
@@ -322,11 +326,7 @@ export declare const EntityTagQuerySchema: z.ZodObject<{
     sourceEntityType?: string | undefined;
     sourceEntityId?: string | undefined;
     relationshipType?: string | undefined;
-    createdAt?: any;
-    updatedAt?: any;
     tagId?: string | undefined;
-    sortBy?: "method" | "id" | "entityType" | "entityId" | "confidence" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "createdAt" | "updatedAt" | "tagId" | undefined;
-    include?: {} | undefined;
 }>;
 export type EntityTag = z.infer<typeof EntityTagSchema>;
 export type EntityTagCreate = z.infer<typeof EntityTagCreateSchema>;

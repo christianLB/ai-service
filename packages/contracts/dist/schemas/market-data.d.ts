@@ -60,7 +60,7 @@ export declare const MarketDataCreateSchema: z.ZodObject<Omit<{
     trades: z.ZodOptional<z.ZodNumber>;
     timeframe: z.ZodString;
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
-}, "id" | "metadata">, "strip", z.ZodTypeAny, {
+}, "metadata" | "id">, "strip", z.ZodTypeAny, {
     exchangeId: string;
     tradingPairId: string;
     timestamp: Date;
@@ -187,9 +187,9 @@ export declare const MarketDataQuerySchema: z.ZodObject<{
     page: number;
     limit: number;
     sortOrder: "asc" | "desc";
-    search?: string | undefined;
-    sortBy?: "id" | "metadata" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
     metadata?: any;
+    search?: string | undefined;
+    sortBy?: "metadata" | "id" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
     exchangeId?: string | undefined;
     tradingPairId?: string | undefined;
     timestamp?: any;
@@ -202,12 +202,12 @@ export declare const MarketDataQuerySchema: z.ZodObject<{
     trades?: number | undefined;
     timeframe?: string | undefined;
 }, {
+    metadata?: any;
+    search?: string | undefined;
     page?: number | undefined;
     limit?: number | undefined;
+    sortBy?: "metadata" | "id" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
     sortOrder?: "asc" | "desc" | undefined;
-    search?: string | undefined;
-    sortBy?: "id" | "metadata" | "exchangeId" | "tradingPairId" | "timestamp" | "open" | "high" | "low" | "close" | "volume" | "quoteVolume" | "trades" | "timeframe" | undefined;
-    metadata?: any;
     exchangeId?: string | undefined;
     tradingPairId?: string | undefined;
     timestamp?: any;

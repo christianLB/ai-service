@@ -1,7 +1,6 @@
 import { z } from 'zod';
 export declare const universalTagContract: {
     getAll: {
-        method: "GET";
         query: z.ZodObject<{
             page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
             limit: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -35,20 +34,16 @@ export declare const universalTagContract: {
             page: number;
             limit: number;
             sortOrder: "asc" | "desc";
-            code?: string | undefined;
             path?: string | undefined;
-            search?: string | undefined;
-            confidence?: number | undefined;
-            createdAt?: any;
-            updatedAt?: any;
-            sortBy?: "code" | "path" | "id" | "confidence" | "createdAt" | "updatedAt" | "metadata" | "description" | "name" | "entityTypes" | "patterns" | "rules" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "parentId" | "entityTags" | undefined;
-            include?: {} | undefined;
             metadata?: any;
             description?: string | undefined;
+            code?: string | undefined;
+            search?: string | undefined;
             name?: string | undefined;
             entityTypes?: string[] | undefined;
             patterns?: any;
             rules?: any;
+            confidence?: number | undefined;
             embeddingModel?: string | undefined;
             level?: number | undefined;
             color?: string | undefined;
@@ -58,26 +53,25 @@ export declare const universalTagContract: {
             usageCount?: number | undefined;
             successRate?: number | undefined;
             lastUsed?: any;
+            createdAt?: any;
+            updatedAt?: any;
             parentId?: string | undefined;
             entityTags?: any;
+            sortBy?: "path" | "metadata" | "description" | "code" | "id" | "name" | "entityTypes" | "patterns" | "rules" | "confidence" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "createdAt" | "updatedAt" | "parentId" | "entityTags" | undefined;
+            include?: {} | undefined;
         }, {
-            code?: string | undefined;
             path?: string | undefined;
+            metadata?: any;
+            description?: string | undefined;
+            code?: string | undefined;
+            search?: string | undefined;
             page?: number | undefined;
             limit?: number | undefined;
-            sortOrder?: "asc" | "desc" | undefined;
-            search?: string | undefined;
-            confidence?: number | undefined;
-            createdAt?: any;
-            updatedAt?: any;
-            sortBy?: "code" | "path" | "id" | "confidence" | "createdAt" | "updatedAt" | "metadata" | "description" | "name" | "entityTypes" | "patterns" | "rules" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "parentId" | "entityTags" | undefined;
-            include?: {} | undefined;
-            metadata?: any;
-            description?: string | undefined;
             name?: string | undefined;
             entityTypes?: string[] | undefined;
             patterns?: any;
             rules?: any;
+            confidence?: number | undefined;
             embeddingModel?: string | undefined;
             level?: number | undefined;
             color?: string | undefined;
@@ -87,10 +81,16 @@ export declare const universalTagContract: {
             usageCount?: number | undefined;
             successRate?: number | undefined;
             lastUsed?: any;
+            createdAt?: any;
+            updatedAt?: any;
             parentId?: string | undefined;
             entityTags?: any;
+            sortBy?: "path" | "metadata" | "description" | "code" | "id" | "name" | "entityTypes" | "patterns" | "rules" | "confidence" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "createdAt" | "updatedAt" | "parentId" | "entityTags" | undefined;
+            sortOrder?: "asc" | "desc" | undefined;
+            include?: {} | undefined;
         }>;
         summary: "Get all universaltags with optional filtering and pagination";
+        method: "GET";
         path: "/api/tagging/universal-tags";
         responses: {
             200: z.ZodObject<{
@@ -120,19 +120,19 @@ export declare const universalTagContract: {
                     parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                     entityTags: z.ZodAny;
                 }, "strip", z.ZodTypeAny, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -144,19 +144,19 @@ export declare const universalTagContract: {
                     parentId?: string | null | undefined;
                     entityTags?: any;
                 }, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -174,32 +174,32 @@ export declare const universalTagContract: {
                     limit: z.ZodNumber;
                     totalPages: z.ZodNumber;
                 }, "strip", z.ZodTypeAny, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }>;
             }, "strip", z.ZodTypeAny, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -212,27 +212,27 @@ export declare const universalTagContract: {
                     entityTags?: any;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -245,9 +245,9 @@ export declare const universalTagContract: {
                     entityTags?: any;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }>;
@@ -280,7 +280,6 @@ export declare const universalTagContract: {
         };
     };
     getById: {
-        method: "GET";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -289,6 +288,7 @@ export declare const universalTagContract: {
             id: string;
         }>;
         summary: "Get a universaltag by ID";
+        method: "GET";
         path: "/api/tagging/universal-tags/:id";
         responses: {
             200: z.ZodObject<{
@@ -318,19 +318,19 @@ export declare const universalTagContract: {
                     parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                     entityTags: z.ZodAny;
                 }, "strip", z.ZodTypeAny, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -342,19 +342,19 @@ export declare const universalTagContract: {
                     parentId?: string | null | undefined;
                     entityTags?: any;
                 }, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -369,19 +369,19 @@ export declare const universalTagContract: {
             }, "strip", z.ZodTypeAny, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -396,19 +396,19 @@ export declare const universalTagContract: {
             }, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -450,6 +450,8 @@ export declare const universalTagContract: {
         };
     };
     create: {
+        summary: "Create a new universaltag";
+        method: "POST";
         body: z.ZodObject<Omit<{
             id: z.ZodString;
             code: z.ZodString;
@@ -474,9 +476,9 @@ export declare const universalTagContract: {
             updatedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
             parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
             entityTags: z.ZodAny;
-        }, "id" | "confidence" | "createdAt" | "updatedAt" | "level" | "isActive" | "isSystem" | "usageCount" | "successRate">, "strip", z.ZodTypeAny, {
-            code: string;
+        }, "id" | "confidence" | "level" | "isActive" | "isSystem" | "usageCount" | "successRate" | "createdAt" | "updatedAt">, "strip", z.ZodTypeAny, {
             path: string;
+            code: string;
             name: string;
             entityTypes: string[];
             metadata?: any;
@@ -490,8 +492,8 @@ export declare const universalTagContract: {
             parentId?: string | null | undefined;
             entityTags?: any;
         }, {
-            code: string;
             path: string;
+            code: string;
             name: string;
             entityTypes: string[];
             metadata?: any;
@@ -505,8 +507,6 @@ export declare const universalTagContract: {
             parentId?: string | null | undefined;
             entityTags?: any;
         }>;
-        method: "POST";
-        summary: "Create a new universaltag";
         path: "/api/tagging/universal-tags";
         responses: {
             201: z.ZodObject<{
@@ -536,19 +536,19 @@ export declare const universalTagContract: {
                     parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                     entityTags: z.ZodAny;
                 }, "strip", z.ZodTypeAny, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -560,19 +560,19 @@ export declare const universalTagContract: {
                     parentId?: string | null | undefined;
                     entityTags?: any;
                 }, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -587,19 +587,19 @@ export declare const universalTagContract: {
             }, "strip", z.ZodTypeAny, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -614,19 +614,19 @@ export declare const universalTagContract: {
             }, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -668,11 +668,20 @@ export declare const universalTagContract: {
         };
     };
     update: {
+        pathParams: z.ZodObject<{
+            id: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+        }, {
+            id: string;
+        }>;
+        summary: "Update a universaltag";
+        method: "PUT";
         body: z.ZodObject<{
-            code: z.ZodOptional<z.ZodString>;
             path: z.ZodOptional<z.ZodString>;
             metadata: z.ZodOptional<z.ZodOptional<z.ZodAny>>;
             description: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+            code: z.ZodOptional<z.ZodString>;
             name: z.ZodOptional<z.ZodString>;
             entityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             patterns: z.ZodOptional<z.ZodOptional<z.ZodAny>>;
@@ -684,10 +693,10 @@ export declare const universalTagContract: {
             parentId: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
             entityTags: z.ZodOptional<z.ZodAny>;
         }, "strip", z.ZodTypeAny, {
-            code?: string | undefined;
             path?: string | undefined;
             metadata?: any;
             description?: string | null | undefined;
+            code?: string | undefined;
             name?: string | undefined;
             entityTypes?: string[] | undefined;
             patterns?: any;
@@ -699,10 +708,10 @@ export declare const universalTagContract: {
             parentId?: string | null | undefined;
             entityTags?: any;
         }, {
-            code?: string | undefined;
             path?: string | undefined;
             metadata?: any;
             description?: string | null | undefined;
+            code?: string | undefined;
             name?: string | undefined;
             entityTypes?: string[] | undefined;
             patterns?: any;
@@ -714,15 +723,6 @@ export declare const universalTagContract: {
             parentId?: string | null | undefined;
             entityTags?: any;
         }>;
-        method: "PUT";
-        pathParams: z.ZodObject<{
-            id: z.ZodString;
-        }, "strip", z.ZodTypeAny, {
-            id: string;
-        }, {
-            id: string;
-        }>;
-        summary: "Update a universaltag";
         path: "/api/tagging/universal-tags/:id";
         responses: {
             200: z.ZodObject<{
@@ -752,19 +752,19 @@ export declare const universalTagContract: {
                     parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                     entityTags: z.ZodAny;
                 }, "strip", z.ZodTypeAny, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -776,19 +776,19 @@ export declare const universalTagContract: {
                     parentId?: string | null | undefined;
                     entityTags?: any;
                 }, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -803,19 +803,19 @@ export declare const universalTagContract: {
             }, "strip", z.ZodTypeAny, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -830,19 +830,19 @@ export declare const universalTagContract: {
             }, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -897,7 +897,6 @@ export declare const universalTagContract: {
         };
     };
     delete: {
-        method: "DELETE";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -906,6 +905,7 @@ export declare const universalTagContract: {
             id: string;
         }>;
         summary: "Delete a universaltag";
+        method: "DELETE";
         path: "/api/tagging/universal-tags/:id";
         responses: {
             200: z.ZodObject<{
@@ -947,6 +947,8 @@ export declare const universalTagContract: {
         };
     };
     bulkCreate: {
+        summary: "Create multiple universaltags";
+        method: "POST";
         body: z.ZodObject<{
             data: z.ZodArray<z.ZodObject<Omit<{
                 id: z.ZodString;
@@ -972,9 +974,9 @@ export declare const universalTagContract: {
                 updatedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
                 parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                 entityTags: z.ZodAny;
-            }, "id" | "confidence" | "createdAt" | "updatedAt" | "level" | "isActive" | "isSystem" | "usageCount" | "successRate">, "strip", z.ZodTypeAny, {
-                code: string;
+            }, "id" | "confidence" | "level" | "isActive" | "isSystem" | "usageCount" | "successRate" | "createdAt" | "updatedAt">, "strip", z.ZodTypeAny, {
                 path: string;
+                code: string;
                 name: string;
                 entityTypes: string[];
                 metadata?: any;
@@ -988,8 +990,8 @@ export declare const universalTagContract: {
                 parentId?: string | null | undefined;
                 entityTags?: any;
             }, {
-                code: string;
                 path: string;
+                code: string;
                 name: string;
                 entityTypes: string[];
                 metadata?: any;
@@ -1005,8 +1007,8 @@ export declare const universalTagContract: {
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             data: {
-                code: string;
                 path: string;
+                code: string;
                 name: string;
                 entityTypes: string[];
                 metadata?: any;
@@ -1022,8 +1024,8 @@ export declare const universalTagContract: {
             }[];
         }, {
             data: {
-                code: string;
                 path: string;
+                code: string;
                 name: string;
                 entityTypes: string[];
                 metadata?: any;
@@ -1038,8 +1040,6 @@ export declare const universalTagContract: {
                 entityTags?: any;
             }[];
         }>;
-        method: "POST";
-        summary: "Create multiple universaltags";
         path: "/api/tagging/universal-tags/bulk";
         responses: {
             201: z.ZodObject<{
@@ -1069,19 +1069,19 @@ export declare const universalTagContract: {
                     parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
                     entityTags: z.ZodAny;
                 }, "strip", z.ZodTypeAny, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -1093,19 +1093,19 @@ export declare const universalTagContract: {
                     parentId?: string | null | undefined;
                     entityTags?: any;
                 }, {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -1121,19 +1121,19 @@ export declare const universalTagContract: {
             }, "strip", z.ZodTypeAny, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: Date;
+                    updatedAt: Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -1149,19 +1149,19 @@ export declare const universalTagContract: {
             }, {
                 success: true;
                 data: {
-                    code: string;
                     path: string;
+                    code: string;
                     id: string;
-                    confidence: number;
-                    createdAt: string | Date;
-                    updatedAt: string | Date;
                     name: string;
                     entityTypes: string[];
+                    confidence: number;
                     level: number;
                     isActive: boolean;
                     isSystem: boolean;
                     usageCount: number;
                     successRate: number;
+                    createdAt: string | Date;
+                    updatedAt: string | Date;
                     metadata?: any;
                     description?: string | null | undefined;
                     patterns?: any;
@@ -1204,6 +1204,8 @@ export declare const universalTagContract: {
         };
     };
     bulkUpdate: {
+        summary: "Update multiple universaltags";
+        method: "PUT";
         body: z.ZodObject<{
             where: z.ZodObject<{
                 page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -1238,20 +1240,16 @@ export declare const universalTagContract: {
                 page: number;
                 limit: number;
                 sortOrder: "asc" | "desc";
-                code?: string | undefined;
                 path?: string | undefined;
-                search?: string | undefined;
-                confidence?: number | undefined;
-                createdAt?: any;
-                updatedAt?: any;
-                sortBy?: "code" | "path" | "id" | "confidence" | "createdAt" | "updatedAt" | "metadata" | "description" | "name" | "entityTypes" | "patterns" | "rules" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "parentId" | "entityTags" | undefined;
-                include?: {} | undefined;
                 metadata?: any;
                 description?: string | undefined;
+                code?: string | undefined;
+                search?: string | undefined;
                 name?: string | undefined;
                 entityTypes?: string[] | undefined;
                 patterns?: any;
                 rules?: any;
+                confidence?: number | undefined;
                 embeddingModel?: string | undefined;
                 level?: number | undefined;
                 color?: string | undefined;
@@ -1261,26 +1259,25 @@ export declare const universalTagContract: {
                 usageCount?: number | undefined;
                 successRate?: number | undefined;
                 lastUsed?: any;
+                createdAt?: any;
+                updatedAt?: any;
                 parentId?: string | undefined;
                 entityTags?: any;
+                sortBy?: "path" | "metadata" | "description" | "code" | "id" | "name" | "entityTypes" | "patterns" | "rules" | "confidence" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "createdAt" | "updatedAt" | "parentId" | "entityTags" | undefined;
+                include?: {} | undefined;
             }, {
-                code?: string | undefined;
                 path?: string | undefined;
+                metadata?: any;
+                description?: string | undefined;
+                code?: string | undefined;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
-                sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                confidence?: number | undefined;
-                createdAt?: any;
-                updatedAt?: any;
-                sortBy?: "code" | "path" | "id" | "confidence" | "createdAt" | "updatedAt" | "metadata" | "description" | "name" | "entityTypes" | "patterns" | "rules" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "parentId" | "entityTags" | undefined;
-                include?: {} | undefined;
-                metadata?: any;
-                description?: string | undefined;
                 name?: string | undefined;
                 entityTypes?: string[] | undefined;
                 patterns?: any;
                 rules?: any;
+                confidence?: number | undefined;
                 embeddingModel?: string | undefined;
                 level?: number | undefined;
                 color?: string | undefined;
@@ -1290,14 +1287,19 @@ export declare const universalTagContract: {
                 usageCount?: number | undefined;
                 successRate?: number | undefined;
                 lastUsed?: any;
+                createdAt?: any;
+                updatedAt?: any;
                 parentId?: string | undefined;
                 entityTags?: any;
+                sortBy?: "path" | "metadata" | "description" | "code" | "id" | "name" | "entityTypes" | "patterns" | "rules" | "confidence" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "createdAt" | "updatedAt" | "parentId" | "entityTags" | undefined;
+                sortOrder?: "asc" | "desc" | undefined;
+                include?: {} | undefined;
             }>;
             data: z.ZodObject<{
-                code: z.ZodOptional<z.ZodString>;
                 path: z.ZodOptional<z.ZodString>;
                 metadata: z.ZodOptional<z.ZodOptional<z.ZodAny>>;
                 description: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+                code: z.ZodOptional<z.ZodString>;
                 name: z.ZodOptional<z.ZodString>;
                 entityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
                 patterns: z.ZodOptional<z.ZodOptional<z.ZodAny>>;
@@ -1309,10 +1311,10 @@ export declare const universalTagContract: {
                 parentId: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
                 entityTags: z.ZodOptional<z.ZodAny>;
             }, "strip", z.ZodTypeAny, {
-                code?: string | undefined;
                 path?: string | undefined;
                 metadata?: any;
                 description?: string | null | undefined;
+                code?: string | undefined;
                 name?: string | undefined;
                 entityTypes?: string[] | undefined;
                 patterns?: any;
@@ -1324,10 +1326,10 @@ export declare const universalTagContract: {
                 parentId?: string | null | undefined;
                 entityTags?: any;
             }, {
-                code?: string | undefined;
                 path?: string | undefined;
                 metadata?: any;
                 description?: string | null | undefined;
+                code?: string | undefined;
                 name?: string | undefined;
                 entityTypes?: string[] | undefined;
                 patterns?: any;
@@ -1341,10 +1343,10 @@ export declare const universalTagContract: {
             }>;
         }, "strip", z.ZodTypeAny, {
             data: {
-                code?: string | undefined;
                 path?: string | undefined;
                 metadata?: any;
                 description?: string | null | undefined;
+                code?: string | undefined;
                 name?: string | undefined;
                 entityTypes?: string[] | undefined;
                 patterns?: any;
@@ -1360,20 +1362,16 @@ export declare const universalTagContract: {
                 page: number;
                 limit: number;
                 sortOrder: "asc" | "desc";
-                code?: string | undefined;
                 path?: string | undefined;
-                search?: string | undefined;
-                confidence?: number | undefined;
-                createdAt?: any;
-                updatedAt?: any;
-                sortBy?: "code" | "path" | "id" | "confidence" | "createdAt" | "updatedAt" | "metadata" | "description" | "name" | "entityTypes" | "patterns" | "rules" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "parentId" | "entityTags" | undefined;
-                include?: {} | undefined;
                 metadata?: any;
                 description?: string | undefined;
+                code?: string | undefined;
+                search?: string | undefined;
                 name?: string | undefined;
                 entityTypes?: string[] | undefined;
                 patterns?: any;
                 rules?: any;
+                confidence?: number | undefined;
                 embeddingModel?: string | undefined;
                 level?: number | undefined;
                 color?: string | undefined;
@@ -1383,15 +1381,19 @@ export declare const universalTagContract: {
                 usageCount?: number | undefined;
                 successRate?: number | undefined;
                 lastUsed?: any;
+                createdAt?: any;
+                updatedAt?: any;
                 parentId?: string | undefined;
                 entityTags?: any;
+                sortBy?: "path" | "metadata" | "description" | "code" | "id" | "name" | "entityTypes" | "patterns" | "rules" | "confidence" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "createdAt" | "updatedAt" | "parentId" | "entityTags" | undefined;
+                include?: {} | undefined;
             };
         }, {
             data: {
-                code?: string | undefined;
                 path?: string | undefined;
                 metadata?: any;
                 description?: string | null | undefined;
+                code?: string | undefined;
                 name?: string | undefined;
                 entityTypes?: string[] | undefined;
                 patterns?: any;
@@ -1404,23 +1406,18 @@ export declare const universalTagContract: {
                 entityTags?: any;
             };
             where: {
-                code?: string | undefined;
                 path?: string | undefined;
-                page?: number | undefined;
-                limit?: number | undefined;
-                sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                confidence?: number | undefined;
-                createdAt?: any;
-                updatedAt?: any;
-                sortBy?: "code" | "path" | "id" | "confidence" | "createdAt" | "updatedAt" | "metadata" | "description" | "name" | "entityTypes" | "patterns" | "rules" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "parentId" | "entityTags" | undefined;
-                include?: {} | undefined;
                 metadata?: any;
                 description?: string | undefined;
+                code?: string | undefined;
+                search?: string | undefined;
+                page?: number | undefined;
+                limit?: number | undefined;
                 name?: string | undefined;
                 entityTypes?: string[] | undefined;
                 patterns?: any;
                 rules?: any;
+                confidence?: number | undefined;
                 embeddingModel?: string | undefined;
                 level?: number | undefined;
                 color?: string | undefined;
@@ -1430,12 +1427,15 @@ export declare const universalTagContract: {
                 usageCount?: number | undefined;
                 successRate?: number | undefined;
                 lastUsed?: any;
+                createdAt?: any;
+                updatedAt?: any;
                 parentId?: string | undefined;
                 entityTags?: any;
+                sortBy?: "path" | "metadata" | "description" | "code" | "id" | "name" | "entityTypes" | "patterns" | "rules" | "confidence" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "createdAt" | "updatedAt" | "parentId" | "entityTags" | undefined;
+                sortOrder?: "asc" | "desc" | undefined;
+                include?: {} | undefined;
             };
         }>;
-        method: "PUT";
-        summary: "Update multiple universaltags";
         path: "/api/tagging/universal-tags/bulk";
         responses: {
             200: z.ZodObject<{
@@ -1477,6 +1477,8 @@ export declare const universalTagContract: {
         };
     };
     bulkDelete: {
+        summary: "Delete multiple universaltags";
+        method: "DELETE";
         body: z.ZodObject<{
             ids: z.ZodArray<z.ZodString, "many">;
         }, "strip", z.ZodTypeAny, {
@@ -1484,8 +1486,6 @@ export declare const universalTagContract: {
         }, {
             ids: string[];
         }>;
-        method: "DELETE";
-        summary: "Delete multiple universaltags";
         path: "/api/tagging/universal-tags/bulk";
         responses: {
             200: z.ZodObject<{

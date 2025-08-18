@@ -27,8 +27,10 @@ services:
     networks:
       - ai-service-network
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "3001:3001"
     volumes:
@@ -38,6 +40,12 @@ services:
       - ./.env.local:/app/.env.local:ro
       - ./data/documents:/app/documents:rw
       - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   # Frontend Service (Development)
   ai-service-frontend:
@@ -51,7 +59,8 @@ services:
     networks:
       - ai-service-network
     depends_on:
-      - ai-service-api
+      ai-service-api:
+        condition: service_healthy
     ports:
       - "3000:5173"
     volumes:
@@ -59,6 +68,12 @@ services:
       - ./frontend/src:/app/src:ro
       - ./frontend/public:/app/public:ro
       - ./frontend/index.html:/app/index.html:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5173 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   # PostgreSQL Database (Development)
   postgres:

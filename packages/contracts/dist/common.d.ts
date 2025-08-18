@@ -15,10 +15,10 @@ export declare const PaginationQuery: z.ZodObject<{
     sortOrder: "asc" | "desc";
     search?: string | undefined;
 }, {
+    search?: string | undefined;
     page?: number | undefined;
     limit?: number | undefined;
     sortOrder?: "asc" | "desc" | undefined;
-    search?: string | undefined;
 }>;
 export declare const ApiResponse: <T extends z.ZodTypeAny>(dataSchema: T) => z.ZodObject<{
     success: z.ZodBoolean;
@@ -43,16 +43,16 @@ export declare const PaginatedResponse: <T extends z.ZodTypeAny>(dataSchema: T) 
     limit: z.ZodNumber;
     totalPages: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
+    total: number;
     page: number;
     limit: number;
+    totalPages: number;
     items: T["_output"][];
-    total: number;
-    totalPages: number;
 }, {
+    total: number;
     page: number;
     limit: number;
-    items: T["_input"][];
-    total: number;
     totalPages: number;
+    items: T["_input"][];
 }>;
 //# sourceMappingURL=common.d.ts.map

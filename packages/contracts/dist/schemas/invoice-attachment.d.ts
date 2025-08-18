@@ -170,10 +170,10 @@ export declare const InvoiceAttachmentQuerySchema: z.ZodObject<{
     page: number;
     limit: number;
     sortOrder: "asc" | "desc";
-    search?: string | undefined;
-    sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
-    include?: {} | undefined;
     description?: string | undefined;
+    search?: string | undefined;
+    sortBy?: "description" | "id" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
+    include?: {} | undefined;
     invoiceId?: string | undefined;
     fileName?: string | undefined;
     filePath?: string | undefined;
@@ -185,13 +185,13 @@ export declare const InvoiceAttachmentQuerySchema: z.ZodObject<{
     deletedAt?: any;
     deletedBy?: string | undefined;
 }, {
+    description?: string | undefined;
+    search?: string | undefined;
     page?: number | undefined;
     limit?: number | undefined;
+    sortBy?: "description" | "id" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
     sortOrder?: "asc" | "desc" | undefined;
-    search?: string | undefined;
-    sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
     include?: {} | undefined;
-    description?: string | undefined;
     invoiceId?: string | undefined;
     fileName?: string | undefined;
     filePath?: string | undefined;

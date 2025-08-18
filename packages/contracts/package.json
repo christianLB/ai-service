@@ -16,5 +16,8 @@
   "files": [
     "dist",
     "src/generated"
-  ]
+  ],
+  "dependencies": {
+    "openapi-fetch": "^0.9.3"
+  }
 }

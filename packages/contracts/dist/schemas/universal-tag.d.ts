@@ -28,19 +28,19 @@ export declare const UniversalTagSchema: z.ZodObject<{
     parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     entityTags: z.ZodAny;
 }, "strip", z.ZodTypeAny, {
-    code: string;
     path: string;
+    code: string;
     id: string;
-    confidence: number;
-    createdAt: Date;
-    updatedAt: Date;
     name: string;
     entityTypes: string[];
+    confidence: number;
     level: number;
     isActive: boolean;
     isSystem: boolean;
     usageCount: number;
     successRate: number;
+    createdAt: Date;
+    updatedAt: Date;
     metadata?: any;
     description?: string | null | undefined;
     patterns?: any;
@@ -52,19 +52,19 @@ export declare const UniversalTagSchema: z.ZodObject<{
     parentId?: string | null | undefined;
     entityTags?: any;
 }, {
-    code: string;
     path: string;
+    code: string;
     id: string;
-    confidence: number;
-    createdAt: string | Date;
-    updatedAt: string | Date;
     name: string;
     entityTypes: string[];
+    confidence: number;
     level: number;
     isActive: boolean;
     isSystem: boolean;
     usageCount: number;
     successRate: number;
+    createdAt: string | Date;
+    updatedAt: string | Date;
     metadata?: any;
     description?: string | null | undefined;
     patterns?: any;
@@ -100,9 +100,9 @@ export declare const UniversalTagCreateSchema: z.ZodObject<Omit<{
     updatedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
     parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     entityTags: z.ZodAny;
-}, "id" | "confidence" | "createdAt" | "updatedAt" | "level" | "isActive" | "isSystem" | "usageCount" | "successRate">, "strip", z.ZodTypeAny, {
-    code: string;
+}, "id" | "confidence" | "level" | "isActive" | "isSystem" | "usageCount" | "successRate" | "createdAt" | "updatedAt">, "strip", z.ZodTypeAny, {
     path: string;
+    code: string;
     name: string;
     entityTypes: string[];
     metadata?: any;
@@ -116,8 +116,8 @@ export declare const UniversalTagCreateSchema: z.ZodObject<Omit<{
     parentId?: string | null | undefined;
     entityTags?: any;
 }, {
-    code: string;
     path: string;
+    code: string;
     name: string;
     entityTypes: string[];
     metadata?: any;
@@ -132,10 +132,10 @@ export declare const UniversalTagCreateSchema: z.ZodObject<Omit<{
     entityTags?: any;
 }>;
 export declare const UniversalTagUpdateSchema: z.ZodObject<{
-    code: z.ZodOptional<z.ZodString>;
     path: z.ZodOptional<z.ZodString>;
     metadata: z.ZodOptional<z.ZodOptional<z.ZodAny>>;
     description: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+    code: z.ZodOptional<z.ZodString>;
     name: z.ZodOptional<z.ZodString>;
     entityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     patterns: z.ZodOptional<z.ZodOptional<z.ZodAny>>;
@@ -147,10 +147,10 @@ export declare const UniversalTagUpdateSchema: z.ZodObject<{
     parentId: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
     entityTags: z.ZodOptional<z.ZodAny>;
 }, "strip", z.ZodTypeAny, {
-    code?: string | undefined;
     path?: string | undefined;
     metadata?: any;
     description?: string | null | undefined;
+    code?: string | undefined;
     name?: string | undefined;
     entityTypes?: string[] | undefined;
     patterns?: any;
@@ -162,10 +162,10 @@ export declare const UniversalTagUpdateSchema: z.ZodObject<{
     parentId?: string | null | undefined;
     entityTags?: any;
 }, {
-    code?: string | undefined;
     path?: string | undefined;
     metadata?: any;
     description?: string | null | undefined;
+    code?: string | undefined;
     name?: string | undefined;
     entityTypes?: string[] | undefined;
     patterns?: any;
@@ -202,19 +202,19 @@ export declare const UniversalTagResponseSchema: z.ZodObject<{
     parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     entityTags: z.ZodAny;
 }, "strip", z.ZodTypeAny, {
-    code: string;
     path: string;
+    code: string;
     id: string;
-    confidence: number;
-    createdAt: Date;
-    updatedAt: Date;
     name: string;
     entityTypes: string[];
+    confidence: number;
     level: number;
     isActive: boolean;
     isSystem: boolean;
     usageCount: number;
     successRate: number;
+    createdAt: Date;
+    updatedAt: Date;
     metadata?: any;
     description?: string | null | undefined;
     patterns?: any;
@@ -226,19 +226,19 @@ export declare const UniversalTagResponseSchema: z.ZodObject<{
     parentId?: string | null | undefined;
     entityTags?: any;
 }, {
-    code: string;
     path: string;
+    code: string;
     id: string;
-    confidence: number;
-    createdAt: string | Date;
-    updatedAt: string | Date;
     name: string;
     entityTypes: string[];
+    confidence: number;
     level: number;
     isActive: boolean;
     isSystem: boolean;
     usageCount: number;
     successRate: number;
+    createdAt: string | Date;
+    updatedAt: string | Date;
     metadata?: any;
     description?: string | null | undefined;
     patterns?: any;
@@ -283,20 +283,16 @@ export declare const UniversalTagQuerySchema: z.ZodObject<{
     page: number;
     limit: number;
     sortOrder: "asc" | "desc";
-    code?: string | undefined;
     path?: string | undefined;
-    search?: string | undefined;
-    confidence?: number | undefined;
-    createdAt?: any;
-    updatedAt?: any;
-    sortBy?: "code" | "path" | "id" | "confidence" | "createdAt" | "updatedAt" | "metadata" | "description" | "name" | "entityTypes" | "patterns" | "rules" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "parentId" | "entityTags" | undefined;
-    include?: {} | undefined;
     metadata?: any;
     description?: string | undefined;
+    code?: string | undefined;
+    search?: string | undefined;
     name?: string | undefined;
     entityTypes?: string[] | undefined;
     patterns?: any;
     rules?: any;
+    confidence?: number | undefined;
     embeddingModel?: string | undefined;
     level?: number | undefined;
     color?: string | undefined;
@@ -306,26 +302,25 @@ export declare const UniversalTagQuerySchema: z.ZodObject<{
     usageCount?: number | undefined;
     successRate?: number | undefined;
     lastUsed?: any;
+    createdAt?: any;
+    updatedAt?: any;
     parentId?: string | undefined;
     entityTags?: any;
+    sortBy?: "path" | "metadata" | "description" | "code" | "id" | "name" | "entityTypes" | "patterns" | "rules" | "confidence" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "createdAt" | "updatedAt" | "parentId" | "entityTags" | undefined;
+    include?: {} | undefined;
 }, {
-    code?: string | undefined;
     path?: string | undefined;
+    metadata?: any;
+    description?: string | undefined;
+    code?: string | undefined;
+    search?: string | undefined;
     page?: number | undefined;
     limit?: number | undefined;
-    sortOrder?: "asc" | "desc" | undefined;
-    search?: string | undefined;
-    confidence?: number | undefined;
-    createdAt?: any;
-    updatedAt?: any;
-    sortBy?: "code" | "path" | "id" | "confidence" | "createdAt" | "updatedAt" | "metadata" | "description" | "name" | "entityTypes" | "patterns" | "rules" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "parentId" | "entityTags" | undefined;
-    include?: {} | undefined;
-    metadata?: any;
-    description?: string | undefined;
     name?: string | undefined;
     entityTypes?: string[] | undefined;
     patterns?: any;
     rules?: any;
+    confidence?: number | undefined;
     embeddingModel?: string | undefined;
     level?: number | undefined;
     color?: string | undefined;
@@ -335,8 +330,13 @@ export declare const UniversalTagQuerySchema: z.ZodObject<{
     usageCount?: number | undefined;
     successRate?: number | undefined;
     lastUsed?: any;
+    createdAt?: any;
+    updatedAt?: any;
     parentId?: string | undefined;
     entityTags?: any;
+    sortBy?: "path" | "metadata" | "description" | "code" | "id" | "name" | "entityTypes" | "patterns" | "rules" | "confidence" | "embeddingModel" | "level" | "color" | "icon" | "isActive" | "isSystem" | "usageCount" | "successRate" | "lastUsed" | "createdAt" | "updatedAt" | "parentId" | "entityTags" | undefined;
+    sortOrder?: "asc" | "desc" | undefined;
+    include?: {} | undefined;
 }>;
 export type UniversalTag = z.infer<typeof UniversalTagSchema>;
 export type UniversalTagCreate = z.infer<typeof UniversalTagCreateSchema>;

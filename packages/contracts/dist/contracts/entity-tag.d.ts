@@ -1,7 +1,6 @@
 import { z } from 'zod';
 export declare const entityTagContract: {
     getAll: {
-        method: "GET";
         query: z.ZodObject<{
             page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
             limit: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -33,11 +32,15 @@ export declare const entityTagContract: {
             page: number;
             limit: number;
             sortOrder: "asc" | "desc";
-            search?: string | undefined;
             method?: string | undefined;
+            search?: string | undefined;
+            confidence?: number | undefined;
+            createdAt?: any;
+            updatedAt?: any;
+            sortBy?: "method" | "id" | "confidence" | "createdAt" | "updatedAt" | "entityType" | "entityId" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "tagId" | undefined;
+            include?: {} | undefined;
             entityType?: string | undefined;
             entityId?: string | undefined;
-            confidence?: number | undefined;
             appliedBy?: string | undefined;
             aiProvider?: string | undefined;
             aiModel?: string | undefined;
@@ -51,20 +54,20 @@ export declare const entityTagContract: {
             sourceEntityType?: string | undefined;
             sourceEntityId?: string | undefined;
             relationshipType?: string | undefined;
-            createdAt?: any;
-            updatedAt?: any;
             tagId?: string | undefined;
-            sortBy?: "method" | "id" | "entityType" | "entityId" | "confidence" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "createdAt" | "updatedAt" | "tagId" | undefined;
-            include?: {} | undefined;
         }, {
+            method?: string | undefined;
+            search?: string | undefined;
             page?: number | undefined;
             limit?: number | undefined;
+            confidence?: number | undefined;
+            createdAt?: any;
+            updatedAt?: any;
+            sortBy?: "method" | "id" | "confidence" | "createdAt" | "updatedAt" | "entityType" | "entityId" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "tagId" | undefined;
             sortOrder?: "asc" | "desc" | undefined;
-            search?: string | undefined;
-            method?: string | undefined;
+            include?: {} | undefined;
             entityType?: string | undefined;
             entityId?: string | undefined;
-            confidence?: number | undefined;
             appliedBy?: string | undefined;
             aiProvider?: string | undefined;
             aiModel?: string | undefined;
@@ -78,13 +81,10 @@ export declare const entityTagContract: {
             sourceEntityType?: string | undefined;
             sourceEntityId?: string | undefined;
             relationshipType?: string | undefined;
-            createdAt?: any;
-            updatedAt?: any;
             tagId?: string | undefined;
-            sortBy?: "method" | "id" | "entityType" | "entityId" | "confidence" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "createdAt" | "updatedAt" | "tagId" | undefined;
-            include?: {} | undefined;
         }>;
         summary: "Get all entitytags with optional filtering and pagination";
+        method: "GET";
         path: "/api/tagging/entity-tags";
         responses: {
             200: z.ZodObject<{
@@ -114,12 +114,12 @@ export declare const entityTagContract: {
                 }, "strip", z.ZodTypeAny, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -136,12 +136,12 @@ export declare const entityTagContract: {
                 }, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -162,14 +162,14 @@ export declare const entityTagContract: {
                     limit: z.ZodNumber;
                     totalPages: z.ZodNumber;
                 }, "strip", z.ZodTypeAny, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }>;
             }, "strip", z.ZodTypeAny, {
@@ -177,12 +177,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -198,9 +198,9 @@ export declare const entityTagContract: {
                     relationshipType?: string | undefined;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }, {
@@ -208,12 +208,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -229,9 +229,9 @@ export declare const entityTagContract: {
                     relationshipType?: string | undefined;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }>;
@@ -264,7 +264,6 @@ export declare const entityTagContract: {
         };
     };
     getById: {
-        method: "GET";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -273,6 +272,7 @@ export declare const entityTagContract: {
             id: string;
         }>;
         summary: "Get a entitytag by ID";
+        method: "GET";
         path: "/api/tagging/entity-tags/:id";
         responses: {
             200: z.ZodObject<{
@@ -302,12 +302,12 @@ export declare const entityTagContract: {
                 }, "strip", z.ZodTypeAny, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -324,12 +324,12 @@ export declare const entityTagContract: {
                 }, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -349,12 +349,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -374,12 +374,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -424,6 +424,8 @@ export declare const entityTagContract: {
         };
     };
     create: {
+        summary: "Create a new entitytag";
+        method: "POST";
         body: z.ZodObject<Omit<{
             id: z.ZodString;
             entityType: z.ZodString;
@@ -446,7 +448,7 @@ export declare const entityTagContract: {
             createdAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
             updatedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
             tagId: z.ZodString;
-        }, "id" | "confidence" | "isVerified" | "createdAt" | "updatedAt">, "strip", z.ZodTypeAny, {
+        }, "id" | "confidence" | "createdAt" | "updatedAt" | "isVerified">, "strip", z.ZodTypeAny, {
             method: string;
             entityType: string;
             entityId: string;
@@ -481,8 +483,6 @@ export declare const entityTagContract: {
             sourceEntityId?: string | undefined;
             relationshipType?: string | undefined;
         }>;
-        method: "POST";
-        summary: "Create a new entitytag";
         path: "/api/tagging/entity-tags";
         responses: {
             201: z.ZodObject<{
@@ -512,12 +512,12 @@ export declare const entityTagContract: {
                 }, "strip", z.ZodTypeAny, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -534,12 +534,12 @@ export declare const entityTagContract: {
                 }, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -559,12 +559,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -584,12 +584,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -634,6 +634,15 @@ export declare const entityTagContract: {
         };
     };
     update: {
+        pathParams: z.ZodObject<{
+            id: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+        }, {
+            id: string;
+        }>;
+        summary: "Update a entitytag";
+        method: "PUT";
         body: z.ZodObject<{
             method: z.ZodOptional<z.ZodString>;
             entityType: z.ZodOptional<z.ZodString>;
@@ -686,15 +695,6 @@ export declare const entityTagContract: {
             relationshipType?: string | undefined;
             tagId?: string | undefined;
         }>;
-        method: "PUT";
-        pathParams: z.ZodObject<{
-            id: z.ZodString;
-        }, "strip", z.ZodTypeAny, {
-            id: string;
-        }, {
-            id: string;
-        }>;
-        summary: "Update a entitytag";
         path: "/api/tagging/entity-tags/:id";
         responses: {
             200: z.ZodObject<{
@@ -724,12 +724,12 @@ export declare const entityTagContract: {
                 }, "strip", z.ZodTypeAny, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -746,12 +746,12 @@ export declare const entityTagContract: {
                 }, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -771,12 +771,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -796,12 +796,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -859,7 +859,6 @@ export declare const entityTagContract: {
         };
     };
     delete: {
-        method: "DELETE";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -868,6 +867,7 @@ export declare const entityTagContract: {
             id: string;
         }>;
         summary: "Delete a entitytag";
+        method: "DELETE";
         path: "/api/tagging/entity-tags/:id";
         responses: {
             200: z.ZodObject<{
@@ -909,6 +909,8 @@ export declare const entityTagContract: {
         };
     };
     bulkCreate: {
+        summary: "Create multiple entitytags";
+        method: "POST";
         body: z.ZodObject<{
             data: z.ZodArray<z.ZodObject<Omit<{
                 id: z.ZodString;
@@ -932,7 +934,7 @@ export declare const entityTagContract: {
                 createdAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
                 updatedAt: z.ZodEffects<z.ZodUnion<[z.ZodString, z.ZodDate]>, Date, string | Date>;
                 tagId: z.ZodString;
-            }, "id" | "confidence" | "isVerified" | "createdAt" | "updatedAt">, "strip", z.ZodTypeAny, {
+            }, "id" | "confidence" | "createdAt" | "updatedAt" | "isVerified">, "strip", z.ZodTypeAny, {
                 method: string;
                 entityType: string;
                 entityId: string;
@@ -1006,8 +1008,6 @@ export declare const entityTagContract: {
                 relationshipType?: string | undefined;
             }[];
         }>;
-        method: "POST";
-        summary: "Create multiple entitytags";
         path: "/api/tagging/entity-tags/bulk";
         responses: {
             201: z.ZodObject<{
@@ -1037,12 +1037,12 @@ export declare const entityTagContract: {
                 }, "strip", z.ZodTypeAny, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -1059,12 +1059,12 @@ export declare const entityTagContract: {
                 }, {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -1085,12 +1085,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: Date;
                     updatedAt: Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -1111,12 +1111,12 @@ export declare const entityTagContract: {
                 data: {
                     method: string;
                     id: string;
-                    entityType: string;
-                    entityId: string;
                     confidence: number;
-                    isVerified: boolean;
                     createdAt: string | Date;
                     updatedAt: string | Date;
+                    entityType: string;
+                    entityId: string;
+                    isVerified: boolean;
                     tagId: string;
                     appliedBy?: string | undefined;
                     aiProvider?: string | undefined;
@@ -1162,6 +1162,8 @@ export declare const entityTagContract: {
         };
     };
     bulkUpdate: {
+        summary: "Update multiple entitytags";
+        method: "PUT";
         body: z.ZodObject<{
             where: z.ZodObject<{
                 page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -1194,11 +1196,15 @@ export declare const entityTagContract: {
                 page: number;
                 limit: number;
                 sortOrder: "asc" | "desc";
-                search?: string | undefined;
                 method?: string | undefined;
+                search?: string | undefined;
+                confidence?: number | undefined;
+                createdAt?: any;
+                updatedAt?: any;
+                sortBy?: "method" | "id" | "confidence" | "createdAt" | "updatedAt" | "entityType" | "entityId" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "tagId" | undefined;
+                include?: {} | undefined;
                 entityType?: string | undefined;
                 entityId?: string | undefined;
-                confidence?: number | undefined;
                 appliedBy?: string | undefined;
                 aiProvider?: string | undefined;
                 aiModel?: string | undefined;
@@ -1212,20 +1218,20 @@ export declare const entityTagContract: {
                 sourceEntityType?: string | undefined;
                 sourceEntityId?: string | undefined;
                 relationshipType?: string | undefined;
-                createdAt?: any;
-                updatedAt?: any;
                 tagId?: string | undefined;
-                sortBy?: "method" | "id" | "entityType" | "entityId" | "confidence" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "createdAt" | "updatedAt" | "tagId" | undefined;
-                include?: {} | undefined;
             }, {
+                method?: string | undefined;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
+                confidence?: number | undefined;
+                createdAt?: any;
+                updatedAt?: any;
+                sortBy?: "method" | "id" | "confidence" | "createdAt" | "updatedAt" | "entityType" | "entityId" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "tagId" | undefined;
                 sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                method?: string | undefined;
+                include?: {} | undefined;
                 entityType?: string | undefined;
                 entityId?: string | undefined;
-                confidence?: number | undefined;
                 appliedBy?: string | undefined;
                 aiProvider?: string | undefined;
                 aiModel?: string | undefined;
@@ -1239,11 +1245,7 @@ export declare const entityTagContract: {
                 sourceEntityType?: string | undefined;
                 sourceEntityId?: string | undefined;
                 relationshipType?: string | undefined;
-                createdAt?: any;
-                updatedAt?: any;
                 tagId?: string | undefined;
-                sortBy?: "method" | "id" | "entityType" | "entityId" | "confidence" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "createdAt" | "updatedAt" | "tagId" | undefined;
-                include?: {} | undefined;
             }>;
             data: z.ZodObject<{
                 method: z.ZodOptional<z.ZodString>;
@@ -1320,11 +1322,15 @@ export declare const entityTagContract: {
                 page: number;
                 limit: number;
                 sortOrder: "asc" | "desc";
-                search?: string | undefined;
                 method?: string | undefined;
+                search?: string | undefined;
+                confidence?: number | undefined;
+                createdAt?: any;
+                updatedAt?: any;
+                sortBy?: "method" | "id" | "confidence" | "createdAt" | "updatedAt" | "entityType" | "entityId" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "tagId" | undefined;
+                include?: {} | undefined;
                 entityType?: string | undefined;
                 entityId?: string | undefined;
-                confidence?: number | undefined;
                 appliedBy?: string | undefined;
                 aiProvider?: string | undefined;
                 aiModel?: string | undefined;
@@ -1338,11 +1344,7 @@ export declare const entityTagContract: {
                 sourceEntityType?: string | undefined;
                 sourceEntityId?: string | undefined;
                 relationshipType?: string | undefined;
-                createdAt?: any;
-                updatedAt?: any;
                 tagId?: string | undefined;
-                sortBy?: "method" | "id" | "entityType" | "entityId" | "confidence" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "createdAt" | "updatedAt" | "tagId" | undefined;
-                include?: {} | undefined;
             };
         }, {
             data: {
@@ -1364,14 +1366,18 @@ export declare const entityTagContract: {
                 tagId?: string | undefined;
             };
             where: {
+                method?: string | undefined;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
+                confidence?: number | undefined;
+                createdAt?: any;
+                updatedAt?: any;
+                sortBy?: "method" | "id" | "confidence" | "createdAt" | "updatedAt" | "entityType" | "entityId" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "tagId" | undefined;
                 sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                method?: string | undefined;
+                include?: {} | undefined;
                 entityType?: string | undefined;
                 entityId?: string | undefined;
-                confidence?: number | undefined;
                 appliedBy?: string | undefined;
                 aiProvider?: string | undefined;
                 aiModel?: string | undefined;
@@ -1385,15 +1391,9 @@ export declare const entityTagContract: {
                 sourceEntityType?: string | undefined;
                 sourceEntityId?: string | undefined;
                 relationshipType?: string | undefined;
-                createdAt?: any;
-                updatedAt?: any;
                 tagId?: string | undefined;
-                sortBy?: "method" | "id" | "entityType" | "entityId" | "confidence" | "appliedBy" | "aiProvider" | "aiModel" | "aiResponse" | "aiReasoning" | "isVerified" | "verifiedBy" | "verifiedAt" | "feedback" | "isCorrect" | "sourceEntityType" | "sourceEntityId" | "relationshipType" | "createdAt" | "updatedAt" | "tagId" | undefined;
-                include?: {} | undefined;
             };
         }>;
-        method: "PUT";
-        summary: "Update multiple entitytags";
         path: "/api/tagging/entity-tags/bulk";
         responses: {
             200: z.ZodObject<{
@@ -1435,6 +1435,8 @@ export declare const entityTagContract: {
         };
     };
     bulkDelete: {
+        summary: "Delete multiple entitytags";
+        method: "DELETE";
         body: z.ZodObject<{
             ids: z.ZodArray<z.ZodString, "many">;
         }, "strip", z.ZodTypeAny, {
@@ -1442,8 +1444,6 @@ export declare const entityTagContract: {
         }, {
             ids: string[];
         }>;
-        method: "DELETE";
-        summary: "Delete multiple entitytags";
         path: "/api/tagging/entity-tags/bulk";
         responses: {
             200: z.ZodObject<{

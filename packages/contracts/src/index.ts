@@ -3,22 +3,36 @@
  * 
  * This package contains:
  * - Generated TypeScript types from OpenAPI specifications
+ * - Typed API clients using openapi-fetch
  * - Shared request/response interfaces
  * - Validation schemas
  */
 
-// Re-export generated types (will be created by openapi-typescript)
-// export * from './generated/gateway';
-// export * from './generated/auth';
-// export * from './generated/financial';
-// export * from './generated/trading';
-// export * from './generated/ai-core';
-// export * from './generated/comm';
+import createClient from 'openapi-fetch';
+
+// Re-export generated types with namespaces to avoid conflicts
+export * as gateway from './generated/gateway';
+export * as auth from './generated/auth';
+export * as financial from './generated/financial';
+export * as trading from './generated/trading';
+export * as aiCore from './generated/ai-core';
+export * as comm from './generated/comm';
+
+// Import types for client creation
+import type { paths as GatewayPaths } from './generated/gateway';
+import type { paths as AuthPaths } from './generated/auth';
+import type { paths as FinancialPaths } from './generated/financial';
+import type { paths as TradingPaths } from './generated/trading';
+import type { paths as AiCorePaths } from './generated/ai-core';
+import type { paths as CommPaths } from './generated/comm';
+
+// Export path types for convenience
+export type { GatewayPaths, AuthPaths, FinancialPaths, TradingPaths, AiCorePaths, CommPaths };
 
 // Export contract version for runtime checks
 export const CONTRACT_VERSION = '1.0.0';
 
-// Export placeholder types until generation is complete
+// Common response types
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -49,131 +63,69 @@ export interface ApiError {
   details?: Record<string, any>;
 }
 
-// Export GatewayPaths as an alias for AiServicePaths (frontend compatibility)
-export interface GatewayPaths {
-  "/api/financial/transactions": {
-    get: {
-      responses: {
-        200: {
-          content: {
-            "application/json": {
-              transactions: Array<{
-                id: string;
-                accountId: string;
-                amount: number;
-                currency: string;
-                description: string;
-                date: string;
-                category?: string;
-                [key: string]: any;
-              }>;
-              pagination?: any;
-            };
-          };
-        };
-      };
-    };
-  };
-  "/api/financial/attachments": {
-    get: {
-      responses: {
-        200: {
-          content: {
-            "application/json": {
-              attachments: Array<{
-                id: string;
-                fileName: string;
-                fileSize: number;
-                mimeType: string;
-                uploadedAt: string;
-                [key: string]: any;
-              }>;
-              pagination?: any;
-            };
-          };
-        };
-      };
-    };
-  };
-  "/api/financial/accounts": {
-    get: {
-      responses: {
-        200: {
-          content: {
-            "application/json": {
-              accounts: Array<{
-                id: string;
-                name: string;
-                type: string;
-                balance: number;
-                currency: string;
-                [key: string]: any;
-              }>;
-              pagination?: any;
-            };
-          };
-        };
-      };
-    };
-  };
-  "/api/financial/clients": {
-    get: {
-      responses: {
-        200: {
-          content: {
-            "application/json": {
-              clients: Array<{
-                id: string;
-                name: string;
-                email?: string;
-                phone?: string;
-                [key: string]: any;
-              }>;
-              pagination?: any;
-            };
-          };
-        };
-      };
-    };
-  };
-  [key: string]: any;
-}
+// Type helpers for better DX
+export type ExtractResponse<T, Status extends number = 200> = T extends {
+  responses: { [K in Status]: { content: { 'application/json': infer R } } }
+} ? R : never;
 
-// Keep AiServicePaths as alias for backward compatibility
-export type AiServicePaths = GatewayPaths;
+export type ExtractRequest<T> = T extends {
+  requestBody: { content: { 'application/json': infer R } }
+} ? R : never;
 
-// Export placeholder client creator
-export function createAiServiceClient(baseUrl: string) {
-  return {
-    baseUrl,
-    get: async (path: string) => {
-      const response = await fetch(`${baseUrl}${path}`);
-      return response.json();
-    },
-    GET: async (path: string) => {
-      const response = await fetch(`${baseUrl}${path}`);
-      return response.json();
-    },
-    post: async (path: string, body: any) => {
-      const response = await fetch(`${baseUrl}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      return response.json();
-    },
-    POST: async (path: string, body: any) => {
-      const response = await fetch(`${baseUrl}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      return response.json();
-    },
-  };
-}
-
-// Export createGatewayClient for frontend compatibility
+// Typed client creators using openapi-fetch
 export function createGatewayClient(baseUrl: string) {
-  return createAiServiceClient(baseUrl);
+  return createClient<GatewayPaths>({
+    baseUrl,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 }
+
+export function createAuthClient(baseUrl: string) {
+  return createClient<AuthPaths>({
+    baseUrl,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+export function createFinancialClient(baseUrl: string) {
+  return createClient<FinancialPaths>({
+    baseUrl,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+export function createTradingClient(baseUrl: string) {
+  return createClient<TradingPaths>({
+    baseUrl,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+export function createAiCoreClient(baseUrl: string) {
+  return createClient<AiCorePaths>({
+    baseUrl,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+export function createCommClient(baseUrl: string) {
+  return createClient<CommPaths>({
+    baseUrl,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+// Legacy alias for backward compatibility
+export const createAiServiceClient = createGatewayClient;

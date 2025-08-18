@@ -1,7 +1,6 @@
 import { z } from 'zod';
 export declare const invoiceAttachmentContract: {
     getAll: {
-        method: "GET";
         query: z.ZodObject<{
             page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
             limit: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -24,10 +23,10 @@ export declare const invoiceAttachmentContract: {
             page: number;
             limit: number;
             sortOrder: "asc" | "desc";
-            search?: string | undefined;
-            sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
-            include?: {} | undefined;
             description?: string | undefined;
+            search?: string | undefined;
+            sortBy?: "description" | "id" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
+            include?: {} | undefined;
             invoiceId?: string | undefined;
             fileName?: string | undefined;
             filePath?: string | undefined;
@@ -39,13 +38,13 @@ export declare const invoiceAttachmentContract: {
             deletedAt?: any;
             deletedBy?: string | undefined;
         }, {
+            description?: string | undefined;
+            search?: string | undefined;
             page?: number | undefined;
             limit?: number | undefined;
+            sortBy?: "description" | "id" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
             sortOrder?: "asc" | "desc" | undefined;
-            search?: string | undefined;
-            sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
             include?: {} | undefined;
-            description?: string | undefined;
             invoiceId?: string | undefined;
             fileName?: string | undefined;
             filePath?: string | undefined;
@@ -58,6 +57,7 @@ export declare const invoiceAttachmentContract: {
             deletedBy?: string | undefined;
         }>;
         summary: "Get all invoiceattachments with optional filtering and pagination";
+        method: "GET";
         path: "/api/financial/invoice-attachments";
         responses: {
             200: z.ZodObject<{
@@ -108,14 +108,14 @@ export declare const invoiceAttachmentContract: {
                     limit: z.ZodNumber;
                     totalPages: z.ZodNumber;
                 }, "strip", z.ZodTypeAny, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }>;
             }, "strip", z.ZodTypeAny, {
@@ -135,9 +135,9 @@ export declare const invoiceAttachmentContract: {
                     deletedBy?: string | undefined;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }, {
@@ -157,9 +157,9 @@ export declare const invoiceAttachmentContract: {
                     deletedBy?: string | undefined;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }>;
@@ -192,7 +192,6 @@ export declare const invoiceAttachmentContract: {
         };
     };
     getById: {
-        method: "GET";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -201,6 +200,7 @@ export declare const invoiceAttachmentContract: {
             id: string;
         }>;
         summary: "Get a invoiceattachment by ID";
+        method: "GET";
         path: "/api/financial/invoice-attachments/:id";
         responses: {
             200: z.ZodObject<{
@@ -307,6 +307,8 @@ export declare const invoiceAttachmentContract: {
         };
     };
     create: {
+        summary: "Create a new invoiceattachment";
+        method: "POST";
         body: z.ZodObject<Omit<{
             id: z.ZodString;
             invoiceId: z.ZodString;
@@ -341,8 +343,6 @@ export declare const invoiceAttachmentContract: {
             deletedAt?: string | Date | undefined;
             deletedBy?: string | undefined;
         }>;
-        method: "POST";
-        summary: "Create a new invoiceattachment";
         path: "/api/financial/invoice-attachments";
         responses: {
             201: z.ZodObject<{
@@ -449,6 +449,15 @@ export declare const invoiceAttachmentContract: {
         };
     };
     update: {
+        pathParams: z.ZodObject<{
+            id: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+        }, {
+            id: string;
+        }>;
+        summary: "Update a invoiceattachment";
+        method: "PUT";
         body: z.ZodObject<{
             description: z.ZodOptional<z.ZodOptional<z.ZodString>>;
             invoiceId: z.ZodOptional<z.ZodString>;
@@ -480,15 +489,6 @@ export declare const invoiceAttachmentContract: {
             deletedAt?: string | Date | undefined;
             deletedBy?: string | undefined;
         }>;
-        method: "PUT";
-        pathParams: z.ZodObject<{
-            id: z.ZodString;
-        }, "strip", z.ZodTypeAny, {
-            id: string;
-        }, {
-            id: string;
-        }>;
-        summary: "Update a invoiceattachment";
         path: "/api/financial/invoice-attachments/:id";
         responses: {
             200: z.ZodObject<{
@@ -608,7 +608,6 @@ export declare const invoiceAttachmentContract: {
         };
     };
     delete: {
-        method: "DELETE";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -617,6 +616,7 @@ export declare const invoiceAttachmentContract: {
             id: string;
         }>;
         summary: "Delete a invoiceattachment";
+        method: "DELETE";
         path: "/api/financial/invoice-attachments/:id";
         responses: {
             200: z.ZodObject<{
@@ -658,6 +658,8 @@ export declare const invoiceAttachmentContract: {
         };
     };
     bulkCreate: {
+        summary: "Create multiple invoiceattachments";
+        method: "POST";
         body: z.ZodObject<{
             data: z.ZodArray<z.ZodObject<Omit<{
                 id: z.ZodString;
@@ -718,8 +720,6 @@ export declare const invoiceAttachmentContract: {
                 deletedBy?: string | undefined;
             }[];
         }>;
-        method: "POST";
-        summary: "Create multiple invoiceattachments";
         path: "/api/financial/invoice-attachments/bulk";
         responses: {
             201: z.ZodObject<{
@@ -829,6 +829,8 @@ export declare const invoiceAttachmentContract: {
         };
     };
     bulkUpdate: {
+        summary: "Update multiple invoiceattachments";
+        method: "PUT";
         body: z.ZodObject<{
             where: z.ZodObject<{
                 page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -852,10 +854,10 @@ export declare const invoiceAttachmentContract: {
                 page: number;
                 limit: number;
                 sortOrder: "asc" | "desc";
-                search?: string | undefined;
-                sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
-                include?: {} | undefined;
                 description?: string | undefined;
+                search?: string | undefined;
+                sortBy?: "description" | "id" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
+                include?: {} | undefined;
                 invoiceId?: string | undefined;
                 fileName?: string | undefined;
                 filePath?: string | undefined;
@@ -867,13 +869,13 @@ export declare const invoiceAttachmentContract: {
                 deletedAt?: any;
                 deletedBy?: string | undefined;
             }, {
+                description?: string | undefined;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
+                sortBy?: "description" | "id" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
                 sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
                 include?: {} | undefined;
-                description?: string | undefined;
                 invoiceId?: string | undefined;
                 fileName?: string | undefined;
                 filePath?: string | undefined;
@@ -932,10 +934,10 @@ export declare const invoiceAttachmentContract: {
                 page: number;
                 limit: number;
                 sortOrder: "asc" | "desc";
-                search?: string | undefined;
-                sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
-                include?: {} | undefined;
                 description?: string | undefined;
+                search?: string | undefined;
+                sortBy?: "description" | "id" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
+                include?: {} | undefined;
                 invoiceId?: string | undefined;
                 fileName?: string | undefined;
                 filePath?: string | undefined;
@@ -960,13 +962,13 @@ export declare const invoiceAttachmentContract: {
                 deletedBy?: string | undefined;
             };
             where: {
+                description?: string | undefined;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
+                sortBy?: "description" | "id" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
                 sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                sortBy?: "id" | "description" | "invoiceId" | "fileName" | "filePath" | "fileSize" | "fileType" | "uploadedBy" | "uploadedAt" | "isDeleted" | "deletedAt" | "deletedBy" | undefined;
                 include?: {} | undefined;
-                description?: string | undefined;
                 invoiceId?: string | undefined;
                 fileName?: string | undefined;
                 filePath?: string | undefined;
@@ -979,8 +981,6 @@ export declare const invoiceAttachmentContract: {
                 deletedBy?: string | undefined;
             };
         }>;
-        method: "PUT";
-        summary: "Update multiple invoiceattachments";
         path: "/api/financial/invoice-attachments/bulk";
         responses: {
             200: z.ZodObject<{
@@ -1022,6 +1022,8 @@ export declare const invoiceAttachmentContract: {
         };
     };
     bulkDelete: {
+        summary: "Delete multiple invoiceattachments";
+        method: "DELETE";
         body: z.ZodObject<{
             ids: z.ZodArray<z.ZodString, "many">;
         }, "strip", z.ZodTypeAny, {
@@ -1029,8 +1031,6 @@ export declare const invoiceAttachmentContract: {
         }, {
             ids: string[];
         }>;
-        method: "DELETE";
-        summary: "Delete multiple invoiceattachments";
         path: "/api/financial/invoice-attachments/bulk";
         responses: {
             200: z.ZodObject<{

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 export declare const strategyContract: {
     getAll: {
-        method: "GET";
         query: z.ZodObject<{
             page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
             limit: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -20,23 +19,24 @@ export declare const strategyContract: {
             type?: string | undefined;
             status?: string | undefined;
             search?: string | undefined;
-            sortBy?: "type" | "status" | "id" | "userId" | "name" | "parameters" | undefined;
-            userId?: string | undefined;
             name?: string | undefined;
+            sortBy?: "type" | "status" | "id" | "name" | "userId" | "parameters" | undefined;
+            userId?: string | undefined;
             parameters?: any;
         }, {
             type?: string | undefined;
             status?: string | undefined;
+            search?: string | undefined;
             page?: number | undefined;
             limit?: number | undefined;
-            sortOrder?: "asc" | "desc" | undefined;
-            search?: string | undefined;
-            sortBy?: "type" | "status" | "id" | "userId" | "name" | "parameters" | undefined;
-            userId?: string | undefined;
             name?: string | undefined;
+            sortBy?: "type" | "status" | "id" | "name" | "userId" | "parameters" | undefined;
+            sortOrder?: "asc" | "desc" | undefined;
+            userId?: string | undefined;
             parameters?: any;
         }>;
         summary: "Get all strategys with optional filtering and pagination";
+        method: "GET";
         path: "/api/public/strategys";
         responses: {
             200: z.ZodObject<{
@@ -69,14 +69,14 @@ export declare const strategyContract: {
                     limit: z.ZodNumber;
                     totalPages: z.ZodNumber;
                 }, "strip", z.ZodTypeAny, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }, {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 }>;
             }, "strip", z.ZodTypeAny, {
@@ -90,9 +90,9 @@ export declare const strategyContract: {
                     userId?: string | undefined;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }, {
@@ -106,9 +106,9 @@ export declare const strategyContract: {
                     userId?: string | undefined;
                 }[];
                 pagination: {
+                    total: number;
                     page: number;
                     limit: number;
-                    total: number;
                     totalPages: number;
                 };
             }>;
@@ -141,7 +141,6 @@ export declare const strategyContract: {
         };
     };
     getById: {
-        method: "GET";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -150,6 +149,7 @@ export declare const strategyContract: {
             id: string;
         }>;
         summary: "Get a strategy by ID";
+        method: "GET";
         path: "/api/public/strategys/:id";
         responses: {
             200: z.ZodObject<{
@@ -226,6 +226,8 @@ export declare const strategyContract: {
         };
     };
     create: {
+        summary: "Create a new strategy";
+        method: "POST";
         body: z.ZodObject<Omit<{
             id: z.ZodString;
             userId: z.ZodOptional<z.ZodString>;
@@ -242,8 +244,6 @@ export declare const strategyContract: {
             name: string;
             userId?: string | undefined;
         }>;
-        method: "POST";
-        summary: "Create a new strategy";
         path: "/api/public/strategys";
         responses: {
             201: z.ZodObject<{
@@ -320,20 +320,6 @@ export declare const strategyContract: {
         };
     };
     update: {
-        body: z.ZodObject<{
-            type: z.ZodOptional<z.ZodString>;
-            userId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
-            name: z.ZodOptional<z.ZodString>;
-        }, "strip", z.ZodTypeAny, {
-            type?: string | undefined;
-            userId?: string | undefined;
-            name?: string | undefined;
-        }, {
-            type?: string | undefined;
-            userId?: string | undefined;
-            name?: string | undefined;
-        }>;
-        method: "PUT";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -342,6 +328,20 @@ export declare const strategyContract: {
             id: string;
         }>;
         summary: "Update a strategy";
+        method: "PUT";
+        body: z.ZodObject<{
+            type: z.ZodOptional<z.ZodString>;
+            name: z.ZodOptional<z.ZodString>;
+            userId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+        }, "strip", z.ZodTypeAny, {
+            type?: string | undefined;
+            name?: string | undefined;
+            userId?: string | undefined;
+        }, {
+            type?: string | undefined;
+            name?: string | undefined;
+            userId?: string | undefined;
+        }>;
         path: "/api/public/strategys/:id";
         responses: {
             200: z.ZodObject<{
@@ -431,7 +431,6 @@ export declare const strategyContract: {
         };
     };
     delete: {
-        method: "DELETE";
         pathParams: z.ZodObject<{
             id: z.ZodString;
         }, "strip", z.ZodTypeAny, {
@@ -440,6 +439,7 @@ export declare const strategyContract: {
             id: string;
         }>;
         summary: "Delete a strategy";
+        method: "DELETE";
         path: "/api/public/strategys/:id";
         responses: {
             200: z.ZodObject<{
@@ -481,6 +481,8 @@ export declare const strategyContract: {
         };
     };
     bulkCreate: {
+        summary: "Create multiple strategys";
+        method: "POST";
         body: z.ZodObject<{
             data: z.ZodArray<z.ZodObject<Omit<{
                 id: z.ZodString;
@@ -511,8 +513,6 @@ export declare const strategyContract: {
                 userId?: string | undefined;
             }[];
         }>;
-        method: "POST";
-        summary: "Create multiple strategys";
         path: "/api/public/strategys/bulk";
         responses: {
             201: z.ZodObject<{
@@ -592,6 +592,8 @@ export declare const strategyContract: {
         };
     };
     bulkUpdate: {
+        summary: "Update multiple strategys";
+        method: "PUT";
         body: z.ZodObject<{
             where: z.ZodObject<{
                 page: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
@@ -611,40 +613,40 @@ export declare const strategyContract: {
                 type?: string | undefined;
                 status?: string | undefined;
                 search?: string | undefined;
-                sortBy?: "type" | "status" | "id" | "userId" | "name" | "parameters" | undefined;
-                userId?: string | undefined;
                 name?: string | undefined;
+                sortBy?: "type" | "status" | "id" | "name" | "userId" | "parameters" | undefined;
+                userId?: string | undefined;
                 parameters?: any;
             }, {
                 type?: string | undefined;
                 status?: string | undefined;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
-                sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                sortBy?: "type" | "status" | "id" | "userId" | "name" | "parameters" | undefined;
-                userId?: string | undefined;
                 name?: string | undefined;
+                sortBy?: "type" | "status" | "id" | "name" | "userId" | "parameters" | undefined;
+                sortOrder?: "asc" | "desc" | undefined;
+                userId?: string | undefined;
                 parameters?: any;
             }>;
             data: z.ZodObject<{
                 type: z.ZodOptional<z.ZodString>;
-                userId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
                 name: z.ZodOptional<z.ZodString>;
+                userId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
             }, "strip", z.ZodTypeAny, {
                 type?: string | undefined;
-                userId?: string | undefined;
                 name?: string | undefined;
+                userId?: string | undefined;
             }, {
                 type?: string | undefined;
-                userId?: string | undefined;
                 name?: string | undefined;
+                userId?: string | undefined;
             }>;
         }, "strip", z.ZodTypeAny, {
             data: {
                 type?: string | undefined;
-                userId?: string | undefined;
                 name?: string | undefined;
+                userId?: string | undefined;
             };
             where: {
                 page: number;
@@ -653,32 +655,30 @@ export declare const strategyContract: {
                 type?: string | undefined;
                 status?: string | undefined;
                 search?: string | undefined;
-                sortBy?: "type" | "status" | "id" | "userId" | "name" | "parameters" | undefined;
-                userId?: string | undefined;
                 name?: string | undefined;
+                sortBy?: "type" | "status" | "id" | "name" | "userId" | "parameters" | undefined;
+                userId?: string | undefined;
                 parameters?: any;
             };
         }, {
             data: {
                 type?: string | undefined;
-                userId?: string | undefined;
                 name?: string | undefined;
+                userId?: string | undefined;
             };
             where: {
                 type?: string | undefined;
                 status?: string | undefined;
+                search?: string | undefined;
                 page?: number | undefined;
                 limit?: number | undefined;
-                sortOrder?: "asc" | "desc" | undefined;
-                search?: string | undefined;
-                sortBy?: "type" | "status" | "id" | "userId" | "name" | "parameters" | undefined;
-                userId?: string | undefined;
                 name?: string | undefined;
+                sortBy?: "type" | "status" | "id" | "name" | "userId" | "parameters" | undefined;
+                sortOrder?: "asc" | "desc" | undefined;
+                userId?: string | undefined;
                 parameters?: any;
             };
         }>;
-        method: "PUT";
-        summary: "Update multiple strategys";
         path: "/api/public/strategys/bulk";
         responses: {
             200: z.ZodObject<{
@@ -720,6 +720,8 @@ export declare const strategyContract: {
         };
     };
     bulkDelete: {
+        summary: "Delete multiple strategys";
+        method: "DELETE";
         body: z.ZodObject<{
             ids: z.ZodArray<z.ZodString, "many">;
         }, "strip", z.ZodTypeAny, {
@@ -727,8 +729,6 @@ export declare const strategyContract: {
         }, {
             ids: string[];
         }>;
-        method: "DELETE";
-        summary: "Delete multiple strategys";
         path: "/api/public/strategys/bulk";
         responses: {
             200: z.ZodObject<{

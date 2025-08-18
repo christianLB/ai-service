@@ -43,16 +43,16 @@ export declare const StrategyCreateSchema: z.ZodObject<Omit<{
 }>;
 export declare const StrategyUpdateSchema: z.ZodObject<{
     type: z.ZodOptional<z.ZodString>;
-    userId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     name: z.ZodOptional<z.ZodString>;
+    userId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     type?: string | undefined;
-    userId?: string | undefined;
     name?: string | undefined;
+    userId?: string | undefined;
 }, {
     type?: string | undefined;
-    userId?: string | undefined;
     name?: string | undefined;
+    userId?: string | undefined;
 }>;
 export declare const StrategyResponseSchema: z.ZodObject<{
     id: z.ZodString;
@@ -94,20 +94,20 @@ export declare const StrategyQuerySchema: z.ZodObject<{
     type?: string | undefined;
     status?: string | undefined;
     search?: string | undefined;
-    sortBy?: "type" | "status" | "id" | "userId" | "name" | "parameters" | undefined;
-    userId?: string | undefined;
     name?: string | undefined;
+    sortBy?: "type" | "status" | "id" | "name" | "userId" | "parameters" | undefined;
+    userId?: string | undefined;
     parameters?: any;
 }, {
     type?: string | undefined;
     status?: string | undefined;
+    search?: string | undefined;
     page?: number | undefined;
     limit?: number | undefined;
-    sortOrder?: "asc" | "desc" | undefined;
-    search?: string | undefined;
-    sortBy?: "type" | "status" | "id" | "userId" | "name" | "parameters" | undefined;
-    userId?: string | undefined;
     name?: string | undefined;
+    sortBy?: "type" | "status" | "id" | "name" | "userId" | "parameters" | undefined;
+    sortOrder?: "asc" | "desc" | undefined;
+    userId?: string | undefined;
     parameters?: any;
 }>;
 export type Strategy = z.infer<typeof StrategySchema>;
