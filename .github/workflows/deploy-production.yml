@@ -1,11 +1,12 @@
-name: Deploy to Production (Legacy - SSH)
+name: Deploy to Production (NAS)
 
 on:
-  # Disabled - now using deploy-production-nas.yml
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       force_deploy:
-        description: 'Force deploy via SSH method'
+        description: 'Force deployment to NAS'
         required: false
         default: 'false'
 

@@ -32,6 +32,7 @@
     "install:frontend": "cd frontend && npm install",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn src/index.ts",
+    "dev:api": "ts-node-dev --respawn src/index.ts",
     "dev:services": "docker compose -f docker-compose.dev.yml up -d",
     "dev:services:down": "docker compose -f docker-compose.dev.yml down -v",
     "dev:frontend": "cd frontend && npm run dev",

@@ -42,10 +42,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       
       - name: Get pnpm store directory
         id: pnpm-cache
@@ -83,10 +83,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -98,10 +98,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Validate OpenAPI specs
-        run: npm run contracts:validate
+        run: pnpm run contracts:validate
       
       - name: Generate contracts
-        run: npm run contracts:generate
+        run: pnpm run contracts:generate
       
       - name: Check for drift
         run: |
@@ -109,7 +109,7 @@ jobs:
             echo "✅ No contract drift detected"
           else
             echo "❌ Contract drift detected!"
-            echo "Please run 'npm run contracts:generate' locally and commit the changes"
+            echo "Please run 'pnpm run contracts:generate' locally and commit the changes"
             git diff packages/contracts/src/generated
             exit 1
           fi
@@ -133,10 +133,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -156,7 +156,7 @@ jobs:
       
       - name: Lint root (if api-gateway)
         if: matrix.service == 'api-gateway'
-        run: npm run lint
+        run: pnpm run lint
 
   # ============================================
   # TYPECHECK - TypeScript validation
@@ -177,10 +177,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -192,7 +192,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Generate Prisma Client
-        run: npm run db:generate
+        run: pnpm run db:generate
       
       - name: TypeCheck ${{ matrix.service }}
         run: |
@@ -203,7 +203,7 @@ jobs:
       
       - name: TypeCheck root (if api-gateway)
         if: matrix.service == 'api-gateway'
-        run: npm run typecheck
+        run: pnpm run typecheck
 
   # ============================================
   # BUILD - Build all services
@@ -224,10 +224,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -239,7 +239,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       
       - name: Generate Prisma Client
-        run: npm run db:generate
+        run: pnpm run db:generate
       
       - name: Build packages
         run: |
@@ -257,7 +257,7 @@ jobs:
       
       - name: Build root (if api-gateway)
         if: matrix.service == 'api-gateway'
-        run: npm run build:backend
+        run: pnpm run build:backend
 
   # ============================================
   # TEST - Run tests
@@ -301,10 +301,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -319,7 +319,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
         run: |
-          npm run db:generate
+          pnpm run db:generate
           npx prisma migrate deploy || true
       
       - name: Run tests
@@ -327,7 +327,7 @@ jobs:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
           REDIS_URL: redis://localhost:6379
           NODE_ENV: test
-        run: npm run test:ci
+        run: pnpm run test:ci
       
       - name: Upload coverage
         if: always()
@@ -382,10 +382,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -396,22 +396,22 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd frontend
-          npm install
+          pnpm install --frozen-lockfile
       
       - name: Lint frontend
         run: |
           cd frontend
-          npm run lint || true
+          pnpm run lint || true
       
       - name: TypeCheck frontend
         run: |
           cd frontend
-          npm run typecheck || true
+          pnpm run typecheck || true
       
       - name: Build frontend
         run: |
           cd frontend
-          npm run build
+          pnpm run build
       
       - name: Upload frontend build
         uses: actions/upload-artifact@v4

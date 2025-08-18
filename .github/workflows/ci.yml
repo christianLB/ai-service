@@ -119,7 +119,7 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile
-          cd frontend && npm ci --legacy-peer-deps
+          cd frontend && pnpm install --frozen-lockfile
       
       - name: Type checking - Workspace packages
         run: |
@@ -132,7 +132,7 @@ jobs:
       - name: Type checking - Backend (root)
         run: |
           echo "🔍 Checking backend TypeScript types..."
-          npm run typecheck || {
+          pnpm run typecheck || {
             echo "❌ Backend type checking failed - please fix TypeScript errors"
             exit 1
           }
@@ -140,7 +140,7 @@ jobs:
       - name: Type checking - Frontend
         run: |
           echo "🔍 Checking frontend TypeScript types..."
-          cd frontend && npm run typecheck || {
+          cd frontend && pnpm run typecheck || {
             echo "❌ Frontend type checking failed - please fix TypeScript errors"
             exit 1
           }
@@ -155,16 +155,16 @@ jobs:
       
       - name: Linting - Backend
         run: |
-          npm run lint || {
+          pnpm run lint || {
             echo "⚠️ Backend linting issues found"
-            echo "Run 'npm run lint:fix' locally to auto-fix"
+            echo "Run 'pnpm run lint:fix' locally to auto-fix"
           }
       
       - name: Linting - Frontend
         run: |
-          cd frontend && npm run lint || {
+          cd frontend && pnpm run lint || {
             echo "⚠️ Frontend linting issues found"
-            echo "Run 'npm run lint:fix' locally to auto-fix"
+            echo "Run 'pnpm run lint:fix' locally to auto-fix"
           }
       
       - name: Security audit
@@ -205,7 +205,7 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile
-          cd frontend && npm ci --legacy-peer-deps
+          cd frontend && pnpm install --frozen-lockfile
       
       - name: Generate Prisma client
         run: npx prisma generate
@@ -231,7 +231,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_service
         run: |
           echo "🔨 Building backend..."
-          npm run build || {
+          pnpm run build || {
             echo "❌ Backend build failed"
             exit 1
           }
@@ -241,7 +241,7 @@ jobs:
         run: |
           echo "🎨 Building frontend..."
           cd frontend
-          npm run build || {
+          pnpm run build || {
             echo "❌ Frontend build failed"
             exit 1
           }
@@ -362,7 +362,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
         run: |
           echo "🧪 Running unit tests..."
-          npm run test:ci || {
+          pnpm run test:ci || {
             echo "⚠️ Some tests failed - check test report for details"
             exit 1
           }
@@ -401,17 +401,16 @@ jobs:
           echo "JWT_SECRET=test-secret" >> .env
       
       - name: Start services with Docker Compose
-        working-directory: infra/compose
         run: |
           echo "🐳 Starting Docker services..."
-          docker compose -f docker-compose.dev.yml up -d --build
+          docker compose -f docker-compose.yml up -d --build
           echo "⏳ Waiting for services to start..."
           sleep 10
       
       - name: Check service health
         run: |
           echo "🏥 Checking service health..."
-          docker compose -f infra/compose/docker-compose.dev.yml ps
+          docker compose -f docker-compose.yml ps
           
           # Function to check service health
           check_health() {
@@ -433,19 +432,18 @@ jobs:
             
             echo "❌ $service failed to become healthy"
             echo "=== $service logs ==="
-            docker compose -f infra/compose/docker-compose.dev.yml logs "$service" --tail=50
+            docker compose -f docker-compose.yml logs "$service" --tail=50
             return 1
           }
           
           # Check each service
-          check_health "api-gateway" "http://localhost:3005/health/ready" || exit 1
-          check_health "financial-svc" "http://localhost:3001/health" || exit 1
+          check_health "ai-service-api" "http://localhost:3001/health" || exit 1
       
-      - name: Test Gateway - List Accounts
+      - name: Test API - List Accounts
         id: test-accounts
         run: |
           echo "🔍 Testing /api/financial/accounts endpoint..."
-          response=$(curl -sf -w '\n{"http_code":%{http_code}}' http://localhost:3005/api/financial/accounts)
+          response=$(curl -sf -w '\n{"http_code":%{http_code}}' http://localhost:3001/api/financial/accounts)
           http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
           body=$(echo "$response" | head -n -1)
           
@@ -473,7 +471,7 @@ jobs:
             local expected_field=$4
             
             echo "Testing: GET $endpoint?page=$page&limit=$limit"
-            response=$(curl -sf -w '\n{"http_code":%{http_code}}' "http://localhost:3005$endpoint?page=$page&limit=$limit")
+            response=$(curl -sf -w '\n{"http_code":%{http_code}}' "http://localhost:3001$endpoint?page=$page&limit=$limit")
             http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
             body=$(echo "$response" | head -n -1)
             
@@ -518,7 +516,7 @@ jobs:
             local test_name=$5
             
             echo "Testing $test_name: GET $endpoint?page=$page&limit=$limit"
-            response=$(curl -s -w '\n{"http_code":%{http_code}}' "http://localhost:3005$endpoint?page=$page&limit=$limit")
+            response=$(curl -s -w '\n{"http_code":%{http_code}}' "http://localhost:3001$endpoint?page=$page&limit=$limit")
             http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
             body=$(echo "$response" | head -n -1)
             
@@ -552,7 +550,7 @@ jobs:
             account_id=$(jq -r '.accounts[0].id // empty' accounts.json)
             if [ -n "$account_id" ]; then
               echo "Testing: GET /api/financial/accounts/$account_id"
-              response=$(curl -sf -w '\n{"http_code":%{http_code}}' "http://localhost:3005/api/financial/accounts/$account_id")
+              response=$(curl -sf -w '\n{"http_code":%{http_code}}' "http://localhost:3001/api/financial/accounts/$account_id")
               http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
               body=$(echo "$response" | head -n -1)
               
@@ -576,30 +574,26 @@ jobs:
           docker ps -a
           echo ""
           echo "=== Docker Compose Status ==="
-          docker compose -f infra/compose/docker-compose.dev.yml ps
+          docker compose -f docker-compose.yml ps
           echo ""
-          echo "=== Gateway Logs (last 100 lines) ==="
-          docker compose -f infra/compose/docker-compose.dev.yml logs api-gateway --tail=100
-          echo ""
-          echo "=== Financial Service Logs (last 100 lines) ==="
-          docker compose -f infra/compose/docker-compose.dev.yml logs financial-svc --tail=100
+          echo "=== API Service Logs (last 100 lines) ==="
+          docker compose -f docker-compose.yml logs ai-service-api --tail=100
           echo ""
           echo "=== Database Logs (last 50 lines) ==="
-          docker compose -f infra/compose/docker-compose.dev.yml logs db --tail=50
+          docker compose -f docker-compose.yml logs postgres --tail=50
           echo ""
           echo "=== Network Information ==="
           docker network ls
-          docker compose -f infra/compose/docker-compose.dev.yml exec -T api-gateway netstat -tuln || true
+          docker compose -f docker-compose.yml exec -T ai-service-api netstat -tuln || true
           echo ""
           echo "=== Environment Variables (sanitized) ==="
-          docker compose -f infra/compose/docker-compose.dev.yml exec -T api-gateway env | grep -v PASSWORD | grep -v SECRET | grep -v KEY || true
+          docker compose -f docker-compose.yml exec -T ai-service-api env | grep -v PASSWORD | grep -v SECRET | grep -v KEY || true
       
       - name: Cleanup
         if: always()
-        working-directory: infra/compose
         run: |
           echo "🧹 Cleaning up Docker services..."
-          docker compose -f docker-compose.dev.yml down -v
+          docker compose -f docker-compose.yml down -v
 
   # Docker build validation
   docker:
@@ -694,27 +688,20 @@ jobs:
           PORT: 3001
           FINANCIAL_SVC_URL: http://localhost:3001
         run: |
-          echo "🚀 Starting financial service..."
-          cd apps/financial-svc
-          pnpm build
+          echo "🚀 Starting API service..."
+          pnpm run build
           node dist/index.js &
-          FINANCIAL_PID=$!
+          API_PID=$!
           
-          echo "🚀 Starting gateway..."
-          cd ../api-gateway
-          pnpm build
-          PORT=3005 node dist/index.js &
-          GATEWAY_PID=$!
-          
-          # Wait for services to be ready
-          echo "⏳ Waiting for services to be ready..."
+          # Wait for service to be ready
+          echo "⏳ Waiting for service to be ready..."
           for i in {1..30}; do
-            if curl -s http://localhost:3001/health/ready && curl -s http://localhost:3005/health/ready; then
-              echo "✅ Services are ready"
+            if curl -s http://localhost:3001/health; then
+              echo "✅ Service is ready"
               break
             fi
             if [ $i -eq 30 ]; then
-              echo "❌ Services failed to start"
+              echo "❌ Service failed to start"
               exit 1
             fi
             sleep 2
@@ -722,7 +709,7 @@ jobs:
       
       - name: Run E2E tests
         env:
-          API_URL: http://localhost:3005
+          API_URL: http://localhost:3001
           DATABASE_URL: postgresql://ai_user:testpass@localhost:5432/ai_service_test
         run: |
           echo "🧪 Running E2E tests..."
