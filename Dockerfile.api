@@ -1,18 +1,19 @@
 # Backend API Dockerfile
 FROM node:20-alpine AS builder
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++ git
+# Install build dependencies and pnpm
+RUN apk add --no-cache python3 make g++ git && \
+    npm install -g pnpm@10.12.1
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 COPY tsconfig.json ./
 COPY tsconfig.build.json ./
 
-# Install full deps for build, then prune later
-RUN npm ci && npm cache clean --force
+# Install full deps for build with pnpm
+RUN pnpm install --frozen-lockfile
 
 # Copy Prisma schema for generation
 COPY prisma/ ./prisma/
@@ -25,9 +26,9 @@ COPY config/ ./config/
 COPY packages/ ./packages/
 
 # Generate Prisma client (if used) and build
-RUN npx prisma generate || echo "Prisma generate skipped" && \
-    npm run build:backend && \
-    npm prune --production
+RUN pnpm exec prisma generate || echo "Prisma generate skipped" && \
+    pnpm run build:backend && \
+    pnpm prune --prod
 
 # Production stage
 FROM node:20-alpine
@@ -59,7 +60,8 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/config ./config
-COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=builder /app/prisma ./prisma
 
 # Create non-root user

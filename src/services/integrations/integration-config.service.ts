@@ -33,6 +33,7 @@ export class IntegrationConfigService {
   private encryptionKey: Buffer;
   private configCache: Map<string, any> = new Map();
   private cacheTTL = 5 * 60 * 1000; // 5 minutes
+  private intervalId: NodeJS.Timeout | null = null;
 
   private constructor() {
     // Use a key from environment or generate one
@@ -42,15 +43,33 @@ export class IntegrationConfigService {
       'default-encryption-key-32-chars!!';
     this.encryptionKey = crypto.scryptSync(key, 'salt', 32);
 
-    // Clear cache periodically
-    setInterval(() => this.clearExpiredCache(), this.cacheTTL);
+    // Clear cache periodically - but not in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      this.intervalId = setInterval(() => this.clearExpiredCache(), this.cacheTTL);
+    }
   }
 
   static getInstance(): IntegrationConfigService {
     if (!IntegrationConfigService.instance) {
       IntegrationConfigService.instance = new IntegrationConfigService();
+
+      // Register cleanup for tests
+      if (process.env.NODE_ENV === 'test' && typeof afterAll === 'function') {
+        afterAll(() => {
+          IntegrationConfigService.instance?.cleanup();
+        });
+      }
     }
     return IntegrationConfigService.instance;
+  }
+
+  // Cleanup method for proper shutdown
+  cleanup(): void {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+    this.configCache.clear();
   }
 
   private encrypt(text: string): string {
@@ -302,7 +321,7 @@ export class IntegrationConfigService {
       if (config.isEncrypted) {
         try {
           result[config.configKey] = this.decrypt(config.configValue);
-        } catch (error) {
+        } catch {
           logger.error('Failed to decrypt config', {
             integrationType,
             configKey: config.configKey,
@@ -317,7 +336,7 @@ export class IntegrationConfigService {
   }
 
   // Test connection method for validation
-  async testConfig(integrationType: string, configs: Record<string, string>): Promise<boolean> {
+  async testConfig(integrationType: string, _configs: Record<string, string>): Promise<boolean> {
     // This would be implemented per integration type
     // For now, just return true
     logger.info('Testing config', { integrationType });

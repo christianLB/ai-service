@@ -1,0 +1,107 @@
+# DevOps Context for AI Service
+# This file provides infrastructure awareness for Claude Code
+
+infrastructure:
+  ci_cd:
+    platform: github_actions
+    workflows:
+      - path: .github/workflows/ci.yml
+        description: Main CI pipeline with quality checks
+      - path: .github/workflows/e2e-tests.yml
+        description: Playwright E2E tests
+      - path: .github/workflows/contracts.yml
+        description: Contract validation
+      - path: .github/workflows/ci-build.yml
+        description: Extended smoke tests
+    
+  package_manager:
+    primary: pnpm
+    version: 10.12.1
+    lockfile: pnpm-lock.yaml
+    CRITICAL: "NEVER use npm in CI/Docker - ONLY pnpm"
+    commands:
+      install: "pnpm install --frozen-lockfile"
+      build: "pnpm run build"
+      test: "pnpm run test:ci"
+    
+  docker:
+    files:
+      - Dockerfile.api: "API service container - MUST use pnpm"
+      - docker-compose.yml: "Development environment"
+      - docker-compose.nas-aligned.yml: "Production NAS deployment"
+    registries:
+      - ghcr.io: "GitHub Container Registry"
+    requirements:
+      - "Always use pnpm, never npm"
+      - "Multi-stage builds for optimization"
+      - "Node 20 Alpine base image"
+      
+  deployment:
+    production: 
+      platform: "Synology NAS"
+      method: "Direct deployment"
+      no_kubernetes: true
+    development:
+      platform: "Docker Compose"
+      method: "Local containers"
+    staging: "NONE - No staging environment"
+    
+  monitoring:
+    github_actions:
+      check_status: "curl -s https://api.github.com/repos/christianLB/ai-service/actions/runs"
+      view_logs: "gh run view {run_id} --log"
+    local_validation:
+      - typecheck: "npm run typecheck"
+      - build: "npm run build"
+      - test: "npm run test:ci"
+      - docker: "docker build -t test -f Dockerfile.api ."
+      
+common_failures:
+  timer_in_singleton:
+    file: src/services/integrations/integration-config.service.ts
+    line: 46
+    issue: "setInterval prevents Jest from exiting"
+    symptom: "Tests hang forever"
+    fix: "Check NODE_ENV !== 'test' before creating intervals"
+    
+  apps_folder_empty:
+    location: /apps/*
+    issue: "CI tries to build non-existent apps"
+    symptom: "No projects matched the filter"
+    fix: "Remove apps build step from CI workflow"
+    
+  npm_vs_pnpm:
+    issue: "Mixed package managers break lockfile"
+    symptom: "Cannot find package-lock.json or lockfile mismatch"
+    fix: "Use ONLY pnpm everywhere - update Dockerfiles"
+    
+  no_gh_cli:
+    issue: "Can't check GitHub Actions status"
+    symptom: "Can't verify if fixes work"
+    fix: "Install gh CLI or use API directly"
+    
+  e2e_tests_missing:
+    location: /e2e/
+    issue: "No actual E2E tests but workflow tries to run them"
+    symptom: "No tests found"
+    fix: "Check if tests exist before running"
+
+validation_checklist:
+  before_commit:
+    - "Run: npm run typecheck (must return 0 errors)"
+    - "Run: npm run test:ci (must not hang)"
+    - "Run: npm run build (must succeed)"
+    - "Run: docker build -t test -f Dockerfile.api . (if Docker changed)"
+    
+  after_push:
+    - "Check: GitHub Actions status via API"
+    - "Verify: All workflows show as passing"
+    - "Confirm: No timeout errors in logs"
+
+devops_rules:
+  mandatory_checks:
+    - "ALWAYS use pnpm, NEVER npm in CI/Docker"
+    - "ALWAYS validate locally before claiming fixed"
+    - "ALWAYS check actual GitHub Actions status"
+    - "NEVER add code without testing"
+    - "NEVER claim success without verification"

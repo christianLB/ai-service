@@ -227,13 +227,6 @@ jobs:
             exit 1
           }
       
-      - name: Build apps
-        run: |
-          echo "🚀 Building workspace apps..."
-          pnpm -r --filter "./apps/*" build || {
-            echo "❌ Apps build failed"
-            exit 1
-          }
       
       - name: Build backend (root)
         env:
