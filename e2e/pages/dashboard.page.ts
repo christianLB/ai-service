@@ -26,7 +26,7 @@ export class DashboardPage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/dashboard');
+    await this.page.goto('/');
     await this.page.waitForLoadState('networkidle');
   }
 

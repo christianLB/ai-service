@@ -10,7 +10,7 @@ import rateLimit from 'express-rate-limit';
 // Rate limiting for auth endpoints
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: 50, // DEVELOPMENT: Increased from 5 for testing. REVERT TO 5 FOR PRODUCTION!
   message: 'Too many login attempts, please try again later',
   standardHeaders: true,
   legacyHeaders: false,

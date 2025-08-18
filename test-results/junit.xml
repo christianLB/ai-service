@@ -1,0 +1,46 @@
+<testsuites id="" name="" tests="1" failures="1" skipped="0" errors="0" time="14.617101">
+<testsuite name="tests/01-authentication.spec.ts" timestamp="2025-08-18T13:10:08.178Z" hostname="chromium" tests="1" failures="1" skipped="0" time="13.009" errors="0">
+<testcase name="Authentication Flow › should successfully login with valid credentials" classname="tests/01-authentication.spec.ts" time="13.009">
+<failure message="01-authentication.spec.ts:17:7 should successfully login with valid credentials" type="FAILURE">
+<![CDATA[  [chromium] › tests/01-authentication.spec.ts:17:7 › Authentication Flow › should successfully login with valid credentials 
+
+    TimeoutError: page.waitForURL: Timeout 10000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation to "http://localhost:3000/" until "load"
+    ============================================================
+
+       at pages/auth.page.ts:46
+
+      44 |     // Wait for redirect to root (dashboard) or auth_token in localStorage
+      45 |     await Promise.race([
+    > 46 |       this.page.waitForURL('http://localhost:3000/', { timeout: 10000 }),
+         |                 ^
+      47 |       this.page.waitForFunction(() => localStorage.getItem('auth_token') !== null, { timeout: 10000 }),
+      48 |     ]);
+      49 |   }
+        at AuthPage.waitForAuthentication (/home/k2600x/dev/ai-service/e2e/pages/auth.page.ts:46:17)
+        at /home/k2600x/dev/ai-service/e2e/tests/01-authentication.spec.ts:28:20
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/video.webm]]
+
+[[ATTACHMENT|tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

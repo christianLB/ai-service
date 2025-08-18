@@ -7,6 +7,8 @@ import { test, expect } from '../fixtures/test-fixtures';
 
 test.describe('Authentication Flow', () => {
   test.beforeEach(async ({ page }) => {
+    // Navigate to the app first before clearing localStorage
+    await page.goto('/');
     // Clear any existing session
     await page.context().clearCookies();
     await page.evaluate(() => localStorage.clear());
@@ -18,8 +20,8 @@ test.describe('Authentication Flow', () => {
     // Verify login form is visible
     expect(await authPage.isLoginFormVisible()).toBeTruthy();
     
-    // Fill and submit login form
-    await authPage.fillLoginForm('test@example.com', 'testPassword123');
+    // Fill and submit login form with correct credentials
+    await authPage.fillLoginForm('admin@ai-service.local', 'admin123');
     await authPage.submitLoginForm();
     
     // Wait for authentication
@@ -28,8 +30,8 @@ test.describe('Authentication Flow', () => {
     // Verify authentication
     expect(await authPage.isAuthenticated()).toBeTruthy();
     
-    // Verify redirect to dashboard
-    await expect(authPage.page).toHaveURL(/.*dashboard/);
+    // Verify redirect to root (dashboard is at /)
+    await expect(authPage.page).toHaveURL('http://localhost:3000/');
   });
 
   test('should fail login with invalid credentials', async ({ authPage }) => {
@@ -57,12 +59,12 @@ test.describe('Authentication Flow', () => {
   test('should successfully logout', async ({ authPage, dashboardPage }) => {
     // First login
     await authPage.goto();
-    await authPage.login('test@example.com', 'testPassword123');
+    await authPage.login('admin@ai-service.local', 'admin123');
     await authPage.waitForAuthentication();
     
-    // Verify on dashboard
+    // Verify on dashboard (root path)
     await dashboardPage.waitForDashboardLoad();
-    await expect(authPage.page).toHaveURL(/.*dashboard/);
+    await expect(authPage.page).toHaveURL('http://localhost:3000/');
     
     // Logout
     await authPage.logout();
@@ -87,7 +89,7 @@ test.describe('Authentication Flow', () => {
   test('should maintain session across page refreshes', async ({ authPage, dashboardPage }) => {
     // Login
     await authPage.goto();
-    await authPage.login('test@example.com', 'testPassword123');
+    await authPage.login('admin@ai-service.local', 'admin123');
     await authPage.waitForAuthentication();
     
     // Verify on dashboard
@@ -96,9 +98,9 @@ test.describe('Authentication Flow', () => {
     // Refresh page
     await authPage.page.reload();
     
-    // Should still be on dashboard
+    // Should still be on dashboard (root path)
     await dashboardPage.waitForDashboardLoad();
-    await expect(authPage.page).toHaveURL(/.*dashboard/);
+    await expect(authPage.page).toHaveURL('http://localhost:3000/');
     
     // Should still be authenticated
     expect(await authPage.isAuthenticated()).toBeTruthy();

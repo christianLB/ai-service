@@ -15,9 +15,10 @@ export class AuthPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.emailInput = page.locator('input[name="email"], input[type="email"]');
-    this.passwordInput = page.locator('input[name="password"], input[type="password"]');
-    this.loginButton = page.locator('button[type="submit"]:has-text("Login"), button:has-text("Sign in")');
+    // Use data-testid when available, fallback to other selectors
+    this.emailInput = page.locator('[data-testid="login-email-input"], input[name="email"], input[type="email"]');
+    this.passwordInput = page.locator('[data-testid="login-password-input"], input[name="password"], input[type="password"]');
+    this.loginButton = page.locator('[data-testid="login-submit-button"], button[type="submit"]:has-text("Sign In"), button:has-text("Sign in")');
     this.logoutButton = page.locator('button:has-text("Logout"), button:has-text("Sign out")');
     this.errorMessage = page.locator('.error-message, .alert-danger, [role="alert"]');
     this.successMessage = page.locator('.success-message, .alert-success');
@@ -40,16 +41,16 @@ export class AuthPage {
   }
 
   async waitForAuthentication(): Promise<void> {
-    // Wait for redirect to dashboard or token in localStorage
+    // Wait for redirect to root (dashboard) or auth_token in localStorage
     await Promise.race([
-      this.page.waitForURL('**/dashboard', { timeout: 10000 }),
-      this.page.waitForFunction(() => localStorage.getItem('token') !== null, { timeout: 10000 }),
+      this.page.waitForURL('http://localhost:3000/', { timeout: 10000 }),
+      this.page.waitForFunction(() => localStorage.getItem('auth_token') !== null, { timeout: 10000 }),
     ]);
   }
 
   async isAuthenticated(): Promise<boolean> {
-    // Check if token exists in localStorage or cookie
-    const token = await this.page.evaluate(() => localStorage.getItem('token'));
+    // Check if auth_token exists in localStorage
+    const token = await this.page.evaluate(() => localStorage.getItem('auth_token'));
     return token !== null;
   }
 
