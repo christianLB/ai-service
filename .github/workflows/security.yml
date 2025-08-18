@@ -56,16 +56,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Enable Corepack
+      run: |
+        corepack enable
+        corepack prepare pnpm@10.12.1 --activate
+    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'pnpm'
-    
-    - name: Enable Corepack
-      run: |
-        corepack enable
-        corepack prepare pnpm@10.12.1 --activate
     
     - name: Install dependencies
       run: |

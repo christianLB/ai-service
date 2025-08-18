@@ -108,10 +108,9 @@ jobs:
           echo "DATABASE_URL=postgresql://ai_user:password@db:5432/ai_service" >> .env
 
       - name: Start stack (dev compose)
-        working-directory: infra/compose
         run: |
           echo "🐳 Starting Docker services..."
-          docker compose -f docker-compose.dev.yml up -d --build
+          docker compose -f infra/compose/docker-compose.dev.yml up -d --build
           echo "⏳ Waiting for initialization (15s)..."
           sleep 15
 

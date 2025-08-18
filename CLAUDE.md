@@ -433,22 +433,28 @@ make dev-status && make check-db
 
 Claude Code is configured with advanced MCP (Model Context Protocol) servers:
 
-1. **Context7** (Documentation & Patterns)
+1. **AI Service CLI** (Development Operations) 🆕
+   - **Enabled**: ✅ Available at `/home/k2600x/dev/ai-service/ai-cli-mcp.js`
+   - **Use cases**: Token generation, environment management, database operations
+   - **Tools**: get_token, dev_start/stop/status, db_migrate/backup, test_run
+   - **Reliability**: Replaces unreliable Makefile commands with working CLI
+
+2. **Context7** (Documentation & Patterns)
    - **Enabled**: ✅ Auto-detects when using Prisma, React, Express, TypeScript
    - **Use cases**: Library docs, best practices, code patterns
    - **Libraries**: prisma, react, express, typescript, tailwindcss, tanstack-query
 
-2. **Sequential** (Complex Analysis)
+3. **Sequential** (Complex Analysis)
    - **Enabled**: ✅ Auto-activates for complex problems
    - **Use cases**: Trading strategies, performance analysis, debugging
    - **Triggers**: `--think`, `--think-hard`, complex architecture
 
-3. **Magic** (UI Generation)
+4. **Magic** (UI Generation)
    - **Enabled**: ✅ Auto-activates for frontend work
    - **Use cases**: React components, Tailwind UI, dashboard elements
    - **Frameworks**: React + Tailwind CSS
 
-4. **Playwright** (Testing)
+5. **Playwright** (Testing)
    - **Enabled**: ❌ (Can be enabled for E2E testing)
    - **Use cases**: Automated testing, cross-browser validation
 

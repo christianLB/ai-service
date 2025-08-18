@@ -37,15 +37,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
       - name: Enable Corepack
         run: |
           corepack enable
           corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       
       - name: Get pnpm store directory
         id: pnpm-cache
@@ -78,15 +78,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
       - name: Enable Corepack
         run: |
           corepack enable
           corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -128,15 +128,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
       - name: Enable Corepack
         run: |
           corepack enable
           corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -151,7 +151,7 @@ jobs:
         run: |
           if [ -d "apps/${{ matrix.service }}" ]; then
             echo "Linting apps/${{ matrix.service }}..."
-            pnpm --filter ${{ matrix.service }} lint || true
+            pnpm --filter ${{ matrix.service }} lint
           fi
       
       - name: Lint root (if api-gateway)
@@ -172,15 +172,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
       - name: Enable Corepack
         run: |
           corepack enable
           corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -198,7 +198,7 @@ jobs:
         run: |
           if [ -d "apps/${{ matrix.service }}" ] && [ -f "apps/${{ matrix.service }}/tsconfig.json" ]; then
             echo "Type checking apps/${{ matrix.service }}..."
-            pnpm --filter ${{ matrix.service }} typecheck || pnpm --filter ${{ matrix.service }} build || true
+            pnpm --filter ${{ matrix.service }} typecheck || pnpm --filter ${{ matrix.service }} build
           fi
       
       - name: TypeCheck root (if api-gateway)
@@ -219,15 +219,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
       - name: Enable Corepack
         run: |
           corepack enable
           corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -243,10 +243,10 @@ jobs:
       
       - name: Build packages
         run: |
-          pnpm --filter @ai/config build || true
-          pnpm --filter @ai/contracts build || true
-          pnpm --filter @ai/sdk-client build || true
-          pnpm --filter @ai/observability build || true
+          pnpm --filter @ai/config build
+          pnpm --filter @ai/contracts build
+          pnpm --filter @ai/sdk-client build
+          pnpm --filter @ai/observability build
       
       - name: Build ${{ matrix.service }}
         run: |
@@ -296,15 +296,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
       - name: Enable Corepack
         run: |
           corepack enable
           corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -320,7 +320,7 @@ jobs:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
         run: |
           pnpm run db:generate
-          npx prisma migrate deploy || true
+          npx prisma migrate deploy
       
       - name: Run tests
         env:
@@ -377,15 +377,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      
       - name: Enable Corepack
         run: |
           corepack enable
           corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -401,12 +401,12 @@ jobs:
       - name: Lint frontend
         run: |
           cd frontend
-          pnpm run lint || true
+          pnpm run lint
       
       - name: TypeCheck frontend
         run: |
           cd frontend
-          pnpm run typecheck || true
+          pnpm run typecheck
       
       - name: Build frontend
         run: |
