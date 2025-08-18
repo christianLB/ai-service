@@ -2,3 +2,4 @@ packages:
   - 'packages/*'
   - 'packages/clients/*'
   - 'apps/*'
+  - 'frontend'

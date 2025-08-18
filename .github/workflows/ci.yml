@@ -124,10 +124,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Install frontend dependencies
-        run: |
-          cd frontend && pnpm install --frozen-lockfile
-      
       - name: Type checking - Workspace packages
         run: |
           echo "🔍 Checking TypeScript types across workspace packages..."
@@ -211,10 +207,6 @@ jobs:
       
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
-      - name: Install frontend dependencies
-        run: |
-          cd frontend && pnpm install --frozen-lockfile
       
       - name: Generate Prisma client
         run: npx prisma generate

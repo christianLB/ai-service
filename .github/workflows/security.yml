@@ -68,9 +68,7 @@ jobs:
         cache: 'pnpm'
     
     - name: Install dependencies
-      run: |
-        pnpm install --frozen-lockfile
-        cd frontend && pnpm install --frozen-lockfile
+      run: pnpm install --frozen-lockfile
     
     - name: Run pnpm audit
       run: |
