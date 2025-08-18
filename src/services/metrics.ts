@@ -87,15 +87,18 @@ class MetricsService {
 
   private startPeriodicMetrics(): void {
     // Actualizar métricas cada 30 segundos
-    setInterval(async () => {
-      try {
-        await this.updateWorkflowMetrics();
-        await this.updateSystemMetrics();
-      } catch (error: any) {
-        logger.error('Error updating periodic metrics:', error.message);
-        auditCatch('MetricsService.startPeriodicMetrics', error, 'silenced');
-      }
-    }, 30000);
+    // Don't create intervals in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      setInterval(async () => {
+        try {
+          await this.updateWorkflowMetrics();
+          await this.updateSystemMetrics();
+        } catch (error: any) {
+          logger.error('Error updating periodic metrics:', error.message);
+          auditCatch('MetricsService.startPeriodicMetrics', error, 'silenced');
+        }
+      }, 30000);
+    }
   }
 
   private async updateWorkflowMetrics(): Promise<void> {
@@ -148,7 +151,9 @@ class MetricsService {
 
       // Trigger notification if Telegram is configured
       try {
-        const { TelegramService } = await import('./communication/telegram.service');
+        const { TelegramService: _TelegramService } = await import(
+          './communication/telegram.service'
+        );
         // Skip Telegram notifications for now - requires proper configuration
         // TODO: Implement proper Telegram integration with config
         logger.warn('Telegram notifications not yet configured for alerts');
@@ -253,7 +258,7 @@ class MetricsService {
     return path
       .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/:id')
       .replace(/\/\d+/g, '/:id')
-      .replace(/\/[^\/]+\.(json|xml|html)$/g, '/:file');
+      .replace(/\/[^/]+\.(json|xml|html)$/g, '/:file');
   }
 
   // Método para obtener todas las métricas
@@ -360,7 +365,7 @@ class MetricsService {
   // Método para generar reporte de rendimiento
   async getPerformanceReport(hours = 24): Promise<any> {
     try {
-      const [apiErrors, llmMetrics, workflowMetrics] = await Promise.all([
+      const [apiErrors, llmMetrics, _workflowMetrics] = await Promise.all([
         db.getMetrics('api_errors', hours),
         db.getMetrics('llm_requests', hours),
         db.getMetrics('active_workflows', hours),

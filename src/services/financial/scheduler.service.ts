@@ -86,7 +86,7 @@ export class FinancialSchedulerService {
 
     // Schedule first sync (whichever comes first)
     const firstSyncDelay = Math.min(msUntil8AM, msUntil8PM);
-    const firstSyncTime = msUntil8AM < msUntil8PM ? '8:00 AM' : '8:00 PM';
+    const _firstSyncTime = msUntil8AM < msUntil8PM ? '8:00 AM' : '8:00 PM';
 
     setTimeout(() => {
       this.executeSyncWithRetry();
@@ -101,12 +101,15 @@ export class FinancialSchedulerService {
     // Schedule sync every 12 hours (2x/day)
     const twelveHours = 12 * 60 * 60 * 1000;
 
-    const interval = setInterval(() => {
-      this.executeSyncWithRetry();
-    }, twelveHours);
+    // Don't create intervals in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      const interval = setInterval(() => {
+        this.executeSyncWithRetry();
+      }, twelveHours);
 
-    this.syncIntervals.push(interval);
-    // console.log('Regular 12-hour sync interval scheduled');
+      this.syncIntervals.push(interval);
+      // console.log('Regular 12-hour sync interval scheduled');
+    }
   }
 
   // ============================================================================
@@ -148,7 +151,7 @@ export class FinancialSchedulerService {
 
         for (const account of accountsNeedingSync.rows) {
           try {
-            const syncResult = await this.goCardless.syncTransactionsToDatabase(
+            const _syncResult = await this.goCardless.syncTransactionsToDatabase(
               account.account_id,
               account.id,
               90

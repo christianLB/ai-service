@@ -203,13 +203,16 @@ export class NeuralOrchestrator {
     await this.evaluateSystemHealth();
 
     // Set up continuous monitoring
-    this.monitoringInterval = setInterval(async () => {
-      try {
-        await this.evaluateSystemHealth();
-      } catch (error: any) {
-        logger.error('🚨 Neural Orchestrator monitoring error:', error);
-      }
-    }, this.MONITORING_INTERVAL);
+    // Don't create intervals in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      this.monitoringInterval = setInterval(async () => {
+        try {
+          await this.evaluateSystemHealth();
+        } catch (error: any) {
+          logger.error('🚨 Neural Orchestrator monitoring error:', error);
+        }
+      }, this.MONITORING_INTERVAL);
+    }
   }
 
   stopMonitoring(): void {
@@ -226,7 +229,7 @@ export class NeuralOrchestrator {
 
     try {
       // Check each component
-      for (const [id, component] of this.components) {
+      for (const [_id, component] of this.components) {
         const previousStatus = component.status;
         await this.checkComponentHealth(component);
 
@@ -525,7 +528,7 @@ export class NeuralOrchestrator {
         configKey: 'secret_key',
       });
       return !!(secretId && secretKey);
-    } catch (error) {
+    } catch {
       return false;
     }
   }
