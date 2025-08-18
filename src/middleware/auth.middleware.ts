@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
   user?: {
-    id: string;      // Add id for compatibility with generated routes
+    id: string; // Add id for compatibility with generated routes
     userId: string;
     email: string;
     role: string;
@@ -14,7 +14,6 @@ export interface AuthRequest extends Request {
 export const authMiddlewareWrapper = (middleware: any) => middleware as any;
 
 export function authMiddleware(req: AuthRequest, res: Response, _next: NextFunction): void {
-
   // Get token from header
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -45,10 +44,10 @@ export function authMiddleware(req: AuthRequest, res: Response, _next: NextFunct
 
     // Add user info to request
     req.user = {
-      id: decoded.userId,     // Use userId as id for compatibility
+      id: decoded.userId, // Use userId as id for compatibility
       userId: decoded.userId,
       email: decoded.email,
-      role: decoded.role
+      role: decoded.role,
     };
 
     _next();

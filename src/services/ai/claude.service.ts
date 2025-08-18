@@ -138,9 +138,9 @@ export class ClaudeAIService {
         messages: [
           {
             role: 'user',
-            content: prompt
-          }
-        ]
+            content: prompt,
+          },
+        ],
       });
 
       // Extract text content from response
@@ -176,9 +176,9 @@ export class ClaudeAIService {
         messages: [
           {
             role: 'user',
-            content: prompt
-          }
-        ]
+            content: prompt,
+          },
+        ],
       });
 
       const content = response.content[0];
@@ -193,15 +193,13 @@ export class ClaudeAIService {
     }
   }
 
-  async generateTradingStrategy(
-    requirements: {
-      riskTolerance: 'low' | 'medium' | 'high';
-      timeframe: string;
-      targetReturn: number;
-      assets: string[];
-      constraints?: string[];
-    }
-  ): Promise<any> {
+  async generateTradingStrategy(requirements: {
+    riskTolerance: 'low' | 'medium' | 'high';
+    timeframe: string;
+    targetReturn: number;
+    assets: string[];
+    constraints?: string[];
+  }): Promise<any> {
     if (!this.client || !this.isInitialized) {
       logger.error('Claude AI not initialized');
       return null;
@@ -218,9 +216,9 @@ export class ClaudeAIService {
         messages: [
           {
             role: 'user',
-            content: prompt
-          }
-        ]
+            content: prompt,
+          },
+        ],
       });
 
       const content = response.content[0];
@@ -396,8 +394,10 @@ Format your response as a JSON object with clear structure.`;
         confidence: Math.min(1, Math.max(0, parsed.confidence || 0.5)),
         reasoning: parsed.reasoning || 'Claude AI analysis',
         suggestedSize: Math.min(0.1, Math.max(0.01, parsed.suggestedSize || 0.02)), // Max 10% of portfolio
-        stopLoss: parsed.stopLoss || this.calculateDefaultStopLoss(context.currentPrice, parsed.action),
-        takeProfit: parsed.takeProfit || this.calculateDefaultTakeProfit(context.currentPrice, parsed.action),
+        stopLoss:
+          parsed.stopLoss || this.calculateDefaultStopLoss(context.currentPrice, parsed.action),
+        takeProfit:
+          parsed.takeProfit || this.calculateDefaultTakeProfit(context.currentPrice, parsed.action),
         timeHorizon: parsed.timeHorizon || 'medium',
         riskAssessment: {
           marketRisk: parsed.riskAssessment?.marketRisk || parsed.marketRisk || 0.5,
@@ -467,16 +467,12 @@ Format your response as a JSON object with clear structure.`;
 
   private calculateDefaultStopLoss(currentPrice: number, action: string): number {
     // Default 3% stop loss
-    return action === 'buy'
-      ? currentPrice * 0.97
-      : currentPrice * 1.03;
+    return action === 'buy' ? currentPrice * 0.97 : currentPrice * 1.03;
   }
 
   private calculateDefaultTakeProfit(currentPrice: number, action: string): number {
     // Default 6% take profit
-    return action === 'buy'
-      ? currentPrice * 1.06
-      : currentPrice * 0.94;
+    return action === 'buy' ? currentPrice * 1.06 : currentPrice * 0.94;
   }
 
   // Helper method to check if service is ready

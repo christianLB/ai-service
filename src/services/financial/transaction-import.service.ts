@@ -63,7 +63,7 @@ export class TransactionImportService {
 
     // Look up by code
     const currency = await prisma.currencies.findUnique({
-      where: { code: currencyIdOrCode }
+      where: { code: currencyIdOrCode },
     });
 
     if (currency) {
@@ -91,16 +91,18 @@ export class TransactionImportService {
       imported: 0,
       skipped: 0,
       errors: [],
-      duplicates: []
+      duplicates: [],
     };
 
     try {
-      logger.info(`Starting import of ${transactions.length} transactions for account ${accountId} by user ${userId}`);
+      logger.info(
+        `Starting import of ${transactions.length} transactions for account ${accountId} by user ${userId}`
+      );
 
       // First, verify the account exists
       const account = await prisma.accounts.findUnique({
         where: { id: accountId },
-        include: { currencies: true }
+        include: { currencies: true },
       });
 
       if (!account) {
@@ -122,11 +124,12 @@ export class TransactionImportService {
 
           try {
             // Generate unique transaction_id if not provided
-            const transactionId = transaction.transaction_id || `IMP_${accountId}_${Date.now()}_${row}`;
+            const transactionId =
+              transaction.transaction_id || `IMP_${accountId}_${Date.now()}_${row}`;
 
             // Check for duplicates
             const existing = await prisma.transactions.findUnique({
-              where: { transaction_id: transactionId }
+              where: { transaction_id: transactionId },
             });
 
             if (existing) {
@@ -136,8 +139,12 @@ export class TransactionImportService {
             }
 
             // Resolve currency IDs
-            const currencyId = await this.resolveCurrencyId(transaction.currency_id, currencyCache) || account.currency_id;
-            const feeCurrencyId = transaction.fee_currency_id ? await this.resolveCurrencyId(transaction.fee_currency_id, currencyCache) : undefined;
+            const currencyId =
+              (await this.resolveCurrencyId(transaction.currency_id, currencyCache)) ||
+              account.currency_id;
+            const feeCurrencyId = transaction.fee_currency_id
+              ? await this.resolveCurrencyId(transaction.fee_currency_id, currencyCache)
+              : undefined;
 
             // Create the transaction
             await prisma.transactions.create({
@@ -164,27 +171,27 @@ export class TransactionImportService {
                 gas_used: transaction.gas_used,
                 gas_price: transaction.gas_price,
                 from_address: transaction.from_address,
-                to_address: transaction.to_address
-              }
+                to_address: transaction.to_address,
+              },
             });
 
             result.imported++;
-
           } catch (error) {
             logger.error(`Error importing transaction at row ${row}:`, error);
             result.errors.push({
               row,
-              error: error instanceof Error ? error.message : 'Unknown error'
+              error: error instanceof Error ? error.message : 'Unknown error',
             });
             result.skipped++;
           }
         }
       }
 
-      logger.info(`Import completed: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`);
+      logger.info(
+        `Import completed: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`
+      );
 
       return result;
-
     } catch (error) {
       logger.error('Import failed:', error);
       throw error;
@@ -196,7 +203,9 @@ export class TransactionImportService {
    * @param transactions - Array of transaction data
    * @returns Array of validation errors
    */
-  validateTransactions(transactions: ImportTransactionData[]): Array<{ row: number; error: string }> {
+  validateTransactions(
+    transactions: ImportTransactionData[]
+  ): Array<{ row: number; error: string }> {
     const errors: Array<{ row: number; error: string }> = [];
 
     transactions.forEach((transaction, index) => {
@@ -246,10 +255,10 @@ export class TransactionImportService {
         currencies: {
           select: {
             code: true,
-            symbol: true
-          }
-        }
-      }
+            symbol: true,
+          },
+        },
+      },
     });
   }
 }

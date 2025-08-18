@@ -102,7 +102,7 @@ export const DEFAULT_COMPANY_CONFIG: CompanyInfo = {
     city: process.env.COMPANY_CITY || 'Madrid',
     state: process.env.COMPANY_STATE || 'Madrid',
     country: process.env.COMPANY_COUNTRY || 'España',
-    postalCode: process.env.COMPANY_POSTAL_CODE || '28001'
+    postalCode: process.env.COMPANY_POSTAL_CODE || '28001',
   },
   bankAccounts: [],
   invoiceSettings: {
@@ -114,22 +114,22 @@ export const DEFAULT_COMPANY_CONFIG: CompanyInfo = {
     defaultCurrency: 'EUR',
     defaultTaxRate: 21,
     defaultTaxType: 'IVA',
-    defaultLanguage: 'es'
+    defaultLanguage: 'es',
   },
   legalInfo: {
     registrationNumber: process.env.COMPANY_REGISTRATION || '',
     registrationLocation: process.env.COMPANY_REG_LOCATION || 'Madrid',
     capitalStock: process.env.COMPANY_CAPITAL || '3.000 €',
-    legalForm: process.env.COMPANY_LEGAL_FORM || 'S.L.'
+    legalForm: process.env.COMPANY_LEGAL_FORM || 'S.L.',
   },
   branding: {
     primaryColor: '#1a73e8',
     secondaryColor: '#34a853',
-    fontFamily: 'Arial, sans-serif'
+    fontFamily: 'Arial, sans-serif',
   },
   emailSettings: {
     fromName: process.env.EMAIL_FROM_NAME || 'AI Service',
     fromEmail: process.env.EMAIL_FROM || 'invoices@aiservice.com',
-    replyTo: process.env.EMAIL_REPLY_TO || 'support@aiservice.com'
-  }
+    replyTo: process.env.EMAIL_REPLY_TO || 'support@aiservice.com',
+  },
 };

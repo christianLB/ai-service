@@ -56,11 +56,7 @@ describe('TransactionImportService', () => {
       prisma.transactions.findUnique.mockResolvedValue(null);
       prisma.transactions.create.mockResolvedValue({ id: 'new-transaction-id' });
 
-      const result = await service.importTransactions(
-        mockAccountId,
-        mockTransactions,
-        mockUserId
-      );
+      const result = await service.importTransactions(mockAccountId, mockTransactions, mockUserId);
 
       expect(result.imported).toBe(2);
       expect(result.skipped).toBe(0);
@@ -78,11 +74,7 @@ describe('TransactionImportService', () => {
       prisma.accounts.findUnique.mockResolvedValue(mockAccount);
       prisma.transactions.findUnique.mockResolvedValue({ id: 'existing-id' });
 
-      const result = await service.importTransactions(
-        mockAccountId,
-        mockTransactions,
-        mockUserId
-      );
+      const result = await service.importTransactions(mockAccountId, mockTransactions, mockUserId);
 
       expect(result.imported).toBe(0);
       expect(result.skipped).toBe(2);
@@ -103,11 +95,7 @@ describe('TransactionImportService', () => {
       prisma.transactions.findUnique.mockResolvedValue(null);
       prisma.transactions.create.mockRejectedValue(new Error('DB Error'));
 
-      const result = await service.importTransactions(
-        mockAccountId,
-        mockTransactions,
-        mockUserId
-      );
+      const result = await service.importTransactions(mockAccountId, mockTransactions, mockUserId);
 
       expect(result.imported).toBe(0);
       expect(result.skipped).toBe(2);

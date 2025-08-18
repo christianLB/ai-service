@@ -13,30 +13,24 @@ const ALLOWED_MIME_TYPES = {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'text/plain',
     'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ],
-  images: [
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/gif',
-    'image/webp'
-  ],
+  images: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
   archives: [
     'application/zip',
     'application/x-zip-compressed',
     'application/x-rar-compressed',
     'application/x-tar',
-    'application/gzip'
-  ]
+    'application/gzip',
+  ],
 };
 
 // File size limits (in bytes)
 const FILE_SIZE_LIMITS = {
   documents: 10 * 1024 * 1024, // 10MB
-  images: 5 * 1024 * 1024,      // 5MB
-  archives: 50 * 1024 * 1024,   // 50MB
-  default: 10 * 1024 * 1024     // 10MB
+  images: 5 * 1024 * 1024, // 5MB
+  archives: 50 * 1024 * 1024, // 50MB
+  default: 10 * 1024 * 1024, // 10MB
 };
 
 // Validate file extension
@@ -57,10 +51,10 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
     cb(null, uniqueSuffix + '-' + sanitizedName);
-  }
+  },
 });
 
 // File filter function
@@ -105,27 +99,27 @@ export const uploadDocument = multer({
   storage,
   limits: {
     fileSize: FILE_SIZE_LIMITS.documents,
-    files: 5 // Max 5 files per request
+    files: 5, // Max 5 files per request
   },
-  fileFilter: createFileFilter('documents')
+  fileFilter: createFileFilter('documents'),
 });
 
 export const uploadImage = multer({
   storage,
   limits: {
     fileSize: FILE_SIZE_LIMITS.images,
-    files: 10 // Max 10 images per request
+    files: 10, // Max 10 images per request
   },
-  fileFilter: createFileFilter('images')
+  fileFilter: createFileFilter('images'),
 });
 
 export const uploadArchive = multer({
   storage,
   limits: {
     fileSize: FILE_SIZE_LIMITS.archives,
-    files: 1 // Max 1 archive per request
+    files: 1, // Max 1 archive per request
   },
-  fileFilter: createFileFilter('archives')
+  fileFilter: createFileFilter('archives'),
 });
 
 // Generic file upload with custom options
@@ -141,18 +135,19 @@ export const createUploadMiddleware = (options: {
     maxFileSize = FILE_SIZE_LIMITS.default,
     maxFiles = 5,
     allowedMimeTypes,
-    allowedExtensions
+    allowedExtensions,
   } = options;
 
   return multer({
     storage,
     limits: {
       fileSize: maxFileSize,
-      files: maxFiles
+      files: maxFiles,
     },
     fileFilter: (req, file, cb) => {
       // Use custom MIME types if provided
-      const mimeTypes = allowedMimeTypes || ALLOWED_MIME_TYPES[category] || ALLOWED_MIME_TYPES.documents;
+      const mimeTypes =
+        allowedMimeTypes || ALLOWED_MIME_TYPES[category] || ALLOWED_MIME_TYPES.documents;
       const extensions = allowedExtensions || getAllowedExtensions(category);
 
       if (!validateMimeType(file.mimetype, mimeTypes)) {
@@ -166,18 +161,23 @@ export const createUploadMiddleware = (options: {
       }
 
       cb(null, true);
-    }
+    },
   });
 };
 
 // Error handling middleware for multer errors
-export const handleUploadError = (error: any, req: Request, res: Response, _next: NextFunction): void => {
+export const handleUploadError = (
+  error: any,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
       res.status(413).json({
         success: false,
         error: 'File too large',
-        details: 'File size exceeds the allowed limit'
+        details: 'File size exceeds the allowed limit',
       });
       return;
     }
@@ -185,7 +185,7 @@ export const handleUploadError = (error: any, req: Request, res: Response, _next
       res.status(400).json({
         success: false,
         error: 'Too many files',
-        details: 'Number of files exceeds the allowed limit'
+        details: 'Number of files exceeds the allowed limit',
       });
       return;
     }
@@ -193,7 +193,7 @@ export const handleUploadError = (error: any, req: Request, res: Response, _next
       res.status(400).json({
         success: false,
         error: 'Unexpected field',
-        details: 'File field name not recognized'
+        details: 'File field name not recognized',
       });
       return;
     }
@@ -203,7 +203,7 @@ export const handleUploadError = (error: any, req: Request, res: Response, _next
     res.status(400).json({
       success: false,
       error: 'File upload failed',
-      details: error.message
+      details: error.message,
     });
     return;
   }

@@ -12,7 +12,7 @@ export class InvoiceService {
     this.numberingService = new InvoiceNumberingService(prisma, {
       defaultPrefix: 'INV',
       defaultFormat: 'PREFIX-YYYY-0000',
-      yearlyReset: true
+      yearlyReset: true,
     });
   }
   /**
@@ -40,7 +40,7 @@ export class InvoiceService {
       startDate,
       endDate,
       sortBy = 'created_at',
-      sortOrder = 'DESC'
+      sortOrder = 'DESC',
     } = params;
 
     try {
@@ -49,12 +49,13 @@ export class InvoiceService {
         userId,
         ...(status && { status }),
         ...(clientId && { clientId }),
-        ...(startDate && endDate && {
-          issueDate: {
-            gte: startDate,
-            lte: endDate
-          }
-        }),
+        ...(startDate &&
+          endDate && {
+            issueDate: {
+              gte: startDate,
+              lte: endDate,
+            },
+          }),
         ...(search && {
           OR: [
             { invoiceNumber: { contains: search, mode: 'insensitive' } },
@@ -80,7 +81,7 @@ export class InvoiceService {
               name: true,
               email: true,
               taxId: true,
-            }
+            },
           },
         },
       });
@@ -191,9 +192,12 @@ export class InvoiceService {
         }
 
         // Calculate totals if not provided
-        const subtotal = data.subtotal || (data.items?.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0) || 0);
-        const taxAmount = data.taxAmount || (subtotal * ((data.taxRate || 0) / 100));
-        const total = data.total || (subtotal + taxAmount - (data.discount || 0));
+        const subtotal =
+          data.subtotal ||
+          data.items?.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) ||
+          0;
+        const taxAmount = data.taxAmount || subtotal * ((data.taxRate || 0) / 100);
+        const total = data.total || subtotal + taxAmount - (data.discount || 0);
 
         // Create invoice within transaction
         const invoice = await tx.invoice.create({
@@ -203,11 +207,15 @@ export class InvoiceService {
             clientId: data.clientId,
             clientName: data.clientName || '',
             clientTaxId: data.clientTaxId || '',
-            clientAddress: data.clientAddress ? JSON.parse(JSON.stringify(data.clientAddress)) : null,
+            clientAddress: data.clientAddress
+              ? JSON.parse(JSON.stringify(data.clientAddress))
+              : null,
             type: data.type || 'invoice',
             status: 'draft',
             issueDate: data.issueDate ? new Date(data.issueDate) : new Date(),
-            dueDate: data.dueDate ? new Date(data.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            dueDate: data.dueDate
+              ? new Date(data.dueDate)
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             serviceStartDate: data.serviceStartDate ? new Date(data.serviceStartDate) : null,
             serviceEndDate: data.serviceEndDate ? new Date(data.serviceEndDate) : null,
             currency: data.currency || 'EUR',
@@ -269,7 +277,7 @@ export class InvoiceService {
       let total = data.total;
 
       if (data.items) {
-        subtotal = data.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+        subtotal = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
         const taxRateNumber = data.taxRate || existing.data.invoice.taxRate.toNumber();
         taxAmount = subtotal * (taxRateNumber / 100);
         total = subtotal + taxAmount - (data.discount || 0);
@@ -281,7 +289,9 @@ export class InvoiceService {
           ...(data.clientId && { clientId: data.clientId }),
           ...(data.clientName && { clientName: data.clientName }),
           ...(data.clientTaxId && { clientTaxId: data.clientTaxId }),
-          ...(data.clientAddress && { clientAddress: JSON.parse(JSON.stringify(data.clientAddress)) }),
+          ...(data.clientAddress && {
+            clientAddress: JSON.parse(JSON.stringify(data.clientAddress)),
+          }),
           ...(data.type && { type: data.type }),
           ...(data.status && { status: data.status }),
           ...(data.issueDate && { issueDate: new Date(data.issueDate) }),
@@ -301,7 +311,9 @@ export class InvoiceService {
           ...(data.paymentTerms !== undefined && { paymentTerms: data.paymentTerms }),
           ...(data.bankAccount && { bankAccount: data.bankAccount }),
           ...(data.notes !== undefined && { notes: data.notes }),
-          ...(data.termsAndConditions !== undefined && { termsAndConditions: data.termsAndConditions }),
+          ...(data.termsAndConditions !== undefined && {
+            termsAndConditions: data.termsAndConditions,
+          }),
           ...(data.templateId !== undefined && { templateId: data.templateId }),
           ...(data.tags && { tags: data.tags }),
           ...(data.customFields && { customFields: data.customFields }),
@@ -412,23 +424,27 @@ export class InvoiceService {
   /**
    * Get invoice statistics
    */
-  async getInvoiceStats(userId: string, params?: {
-    startDate?: Date;
-    endDate?: Date;
-    currency?: string;
-  }) {
+  async getInvoiceStats(
+    userId: string,
+    params?: {
+      startDate?: Date;
+      endDate?: Date;
+      currency?: string;
+    }
+  ) {
     try {
       const { startDate, endDate, currency = 'EUR' } = params || {};
 
       const where: Prisma.InvoiceWhereInput = {
         userId,
         currency,
-        ...(startDate && endDate && {
-          issueDate: {
-            gte: startDate,
-            lte: endDate,
-          },
-        }),
+        ...(startDate &&
+          endDate && {
+            issueDate: {
+              gte: startDate,
+              lte: endDate,
+            },
+          }),
       };
 
       const [totalInvoices, statusCounts, totalAmounts] = await Promise.all([
@@ -455,16 +471,22 @@ export class InvoiceService {
       ]);
 
       // Transform status counts to object
-      const statusCountMap = statusCounts.reduce((acc, curr) => {
-        acc[`${curr.status}Invoices`] = curr._count.id;
-        return acc;
-      }, {} as Record<string, number>);
+      const statusCountMap = statusCounts.reduce(
+        (acc, curr) => {
+          acc[`${curr.status}Invoices`] = curr._count.id;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       // Transform total amounts to object
-      const totalAmountMap = totalAmounts.reduce((acc, curr) => {
-        acc[`${curr.status}Total`] = curr._sum.total ? curr._sum.total.toNumber() : 0;
-        return acc;
-      }, {} as Record<string, number>);
+      const totalAmountMap = totalAmounts.reduce(
+        (acc, curr) => {
+          acc[`${curr.status}Total`] = curr._sum.total ? curr._sum.total.toNumber() : 0;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       return {
         success: true,
@@ -531,12 +553,12 @@ export class InvoiceService {
    */
   private mapFieldName(field: string): string {
     const fieldMap: Record<string, string> = {
-      'created_at': 'createdAt',
-      'updated_at': 'updatedAt',
-      'issue_date': 'issueDate',
-      'due_date': 'dueDate',
-      'invoice_number': 'invoiceNumber',
-      'client_name': 'clientName',
+      created_at: 'createdAt',
+      updated_at: 'updatedAt',
+      issue_date: 'issueDate',
+      due_date: 'dueDate',
+      invoice_number: 'invoiceNumber',
+      client_name: 'clientName',
     };
     return fieldMap[field] || field;
   }
@@ -546,10 +568,10 @@ export class InvoiceService {
    */
   private getInvoicePrefixByType(type?: string): string {
     const prefixMap: Record<string, string> = {
-      'invoice': 'FAC',
-      'credit_note': 'NC',
-      'proforma': 'PRO',
-      'receipt': 'REC',
+      invoice: 'FAC',
+      credit_note: 'NC',
+      proforma: 'PRO',
+      receipt: 'REC',
     };
     return prefixMap[type || 'invoice'] || 'INV';
   }

@@ -56,8 +56,8 @@ export class SchemaValidator {
           { name: 'symbol', type: 'character varying', nullable: true },
           { name: 'is_active', type: 'boolean', nullable: true, defaultValue: 'true' },
           { name: 'created_at', type: 'timestamp with time zone', nullable: true },
-          { name: 'updated_at', type: 'timestamp with time zone', nullable: true }
-        ]
+          { name: 'updated_at', type: 'timestamp with time zone', nullable: true },
+        ],
       },
       {
         schema: 'financial',
@@ -81,8 +81,8 @@ export class SchemaValidator {
           { name: 'is_active', type: 'boolean', nullable: true, defaultValue: 'true' },
           { name: 'last_sync', type: 'timestamp with time zone', nullable: true },
           { name: 'created_at', type: 'timestamp with time zone', nullable: true },
-          { name: 'updated_at', type: 'timestamp with time zone', nullable: true }
-        ]
+          { name: 'updated_at', type: 'timestamp with time zone', nullable: true },
+        ],
       },
       {
         schema: 'financial',
@@ -94,7 +94,12 @@ export class SchemaValidator {
           { name: 'amount', type: 'numeric', nullable: false },
           { name: 'currency_id', type: 'uuid', nullable: true },
           { name: 'type', type: 'character varying', nullable: false },
-          { name: 'status', type: 'character varying', nullable: true, defaultValue: "'confirmed'" },
+          {
+            name: 'status',
+            type: 'character varying',
+            nullable: true,
+            defaultValue: "'confirmed'",
+          },
           { name: 'description', type: 'text', nullable: true },
           { name: 'reference', type: 'character varying', nullable: true },
           { name: 'date', type: 'date', nullable: false },
@@ -103,8 +108,8 @@ export class SchemaValidator {
           { name: 'metadata', type: 'jsonb', nullable: true, defaultValue: "'{}'" },
           { name: 'tags', type: 'text[]', nullable: true },
           { name: 'fee_amount', type: 'numeric', nullable: true },
-          { name: 'fee_currency_id', type: 'uuid', nullable: true }
-        ]
+          { name: 'fee_currency_id', type: 'uuid', nullable: true },
+        ],
       },
       {
         schema: 'financial',
@@ -118,8 +123,8 @@ export class SchemaValidator {
           { name: 'icon', type: 'character varying', nullable: true },
           { name: 'is_active', type: 'boolean', nullable: true, defaultValue: 'true' },
           { name: 'created_at', type: 'timestamp with time zone', nullable: true },
-          { name: 'updated_at', type: 'timestamp with time zone', nullable: true }
-        ]
+          { name: 'updated_at', type: 'timestamp with time zone', nullable: true },
+        ],
       },
       {
         schema: 'financial',
@@ -130,9 +135,9 @@ export class SchemaValidator {
           { name: 'category_id', type: 'uuid', nullable: true },
           { name: 'confidence', type: 'numeric', nullable: true, defaultValue: '1.00' },
           { name: 'method', type: 'character varying', nullable: true, defaultValue: "'manual'" },
-          { name: 'created_at', type: 'timestamp with time zone', nullable: true }
-        ]
-      }
+          { name: 'created_at', type: 'timestamp with time zone', nullable: true },
+        ],
+      },
     ];
   }
 
@@ -158,21 +163,20 @@ export class SchemaValidator {
         logger.info('✅ Schema validation passed!');
       } else {
         logger.error(`❌ Schema validation failed with ${errors.length} errors`);
-        errors.forEach(error => logger.error(`  - ${error}`));
+        errors.forEach((error) => logger.error(`  - ${error}`));
       }
 
       if (warnings.length > 0) {
         logger.warn(`⚠️  Schema validation has ${warnings.length} warnings`);
-        warnings.forEach(warning => logger.warn(`  - ${warning}`));
+        warnings.forEach((warning) => logger.warn(`  - ${warning}`));
       }
 
       return {
         isValid,
         errors,
         warnings,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-
     } catch (error: any) {
       logger.error('Schema validation error:', error);
       errors.push(`Validation error: ${error.message}`);
@@ -181,7 +185,7 @@ export class SchemaValidator {
         isValid: false,
         errors,
         warnings,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
     }
   }
@@ -210,13 +214,11 @@ export class SchemaValidator {
 
     // Check for unexpected columns
     const actualColumns = await this.getTableColumns(schema, table);
-    const expectedColumnNames = columns.map(c => c.name);
+    const expectedColumnNames = columns.map((c) => c.name);
 
     for (const actualColumn of actualColumns) {
       if (!expectedColumnNames.includes(actualColumn.column_name)) {
-        warnings.push(
-          `Unexpected column ${schema}.${table}.${actualColumn.column_name} found`
-        );
+        warnings.push(`Unexpected column ${schema}.${table}.${actualColumn.column_name} found`);
       }
     }
   }
@@ -256,7 +258,7 @@ export class SchemaValidator {
     if (actualColumn.data_type !== expectedColumn.type) {
       errors.push(
         `Column ${schema}.${table}.${expectedColumn.name} has incorrect type: ` +
-        `expected '${expectedColumn.type}', found '${actualColumn.data_type}'`
+          `expected '${expectedColumn.type}', found '${actualColumn.data_type}'`
       );
     }
 
@@ -265,7 +267,7 @@ export class SchemaValidator {
     if (actualNullable !== expectedColumn.nullable) {
       warnings.push(
         `Column ${schema}.${table}.${expectedColumn.name} nullable mismatch: ` +
-        `expected ${expectedColumn.nullable}, found ${actualNullable}`
+          `expected ${expectedColumn.nullable}, found ${actualNullable}`
       );
     }
   }
@@ -312,7 +314,7 @@ export class SchemaValidator {
 
     if (result.errors.length > 0) {
       report += '## Errors\n\n';
-      result.errors.forEach(error => {
+      result.errors.forEach((error) => {
         report += `- ❌ ${error}\n`;
       });
       report += '\n';
@@ -320,7 +322,7 @@ export class SchemaValidator {
 
     if (result.warnings.length > 0) {
       report += '## Warnings\n\n';
-      result.warnings.forEach(warning => {
+      result.warnings.forEach((warning) => {
         report += `- ⚠️  ${warning}\n`;
       });
       report += '\n';

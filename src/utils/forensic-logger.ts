@@ -42,7 +42,10 @@ class ForensicLogger {
       if (!fs.existsSync(logsDir)) {
         fs.mkdirSync(logsDir, { recursive: true });
       }
-      this.logFile = path.join(logsDir, `forensic-${format(new Date(), 'yyyy-MM-dd-HH-mm-ss')}.log`);
+      this.logFile = path.join(
+        logsDir,
+        `forensic-${format(new Date(), 'yyyy-MM-dd-HH-mm-ss')}.log`
+      );
     } catch (error: any) {
       // Si no podemos crear el directorio de logs, usar /tmp
       console.warn('Cannot create forensic logs directory, using /tmp:', error.message);
@@ -98,7 +101,7 @@ class ForensicLogger {
         location: 'process.uncaughtException',
         message: error.message,
         stack: error.stack,
-        metadata: { fatal: true }
+        metadata: { fatal: true },
       });
       this.flush();
       // Re-lanzar para no alterar el comportamiento
@@ -113,7 +116,7 @@ class ForensicLogger {
         location: 'process.unhandledRejection',
         message: reason?.message || String(reason),
         stack: reason?.stack,
-        metadata: { promise: promise.toString() }
+        metadata: { promise: promise.toString() },
       });
     });
 
@@ -124,7 +127,7 @@ class ForensicLogger {
         type: 'warning',
         location: 'process.warning',
         message: warning.message,
-        stack: warning.stack
+        stack: warning.stack,
       });
     });
   }
@@ -134,17 +137,19 @@ class ForensicLogger {
       timestamp: new Date(),
       type: type,
       location: source,
-      message: args.map(arg => {
-        if (typeof arg === 'object') {
-          try {
-            return JSON.stringify(arg, null, 2);
-          } catch {
-            return String(arg);
+      message: args
+        .map((arg) => {
+          if (typeof arg === 'object') {
+            try {
+              return JSON.stringify(arg, null, 2);
+            } catch {
+              return String(arg);
+            }
           }
-        }
-        return String(arg);
-      }).join(' '),
-      metadata: { args }
+          return String(arg);
+        })
+        .join(' '),
+      metadata: { args },
     };
 
     // Intentar capturar el stack trace
@@ -152,10 +157,12 @@ class ForensicLogger {
     if (stack) {
       const lines = stack.split('\n');
       // Buscar la línea que no sea de este archivo
-      const callerLine = lines.find(line =>
-        !line.includes('forensic-logger') &&
-        !line.includes('console.') &&
-        line.includes('.ts') || line.includes('.js')
+      const callerLine = lines.find(
+        (line) =>
+          (!line.includes('forensic-logger') &&
+            !line.includes('console.') &&
+            line.includes('.ts')) ||
+          line.includes('.js')
       );
       if (callerLine) {
         entry.metadata.caller = callerLine.trim();
@@ -173,11 +180,12 @@ class ForensicLogger {
     this.entries.push(entry);
 
     // Escribir inmediatamente al archivo
-    const logLine = `[${entry.timestamp.toISOString()}] ${entry.type.toUpperCase()} @ ${entry.location}\n` +
-                   `Message: ${entry.message}\n` +
-                   (entry.stack ? `Stack: ${entry.stack}\n` : '') +
-                   (entry.metadata ? `Metadata: ${JSON.stringify(entry.metadata, null, 2)}\n` : '') +
-                   '---\n';
+    const logLine =
+      `[${entry.timestamp.toISOString()}] ${entry.type.toUpperCase()} @ ${entry.location}\n` +
+      `Message: ${entry.message}\n` +
+      (entry.stack ? `Stack: ${entry.stack}\n` : '') +
+      (entry.metadata ? `Metadata: ${JSON.stringify(entry.metadata, null, 2)}\n` : '') +
+      '---\n';
 
     try {
       fs.appendFileSync(this.logFile, logLine);
@@ -200,7 +208,7 @@ class ForensicLogger {
       location: location,
       message: `Catch block ${action}: ${error?.message || error}`,
       stack: error?.stack,
-      metadata: { action, errorType: error?.constructor?.name }
+      metadata: { action, errorType: error?.constructor?.name },
     });
   }
 
@@ -212,10 +220,10 @@ class ForensicLogger {
       byLocation: {} as Record<string, number>,
       recentErrors: this.entries.slice(-10),
       silentCatches: [] as any[],
-      criticalErrors: [] as any[]
+      criticalErrors: [] as any[],
     };
 
-    this.entries.forEach(entry => {
+    this.entries.forEach((entry) => {
       // Por tipo
       summary.byType[entry.type] = (summary.byType[entry.type] || 0) + 1;
 
@@ -271,7 +279,11 @@ class ForensicLogger {
 export const forensicLogger = new ForensicLogger();
 
 // Helper para auditar catches
-export function auditCatch(location: string, error: any, action: 'silenced' | 'logged' | 'rethrown' = 'logged'): void {
+export function auditCatch(
+  location: string,
+  error: any,
+  action: 'silenced' | 'logged' | 'rethrown' = 'logged'
+): void {
   forensicLogger.auditCatch(location, error, action);
 }
 
@@ -304,7 +316,7 @@ export function showForensicLogs(): void {
     });
   }
 
-// console.log(`\n📁 Full log: ${forensicLogger.getLogFile()}`);
+  // console.log(`\n📁 Full log: ${forensicLogger.getLogFile()}`);
 }
 
 // Auto-flush en salida

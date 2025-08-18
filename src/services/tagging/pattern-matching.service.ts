@@ -27,7 +27,7 @@ export class PatternMatchingService implements IPatternMatchingService {
       const cached = this.patternCache.get(cacheKey);
       if (cached) {
         logger.debug('Pattern match cache hit', { cacheKey });
-        return cached.map(c => ({ ...c, matchedPattern: 'cached' }));
+        return cached.map((c) => ({ ...c, matchedPattern: 'cached' }));
       }
 
       // Get active tags with patterns for this entity type
@@ -35,8 +35,8 @@ export class PatternMatchingService implements IPatternMatchingService {
         where: {
           isActive: true,
           entityTypes: { has: entityType },
-          patterns: { not: { equals: null } }
-        }
+          patterns: { not: { equals: null } },
+        },
       });
 
       const matches: Array<{ tagId: string; confidence: number; matchedPattern: string }> = [];
@@ -52,7 +52,7 @@ export class PatternMatchingService implements IPatternMatchingService {
           matches.push({
             tagId: tag.id,
             confidence: matchResult.confidence,
-            matchedPattern: matchResult.matchedPattern
+            matchedPattern: matchResult.matchedPattern,
           });
         }
       }
@@ -66,7 +66,7 @@ export class PatternMatchingService implements IPatternMatchingService {
       logger.info('Pattern matching completed', {
         entityType,
         contentLength: content.length,
-        matchCount: matches.length
+        matchCount: matches.length,
       });
 
       return matches;
@@ -86,7 +86,7 @@ export class PatternMatchingService implements IPatternMatchingService {
     } catch (error: any) {
       return {
         valid: false,
-        error: `Invalid regex pattern: ${error.message}`
+        error: `Invalid regex pattern: ${error.message}`,
       };
     }
   }
@@ -104,8 +104,8 @@ export class PatternMatchingService implements IPatternMatchingService {
         where: {
           isActive: true,
           entityTypes: { has: entityType },
-          patterns: { not: { equals: null } }
-        }
+          patterns: { not: { equals: null } },
+        },
       });
 
       const results = new Map<string, Array<{ tagId: string; confidence: number }>>();
@@ -124,7 +124,7 @@ export class PatternMatchingService implements IPatternMatchingService {
           if (matchResult.matches) {
             matches.push({
               tagId: tag.id,
-              confidence: matchResult.confidence
+              confidence: matchResult.confidence,
             });
           }
         }
@@ -137,7 +137,7 @@ export class PatternMatchingService implements IPatternMatchingService {
       logger.info('Batch pattern matching completed', {
         entityType,
         entityCount: entities.length,
-        totalMatches: Array.from(results.values()).reduce((sum, m) => sum + m.length, 0)
+        totalMatches: Array.from(results.values()).reduce((sum, m) => sum + m.length, 0),
       });
 
       return results;
@@ -165,14 +165,14 @@ export class PatternMatchingService implements IPatternMatchingService {
       scores.push({
         type: 'keywords',
         score: keywordMatches.length,
-        maxScore: patterns.keywords.length
+        maxScore: patterns.keywords.length,
       });
 
       if (keywordMatches.length > 0) {
         return {
           matches: true,
           confidence: keywordMatches.length / patterns.keywords.length,
-          matchedPattern: `keywords: ${keywordMatches.join(', ')}`
+          matchedPattern: `keywords: ${keywordMatches.join(', ')}`,
         };
       }
     }
@@ -188,7 +188,7 @@ export class PatternMatchingService implements IPatternMatchingService {
         return {
           matches: true,
           confidence: 0.9,
-          matchedPattern: `merchant: ${merchantMatch}`
+          matchedPattern: `merchant: ${merchantMatch}`,
         };
       }
     }
@@ -201,7 +201,7 @@ export class PatternMatchingService implements IPatternMatchingService {
           return {
             matches: true,
             confidence: 0.85,
-            matchedPattern: `regex: ${patterns.regex}`
+            matchedPattern: `regex: ${patterns.regex}`,
           };
         }
       } catch (error) {
@@ -218,7 +218,7 @@ export class PatternMatchingService implements IPatternMatchingService {
         return {
           matches: true,
           confidence: 0.8,
-          matchedPattern: `amount: ${min || 0} - ${max || '∞'}`
+          matchedPattern: `amount: ${min || 0} - ${max || '∞'}`,
         };
       }
     }
@@ -230,7 +230,7 @@ export class PatternMatchingService implements IPatternMatchingService {
         return {
           matches: true,
           confidence: 0.75,
-          matchedPattern: `category: ${metadata.category}`
+          matchedPattern: `category: ${metadata.category}`,
         };
       }
     }
@@ -242,7 +242,7 @@ export class PatternMatchingService implements IPatternMatchingService {
         return {
           matches: true,
           confidence: ruleResult.confidence,
-          matchedPattern: `custom rule: ${ruleResult.rule}`
+          matchedPattern: `custom rule: ${ruleResult.rule}`,
         };
       }
     }
@@ -251,7 +251,7 @@ export class PatternMatchingService implements IPatternMatchingService {
     return {
       matches: false,
       confidence: 0,
-      matchedPattern: ''
+      matchedPattern: '',
     };
   }
 
@@ -273,7 +273,7 @@ export class PatternMatchingService implements IPatternMatchingService {
         return {
           matches: true,
           confidence: 0.8,
-          rule: `contains all: ${rules.contains.join(', ')}`
+          rule: `contains all: ${rules.contains.join(', ')}`,
         };
       }
     }
@@ -288,7 +288,7 @@ export class PatternMatchingService implements IPatternMatchingService {
         return {
           matches: true,
           confidence: 0.7,
-          rule: `contains any: ${rules.containsAny.join(', ')}`
+          rule: `contains any: ${rules.containsAny.join(', ')}`,
         };
       }
     }
@@ -296,7 +296,7 @@ export class PatternMatchingService implements IPatternMatchingService {
     return {
       matches: false,
       confidence: 0,
-      rule: ''
+      rule: '',
     };
   }
 
@@ -319,9 +319,9 @@ export class PatternMatchingService implements IPatternMatchingService {
     matches: Array<{ tagId: string; confidence: number; matchedPattern: string }>
   ): void {
     // Store without matchedPattern to save memory
-    const cacheData = matches.map(m => ({
+    const cacheData = matches.map((m) => ({
       tagId: m.tagId,
-      confidence: m.confidence
+      confidence: m.confidence,
     }));
 
     this.patternCache.set(key, cacheData);

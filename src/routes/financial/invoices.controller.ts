@@ -32,7 +32,6 @@ export class InvoicesController {
   private schemasInitialized = false;
   private prisma: PrismaClient;
 
-
   constructor() {
     this.invoiceGenerationService = new InvoiceGenerationService();
     this.invoiceEmailService = getInvoiceEmailService();
@@ -62,7 +61,6 @@ export class InvoicesController {
     this.schemasInitialized = true;
   }
 
-
   /**
    * Create a new invoice
    * POST /api/financial/invoices
@@ -75,7 +73,7 @@ export class InvoicesController {
       if (!invoiceData.clientId || !invoiceData.items || invoiceData.items.length === 0) {
         res.status(400).json({
           success: false,
-          error: 'Missing required fields: clientId, items'
+          error: 'Missing required fields: clientId, items',
         });
         return;
       }
@@ -85,7 +83,7 @@ export class InvoicesController {
       if (!userId) {
         res.status(401).json({
           success: false,
-          error: 'User authentication required'
+          error: 'User authentication required',
         });
         return;
       }
@@ -93,19 +91,18 @@ export class InvoicesController {
       const result = await this.invoiceService.createInvoice(invoiceData, userId);
 
       res.status(201).json(result);
-
     } catch (error: any) {
       logger.error('Error creating invoice:', error);
 
       if (error.message.includes('not found')) {
         res.status(404).json({
           success: false,
-          error: error.message
+          error: error.message,
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to create invoice'
+          error: 'Failed to create invoice',
         });
       }
     }
@@ -124,25 +121,24 @@ export class InvoicesController {
       if (!userId) {
         res.status(401).json({
           success: false,
-          error: 'User authentication required'
+          error: 'User authentication required',
         });
         return;
       }
 
       const result = await this.invoiceService.getInvoiceById(id, userId);
       res.json(result);
-
     } catch (error: any) {
       logger.error('Error getting invoice:', error);
       if (error.status === 404) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to get invoice'
+          error: 'Failed to get invoice',
         });
       }
     }
@@ -161,21 +157,20 @@ export class InvoicesController {
       if (!invoice) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
         return;
       }
 
       res.json({
         success: true,
-        data: { invoice }
+        data: { invoice },
       });
-
     } catch (error: any) {
       logger.error('Error getting invoice by number:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get invoice'
+        error: 'Failed to get invoice',
       });
     }
   }
@@ -194,7 +189,7 @@ export class InvoicesController {
       if (!userId) {
         res.status(401).json({
           success: false,
-          error: 'User authentication required'
+          error: 'User authentication required',
         });
         return;
       }
@@ -202,24 +197,23 @@ export class InvoicesController {
       const result = await this.invoiceService.updateInvoice(id, updates, userId);
 
       res.json(result);
-
     } catch (error: any) {
       logger.error('Error updating invoice:', error);
 
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
       } else if (error.message.includes('Cannot modify')) {
         res.status(400).json({
           success: false,
-          error: error.message
+          error: error.message,
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to update invoice'
+          error: 'Failed to update invoice',
         });
       }
     }
@@ -241,7 +235,7 @@ export class InvoicesController {
         limit = '50',
         offset = '0',
         sortBy = 'issue_date',
-        sortOrder = 'DESC'
+        sortOrder = 'DESC',
       } = req.query;
 
       // Extract userId from auth context
@@ -249,7 +243,7 @@ export class InvoicesController {
       if (!userId) {
         res.status(401).json({
           success: false,
-          error: 'User authentication required'
+          error: 'User authentication required',
         });
         return;
       }
@@ -264,16 +258,15 @@ export class InvoicesController {
         limit: parseInt(limit as string),
         offset: parseInt(offset as string),
         sortBy: sortBy as string,
-        sortOrder: sortOrder as 'ASC' | 'DESC'
+        sortOrder: sortOrder as 'ASC' | 'DESC',
       });
 
       res.json(result);
-
     } catch (error: any) {
       logger.error('Error listing invoices:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to list invoices'
+        error: 'Failed to list invoices',
       });
     }
   }
@@ -289,19 +282,18 @@ export class InvoicesController {
       if (!userId) {
         res.status(401).json({
           success: false,
-          error: 'User authentication required'
+          error: 'User authentication required',
         });
         return;
       }
 
       const result = await this.invoiceService.getOverdueInvoices(userId);
       res.json(result);
-
     } catch (error: any) {
       logger.error('Error getting overdue invoices:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get overdue invoices'
+        error: 'Failed to get overdue invoices',
       });
     }
   }
@@ -319,7 +311,7 @@ export class InvoicesController {
       const invoice = await this.invoiceService.updateInvoice(
         id,
         {
-          status: 'paid'
+          status: 'paid',
         },
         userId
       );
@@ -327,21 +319,20 @@ export class InvoicesController {
       res.json({
         success: true,
         data: { invoice },
-        message: 'Invoice marked as paid successfully'
+        message: 'Invoice marked as paid successfully',
       });
-
     } catch (error: any) {
       logger.error('Error marking invoice as paid:', error);
 
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to mark invoice as paid'
+          error: 'Failed to mark invoice as paid',
         });
       }
     }
@@ -361,7 +352,7 @@ export class InvoicesController {
       if (!item.description || !item.quantity || !item.unitPrice) {
         res.status(400).json({
           success: false,
-          error: 'Missing required item fields: description, quantity, unitPrice'
+          error: 'Missing required item fields: description, quantity, unitPrice',
         });
         return;
       }
@@ -371,14 +362,16 @@ export class InvoicesController {
       if (!currentInvoiceResult.success || !currentInvoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
         return;
       }
 
       const currentInvoice = currentInvoiceResult.data.invoice;
       // Add new item to existing items
-      const existingItems = Array.isArray(currentInvoice.items) ? (currentInvoice.items as unknown as InvoiceItem[]) : [];
+      const existingItems = Array.isArray(currentInvoice.items)
+        ? (currentInvoice.items as unknown as InvoiceItem[])
+        : [];
       const updatedItems = [...existingItems, item];
 
       // Update invoice with new items
@@ -387,26 +380,25 @@ export class InvoicesController {
       res.json({
         success: true,
         data: { invoice },
-        message: 'Item added to invoice successfully'
+        message: 'Item added to invoice successfully',
       });
-
     } catch (error: any) {
       logger.error('Error adding item to invoice:', error);
 
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
       } else if (error.message.includes('Cannot modify')) {
         res.status(400).json({
           success: false,
-          error: error.message
+          error: error.message,
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to add item to invoice'
+          error: 'Failed to add item to invoice',
         });
       }
     }
@@ -424,7 +416,7 @@ export class InvoicesController {
       if (!type || !documentId) {
         res.status(400).json({
           success: false,
-          error: 'Missing required fields: type, documentId'
+          error: 'Missing required fields: type, documentId',
         });
         return;
       }
@@ -436,20 +428,20 @@ export class InvoicesController {
       if (!currentInvoiceResult.success || !currentInvoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
         return;
       }
 
       const currentInvoice = currentInvoiceResult.data.invoice;
-      const customFields = currentInvoice.customFields as any || {};
+      const customFields = (currentInvoice.customFields as any) || {};
       const attachments = customFields.attachments || [];
       attachments.push({
         type,
         documentId,
         fileName,
         description,
-        attachedAt: new Date()
+        attachedAt: new Date(),
       });
 
       const invoice = await this.invoiceService.updateInvoice(
@@ -461,21 +453,20 @@ export class InvoicesController {
       res.json({
         success: true,
         data: { invoice },
-        message: 'Document attached to invoice successfully'
+        message: 'Document attached to invoice successfully',
       });
-
     } catch (error: any) {
       logger.error('Error attaching document to invoice:', error);
 
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to attach document to invoice'
+          error: 'Failed to attach document to invoice',
         });
       }
     }
@@ -492,14 +483,13 @@ export class InvoicesController {
 
       res.json({
         success: true,
-        data: { stats }
+        data: { stats },
       });
-
     } catch (error: any) {
       logger.error('Error getting client invoice stats:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get client invoice statistics'
+        error: 'Failed to get client invoice statistics',
       });
     }
   }
@@ -516,26 +506,25 @@ export class InvoicesController {
 
       res.json({
         success: true,
-        message: 'Invoice cancelled successfully'
+        message: 'Invoice cancelled successfully',
       });
-
     } catch (error: any) {
       logger.error('Error deleting invoice:', error);
 
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
       } else if (error.message.includes('Cannot delete')) {
         res.status(400).json({
           success: false,
-          error: error.message
+          error: error.message,
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to delete invoice'
+          error: 'Failed to delete invoice',
         });
       }
     }
@@ -552,9 +541,13 @@ export class InvoicesController {
 
       // Update invoice status to sent
       const userId = (req.user as any)?.userId || req.user?.userId;
-      const invoice = await this.invoiceService.updateInvoice(id, {
-        status: 'sent'
-      }, userId);
+      const invoice = await this.invoiceService.updateInvoice(
+        id,
+        {
+          status: 'sent',
+        },
+        userId
+      );
 
       // TODO: Here would be the actual sending logic (email, Telegram, etc.)
       // For now, we just update the status
@@ -564,23 +557,22 @@ export class InvoicesController {
         data: {
           invoice,
           sendMethod,
-          recipients
+          recipients,
         },
-        message: 'Invoice sent successfully'
+        message: 'Invoice sent successfully',
       });
-
     } catch (error: any) {
       logger.error('Error sending invoice:', error);
 
       if (error.message === 'Invoice not found') {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to send invoice'
+          error: 'Failed to send invoice',
         });
       }
     }
@@ -599,7 +591,7 @@ export class InvoicesController {
       if (!originalInvoiceResult.success || !originalInvoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
         return;
       }
@@ -618,8 +610,10 @@ export class InvoicesController {
         templateId: originalInvoice.templateId || undefined,
         issueDate: new Date(),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        items: Array.isArray(originalInvoice.items) ? (originalInvoice.items as unknown as InvoiceItem[]) : [],
-        taxRate: this.convertDecimalToNumber(originalInvoice.taxRate)
+        items: Array.isArray(originalInvoice.items)
+          ? (originalInvoice.items as unknown as InvoiceItem[])
+          : [],
+        taxRate: this.convertDecimalToNumber(originalInvoice.taxRate),
       };
 
       const newInvoiceResult = await this.invoiceService.createInvoice(duplicateData, userId);
@@ -627,14 +621,13 @@ export class InvoicesController {
       res.status(201).json({
         success: true,
         data: { invoice: newInvoiceResult.data.invoice },
-        message: `Invoice duplicated from ${originalInvoice.invoiceNumber}`
+        message: `Invoice duplicated from ${originalInvoice.invoiceNumber}`,
       });
-
     } catch (error: any) {
       logger.error('Error duplicating invoice:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to duplicate invoice'
+        error: 'Failed to duplicate invoice',
       });
     }
   }
@@ -657,7 +650,7 @@ export class InvoicesController {
       if (!invoiceResult.success || !invoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
         return;
       }
@@ -666,7 +659,7 @@ export class InvoicesController {
       if (!invoice.clientId) {
         res.status(400).json({
           success: false,
-          error: 'Invoice has no client ID'
+          error: 'Invoice has no client ID',
         });
         return;
       }
@@ -674,7 +667,7 @@ export class InvoicesController {
       if (!clientResult.success || !clientResult.data.client) {
         res.status(404).json({
           success: false,
-          error: 'Client not found'
+          error: 'Client not found',
         });
         return;
       }
@@ -689,7 +682,9 @@ export class InvoicesController {
         taxRate: this.convertDecimalToNumber(invoice.taxRate),
         discount: invoice.discount ? this.convertDecimalToNumber(invoice.discount) : undefined,
         total: this.convertDecimalToNumber(invoice.total),
-        exchangeRate: invoice.exchangeRate ? this.convertDecimalToNumber(invoice.exchangeRate) : undefined,
+        exchangeRate: invoice.exchangeRate
+          ? this.convertDecimalToNumber(invoice.exchangeRate)
+          : undefined,
         // Ensure items are properly structured
         items: Array.isArray(invoice.items) ? invoice.items : [],
         // Map empty strings to undefined for optional fields
@@ -698,19 +693,23 @@ export class InvoicesController {
         notes: invoice.notes || undefined,
         termsAndConditions: invoice.termsAndConditions || undefined,
         customFields: invoice.customFields || {},
-        metadata: invoice.customFields || {}
+        metadata: invoice.customFields || {},
       } as any;
 
       const clientForPDF = {
         ...client,
-        creditLimit: client.creditLimit ? this.convertDecimalToNumber(client.creditLimit) : undefined,
+        creditLimit: client.creditLimit
+          ? this.convertDecimalToNumber(client.creditLimit)
+          : undefined,
         totalRevenue: this.convertDecimalToNumber(client.totalRevenue),
         outstandingBalance: this.convertDecimalToNumber(client.outstandingBalance),
-        averageInvoiceAmount: client.averageInvoiceAmount ? this.convertDecimalToNumber(client.averageInvoiceAmount) : undefined,
+        averageInvoiceAmount: client.averageInvoiceAmount
+          ? this.convertDecimalToNumber(client.averageInvoiceAmount)
+          : undefined,
         // Handle missing fields from old Client model
         website: undefined,
         isActive: client.status === 'active',
-        metadata: client.customFields || {}
+        metadata: client.customFields || {},
       } as any;
 
       // Generate PDF
@@ -720,7 +719,7 @@ export class InvoicesController {
         company: DEFAULT_COMPANY_CONFIG,
         language: language || client.language || 'en',
         showStatus,
-        generateQR
+        generateQR,
       });
 
       // Store PDF
@@ -735,13 +734,17 @@ export class InvoicesController {
       // Store PDF URL in customFields
       const currentInvoiceRes = await this.invoiceService.getInvoiceById(id, userId);
       if (currentInvoiceRes.success && currentInvoiceRes.data.invoice) {
-        const customFields = currentInvoiceRes.data.invoice.customFields as any || {};
-        await this.invoiceService.updateInvoice(id, {
-          customFields: {
-            ...customFields,
-            pdfUrl: stored.url
-          }
-        }, userId);
+        const customFields = (currentInvoiceRes.data.invoice.customFields as any) || {};
+        await this.invoiceService.updateInvoice(
+          id,
+          {
+            customFields: {
+              ...customFields,
+              pdfUrl: stored.url,
+            },
+          },
+          userId
+        );
       }
 
       res.json({
@@ -750,16 +753,15 @@ export class InvoicesController {
           fileName: result.fileName,
           fileSize: stored.fileSize,
           url: stored.url,
-          storedAt: stored.createdAt
+          storedAt: stored.createdAt,
         },
-        message: 'Invoice PDF generated successfully'
+        message: 'Invoice PDF generated successfully',
       });
-
     } catch (error: any) {
       logger.error('Error generating invoice PDF:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to generate invoice PDF'
+        error: 'Failed to generate invoice PDF',
       });
     }
   }
@@ -781,7 +783,7 @@ export class InvoicesController {
       if (!result) {
         res.status(404).json({
           success: false,
-          error: 'Invoice PDF not found'
+          error: 'Invoice PDF not found',
         });
         return;
       }
@@ -793,12 +795,11 @@ export class InvoicesController {
 
       // Send PDF
       res.send(result.buffer);
-
     } catch (error: any) {
       logger.error('Error downloading invoice PDF:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to download invoice PDF'
+        error: 'Failed to download invoice PDF',
       });
     }
   }
@@ -818,7 +819,7 @@ export class InvoicesController {
       if (!invoiceResult.success || !invoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
         return;
       }
@@ -827,7 +828,7 @@ export class InvoicesController {
       if (!invoice.clientId) {
         res.status(400).json({
           success: false,
-          error: 'Invoice has no client ID'
+          error: 'Invoice has no client ID',
         });
         return;
       }
@@ -835,7 +836,7 @@ export class InvoicesController {
       if (!clientResult.success || !clientResult.data.client) {
         res.status(404).json({
           success: false,
-          error: 'Client not found'
+          error: 'Client not found',
         });
         return;
       }
@@ -850,7 +851,9 @@ export class InvoicesController {
         taxRate: this.convertDecimalToNumber(invoice.taxRate),
         discount: invoice.discount ? this.convertDecimalToNumber(invoice.discount) : undefined,
         total: this.convertDecimalToNumber(invoice.total),
-        exchangeRate: invoice.exchangeRate ? this.convertDecimalToNumber(invoice.exchangeRate) : undefined,
+        exchangeRate: invoice.exchangeRate
+          ? this.convertDecimalToNumber(invoice.exchangeRate)
+          : undefined,
         // Ensure items are properly structured
         items: Array.isArray(invoice.items) ? invoice.items : [],
         // Map empty strings to undefined for optional fields
@@ -859,19 +862,23 @@ export class InvoicesController {
         notes: invoice.notes || undefined,
         termsAndConditions: invoice.termsAndConditions || undefined,
         customFields: invoice.customFields || {},
-        metadata: invoice.customFields || {}
+        metadata: invoice.customFields || {},
       } as any;
 
       const clientForPreview = {
         ...client,
-        creditLimit: client.creditLimit ? this.convertDecimalToNumber(client.creditLimit) : undefined,
+        creditLimit: client.creditLimit
+          ? this.convertDecimalToNumber(client.creditLimit)
+          : undefined,
         totalRevenue: this.convertDecimalToNumber(client.totalRevenue),
         outstandingBalance: this.convertDecimalToNumber(client.outstandingBalance),
-        averageInvoiceAmount: client.averageInvoiceAmount ? this.convertDecimalToNumber(client.averageInvoiceAmount) : undefined,
+        averageInvoiceAmount: client.averageInvoiceAmount
+          ? this.convertDecimalToNumber(client.averageInvoiceAmount)
+          : undefined,
         // Handle missing fields from old Client model
         website: undefined,
         isActive: client.status === 'active',
-        metadata: client.customFields || {}
+        metadata: client.customFields || {},
       } as any;
 
       // Generate HTML preview
@@ -881,18 +888,17 @@ export class InvoicesController {
         company: DEFAULT_COMPANY_CONFIG,
         language: (language as string) || client.language || 'en',
         showStatus: true,
-        generateQR: true
+        generateQR: true,
       });
 
       // Send HTML
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(html);
-
     } catch (error: any) {
       logger.error('Error previewing invoice:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to preview invoice'
+        error: 'Failed to preview invoice',
       });
     }
   }
@@ -904,13 +910,7 @@ export class InvoicesController {
   async sendInvoiceEmail(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const {
-        subject,
-        message,
-        cc,
-        bcc,
-        language
-      } = req.body;
+      const { subject, message, cc, bcc, language } = req.body;
       const userId = (req.user as any)?.userId || req.user?.userId;
 
       // Get invoice and client
@@ -918,7 +918,7 @@ export class InvoicesController {
       if (!invoiceResult.success || !invoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
         return;
       }
@@ -927,7 +927,7 @@ export class InvoicesController {
       if (!invoice.clientId) {
         res.status(400).json({
           success: false,
-          error: 'Invoice has no client ID'
+          error: 'Invoice has no client ID',
         });
         return;
       }
@@ -935,7 +935,7 @@ export class InvoicesController {
       if (!clientResult.success || !clientResult.data.client) {
         res.status(404).json({
           success: false,
-          error: 'Client not found'
+          error: 'Client not found',
         });
         return;
       }
@@ -950,7 +950,9 @@ export class InvoicesController {
         taxRate: this.convertDecimalToNumber(invoice.taxRate),
         discount: invoice.discount ? this.convertDecimalToNumber(invoice.discount) : undefined,
         total: this.convertDecimalToNumber(invoice.total),
-        exchangeRate: invoice.exchangeRate ? this.convertDecimalToNumber(invoice.exchangeRate) : undefined,
+        exchangeRate: invoice.exchangeRate
+          ? this.convertDecimalToNumber(invoice.exchangeRate)
+          : undefined,
         // Ensure items are properly structured
         items: Array.isArray(invoice.items) ? invoice.items : [],
         // Map empty strings to undefined for optional fields
@@ -959,19 +961,23 @@ export class InvoicesController {
         notes: invoice.notes || undefined,
         termsAndConditions: invoice.termsAndConditions || undefined,
         customFields: invoice.customFields || {},
-        metadata: invoice.customFields || {}
+        metadata: invoice.customFields || {},
       } as any;
 
       const clientForEmail = {
         ...client,
-        creditLimit: client.creditLimit ? this.convertDecimalToNumber(client.creditLimit) : undefined,
+        creditLimit: client.creditLimit
+          ? this.convertDecimalToNumber(client.creditLimit)
+          : undefined,
         totalRevenue: this.convertDecimalToNumber(client.totalRevenue),
         outstandingBalance: this.convertDecimalToNumber(client.outstandingBalance),
-        averageInvoiceAmount: client.averageInvoiceAmount ? this.convertDecimalToNumber(client.averageInvoiceAmount) : undefined,
+        averageInvoiceAmount: client.averageInvoiceAmount
+          ? this.convertDecimalToNumber(client.averageInvoiceAmount)
+          : undefined,
         // Handle missing fields from old Client model
         website: undefined,
         isActive: client.status === 'active',
-        metadata: client.customFields || {}
+        metadata: client.customFields || {},
       } as any;
 
       // Generate PDF if not already generated
@@ -985,7 +991,7 @@ export class InvoicesController {
           invoice: invoiceForEmail,
           client: clientForEmail,
           company: DEFAULT_COMPANY_CONFIG,
-          language: language || client.language || 'en'
+          language: language || client.language || 'en',
         });
         pdfBuffer = result.pdfBuffer;
 
@@ -1008,31 +1014,34 @@ export class InvoicesController {
         subject,
         message,
         cc,
-        bcc
+        bcc,
       });
 
       if (sent) {
         // Update invoice status
-        await this.invoiceService.updateInvoice(id, {
-          status: 'sent'
-        }, userId);
+        await this.invoiceService.updateInvoice(
+          id,
+          {
+            status: 'sent',
+          },
+          userId
+        );
 
         res.json({
           success: true,
-          message: 'Invoice sent successfully'
+          message: 'Invoice sent successfully',
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to send invoice email'
+          error: 'Failed to send invoice email',
         });
       }
-
     } catch (error: any) {
       logger.error('Error sending invoice email:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to send invoice email'
+        error: 'Failed to send invoice email',
       });
     }
   }
@@ -1052,7 +1061,7 @@ export class InvoicesController {
       if (!invoiceResult.success || !invoiceResult.data.invoice) {
         res.status(404).json({
           success: false,
-          error: 'Invoice not found'
+          error: 'Invoice not found',
         });
         return;
       }
@@ -1061,7 +1070,7 @@ export class InvoicesController {
       if (invoice.status === 'paid') {
         res.status(400).json({
           success: false,
-          error: 'Invoice is already paid'
+          error: 'Invoice is already paid',
         });
         return;
       }
@@ -1069,7 +1078,7 @@ export class InvoicesController {
       if (!invoice.clientId) {
         res.status(400).json({
           success: false,
-          error: 'Invoice has no client ID'
+          error: 'Invoice has no client ID',
         });
         return;
       }
@@ -1077,7 +1086,7 @@ export class InvoicesController {
       if (!clientResult.success || !clientResult.data.client) {
         res.status(404).json({
           success: false,
-          error: 'Client not found'
+          error: 'Client not found',
         });
         return;
       }
@@ -1092,25 +1101,31 @@ export class InvoicesController {
         taxRate: this.convertDecimalToNumber(invoice.taxRate),
         discount: invoice.discount ? this.convertDecimalToNumber(invoice.discount) : undefined,
         total: this.convertDecimalToNumber(invoice.total),
-        exchangeRate: invoice.exchangeRate ? this.convertDecimalToNumber(invoice.exchangeRate) : undefined,
+        exchangeRate: invoice.exchangeRate
+          ? this.convertDecimalToNumber(invoice.exchangeRate)
+          : undefined,
         items: Array.isArray(invoice.items) ? invoice.items : [],
         relatedDocuments: invoice.relatedDocuments || undefined,
         relatedTransactionIds: invoice.relatedTransactionIds || undefined,
         notes: invoice.notes || undefined,
         termsAndConditions: invoice.termsAndConditions || undefined,
         customFields: invoice.customFields || {},
-        metadata: invoice.customFields || {}
+        metadata: invoice.customFields || {},
       } as any;
 
       const clientForReminder = {
         ...client,
-        creditLimit: client.creditLimit ? this.convertDecimalToNumber(client.creditLimit) : undefined,
+        creditLimit: client.creditLimit
+          ? this.convertDecimalToNumber(client.creditLimit)
+          : undefined,
         totalRevenue: this.convertDecimalToNumber(client.totalRevenue),
         outstandingBalance: this.convertDecimalToNumber(client.outstandingBalance),
-        averageInvoiceAmount: client.averageInvoiceAmount ? this.convertDecimalToNumber(client.averageInvoiceAmount) : undefined,
+        averageInvoiceAmount: client.averageInvoiceAmount
+          ? this.convertDecimalToNumber(client.averageInvoiceAmount)
+          : undefined,
         website: undefined,
         isActive: client.status === 'active',
-        metadata: client.customFields || {}
+        metadata: client.customFields || {},
       } as any;
 
       // Send reminder
@@ -1124,20 +1139,19 @@ export class InvoicesController {
       if (sent) {
         res.json({
           success: true,
-          message: 'Payment reminder sent successfully'
+          message: 'Payment reminder sent successfully',
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to send payment reminder'
+          error: 'Failed to send payment reminder',
         });
       }
-
     } catch (error: any) {
       logger.error('Error sending payment reminder:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to send payment reminder'
+        error: 'Failed to send payment reminder',
       });
     }
   }
@@ -1157,22 +1171,21 @@ export class InvoicesController {
         series: series as string,
         prefix: prefix as string,
         format: format as string,
-        year: year ? parseInt(year as string) : undefined
+        year: year ? parseInt(year as string) : undefined,
       });
 
       res.json({
         success: true,
         data: {
           nextNumber,
-          preview: `This will be your next invoice number: ${nextNumber}`
-        }
+          preview: `This will be your next invoice number: ${nextNumber}`,
+        },
       });
-
     } catch (error: any) {
       logger.error('Error getting next invoice number:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get next invoice number'
+        error: 'Failed to get next invoice number',
       });
     }
   }
@@ -1193,17 +1206,15 @@ export class InvoicesController {
         success: true,
         data: {
           sequences,
-          statistics: stats
-        }
+          statistics: stats,
+        },
       });
-
     } catch (error: any) {
       logger.error('Error getting numbering sequences:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get numbering sequences'
+        error: 'Failed to get numbering sequences',
       });
     }
   }
 }
-

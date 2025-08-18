@@ -69,12 +69,12 @@ export class AICategorizationService {
         this.matchByMerchantPattern(transaction, aiTags),
         this.matchByKeywords(transaction, aiTags),
         this.matchByAmountPattern(transaction, aiTags),
-        this.matchByFrequencyPattern(transaction, aiTags)
+        this.matchByFrequencyPattern(transaction, aiTags),
       ]);
 
       // Find the best match
       const bestMatch = results
-        .filter(result => result !== null)
+        .filter((result) => result !== null)
         .sort((a, b) => b!.confidence - a!.confidence)[0];
 
       return bestMatch || null;
@@ -97,8 +97,8 @@ export class AICategorizationService {
       const transactions = await prisma.transactions.findMany({
         where: {
           id: { in: transactionIds },
-          status: 'confirmed'
-        }
+          status: 'confirmed',
+        },
       });
 
       // Process each transaction
@@ -109,7 +109,7 @@ export class AICategorizationService {
           counterpartyName: transaction.counterparty_name,
           amount: transaction.amount,
           date: transaction.date,
-          accountId: transaction.account_id
+          accountId: transaction.account_id,
         });
 
         if (result) {
@@ -153,7 +153,7 @@ export class AICategorizationService {
               confidence: Math.min(tag.confidenceScore * 1.1, 0.98), // Boost merchant matches
               method: 'ai_pattern',
               aiTagId: tag.id,
-              reasoning: `Matched merchant pattern: ${pattern}`
+              reasoning: `Matched merchant pattern: ${pattern}`,
             };
           }
         } catch (error) {
@@ -172,7 +172,8 @@ export class AICategorizationService {
     transaction: any,
     aiTags: AITag[]
   ): Promise<CategorizationResult | null> {
-    const searchText = `${transaction.description || ''} ${transaction.counterpartyName || ''}`.toLowerCase();
+    const searchText =
+      `${transaction.description || ''} ${transaction.counterpartyName || ''}`.toLowerCase();
 
     let bestMatch: { tag: AITag; matchedKeywords: string[] } | null = null;
     let maxMatches = 0;
@@ -182,7 +183,7 @@ export class AICategorizationService {
         continue;
       }
 
-      const matchedKeywords = tag.keywords.filter(keyword =>
+      const matchedKeywords = tag.keywords.filter((keyword) =>
         searchText.includes(keyword.toLowerCase())
       );
 
@@ -197,14 +198,15 @@ export class AICategorizationService {
       const keywordRatio = maxMatches / bestMatch.tag.keywords.length;
       const confidence = Math.min(bestMatch.tag.confidenceScore * keywordRatio, 0.9);
 
-      if (confidence > 0.5) { // Only return if confidence is reasonable
+      if (confidence > 0.5) {
+        // Only return if confidence is reasonable
         return {
           categoryId: bestMatch.tag.categoryId,
           subcategoryId: bestMatch.tag.subcategoryId,
           confidence,
           method: 'ai_keyword',
           aiTagId: bestMatch.tag.id,
-          reasoning: `Matched keywords: ${bestMatch.matchedKeywords.join(', ')}`
+          reasoning: `Matched keywords: ${bestMatch.matchedKeywords.join(', ')}`,
         };
       }
     }
@@ -219,9 +221,10 @@ export class AICategorizationService {
     transaction: any,
     aiTags: AITag[]
   ): Promise<CategorizationResult | null> {
-    const amount = typeof transaction.amount === 'object'
-      ? parseFloat(transaction.amount.toString())
-      : parseFloat(transaction.amount);
+    const amount =
+      typeof transaction.amount === 'object'
+        ? parseFloat(transaction.amount.toString())
+        : parseFloat(transaction.amount);
 
     for (const tag of aiTags) {
       if (!tag.amountPatterns) {
@@ -238,7 +241,7 @@ export class AICategorizationService {
           confidence: tag.confidenceScore * 0.85,
           method: 'ai_amount',
           aiTagId: tag.id,
-          reasoning: `Matched exact amount: €${amount}`
+          reasoning: `Matched exact amount: €${amount}`,
         };
       }
 
@@ -251,7 +254,7 @@ export class AICategorizationService {
             confidence: tag.confidenceScore * 0.7,
             method: 'ai_amount',
             aiTagId: tag.id,
-            reasoning: `Amount in range: €${patterns.minAmount} - €${patterns.maxAmount}`
+            reasoning: `Amount in range: €${patterns.minAmount} - €${patterns.maxAmount}`,
           };
         }
       }
@@ -280,27 +283,27 @@ export class AICategorizationService {
         where: {
           counterparty_name: {
             equals: transaction.counterpartyName,
-            mode: 'insensitive'
+            mode: 'insensitive',
           },
           account_id: transaction.accountId,
           status: 'confirmed',
           id: { not: transaction.id },
-          date: { gte: threeMonthsAgo }
+          date: { gte: threeMonthsAgo },
         },
         orderBy: {
-          date: 'asc'
-        }
+          date: 'asc',
+        },
       });
 
       if (similarTransactions.length >= 2) {
         // Analyze frequency pattern
-        const dates = [transaction.date, ...similarTransactions.map(tx => tx.date)];
+        const dates = [transaction.date, ...similarTransactions.map((tx) => tx.date)];
         const isRecurring = this.analyzeRecurringPattern(dates);
 
         if (isRecurring) {
           // Find best matching tag for recurring transactions
-          const recurringTags = aiTags.filter(tag =>
-            tag.keywords.some(keyword =>
+          const recurringTags = aiTags.filter((tag) =>
+            tag.keywords.some((keyword) =>
               ['subscription', 'recurring', 'monthly', 'weekly'].includes(keyword.toLowerCase())
             )
           );
@@ -313,7 +316,7 @@ export class AICategorizationService {
               confidence: 0.75,
               method: 'ai_frequency',
               aiTagId: bestTag.id,
-              reasoning: `Recurring transaction pattern detected (${similarTransactions.length + 1} similar transactions)`
+              reasoning: `Recurring transaction pattern detected (${similarTransactions.length + 1} similar transactions)`,
             };
           }
         }
@@ -375,12 +378,12 @@ export class AICategorizationService {
       const predictions = await prisma.transaction_categorizations.findMany({
         where: {
           method: { in: ['ai_auto', 'ai_suggested'] },
-          user_confirmed: { not: null }
-        }
+          user_confirmed: { not: null },
+        },
       });
 
       const totalPredictions = predictions.length;
-      const correctPredictions = predictions.filter(p => p.user_confirmed === true).length;
+      const correctPredictions = predictions.filter((p) => p.user_confirmed === true).length;
       const accuracy = totalPredictions > 0 ? (correctPredictions / totalPredictions) * 100 : 0;
 
       // Get top performing tags with usage statistics
@@ -411,7 +414,7 @@ export class AICategorizationService {
         correctPredictions,
         accuracy,
         topPerformingTags,
-        improvementSuggestions: suggestions
+        improvementSuggestions: suggestions,
       };
     } catch (error) {
       logger.error('Failed to get performance metrics:', error);
@@ -475,13 +478,13 @@ export class AICategorizationService {
     }
 
     // Check for monthly pattern (28-32 days)
-    const monthlyPattern = intervals.every(interval => interval >= 28 && interval <= 32);
+    const monthlyPattern = intervals.every((interval) => interval >= 28 && interval <= 32);
 
     // Check for weekly pattern (6-8 days)
-    const weeklyPattern = intervals.every(interval => interval >= 6 && interval <= 8);
+    const weeklyPattern = intervals.every((interval) => interval >= 6 && interval <= 8);
 
     // Check for bi-weekly pattern (13-15 days)
-    const biWeeklyPattern = intervals.every(interval => interval >= 13 && interval <= 15);
+    const biWeeklyPattern = intervals.every((interval) => interval >= 13 && interval <= 15);
 
     return monthlyPattern || weeklyPattern || biWeeklyPattern;
   }
@@ -492,8 +495,8 @@ export class AICategorizationService {
       const categorization = await prisma.transaction_categorizations.findFirst({
         where: {
           transaction_id: feedback.transactionId,
-          category_id: feedback.predictedCategoryId
-        }
+          category_id: feedback.predictedCategoryId,
+        },
       });
 
       if (categorization && categorization.ai_tag_id) {
@@ -516,7 +519,7 @@ export class AICategorizationService {
     try {
       // Get transaction details to create a new learning tag
       const transaction = await prisma.transactions.findUnique({
-        where: { id: feedback.transactionId }
+        where: { id: feedback.transactionId },
       });
 
       if (!transaction) {
@@ -581,11 +584,11 @@ export class AICategorizationService {
 
   private extractKeywords(description: string, counterparty: string): string[] {
     const text = `${description || ''} ${counterparty || ''}`.toLowerCase();
-    const words = text.split(/\W+/).filter(word => word.length > 2);
+    const words = text.split(/\W+/).filter((word) => word.length > 2);
 
     // Remove common stop words
     const stopWords = ['the', 'and', 'for', 'with', 'from', 'this', 'that', 'are', 'was'];
-    return words.filter(word => !stopWords.includes(word)).slice(0, 5);
+    return words.filter((word) => !stopWords.includes(word)).slice(0, 5);
   }
 
   /**
@@ -680,7 +683,7 @@ export class AICategorizationService {
       lastUsed: undefined, // Field doesn't exist in schema
       isActive: tag.is_active || false,
       createdAt: tag.created_at || new Date(),
-      updatedAt: tag.updated_at || new Date()
+      updatedAt: tag.updated_at || new Date(),
     };
   }
 }

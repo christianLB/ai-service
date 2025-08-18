@@ -9,27 +9,29 @@ export const webhookConfigSchema = z.object({
   secret: z.string().min(16).optional(),
   isActive: z.boolean().default(true),
   headers: z.record(z.string()).optional(),
-  retryPolicy: z.object({
-    maxRetries: z.number().int().min(0).max(5).default(3),
-    retryDelayMs: z.number().int().min(1000).default(5000),
-    backoffMultiplier: z.number().min(1).max(3).default(2)
-  }).optional(),
+  retryPolicy: z
+    .object({
+      maxRetries: z.number().int().min(0).max(5).default(3),
+      retryDelayMs: z.number().int().min(1000).default(5000),
+      backoffMultiplier: z.number().min(1).max(3).default(2),
+    })
+    .optional(),
   metadata: z.record(z.any()).optional(),
   createdAt: z.date().optional(),
-  updatedAt: z.date().optional()
+  updatedAt: z.date().optional(),
 });
 
 // Create webhook schema
 export const createWebhookSchema = webhookConfigSchema.omit({
   id: true,
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
 });
 
 // Update webhook schema
 export const updateWebhookSchema = webhookConfigSchema.partial().omit({
   id: true,
-  createdAt: true
+  createdAt: true,
 });
 
 // Webhook delivery status
@@ -49,7 +51,7 @@ export const webhookDeliverySchema = z.object({
   responseBody: z.string().optional().nullable(),
   error: z.string().optional().nullable(),
   deliveredAt: z.date().optional().nullable(),
-  createdAt: z.date()
+  createdAt: z.date(),
 });
 
 // Types

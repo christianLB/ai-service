@@ -28,26 +28,17 @@ export function createDefaultOrchestrator(): CryptoOrchestrator {
   const orch = new CryptoOrchestrator();
   if (process.env.CRYPTOCOM_API_KEY && process.env.CRYPTOCOM_SECRET_KEY) {
     orch.registerConnector(
-      new CryptoComConnector(
-        process.env.CRYPTOCOM_API_KEY,
-        process.env.CRYPTOCOM_SECRET_KEY
-      )
+      new CryptoComConnector(process.env.CRYPTOCOM_API_KEY, process.env.CRYPTOCOM_SECRET_KEY)
     );
   }
   if (process.env.BINANCE_API_KEY && process.env.BINANCE_SECRET_KEY) {
     orch.registerConnector(
-      new BinanceConnector(
-        process.env.BINANCE_API_KEY,
-        process.env.BINANCE_SECRET_KEY
-      )
+      new BinanceConnector(process.env.BINANCE_API_KEY, process.env.BINANCE_SECRET_KEY)
     );
   }
   if (process.env.METAMASK_PRIVATE_KEY && process.env.ETH_RPC_URL) {
     orch.registerConnector(
-      new MetaMaskConnector(
-        process.env.ETH_RPC_URL,
-        process.env.METAMASK_PRIVATE_KEY
-      )
+      new MetaMaskConnector(process.env.ETH_RPC_URL, process.env.METAMASK_PRIVATE_KEY)
     );
   }
   return orch;

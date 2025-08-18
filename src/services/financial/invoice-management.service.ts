@@ -64,17 +64,41 @@ export class InvoiceManagementService {
         ) RETURNING *`;
 
       const values = [
-        invoice.id, invoice.invoiceNumber, invoice.clientId, invoice.clientName,
-        invoice.clientTaxId, JSON.stringify(invoice.clientAddress),
-        invoice.type, invoice.status, invoice.issueDate, invoice.dueDate,
-        invoice.serviceStartDate, invoice.serviceEndDate, invoice.currency,
-        invoice.exchangeRate, JSON.stringify(invoice.items), invoice.subtotal,
-        invoice.taxAmount, invoice.taxRate, invoice.taxType, invoice.discount,
-        invoice.discountType, invoice.total, invoice.paymentMethod, invoice.paymentTerms,
-        invoice.bankAccount, JSON.stringify(invoice.relatedDocuments),
-        invoice.relatedTransactionIds, invoice.notes, invoice.termsAndConditions,
-        JSON.stringify(invoice.customFields), invoice.tags, invoice.createdBy,
-        invoice.isDeductible, invoice.deductibleCategory, invoice.deductiblePercentage
+        invoice.id,
+        invoice.invoiceNumber,
+        invoice.clientId,
+        invoice.clientName,
+        invoice.clientTaxId,
+        JSON.stringify(invoice.clientAddress),
+        invoice.type,
+        invoice.status,
+        invoice.issueDate,
+        invoice.dueDate,
+        invoice.serviceStartDate,
+        invoice.serviceEndDate,
+        invoice.currency,
+        invoice.exchangeRate,
+        JSON.stringify(invoice.items),
+        invoice.subtotal,
+        invoice.taxAmount,
+        invoice.taxRate,
+        invoice.taxType,
+        invoice.discount,
+        invoice.discountType,
+        invoice.total,
+        invoice.paymentMethod,
+        invoice.paymentTerms,
+        invoice.bankAccount,
+        JSON.stringify(invoice.relatedDocuments),
+        invoice.relatedTransactionIds,
+        invoice.notes,
+        invoice.termsAndConditions,
+        JSON.stringify(invoice.customFields),
+        invoice.tags,
+        invoice.createdBy,
+        invoice.isDeductible,
+        invoice.deductibleCategory,
+        invoice.deductiblePercentage,
       ];
 
       const result = await dbClient.query(query, values);
@@ -82,7 +106,6 @@ export class InvoiceManagementService {
 
       logger.info(`✅ Invoice created: ${invoice.invoiceNumber} for client ${invoice.clientName}`);
       return this.mapRowToInvoice(result.rows[0]);
-
     } catch (error: any) {
       await dbClient.query('ROLLBACK');
       logger.error('❌ Error creating invoice:', error);
@@ -100,10 +123,7 @@ export class InvoiceManagementService {
     const dbClient = await this.database.pool.connect();
 
     try {
-      const result = await dbClient.query(
-        'SELECT * FROM financial.invoices WHERE id = $1',
-        [id]
-      );
+      const result = await dbClient.query('SELECT * FROM financial.invoices WHERE id = $1', [id]);
 
       if (result.rows.length === 0) {
         return null;
@@ -156,7 +176,7 @@ export class InvoiceManagementService {
       if (currentInvoice.status === 'paid' && updates.status !== 'refunded') {
         const allowedFields = ['status', 'paid_date', 'payment_reference', 'notes'];
         const hasRestrictedUpdates = Object.keys(updates).some(
-          key => !allowedFields.includes(key.replace(/([A-Z])/g, '_$1').toLowerCase())
+          (key) => !allowedFields.includes(key.replace(/([A-Z])/g, '_$1').toLowerCase())
         );
 
         if (hasRestrictedUpdates) {
@@ -179,13 +199,38 @@ export class InvoiceManagementService {
       let paramCount = 1;
 
       const allowedFields = [
-        'status', 'due_date', 'paid_date', 'service_start_date', 'service_end_date',
-        'currency', 'exchange_rate', 'items', 'subtotal', 'tax_amount', 'tax_rate',
-        'tax_type', 'discount', 'discount_type', 'total', 'payment_method',
-        'payment_terms', 'bank_account', 'payment_reference', 'related_documents',
-        'related_transaction_ids', 'notes', 'terms_and_conditions', 'custom_fields',
-        'tags', 'sent_at', 'viewed_at', 'attachments', 'pdf_url', 'is_deductible',
-        'deductible_category', 'deductible_percentage'
+        'status',
+        'due_date',
+        'paid_date',
+        'service_start_date',
+        'service_end_date',
+        'currency',
+        'exchange_rate',
+        'items',
+        'subtotal',
+        'tax_amount',
+        'tax_rate',
+        'tax_type',
+        'discount',
+        'discount_type',
+        'total',
+        'payment_method',
+        'payment_terms',
+        'bank_account',
+        'payment_reference',
+        'related_documents',
+        'related_transaction_ids',
+        'notes',
+        'terms_and_conditions',
+        'custom_fields',
+        'tags',
+        'sent_at',
+        'viewed_at',
+        'attachments',
+        'pdf_url',
+        'is_deductible',
+        'deductible_category',
+        'deductible_percentage',
       ];
 
       for (const field of allowedFields) {
@@ -233,7 +278,6 @@ export class InvoiceManagementService {
 
       logger.info(`✅ Invoice updated: ${id} (${currentInvoice.invoiceNumber})`);
       return this.mapRowToInvoice(result.rows[0]);
-
     } catch (error: any) {
       await dbClient.query('ROLLBACK');
       logger.error('❌ Error updating invoice:', error);
@@ -246,18 +290,20 @@ export class InvoiceManagementService {
   /**
    * List invoices with filters
    */
-  async listInvoices(options: {
-    clientId?: string;
-    status?: string;
-    type?: string;
-    startDate?: Date;
-    endDate?: Date;
-    search?: string;
-    limit?: number;
-    offset?: number;
-    sortBy?: string;
-    sortOrder?: 'ASC' | 'DESC';
-  } = {}): Promise<{ invoices: Invoice[]; total: number }> {
+  async listInvoices(
+    options: {
+      clientId?: string;
+      status?: string;
+      type?: string;
+      startDate?: Date;
+      endDate?: Date;
+      search?: string;
+      limit?: number;
+      offset?: number;
+      sortBy?: string;
+      sortOrder?: 'ASC' | 'DESC';
+    } = {}
+  ): Promise<{ invoices: Invoice[]; total: number }> {
     const dbClient = await this.database.pool.connect();
 
     try {
@@ -333,10 +379,9 @@ export class InvoiceManagementService {
 
       // Execute query
       const result = await dbClient.query(query, params);
-      const invoices = result.rows.map(row => this.mapRowToInvoice(row));
+      const invoices = result.rows.map((row) => this.mapRowToInvoice(row));
 
       return { invoices, total };
-
     } finally {
       dbClient.release();
     }
@@ -356,8 +401,7 @@ export class InvoiceManagementService {
         ORDER BY due_date ASC`;
 
       const result = await dbClient.query(query);
-      return result.rows.map(row => this.mapRowToInvoice(row));
-
+      return result.rows.map((row) => this.mapRowToInvoice(row));
     } finally {
       dbClient.release();
     }
@@ -370,7 +414,7 @@ export class InvoiceManagementService {
     return this.updateInvoice(id, {
       status: 'paid',
       paidDate: paidDate || new Date(),
-      paymentReference
+      paymentReference,
     });
   }
 
@@ -394,12 +438,15 @@ export class InvoiceManagementService {
   /**
    * Attach document to invoice
    */
-  async attachDocument(invoiceId: string, document: {
-    type: 'fiscal_invoice' | 'receipt' | 'contract' | 'delivery_note' | 'other';
-    documentId: string;
-    fileName?: string;
-    description?: string;
-  }): Promise<Invoice> {
+  async attachDocument(
+    invoiceId: string,
+    document: {
+      type: 'fiscal_invoice' | 'receipt' | 'contract' | 'delivery_note' | 'other';
+      documentId: string;
+      fileName?: string;
+      description?: string;
+    }
+  ): Promise<Invoice> {
     const invoice = await this.getInvoice(invoiceId);
     if (!invoice) {
       throw new Error('Invoice not found');
@@ -411,7 +458,7 @@ export class InvoiceManagementService {
       documentId: document.documentId,
       fileName: document.fileName,
       description: document.description,
-      uploadedAt: new Date()
+      uploadedAt: new Date(),
     };
 
     const updatedDocuments = [...(invoice.relatedDocuments || []), relatedDocument];
@@ -455,9 +502,8 @@ export class InvoiceManagementService {
         pendingInvoices: parseInt(row.pending_invoices),
         overdueInvoices: parseInt(row.overdue_invoices),
         averageAmount: parseFloat(row.average_amount) || 0,
-        lastInvoiceDate: row.last_invoice_date
+        lastInvoiceDate: row.last_invoice_date,
       };
-
     } finally {
       dbClient.release();
     }
@@ -527,7 +573,9 @@ export class InvoiceManagementService {
       pdfUrl: row.pdf_url,
       isDeductible: row.is_deductible,
       deductibleCategory: row.deductible_category,
-      deductiblePercentage: row.deductible_percentage ? parseFloat(row.deductible_percentage) : undefined
+      deductiblePercentage: row.deductible_percentage
+        ? parseFloat(row.deductible_percentage)
+        : undefined,
     };
   }
 }

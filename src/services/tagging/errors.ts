@@ -22,23 +22,16 @@ export class TagNotFoundError extends TaggingError {
 
 export class EntityNotFoundError extends TaggingError {
   constructor(entityType: string, entityId: string) {
-    super(
-      `Entity not found: ${entityType}/${entityId}`,
-      404,
-      ErrorCode.NOT_FOUND,
-      { entityType, entityId }
-    );
+    super(`Entity not found: ${entityType}/${entityId}`, 404, ErrorCode.NOT_FOUND, {
+      entityType,
+      entityId,
+    });
   }
 }
 
 export class DuplicateTagCodeError extends TaggingError {
   constructor(code: string) {
-    super(
-      `Tag with code '${code}' already exists`,
-      409,
-      ErrorCode.CONFLICT,
-      { code }
-    );
+    super(`Tag with code '${code}' already exists`, 409, ErrorCode.CONFLICT, { code });
   }
 }
 
@@ -50,45 +43,37 @@ export class InvalidTagHierarchyError extends TaggingError {
 
 export class AIProviderError extends TaggingError {
   constructor(provider: string, message: string) {
-    super(
-      `AI provider error (${provider}): ${message}`,
-      503,
-      ErrorCode.AI_PROVIDER_ERROR,
-      { provider }
-    );
+    super(`AI provider error (${provider}): ${message}`, 503, ErrorCode.AI_PROVIDER_ERROR, {
+      provider,
+    });
   }
 }
 
 export class InsufficientCreditsError extends TaggingError {
   constructor(required: number, available: number) {
-    super(
-      'Insufficient AI credits for this operation',
-      402,
-      ErrorCode.INSUFFICIENT_CREDITS,
-      { required, available }
-    );
+    super('Insufficient AI credits for this operation', 402, ErrorCode.INSUFFICIENT_CREDITS, {
+      required,
+      available,
+    });
   }
 }
 
 export class RateLimitError extends TaggingError {
   constructor(limit: number, reset: Date) {
-    super(
-      'Rate limit exceeded',
-      429,
-      ErrorCode.RATE_LIMIT_EXCEEDED,
-      { limit, reset: reset.toISOString() }
-    );
+    super('Rate limit exceeded', 429, ErrorCode.RATE_LIMIT_EXCEEDED, {
+      limit,
+      reset: reset.toISOString(),
+    });
   }
 }
 
 export class ValidationError extends TaggingError {
   constructor(field: string, value: any, constraint: string) {
-    super(
-      `Validation failed for field '${field}'`,
-      400,
-      ErrorCode.VALIDATION_ERROR,
-      { field, value, constraint }
-    );
+    super(`Validation failed for field '${field}'`, 400, ErrorCode.VALIDATION_ERROR, {
+      field,
+      value,
+      constraint,
+    });
   }
 }
 
@@ -103,12 +88,7 @@ export function handleTaggingError(error: any): TaggingError {
   }
 
   if (error.code === 'P2025') {
-    return new TaggingError(
-      'Record not found',
-      404,
-      ErrorCode.NOT_FOUND,
-      error.meta
-    );
+    return new TaggingError('Record not found', 404, ErrorCode.NOT_FOUND, error.meta);
   }
 
   // Default to internal error

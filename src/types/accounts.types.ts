@@ -52,5 +52,4 @@ export type UpdateAccounts = z.infer<typeof updateAccountsSchema>;
 export type AccountsQuery = z.infer<typeof accountsQuerySchema>;
 
 // Prisma types
-export type AccountsWithRelations = Prisma.accountsGetPayload<{
-}>;
+export type AccountsWithRelations = Prisma.accountsGetPayload<{}>;

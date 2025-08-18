@@ -47,7 +47,7 @@ class BacktestController {
             avgLoss: -210,
             expectancy: 125,
             recoveryFactor: 3.6,
-            maxConsecutiveLosses: 4
+            maxConsecutiveLosses: 4,
           },
           equityCurve: [
             { date: '2023-01-01', value: 10000 },
@@ -55,8 +55,8 @@ class BacktestController {
             { date: '2023-03-01', value: 11500 },
             // ... more data points
           ],
-          trades: []
-        }
+          trades: [],
+        },
       ];
 
       res.json(results);
@@ -83,10 +83,10 @@ class BacktestController {
           maxDrawdown: -12.5,
           winRate: 0.62,
           totalTrades: 156,
-          profitFactor: 2.1
+          profitFactor: 2.1,
         },
         equityCurve: [],
-        trades: []
+        trades: [],
       };
 
       res.json(result);
@@ -98,7 +98,13 @@ class BacktestController {
 
   async optimizeStrategy(req: Request, res: Response) {
     try {
-      const { strategyId, startDate: _startDate, endDate: _endDate, symbols: _symbols, parameterRanges } = req.body;
+      const {
+        strategyId,
+        startDate: _startDate,
+        endDate: _endDate,
+        symbols: _symbols,
+        parameterRanges,
+      } = req.body;
 
       logger.info('Running strategy optimization:', { strategyId, parameterRanges });
 

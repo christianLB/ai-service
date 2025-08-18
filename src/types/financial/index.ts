@@ -10,7 +10,6 @@ import type { Client as PrismaClientModel } from '../../lib/prisma';
 export type Client = PrismaClientModel;
 
 export type {
-
   // Invoice related types
   Invoice,
   InvoiceStatus,

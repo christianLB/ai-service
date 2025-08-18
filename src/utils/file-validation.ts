@@ -12,18 +12,10 @@ export const ALLOWED_MIME_TYPES = [
   'image/png',
   'image/gif',
   'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-export const ALLOWED_EXTENSIONS = [
-  '.pdf',
-  '.jpeg',
-  '.jpg',
-  '.png',
-  '.gif',
-  '.doc',
-  '.docx'
-];
+export const ALLOWED_EXTENSIONS = ['.pdf', '.jpeg', '.jpg', '.png', '.gif', '.doc', '.docx'];
 
 export interface FileValidationResult {
   isValid: boolean;
@@ -62,7 +54,7 @@ export function validateInvoiceAttachment(file: InvoiceAttachmentFile): FileVali
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -71,11 +63,10 @@ export function validateInvoiceAttachment(file: InvoiceAttachmentFile): FileVali
  */
 export const fileValidationSchema = z.object({
   originalname: z.string().min(1),
-  mimetype: z.string().refine(
-    (val) => ALLOWED_MIME_TYPES.includes(val),
-    { message: 'Invalid file type' }
-  ),
-  size: z.number().max(MAX_FILE_SIZE, { message: 'File size too large' })
+  mimetype: z
+    .string()
+    .refine((val) => ALLOWED_MIME_TYPES.includes(val), { message: 'Invalid file type' }),
+  size: z.number().max(MAX_FILE_SIZE, { message: 'File size too large' }),
 });
 
 export default {
@@ -83,5 +74,5 @@ export default {
   fileValidationSchema,
   MAX_FILE_SIZE,
   ALLOWED_MIME_TYPES,
-  ALLOWED_EXTENSIONS
+  ALLOWED_EXTENSIONS,
 };

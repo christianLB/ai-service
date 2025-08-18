@@ -46,24 +46,26 @@ export interface EntityTagResponse extends EntityTag {
   tagName: string;
 }
 
-export interface EntityTagsResponse extends BaseResponse<{
-  entity: {
-    type: EntityType;
-    id: string;
-    preview?: string;
-  };
-  tags: EntityTagResponse[];
-}> {}
+export interface EntityTagsResponse
+  extends BaseResponse<{
+    entity: {
+      type: EntityType;
+      id: string;
+      preview?: string;
+    };
+    tags: EntityTagResponse[];
+  }> {}
 
-export interface TagEntityResponse extends BaseResponse<{
-  entity: {
-    type: EntityType;
-    id: string;
-  };
-  tags: EntityTagResponse[];
-  processingTime: number;
-  aiProvider?: string;
-}> {}
+export interface TagEntityResponse
+  extends BaseResponse<{
+    entity: {
+      type: EntityType;
+      id: string;
+    };
+    tags: EntityTagResponse[];
+    processingTime: number;
+    aiProvider?: string;
+  }> {}
 
 // Batch response DTOs
 export interface BatchTagResult {
@@ -74,29 +76,31 @@ export interface BatchTagResult {
   processingTime: number;
 }
 
-export interface BatchTagResponse extends BaseResponse<{
-  results: BatchTagResult[];
-  summary: {
-    total: number;
-    successful: number;
-    failed: number;
-    skipped: number;
-    totalProcessingTime: number;
-  };
-}> {}
+export interface BatchTagResponse
+  extends BaseResponse<{
+    results: BatchTagResult[];
+    summary: {
+      total: number;
+      successful: number;
+      failed: number;
+      skipped: number;
+      totalProcessingTime: number;
+    };
+  }> {}
 
 // Re-tag response
-export interface ReTagResponse extends BaseResponse<{
-  processed: number;
-  tagged: number;
-  failed: number;
-  skipped: number;
-  errors: Array<{
-    entityId: string;
-    error: string;
-  }>;
-  estimatedTimeMs: number;
-}> {}
+export interface ReTagResponse
+  extends BaseResponse<{
+    processed: number;
+    tagged: number;
+    failed: number;
+    skipped: number;
+    errors: Array<{
+      entityId: string;
+      error: string;
+    }>;
+    estimatedTimeMs: number;
+  }> {}
 
 // Metrics response DTOs
 export interface TagMetrics {
@@ -110,14 +114,15 @@ export interface TagMetrics {
   }>;
 }
 
-export interface TagMetricsResponse extends BaseResponse<{
-  tag: {
-    id: string;
-    code: string;
-    name: string;
-  };
-  metrics: TagMetrics;
-}> {}
+export interface TagMetricsResponse
+  extends BaseResponse<{
+    tag: {
+      id: string;
+      code: string;
+      name: string;
+    };
+    metrics: TagMetrics;
+  }> {}
 
 export interface SystemAccuracy {
   accuracy: number;
@@ -126,20 +131,27 @@ export interface SystemAccuracy {
   corrected: number;
 }
 
-export interface AccuracyResponse extends BaseResponse<{
-  overall: SystemAccuracy;
-  byEntityType: Record<EntityType, {
-    accuracy: number;
-    count: number;
-  }>;
-  byMethod: Record<string, {
-    accuracy: number;
-  }>;
-  period?: {
-    start: string;
-    end: string;
-  };
-}> {}
+export interface AccuracyResponse
+  extends BaseResponse<{
+    overall: SystemAccuracy;
+    byEntityType: Record<
+      EntityType,
+      {
+        accuracy: number;
+        count: number;
+      }
+    >;
+    byMethod: Record<
+      string,
+      {
+        accuracy: number;
+      }
+    >;
+    period?: {
+      start: string;
+      end: string;
+    };
+  }> {}
 
 // Relationship response
 export interface EntityRelationship {
@@ -151,13 +163,14 @@ export interface EntityRelationship {
   metadata?: Record<string, any>;
 }
 
-export interface RelationshipsResponse extends BaseResponse<{
-  entity: {
-    type: EntityType;
-    id: string;
-  };
-  relationships: EntityRelationship[];
-}> {}
+export interface RelationshipsResponse
+  extends BaseResponse<{
+    entity: {
+      type: EntityType;
+      id: string;
+    };
+    relationships: EntityRelationship[];
+  }> {}
 
 // Find entities by tag response
 export interface EntityPreview {
@@ -177,17 +190,19 @@ export interface FindEntitiesByTagResponse extends PaginatedResponse<EntityPrevi
 }
 
 // Feedback response
-export interface FeedbackResponse extends BaseResponse<{
-  message: string;
-  processed: boolean;
-}> {}
+export interface FeedbackResponse
+  extends BaseResponse<{
+    message: string;
+    processed: boolean;
+  }> {}
 
 // Learning response
-export interface LearningResponse extends BaseResponse<{
-  message: string;
-  patternsUpdated: boolean;
-  confidenceAdjusted: boolean;
-}> {}
+export interface LearningResponse
+  extends BaseResponse<{
+    message: string;
+    patternsUpdated: boolean;
+    confidenceAdjusted: boolean;
+  }> {}
 
 // Error codes
 export enum ErrorCode {
@@ -199,7 +214,7 @@ export enum ErrorCode {
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
   INTERNAL_ERROR = 'INTERNAL_ERROR',
   AI_PROVIDER_ERROR = 'AI_PROVIDER_ERROR',
-  INSUFFICIENT_CREDITS = 'INSUFFICIENT_CREDITS'
+  INSUFFICIENT_CREDITS = 'INSUFFICIENT_CREDITS',
 }
 
 // Rate limit headers
@@ -216,7 +231,7 @@ export enum WebhookEventType {
   TAG_DELETED = 'tag.deleted',
   ENTITY_TAGGED = 'entity.tagged',
   ENTITY_TAG_REMOVED = 'entity.tag.removed',
-  ENTITY_TAG_VERIFIED = 'entity.tag.verified'
+  ENTITY_TAG_VERIFIED = 'entity.tag.verified',
 }
 
 // Webhook payload

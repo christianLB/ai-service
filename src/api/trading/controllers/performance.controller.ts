@@ -36,15 +36,15 @@ class PerformanceController {
           { month: 'Mar', return: -2.1 },
           { month: 'Apr', return: 7.5 },
           { month: 'May', return: 4.2 },
-          { month: 'Jun', return: 6.8 }
+          { month: 'Jun', return: 6.8 },
         ],
         tradeDistribution: [
           { range: '-5% to -2%', count: 25 },
           { range: '-2% to 0%', count: 102 },
           { range: '0% to 2%', count: 145 },
           { range: '2% to 5%', count: 58 },
-          { range: '>5%', count: 12 }
-        ]
+          { range: '>5%', count: 12 },
+        ],
       };
 
       res.json(metrics);

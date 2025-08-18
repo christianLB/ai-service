@@ -24,7 +24,7 @@ export class FileValidationUtil {
       mimeType: declaredMimeType,
       extension: extension,
       fileHash: providedChecksum || 'mock-hash',
-      secureFileName: fileName.replace(/[^a-zA-Z0-9.-]/g, '_')
+      secureFileName: fileName.replace(/[^a-zA-Z0-9.-]/g, '_'),
     };
   }
 
@@ -40,7 +40,7 @@ export class FileValidationUtil {
       'image/png',
       'image/gif',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ];
   }
 }

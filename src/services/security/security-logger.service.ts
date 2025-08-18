@@ -35,7 +35,7 @@ export class SecurityLoggerService {
         event.ip_address,
         event.user_agent || null,
         JSON.stringify(event.details || {}),
-        event.success
+        event.success,
       ]);
 
       // Also log to application logs
@@ -44,7 +44,7 @@ export class SecurityLoggerService {
         email: event.email,
         ip: event.ip_address,
         success: event.success,
-        details: event.details
+        details: event.details,
       });
 
       // Alert on suspicious activities
@@ -64,10 +64,10 @@ export class SecurityLoggerService {
       event.event_type === 'invalid_token',
       event.event_type === 'brute_force_detected',
       event.event_type === 'suspicious_ip',
-      event.event_type === 'permission_denied'
+      event.event_type === 'permission_denied',
     ];
 
-    return suspiciousPatterns.some(pattern => pattern);
+    return suspiciousPatterns.some((pattern) => pattern);
   }
 
   private async alertSuspiciousActivity(event: SecurityEvent): Promise<void> {
@@ -76,7 +76,7 @@ export class SecurityLoggerService {
       type: event.event_type,
       email: event.email,
       ip: event.ip_address,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // If Telegram is configured, send alert
@@ -84,9 +84,9 @@ export class SecurityLoggerService {
     if (telegramService) {
       await telegramService.sendAlert(
         `🚨 Security Alert: ${event.event_type}\n` +
-        `Email: ${event.email || 'N/A'}\n` +
-        `IP: ${event.ip_address}\n` +
-        `Time: ${new Date().toLocaleString()}`
+          `Email: ${event.email || 'N/A'}\n` +
+          `IP: ${event.ip_address}\n` +
+          `Time: ${new Date().toLocaleString()}`
       );
     }
   }

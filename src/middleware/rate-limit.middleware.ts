@@ -16,28 +16,28 @@ const rateLimitConfigs: Record<string, RateLimitConfig> = {
   standard: {
     points: 100,
     duration: 60, // 100 requests per minute
-    blockDuration: 60
+    blockDuration: 60,
   },
   ai: {
     points: 20,
     duration: 60, // 20 requests per minute
-    blockDuration: 120
+    blockDuration: 120,
   },
   batch: {
     points: 5,
     duration: 60, // 5 requests per minute
-    blockDuration: 300
+    blockDuration: 300,
   },
   search: {
     points: 50,
     duration: 60, // 50 requests per minute
-    blockDuration: 60
+    blockDuration: 60,
   },
   database: {
     points: 30,
     duration: 60, // 30 requests per minute for database-intensive operations
-    blockDuration: 60
-  }
+    blockDuration: 60,
+  },
 };
 
 // Initialize rate limiters
@@ -55,14 +55,14 @@ Object.entries(rateLimitConfigs).forEach(([key, config]) => {
       points: config.points,
       duration: config.duration,
       blockDuration: config.blockDuration,
-      execEvenly: false
+      execEvenly: false,
     });
   } else {
     rateLimiters[key] = new RateLimiterMemory({
       points: config.points,
       duration: config.duration,
       blockDuration: config.blockDuration,
-      execEvenly: false
+      execEvenly: false,
     });
   }
 });
@@ -83,7 +83,10 @@ export function createRateLimiter(type: keyof typeof rateLimitConfigs = 'standar
       // Set rate limit headers
       res.setHeader('X-RateLimit-Limit', config.points.toString());
       res.setHeader('X-RateLimit-Remaining', rateLimiterRes.remainingPoints.toString());
-      res.setHeader('X-RateLimit-Reset', new Date(Date.now() + rateLimiterRes.msBeforeNext).toISOString());
+      res.setHeader(
+        'X-RateLimit-Reset',
+        new Date(Date.now() + rateLimiterRes.msBeforeNext).toISOString()
+      );
 
       next();
     } catch (rejRes: any) {
@@ -100,17 +103,17 @@ export function createRateLimiter(type: keyof typeof rateLimitConfigs = 'standar
       logger.warn('Rate limit exceeded', {
         type,
         key: (req as any).user?.userId || req.ip,
-        endpoint: req.path
+        endpoint: req.path,
       });
 
       res.status(error.statusCode).json({
         error: {
           code: error.code,
           message: error.message,
-          details: error.details
+          details: error.details,
         },
         timestamp: new Date().toISOString(),
-        path: req.path
+        path: req.path,
       });
     }
   };
@@ -146,12 +149,15 @@ export function getRateLimitInfo(type: keyof typeof rateLimitConfigs = 'standard
     type,
     limit: config.points,
     window: `${config.duration} seconds`,
-    blockDuration: config.blockDuration ? `${config.blockDuration} seconds` : 'none'
+    blockDuration: config.blockDuration ? `${config.blockDuration} seconds` : 'none',
   };
 }
 
 // Export rate limit info for all types
-export const rateLimitInfo = Object.keys(rateLimitConfigs).reduce((acc, key) => {
-  acc[key] = getRateLimitInfo(key as keyof typeof rateLimitConfigs);
-  return acc;
-}, {} as Record<string, any>);
+export const rateLimitInfo = Object.keys(rateLimitConfigs).reduce(
+  (acc, key) => {
+    acc[key] = getRateLimitInfo(key as keyof typeof rateLimitConfigs);
+    return acc;
+  },
+  {} as Record<string, any>
+);

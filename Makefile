@@ -97,10 +97,39 @@ health-metrics: ## Show metrics from all services
 		echo ""; \
 	done
 
+.PHONY: dev-up
+dev-up: ## Start development environment (alias for microservices-up)
+	@$(MAKE) microservices-up
+
+.PHONY: dev-down
+dev-down: ## Stop development environment (alias for microservices-down)
+	@$(MAKE) microservices-down
+
+.PHONY: dev-logs
+dev-logs: ## Show logs from all services (alias for microservices-logs)
+	@$(MAKE) microservices-logs
+
+.PHONY: dev-refresh
+dev-refresh: ## Complete refresh of dev environment (down, rebuild, up)
+	@echo "$(GREEN)🔄 Refreshing development environment...$(NC)"
+	@docker compose down -v
+	@echo "$(YELLOW)🔨 Rebuilding containers...$(NC)"
+	@docker compose build --no-cache
+	@echo "$(GREEN)🚀 Starting fresh environment...$(NC)"
+	@docker compose up -d
+	@echo "$(YELLOW)⏳ Waiting for services to be healthy...$(NC)"
+	@sleep 10
+	@$(MAKE) health
+	@echo "$(GREEN)✅ Development environment refreshed!$(NC)"
+
+.PHONY: dev-status
+dev-status: ## Check status of all containers
+	@docker compose ps
+
 .PHONY: microservices-up
 microservices-up: ## Start microservices architecture (F1 completion)
 	@echo "$(GREEN)🚀 Starting microservices architecture...$(NC)"
-	@cd infra/compose && docker compose -f docker-compose.dev.yml up -d
+	@docker compose up -d
 	@echo "$(YELLOW)⏳ Waiting for services to be healthy...$(NC)"
 	@sleep 10
 	@$(MAKE) health
@@ -108,22 +137,22 @@ microservices-up: ## Start microservices architecture (F1 completion)
 .PHONY: microservices-down
 microservices-down: ## Stop microservices architecture
 	@echo "$(RED)🛑 Stopping microservices architecture...$(NC)"
-	@cd infra/compose && docker compose -f docker-compose.dev.yml down
+	@docker compose down
 
 .PHONY: microservices-logs
 microservices-logs: ## Show logs from all microservices
-	@cd infra/compose && docker compose -f docker-compose.dev.yml logs -f
+	@docker compose logs -f
 
 .PHONY: f1-validate
 f1-validate: ## Validate F1 (Scaffold de servicios) completion
 	@echo "$(GREEN)✅ Validating F1 - Scaffold de servicios...$(NC)"
 	@echo "$(CYAN)1. Checking Docker Compose startup...$(NC)"
-	@cd infra/compose && docker compose -f docker-compose.dev.yml up -d
+	@docker compose up -d
 	@sleep 15
 	@echo "$(CYAN)2. Checking all services respond to /health/live...$(NC)"
 	@$(MAKE) health
 	@echo "$(CYAN)3. Checking service dependencies...$(NC)"
-	@cd infra/compose && docker compose -f docker-compose.dev.yml ps
+	@docker compose ps
 	@echo "$(GREEN)✅ F1 Validation Complete!$(NC)"
 
 # =============================================================================
@@ -325,9 +354,7 @@ diagnose: ## Run system diagnostics
 fix-all: ## Fix all known issues
 	@$(MAKE) -f Makefile.troubleshooting fix-all
 
-.PHONY: health
-health: ## Complete health check
-	@$(MAKE) -f Makefile.troubleshooting health
+# Removed duplicate health target - using the one at line 63
 
 .PHONY: emergency-restart
 emergency-restart: ## Emergency restart all services

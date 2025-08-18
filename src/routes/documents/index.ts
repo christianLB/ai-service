@@ -27,7 +27,7 @@ const upload = multer({
       'image/jpeg',
       'image/png',
       'image/gif',
-      'image/bmp'
+      'image/bmp',
     ];
 
     if (allowedTypes.includes(file.mimetype)) {
@@ -35,7 +35,7 @@ const upload = multer({
     } else {
       cb(new Error(`File type ${file.mimetype} not allowed`));
     }
-  }
+  },
 });
 
 // Document upload
@@ -57,8 +57,8 @@ router.get('/health', async (req, res) => {
     data: {
       service: 'document-intelligence',
       status: 'healthy',
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   });
 });
 
@@ -130,7 +130,7 @@ router.use((error: any, req: any, res: any, _next: any) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        error: 'File too large. Maximum size is 50MB.'
+        error: 'File too large. Maximum size is 50MB.',
       });
     }
   }
@@ -138,13 +138,13 @@ router.use((error: any, req: any, res: any, _next: any) => {
   if (error.message.includes('File type')) {
     return res.status(400).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 
   return res.status(500).json({
     success: false,
-    error: 'Internal server error'
+    error: 'Internal server error',
   });
 });
 

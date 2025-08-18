@@ -4,7 +4,7 @@ import {
   ITagService,
   IEntityTaggingService,
   IAITaggingService,
-  IPatternMatchingService
+  IPatternMatchingService,
 } from './interfaces';
 import { TagService } from './tag.service';
 import { EntityTaggingService } from './entity-tagging.service';
@@ -17,19 +17,23 @@ export function createTaggingContainer(): Container {
   const container = new Container({ defaultScope: 'Singleton' });
 
   // Bind services
-  container.bind<ITagService>(TAGGING_SERVICE_IDENTIFIERS.TagService)
+  container
+    .bind<ITagService>(TAGGING_SERVICE_IDENTIFIERS.TagService)
     .to(TagService)
     .inSingletonScope();
 
-  container.bind<IAITaggingService>(TAGGING_SERVICE_IDENTIFIERS.AITaggingService)
+  container
+    .bind<IAITaggingService>(TAGGING_SERVICE_IDENTIFIERS.AITaggingService)
     .to(AITaggingService)
     .inSingletonScope();
 
-  container.bind<IPatternMatchingService>(TAGGING_SERVICE_IDENTIFIERS.PatternMatchingService)
+  container
+    .bind<IPatternMatchingService>(TAGGING_SERVICE_IDENTIFIERS.PatternMatchingService)
     .to(PatternMatchingService)
     .inSingletonScope();
 
-  container.bind<IEntityTaggingService>(TAGGING_SERVICE_IDENTIFIERS.EntityTaggingService)
+  container
+    .bind<IEntityTaggingService>(TAGGING_SERVICE_IDENTIFIERS.EntityTaggingService)
     .to(EntityTaggingService)
     .inSingletonScope();
 

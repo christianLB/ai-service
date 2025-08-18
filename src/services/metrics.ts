@@ -10,19 +10,19 @@ class MetricsService {
   private readonly workflowGenerationCounter = new Counter({
     name: 'ai_service_workflow_generations_total',
     help: 'Total number of workflow generations',
-    labelNames: ['status', 'model']
+    labelNames: ['status', 'model'],
   });
 
   private readonly workflowValidationCounter = new Counter({
     name: 'ai_service_workflow_validations_total',
     help: 'Total number of workflow validations',
-    labelNames: ['status', 'error_type']
+    labelNames: ['status', 'error_type'],
   });
 
   private readonly apiRequestCounter = new Counter({
     name: 'ai_service_api_requests_total',
     help: 'Total number of API requests',
-    labelNames: ['method', 'endpoint', 'status_code']
+    labelNames: ['method', 'endpoint', 'status_code'],
   });
 
   // Histogramas para tiempo de respuesta
@@ -30,38 +30,38 @@ class MetricsService {
     name: 'ai_service_workflow_generation_duration_seconds',
     help: 'Duration of workflow generation in seconds',
     labelNames: ['model'],
-    buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60]
+    buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60],
   });
 
   private readonly apiResponseTime = new Histogram({
     name: 'ai_service_api_response_time_seconds',
     help: 'API response time in seconds',
     labelNames: ['method', 'endpoint'],
-    buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+    buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5],
   });
 
   private readonly llmResponseTime = new Histogram({
     name: 'ai_service_llm_response_time_seconds',
     help: 'LLM response time in seconds',
     labelNames: ['provider', 'model'],
-    buckets: [0.5, 1, 2, 5, 10, 20, 30, 60]
+    buckets: [0.5, 1, 2, 5, 10, 20, 30, 60],
   });
 
   // Gauges para estado actual
   private readonly activeWorkflows = new Gauge({
     name: 'ai_service_active_workflows',
-    help: 'Number of currently active workflows'
+    help: 'Number of currently active workflows',
   });
 
   private readonly databaseConnections = new Gauge({
     name: 'ai_service_database_connections',
-    help: 'Number of active database connections'
+    help: 'Number of active database connections',
   });
 
   private readonly memoryUsage = new Gauge({
     name: 'ai_service_memory_usage_bytes',
     help: 'Memory usage in bytes',
-    labelNames: ['type']
+    labelNames: ['type'],
   });
 
   constructor() {
@@ -134,18 +134,17 @@ class MetricsService {
         metric: 'memory_usage',
         threshold: 80,
         current: memoryUsagePercent,
-        message: `Memory usage at ${memoryUsagePercent.toFixed(1)}% (${(memUsage.heapUsed / 1024 / 1024).toFixed(1)}MB / ${(memUsage.heapTotal / 1024 / 1024).toFixed(1)}MB)`
+        message: `Memory usage at ${memoryUsagePercent.toFixed(1)}% (${(memUsage.heapUsed / 1024 / 1024).toFixed(1)}MB / ${(memUsage.heapTotal / 1024 / 1024).toFixed(1)}MB)`,
       };
 
       // Log alert
       logger.warn('Resource alert:', alert);
 
       // Store alert in database
-      await db.recordMetric('resource_alerts', 1, 'counter', alert)
-        .catch(err => {
-          logger.error('Error recording resource alert:', err);
-          auditCatch('MetricsService.checkResourceAlerts', err, 'silenced');
-        });
+      await db.recordMetric('resource_alerts', 1, 'counter', alert).catch((err) => {
+        logger.error('Error recording resource alert:', err);
+        auditCatch('MetricsService.checkResourceAlerts', err, 'silenced');
+      });
 
       // Trigger notification if Telegram is configured
       try {
@@ -170,18 +169,17 @@ class MetricsService {
 
     // Persistir métricas críticas
     if (status === 'error') {
-      db.recordMetric('workflow_generation_errors', 1, 'counter', { model })
-        .catch(err => {
-          logger.error('Error recording metric to DB:', err);
-          auditCatch('MetricsService.recordWorkflowGeneration', err, 'silenced');
-        });
+      db.recordMetric('workflow_generation_errors', 1, 'counter', { model }).catch((err) => {
+        logger.error('Error recording metric to DB:', err);
+        auditCatch('MetricsService.recordWorkflowGeneration', err, 'silenced');
+      });
     }
   }
 
   recordWorkflowValidation(status: 'valid' | 'invalid', errorType?: string): void {
     this.workflowValidationCounter.inc({
       status,
-      error_type: errorType || 'none'
+      error_type: errorType || 'none',
     });
   }
 
@@ -189,21 +187,24 @@ class MetricsService {
     this.apiRequestCounter.inc({
       method: method.toUpperCase(),
       endpoint,
-      status_code: statusCode.toString()
+      status_code: statusCode.toString(),
     });
 
-    this.apiResponseTime.observe({
-      method: method.toUpperCase(),
-      endpoint
-    }, duration);
+    this.apiResponseTime.observe(
+      {
+        method: method.toUpperCase(),
+        endpoint,
+      },
+      duration
+    );
 
     // Registrar errores de API
     if (statusCode >= 400) {
       db.recordMetric('api_errors', 1, 'counter', {
         method,
         endpoint,
-        status_code: statusCode
-      }).catch(err => {
+        status_code: statusCode,
+      }).catch((err) => {
         logger.error('Error recording API error metric:', err);
         auditCatch('MetricsService.recordApiRequest', err, 'silenced');
       });
@@ -217,18 +218,17 @@ class MetricsService {
     db.recordMetric('llm_requests', 1, 'counter', {
       provider,
       model,
-      success: success.toString()
-    }).catch(err => {
+      success: success.toString(),
+    }).catch((err) => {
       logger.error('Error recording LLM metric:', err);
       auditCatch('MetricsService.recordLLMRequest', err, 'silenced');
     });
 
     if (!success) {
-      db.recordMetric('llm_errors', 1, 'counter', { provider, model })
-        .catch(err => {
-          logger.error('Error recording LLM error metric:', err);
-          auditCatch('MetricsService.recordLLMRequest-error', err, 'silenced');
-        });
+      db.recordMetric('llm_errors', 1, 'counter', { provider, model }).catch((err) => {
+        logger.error('Error recording LLM error metric:', err);
+        auditCatch('MetricsService.recordLLMRequest-error', err, 'silenced');
+      });
     }
   }
 
@@ -241,12 +241,7 @@ class MetricsService {
         const duration = (Date.now() - startTime) / 1000;
         const endpoint = this.normalizeEndpoint(req.route?.path || req.path);
 
-        this.recordApiRequest(
-          req.method,
-          endpoint,
-          res.statusCode,
-          duration
-        );
+        this.recordApiRequest(req.method, endpoint, res.statusCode, duration);
       });
 
       _next();
@@ -275,7 +270,7 @@ class MetricsService {
     const recentMetrics = await Promise.all([
       db.getMetrics('api_errors', 24),
       db.getMetrics('llm_errors', 24),
-      db.getMetrics('workflow_generation_errors', 24)
+      db.getMetrics('workflow_generation_errors', 24),
     ]);
 
     return {
@@ -284,13 +279,13 @@ class MetricsService {
       recent_errors: {
         api_errors_24h: recentMetrics[0].length,
         llm_errors_24h: recentMetrics[1].length,
-        workflow_generation_errors_24h: recentMetrics[2].length
+        workflow_generation_errors_24h: recentMetrics[2].length,
       },
       system_health: {
         database_connected: await db.healthCheck(),
         memory_usage: process.memoryUsage(),
-        uptime_seconds: process.uptime()
-      }
+        uptime_seconds: process.uptime(),
+      },
     };
   }
 
@@ -303,14 +298,14 @@ class MetricsService {
       const [apiErrors, llmErrors, genErrors] = await Promise.all([
         db.getMetrics('api_errors', 1),
         db.getMetrics('llm_errors', 1),
-        db.getMetrics('workflow_generation_errors', 1)
+        db.getMetrics('workflow_generation_errors', 1),
       ]);
 
       if (apiErrors.length > 10) {
         alerts.push({
           level: 'warning',
           message: `High API error rate: ${apiErrors.length} errors in the last hour`,
-          metric: 'api_errors'
+          metric: 'api_errors',
         });
       }
 
@@ -318,7 +313,7 @@ class MetricsService {
         alerts.push({
           level: 'critical',
           message: `LLM service issues: ${llmErrors.length} errors in the last hour`,
-          metric: 'llm_errors'
+          metric: 'llm_errors',
         });
       }
 
@@ -326,7 +321,7 @@ class MetricsService {
         alerts.push({
           level: 'warning',
           message: `Workflow generation issues: ${genErrors.length} errors in the last hour`,
-          metric: 'workflow_generation_errors'
+          metric: 'workflow_generation_errors',
         });
       }
 
@@ -338,7 +333,7 @@ class MetricsService {
         alerts.push({
           level: 'critical',
           message: `High memory usage: ${memUsagePercent.toFixed(1)}%`,
-          metric: 'memory_usage'
+          metric: 'memory_usage',
         });
       }
 
@@ -348,15 +343,14 @@ class MetricsService {
         alerts.push({
           level: 'critical',
           message: 'Database connection failed',
-          metric: 'database_health'
+          metric: 'database_health',
         });
       }
-
     } catch (error: any) {
       alerts.push({
         level: 'error',
         message: `Error checking alerts: ${error.message}`,
-        metric: 'alert_system'
+        metric: 'alert_system',
       });
     }
 
@@ -369,7 +363,7 @@ class MetricsService {
       const [apiErrors, llmMetrics, workflowMetrics] = await Promise.all([
         db.getMetrics('api_errors', hours),
         db.getMetrics('llm_requests', hours),
-        db.getMetrics('active_workflows', hours)
+        db.getMetrics('active_workflows', hours),
       ]);
 
       const stats = await db.getWorkflowStats();
@@ -381,14 +375,14 @@ class MetricsService {
           active_workflows: stats.active_workflows,
           executions_last_24h: stats.executions_last_24h,
           api_errors: apiErrors.length,
-          llm_requests: llmMetrics.length
+          llm_requests: llmMetrics.length,
         },
         system_health: {
           memory_usage: process.memoryUsage(),
           uptime_seconds: process.uptime(),
-          database_connected: await db.healthCheck()
+          database_connected: await db.healthCheck(),
         },
-        alerts: await this.checkAlerts()
+        alerts: await this.checkAlerts(),
       };
     } catch (error: any) {
       logger.error('Error generating performance report:', error.message);

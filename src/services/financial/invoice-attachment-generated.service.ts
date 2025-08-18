@@ -4,7 +4,7 @@ import {
   CreateInvoiceAttachment,
   UpdateInvoiceAttachment,
   InvoiceAttachmentQuery,
-  InvoiceAttachmentWithRelations
+  InvoiceAttachmentWithRelations,
 } from '../../types/invoice-attachment.types';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../utils/errors';
@@ -43,7 +43,10 @@ export class InvoiceAttachmentService {
         if (!search) {
           return {};
         }
-        const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(search);
+        const isUuid =
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+            search
+          );
         const or: Prisma.InvoiceAttachmentWhereInput[] = [];
         if (isUuid) {
           or.push({ id: { equals: search } });
@@ -147,7 +150,7 @@ export class InvoiceAttachmentService {
         },
       });
 
-      logger.info(`InvoiceAttachment created: ${ invoiceAttachment.id }`);
+      logger.info(`InvoiceAttachment created: ${invoiceAttachment.id}`);
       return convertDecimals(invoiceAttachment);
     } catch (error) {
       logger.error('Error in InvoiceAttachmentService.create:', error);
@@ -161,7 +164,11 @@ export class InvoiceAttachmentService {
   /**
    * Update a invoiceattachment
    */
-  async update(id: string, data: UpdateInvoiceAttachment, _userId?: string): Promise<InvoiceAttachment> {
+  async update(
+    id: string,
+    data: UpdateInvoiceAttachment,
+    _userId?: string
+  ): Promise<InvoiceAttachment> {
     try {
       // Check if exists and user has permission
       const existing = await this.getById(id, _userId);
@@ -217,7 +224,6 @@ export class InvoiceAttachmentService {
         throw new AppError('InvoiceAttachment not found', 404);
       }
 
-
       await prisma.invoiceAttachment.delete({
         where: { id },
       });
@@ -231,9 +237,6 @@ export class InvoiceAttachmentService {
       throw new AppError('Failed to delete invoiceattachment', 500);
     }
   }
-
-
-
 }
 
 // Export singleton instance

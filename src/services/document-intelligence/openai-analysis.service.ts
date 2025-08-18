@@ -1,6 +1,14 @@
 import { OpenAI } from 'openai';
 import { getOpenAIClient } from '../openai';
-import { Document, DocumentAnalysis, Entity, Topic, Sentiment, AnalysisProfile, EntityType } from '../../models/documents/types';
+import {
+  Document,
+  DocumentAnalysis,
+  Entity,
+  Topic,
+  Sentiment,
+  AnalysisProfile,
+  EntityType,
+} from '../../models/documents/types';
 import { db as DatabaseService } from '../database';
 
 export interface AnalysisOptions {
@@ -37,11 +45,14 @@ export class OpenAIAnalysisService {
       detectTopics: true,
       generateQuestions: true,
       detectSentiment: true,
-      language: 'auto'
+      language: 'auto',
     };
   }
 
-  async analyzeDocument(document: Document, options: AnalysisOptions = {}): Promise<AnalysisResult> {
+  async analyzeDocument(
+    document: Document,
+    options: AnalysisOptions = {}
+  ): Promise<AnalysisResult> {
     const startTime = Date.now();
     const profile = options.profile || this.defaultProfile;
 
@@ -87,7 +98,7 @@ export class OpenAIAnalysisService {
         questions,
         embedding,
         processingTime: Date.now() - startTime,
-        analysisProfile: profile.name
+        analysisProfile: profile.name,
       };
 
       // Store analysis in database
@@ -99,10 +110,9 @@ export class OpenAIAnalysisService {
         tokenUsage: {
           promptTokens: 0, // Would need to track this from API responses
           completionTokens: 0,
-          totalTokens: 0
-        }
+          totalTokens: 0,
+        },
       };
-
     } catch (error: any) {
       console.error('❌ Error analyzing document:', error);
       throw new Error(`Failed to analyze document: ${error.message}`);
@@ -116,7 +126,7 @@ export class OpenAIAnalysisService {
     const lengthInstructions = {
       short: 'in 2-3 sentences',
       medium: 'in 1-2 paragraphs',
-      long: 'in 3-4 paragraphs with detailed insights'
+      long: 'in 3-4 paragraphs with detailed insights',
     };
 
     const prompt = `
@@ -134,15 +144,16 @@ Summary:`;
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that creates clear, accurate summaries of documents.'
+            content:
+              'You are a helpful assistant that creates clear, accurate summaries of documents.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: length === 'short' ? 150 : length === 'medium' ? 300 : 500,
-        temperature: 0.3
+        temperature: 0.3,
       });
 
       return response.choices[0].message.content?.trim() || '';
@@ -173,15 +184,15 @@ Entities (JSON only):`;
         messages: [
           {
             role: 'system',
-            content: 'You are a precise entity extraction system. Return only valid JSON arrays.'
+            content: 'You are a precise entity extraction system. Return only valid JSON arrays.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: 800,
-        temperature: 0.1
+        temperature: 0.1,
       });
 
       const content = response.choices[0].message.content?.trim() || '[]';
@@ -190,7 +201,7 @@ Entities (JSON only):`;
       return entities.map((entity: any) => ({
         text: entity.text,
         type: this.mapEntityType(entity.type),
-        confidence: entity.confidence || 0.8
+        confidence: entity.confidence || 0.8,
       }));
     } catch (error: any) {
       console.error('❌ Error extracting entities:', error);
@@ -217,15 +228,15 @@ Topics (JSON only):`;
         messages: [
           {
             role: 'system',
-            content: 'You are a topic detection system. Return only valid JSON arrays.'
+            content: 'You are a topic detection system. Return only valid JSON arrays.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: 500,
-        temperature: 0.2
+        temperature: 0.2,
       });
 
       const content = response.choices[0].message.content?.trim() || '[]';
@@ -234,7 +245,7 @@ Topics (JSON only):`;
       return topics.map((topic: any) => ({
         name: topic.name,
         confidence: topic.confidence || 0.7,
-        keywords: topic.keywords || []
+        keywords: topic.keywords || [],
       }));
     } catch (error: any) {
       console.error('❌ Error detecting topics:', error);
@@ -261,15 +272,16 @@ Questions (JSON array only):`;
         messages: [
           {
             role: 'system',
-            content: 'You are a question generation system. Return only valid JSON arrays of strings.'
+            content:
+              'You are a question generation system. Return only valid JSON arrays of strings.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: 300,
-        temperature: 0.4
+        temperature: 0.4,
       });
 
       const content = response.choices[0].message.content?.trim() || '[]';
@@ -299,15 +311,15 @@ Sentiment (JSON only):`;
         messages: [
           {
             role: 'system',
-            content: 'You are a sentiment analysis system. Return only valid JSON.'
+            content: 'You are a sentiment analysis system. Return only valid JSON.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: 100,
-        temperature: 0.1
+        temperature: 0.1,
       });
 
       const content = response.choices[0].message.content?.trim() || '[]';
@@ -325,7 +337,7 @@ Sentiment (JSON only):`;
     try {
       const response = await this.openai.embeddings.create({
         model: 'text-embedding-3-small',
-        input: text.substring(0, 8000) // Limit input length
+        input: text.substring(0, 8000), // Limit input length
       });
 
       return response.data[0].embedding;
@@ -355,18 +367,22 @@ Answer:`;
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that answers questions based on provided context.'
+            content:
+              'You are a helpful assistant that answers questions based on provided context.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: 300,
-        temperature: 0.3
+        temperature: 0.3,
       });
 
-      return response.choices[0].message.content?.trim() || 'I could not find an answer in the provided context.';
+      return (
+        response.choices[0].message.content?.trim() ||
+        'I could not find an answer in the provided context.'
+      );
     } catch (error: any) {
       console.error('❌ Error answering question:', error);
       throw new Error(`Failed to answer question: ${error.message}`);
@@ -382,14 +398,17 @@ Answer:`;
       const client = await this.database.pool.connect();
 
       try {
-        const result = await client.query(`
+        const result = await client.query(
+          `
           SELECT *, 
                  (analysis->>'embedding')::jsonb <=> $1::jsonb as distance
           FROM documents.documents 
           WHERE analysis->>'embedding' IS NOT NULL
           ORDER BY distance ASC
           LIMIT $2
-        `, [JSON.stringify(queryEmbedding), limit]);
+        `,
+          [JSON.stringify(queryEmbedding), limit]
+        );
 
         return result.rows.map((row: any) => ({
           id: row.id,
@@ -400,7 +419,7 @@ Answer:`;
           metadata: row.metadata,
           analysis: row.analysis,
           createdAt: row.created_at,
-          updatedAt: row.updated_at
+          updatedAt: row.updated_at,
         }));
       } finally {
         client.release();
@@ -422,7 +441,7 @@ Answer:`;
       email: EntityType.EMAIL,
       url: EntityType.URL,
       product: EntityType.PRODUCT,
-      event: EntityType.EVENT
+      event: EntityType.EVENT,
     };
 
     return typeMap[type.toLowerCase()] || EntityType.OTHER;
@@ -432,11 +451,14 @@ Answer:`;
     const client = await this.database.pool.connect();
 
     try {
-      await client.query(`
+      await client.query(
+        `
         UPDATE documents.documents 
         SET analysis = $1, updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
-      `, [JSON.stringify(analysis), documentId]);
+      `,
+        [JSON.stringify(analysis), documentId]
+      );
     } finally {
       client.release();
     }
@@ -469,7 +491,7 @@ Answer:`;
         totalDocuments: parseInt(totalResult.rows[0].total),
         analyzedDocuments: parseInt(analyzedResult.rows[0].analyzed),
         averageProcessingTime: parseFloat(avgTimeResult.rows[0].avg_time) || 0,
-        topTopics: [] // Would need more complex query to aggregate topics
+        topTopics: [], // Would need more complex query to aggregate topics
       };
     } finally {
       client.release();

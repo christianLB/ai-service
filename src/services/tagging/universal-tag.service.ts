@@ -4,7 +4,7 @@ import {
   CreateUniversalTag,
   UpdateUniversalTag,
   UniversalTagQuery,
-  UniversalTagWithRelations
+  UniversalTagWithRelations,
 } from '../../types/universal-tag.types';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../utils/errors';
@@ -118,14 +118,13 @@ export class UniversalTagService {
    */
   async create(data: CreateUniversalTag, userId?: string): Promise<UniversalTag> {
     try {
-
       const universalTag = await prisma.universalTag.create({
         data: {
           ...data,
         },
       });
 
-      logger.info(`UniversalTag created: ${ universalTag.id }`);
+      logger.info(`UniversalTag created: ${universalTag.id}`);
       return convertDecimals(universalTag);
     } catch (error) {
       logger.error('Error in UniversalTagService.create:', error);
@@ -177,7 +176,6 @@ export class UniversalTagService {
         throw new AppError('UniversalTag not found', 404);
       }
 
-
       await prisma.universalTag.delete({
         where: { id },
       });
@@ -191,9 +189,6 @@ export class UniversalTagService {
       throw new AppError('Failed to delete universaltag', 500);
     }
   }
-
-
-
 }
 
 // Export singleton instance

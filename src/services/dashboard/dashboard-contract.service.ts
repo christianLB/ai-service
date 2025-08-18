@@ -11,7 +11,7 @@ import {
   CashFlowProjections,
   SyncStatus,
   AccountStatus,
-  QuickStats
+  QuickStats,
 } from '../../../packages/contracts/src/schemas/dashboard';
 import { z } from 'zod';
 
@@ -34,11 +34,11 @@ export class DashboardContractService {
         invoices: {
           some: {
             createdAt: {
-              gte: thirtyDaysAgo
-            }
-          }
-        }
-      }
+              gte: thirtyDaysAgo,
+            },
+          },
+        },
+      },
     });
 
     // Get new clients this month
@@ -49,9 +49,9 @@ export class DashboardContractService {
     const newThisMonth = await this.prisma.client.count({
       where: {
         createdAt: {
-          gte: startOfMonth
-        }
-      }
+          gte: startOfMonth,
+        },
+      },
     });
 
     // Get top clients by revenue
@@ -62,29 +62,29 @@ export class DashboardContractService {
         name: true,
         invoices: {
           select: {
-            total: true
-          }
-        }
+            total: true,
+          },
+        },
       },
       orderBy: {
         invoices: {
-          _count: 'desc'
-        }
-      }
+          _count: 'desc',
+        },
+      },
     });
 
-    const topClients = topClientsData.map(client => ({
+    const topClients = topClientsData.map((client) => ({
       id: client.id,
       name: client.name,
       revenue: client.invoices.reduce((sum, inv) => sum + (inv.total?.toNumber() || 0), 0),
-      invoiceCount: client.invoices.length
+      invoiceCount: client.invoices.length,
     }));
 
     return {
       totalClients,
       activeClients,
       newThisMonth,
-      topClients
+      topClients,
     };
   }
 
@@ -101,13 +101,13 @@ export class DashboardContractService {
     const currentMonthRevenue = await this.prisma.invoice.aggregate({
       where: {
         createdAt: {
-          gte: currentMonth
+          gte: currentMonth,
         },
-        status: 'paid'
+        status: 'paid',
       },
       _sum: {
-        total: true
-      }
+        total: true,
+      },
     });
 
     // Previous month revenue
@@ -115,26 +115,26 @@ export class DashboardContractService {
       where: {
         createdAt: {
           gte: previousMonth,
-          lt: currentMonth
+          lt: currentMonth,
         },
-        status: 'paid'
+        status: 'paid',
       },
       _sum: {
-        total: true
-      }
+        total: true,
+      },
     });
 
     // Year to date revenue
     const yearToDateRevenue = await this.prisma.invoice.aggregate({
       where: {
         createdAt: {
-          gte: startOfYear
+          gte: startOfYear,
         },
-        status: 'paid'
+        status: 'paid',
       },
       _sum: {
-        total: true
-      }
+        total: true,
+      },
     });
 
     const current = currentMonthRevenue._sum?.total?.toNumber() || 0;
@@ -153,22 +153,22 @@ export class DashboardContractService {
         where: {
           createdAt: {
             gte: monthStart,
-            lt: monthEnd
+            lt: monthEnd,
           },
-          status: 'paid'
+          status: 'paid',
         },
         _sum: {
-          total: true
+          total: true,
         },
         _count: {
-          id: true
-        }
+          id: true,
+        },
       });
 
       monthlyData.push({
         month: monthStart.toLocaleDateString('es-ES', { month: 'short' }),
         revenue: monthData._sum?.total?.toNumber() || 0,
-        invoices: monthData._count?.id || 0
+        invoices: monthData._count?.id || 0,
       });
     }
 
@@ -177,7 +177,7 @@ export class DashboardContractService {
       previousMonth: previous,
       yearToDate: ytd,
       growthRate,
-      monthlyData
+      monthlyData,
     };
   }
 
@@ -189,21 +189,21 @@ export class DashboardContractService {
       // Total invoices
       this.prisma.invoice.aggregate({
         _count: { id: true },
-        _sum: { total: true }
+        _sum: { total: true },
       }),
 
       // Pending invoices
       this.prisma.invoice.aggregate({
         where: { status: 'pending' },
         _count: { id: true },
-        _sum: { total: true }
+        _sum: { total: true },
       }),
 
       // Paid invoices
       this.prisma.invoice.aggregate({
         where: { status: 'paid' },
         _count: { id: true },
-        _sum: { total: true }
+        _sum: { total: true },
       }),
 
       // Overdue invoices
@@ -211,12 +211,12 @@ export class DashboardContractService {
         where: {
           status: 'pending',
           dueDate: {
-            lt: new Date()
-          }
+            lt: new Date(),
+          },
         },
         _count: { id: true },
-        _sum: { total: true }
-      })
+        _sum: { total: true },
+      }),
     ]);
 
     return {
@@ -227,7 +227,7 @@ export class DashboardContractService {
       totalAmount: total._sum.total?.toNumber() || 0,
       pendingAmount: pending._sum.total?.toNumber() || 0,
       paidAmount: paid._sum.total?.toNumber() || 0,
-      overdueAmount: overdue._sum.total?.toNumber() || 0
+      overdueAmount: overdue._sum.total?.toNumber() || 0,
     };
   }
 
@@ -238,19 +238,20 @@ export class DashboardContractService {
     // Simple projection based on pending invoices
     const pendingInvoices = await this.prisma.invoice.findMany({
       where: {
-        status: 'pending'
+        status: 'pending',
       },
       select: {
         total: true,
-        dueDate: true
-      }
+        dueDate: true,
+      },
     });
 
-    const projections = pendingInvoices.map(invoice => ({
-      month: invoice.dueDate?.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }) || 'N/A',
+    const projections = pendingInvoices.map((invoice) => ({
+      month:
+        invoice.dueDate?.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }) || 'N/A',
       income: invoice.total?.toNumber() || 0,
       expenses: 0, // TODO: Add expense tracking
-      balance: invoice.total?.toNumber() || 0
+      balance: invoice.total?.toNumber() || 0,
     }));
 
     const totalIncome = projections.reduce((sum, p) => sum + p.income, 0);
@@ -261,8 +262,8 @@ export class DashboardContractService {
       summary: {
         totalIncome,
         totalExpenses,
-        netCashFlow: totalIncome - totalExpenses
-      }
+        netCashFlow: totalIncome - totalExpenses,
+      },
     };
   }
 
@@ -275,14 +276,14 @@ export class DashboardContractService {
       scheduler: {
         isActive: false,
         nextSync: '',
-        lastSync: ''
+        lastSync: '',
       },
       stats: {
         totalSyncs: 0,
         successfulSyncs: 0,
         failedSyncs: 0,
-        averageSyncTime: 0
-      }
+        averageSyncTime: 0,
+      },
     };
   }
 
@@ -294,7 +295,7 @@ export class DashboardContractService {
     return {
       accounts: [],
       totalAccounts: 0,
-      activeAccounts: 0
+      activeAccounts: 0,
     };
   }
 
@@ -314,17 +315,17 @@ export class DashboardContractService {
       this.prisma.invoice.aggregate({
         where: {
           createdAt: { gte: currentMonth },
-          status: 'paid'
+          status: 'paid',
         },
-        _sum: { total: true }
+        _sum: { total: true },
       }),
       this.prisma.invoice.aggregate({
         where: {
           createdAt: { gte: previousMonth, lt: currentMonth },
-          status: 'paid'
+          status: 'paid',
         },
-        _sum: { total: true }
-      })
+        _sum: { total: true },
+      }),
     ]);
 
     const current = currentRevenue._sum.total?.toNumber() || 0;
@@ -338,9 +339,9 @@ export class DashboardContractService {
       this.prisma.invoice.count({
         where: {
           status: 'pending',
-          dueDate: { lt: new Date() }
-        }
-      })
+          dueDate: { lt: new Date() },
+        },
+      }),
     ]);
 
     // Get client stats
@@ -350,34 +351,34 @@ export class DashboardContractService {
         where: {
           invoices: {
             some: {
-              createdAt: { gte: currentMonth }
-            }
-          }
-        }
+              createdAt: { gte: currentMonth },
+            },
+          },
+        },
       }),
       this.prisma.client.count({
         where: {
-          createdAt: { gte: currentMonth }
-        }
-      })
+          createdAt: { gte: currentMonth },
+        },
+      }),
     ]);
 
     return {
       revenue: {
         current,
         previous,
-        change
+        change,
       },
       invoices: {
         total: totalInvoices,
         pending: pendingInvoices,
-        overdue: overdueInvoices
+        overdue: overdueInvoices,
       },
       clients: {
         total: totalClients,
         active: activeClients,
-        new: newClients
-      }
+        new: newClients,
+      },
     };
   }
 }

@@ -4,7 +4,7 @@ import {
   ClientTransactionLink,
   TransactionMatchingPattern,
   UnlinkedTransaction,
-  ClientTransactionSummary
+  ClientTransactionSummary,
 } from '../../models/financial/client-transaction.model';
 
 export class TransactionMatchingService {
@@ -16,7 +16,7 @@ export class TransactionMatchingService {
   async getUnlinkedTransactions(
     limit: number = 100,
     offset: number = 0
-  ): Promise<{ transactions: UnlinkedTransaction[], total: number }> {
+  ): Promise<{ transactions: UnlinkedTransaction[]; total: number }> {
     try {
       // Get count
       const countQuery = `
@@ -60,7 +60,7 @@ export class TransactionMatchingService {
           const potentialMatches = await this.findPotentialMatches(row);
           return {
             ...row,
-            potentialMatches
+            potentialMatches,
           };
         })
       );
@@ -91,13 +91,13 @@ export class TransactionMatchingService {
 
       const refResult = await this.pool.query(refQuery, [transaction.reference]);
 
-      refResult.rows.forEach(client => {
+      refResult.rows.forEach((client) => {
         matches.push({
           clientId: client.id,
           clientName: client.business_name || client.name,
           confidence: 0.95,
           matchType: 'reference',
-          reason: 'Reference match'
+          reason: 'Reference match',
         });
       });
     }
@@ -121,14 +121,14 @@ export class TransactionMatchingService {
 
       const nameResult = await this.pool.query(nameQuery, [transaction.counterparty_name]);
 
-      nameResult.rows.forEach(client => {
+      nameResult.rows.forEach((client) => {
         if (client.score > 0.3) {
           matches.push({
             clientId: client.id,
             clientName: client.business_name || client.name,
             confidence: client.score,
             matchType: 'fuzzy',
-            reason: `Name similarity: ${(client.score * 100).toFixed(0)}%`
+            reason: `Name similarity: ${(client.score * 100).toFixed(0)}%`,
           });
         }
       });
@@ -161,16 +161,16 @@ export class TransactionMatchingService {
       const patternResult = await this.pool.query(patternQuery, [
         transaction.amount,
         transaction.description || '',
-        transaction.reference || ''
+        transaction.reference || '',
       ]);
 
-      patternResult.rows.forEach(pattern => {
+      patternResult.rows.forEach((pattern) => {
         matches.push({
           clientId: pattern.client_id,
           clientName: pattern.business_name || pattern.name,
           confidence: pattern.confidence,
           matchType: 'pattern',
-          reason: `Pattern match: ${pattern.pattern_type}`
+          reason: `Pattern match: ${pattern.pattern_type}`,
         });
       });
     }
@@ -246,7 +246,7 @@ export class TransactionMatchingService {
         userId,
         previousLinkId !== null,
         previousLinkId,
-        notes
+        notes,
       ]);
 
       await client.query('COMMIT');
@@ -267,9 +267,9 @@ export class TransactionMatchingService {
    * Run automatic matching for unlinked transactions
    */
   async runAutoMatching(transactionIds?: string[]): Promise<{
-    matched: number,
-    processed: number,
-    results: Array<{ transactionId: string, clientId: string, confidence: number }>
+    matched: number;
+    processed: number;
+    results: Array<{ transactionId: string; clientId: string; confidence: number }>;
   }> {
     const client = await this.pool.connect();
     const results: any[] = [];
@@ -345,17 +345,19 @@ export class TransactionMatchingService {
             match.clientId,
             match.matchType,
             match.confidence,
-            JSON.stringify(match.criteria)
+            JSON.stringify(match.criteria),
           ]);
 
           matched++;
           results.push({
             transactionId: tx.id,
             clientId: match.clientId,
-            confidence: match.confidence
+            confidence: match.confidence,
           });
 
-          logger.info(`Auto-matched transaction ${tx.id} to client ${match.clientId} with confidence ${match.confidence}`);
+          logger.info(
+            `Auto-matched transaction ${tx.id} to client ${match.clientId} with confidence ${match.confidence}`
+          );
         }
       }
 
@@ -374,10 +376,7 @@ export class TransactionMatchingService {
   /**
    * Find the best match for a transaction
    */
-  private async findBestMatch(
-    transaction: any,
-    client: any
-  ): Promise<any | null> {
+  private async findBestMatch(transaction: any, client: any): Promise<any | null> {
     let bestMatch: any = null;
     let highestConfidence = 0;
 
@@ -398,7 +397,7 @@ export class TransactionMatchingService {
           clientId: refResult.rows[0].id,
           matchType: 'automatic',
           confidence: 0.95,
-          criteria: { reference: true }
+          criteria: { reference: true },
         };
       }
     }
@@ -425,7 +424,7 @@ export class TransactionMatchingService {
     const patternResult = await client.query(patternQuery, [
       transaction.amount,
       transaction.description || '',
-      transaction.reference || ''
+      transaction.reference || '',
     ]);
 
     if (patternResult.rows.length > 0) {
@@ -435,7 +434,7 @@ export class TransactionMatchingService {
           clientId: pattern.client_id,
           matchType: 'pattern',
           confidence: pattern.confidence,
-          criteria: { pattern: pattern.pattern_type }
+          criteria: { pattern: pattern.pattern_type },
         };
         highestConfidence = pattern.confidence;
       }
@@ -466,7 +465,7 @@ export class TransactionMatchingService {
           clientId: nameResult.rows[0].id,
           matchType: 'fuzzy',
           confidence: nameResult.rows[0].score,
-          criteria: { clientName: true }
+          criteria: { clientName: true },
         };
       }
     }
@@ -477,11 +476,7 @@ export class TransactionMatchingService {
   /**
    * Get client transaction history
    */
-  async getClientTransactions(
-    clientId: string,
-    startDate?: Date,
-    endDate?: Date
-  ): Promise<any[]> {
+  async getClientTransactions(clientId: string, startDate?: Date, endDate?: Date): Promise<any[]> {
     try {
       const query = `
         SELECT 
@@ -579,7 +574,7 @@ export class TransactionMatchingService {
         fuzzyMatches: parseInt(row.fuzzy_matches),
         averageConfidence: parseFloat(row.average_confidence || 0),
         lowConfidenceMatches: parseInt(row.low_confidence_matches),
-        highConfidenceMatches: parseInt(row.high_confidence_matches)
+        highConfidenceMatches: parseInt(row.high_confidence_matches),
       };
     } catch (error) {
       logger.error('Failed to get client transaction summary:', error);
@@ -590,7 +585,9 @@ export class TransactionMatchingService {
   /**
    * Create or update a matching pattern
    */
-  async createMatchingPattern(pattern: Partial<TransactionMatchingPattern>): Promise<TransactionMatchingPattern> {
+  async createMatchingPattern(
+    pattern: Partial<TransactionMatchingPattern>
+  ): Promise<TransactionMatchingPattern> {
     try {
       const query = `
         INSERT INTO financial.transaction_matching_patterns (
@@ -616,7 +613,7 @@ export class TransactionMatchingService {
         pattern.amountMax,
         pattern.dayOfMonth,
         pattern.frequency,
-        pattern.isActive !== false
+        pattern.isActive !== false,
       ]);
 
       return result.rows[0];

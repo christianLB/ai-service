@@ -51,7 +51,7 @@ export class WebSocketService {
     this.io.on('connection', (socket: AuthenticatedSocket) => {
       logger.info('WebSocket client connected', {
         socketId: socket.id,
-        userId: socket.userId
+        userId: socket.userId,
       });
 
       // Store client connection
@@ -71,7 +71,7 @@ export class WebSocketService {
       socket.on('disconnect', () => {
         logger.info('WebSocket client disconnected', {
           socketId: socket.id,
-          userId: socket.userId
+          userId: socket.userId,
         });
 
         if (socket.userId) {
@@ -93,7 +93,7 @@ export class WebSocketService {
 
   // Send notification to multiple users
   public sendToUsers(userIds: string[], event: string, data: any): void {
-    userIds.forEach(userId => {
+    userIds.forEach((userId) => {
       this.sendToUser(userId, event, data);
     });
   }
@@ -117,12 +117,15 @@ export class WebSocketService {
     });
   }
 
-  public notifySyncCompleted(userId: string, result: {
-    accountId?: string;
-    newTransactions: number;
-    updatedBalances: boolean;
-    errors?: string[];
-  }): void {
+  public notifySyncCompleted(
+    userId: string,
+    result: {
+      accountId?: string;
+      newTransactions: number;
+      updatedBalances: boolean;
+      errors?: string[];
+    }
+  ): void {
     this.sendToUser(userId, 'financial:sync:completed', {
       type: 'sync_completed',
       ...result,
@@ -130,14 +133,17 @@ export class WebSocketService {
     });
   }
 
-  public notifyTransactionReceived(userId: string, transaction: {
-    id: string;
-    amount: number;
-    currency: string;
-    description: string;
-    counterpartyName?: string;
-    date: string;
-  }): void {
+  public notifyTransactionReceived(
+    userId: string,
+    transaction: {
+      id: string;
+      amount: number;
+      currency: string;
+      description: string;
+      counterpartyName?: string;
+      date: string;
+    }
+  ): void {
     this.sendToUser(userId, 'financial:transaction:new', {
       type: 'new_transaction',
       transaction,
@@ -145,13 +151,16 @@ export class WebSocketService {
     });
   }
 
-  public notifyBalanceAlert(userId: string, alert: {
-    accountId: string;
-    accountName: string;
-    currentBalance: number;
-    threshold: number;
-    type: 'low_balance' | 'negative_balance';
-  }): void {
+  public notifyBalanceAlert(
+    userId: string,
+    alert: {
+      accountId: string;
+      accountName: string;
+      currentBalance: number;
+      threshold: number;
+      type: 'low_balance' | 'negative_balance';
+    }
+  ): void {
     this.sendToUser(userId, 'financial:balance:alert', {
       type: 'balance_alert',
       alert,
@@ -159,11 +168,14 @@ export class WebSocketService {
     });
   }
 
-  public notifyError(userId: string, error: {
-    type: string;
-    message: string;
-    details?: any;
-  }): void {
+  public notifyError(
+    userId: string,
+    error: {
+      type: string;
+      message: string;
+      details?: any;
+    }
+  ): void {
     this.sendToUser(userId, 'system:error', {
       type: 'error',
       error,

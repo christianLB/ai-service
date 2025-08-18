@@ -193,9 +193,7 @@ export class NeuralOrchestrator {
 
   registerComponent(component: NeuralComponent): void {
     this.components.set(component.id, component);
-    logger.info(
-      `🧠 Neural component registered: ${component.name} (${component.type})`
-    );
+    logger.info(`🧠 Neural component registered: ${component.name} (${component.type})`);
   }
 
   async startMonitoring(): Promise<void> {
@@ -261,9 +259,7 @@ export class NeuralOrchestrator {
     }
   }
 
-  private async checkComponentHealth(
-    component: NeuralComponent
-  ): Promise<void> {
+  private async checkComponentHealth(component: NeuralComponent): Promise<void> {
     try {
       if (component.healthCheckFn) {
         const isHealthy = await component.healthCheckFn();
@@ -288,14 +284,9 @@ export class NeuralOrchestrator {
     } catch (error: any) {
       component.errorCount++;
       component.status =
-        component.errorCount >= this.MAX_ERROR_COUNT
-          ? HealthStatus.OFFLINE
-          : HealthStatus.CRITICAL;
+        component.errorCount >= this.MAX_ERROR_COUNT ? HealthStatus.OFFLINE : HealthStatus.CRITICAL;
 
-      logger.warn(
-        `⚠️ Health check failed for ${component.name}:`,
-        error.message
-      );
+      logger.warn(`⚠️ Health check failed for ${component.name}:`, error.message);
     }
   }
 
@@ -309,17 +300,13 @@ export class NeuralOrchestrator {
     );
 
     // Check if any core component is offline
-    const coreOffline = coreComponents.some(
-      (c) => c.status === HealthStatus.OFFLINE
-    );
+    const coreOffline = coreComponents.some((c) => c.status === HealthStatus.OFFLINE);
     if (coreOffline) {
       return OperationMode.EMERGENCY;
     }
 
     // Check if any core component is critical
-    const coreCritical = coreComponents.some(
-      (c) => c.status === HealthStatus.CRITICAL
-    );
+    const coreCritical = coreComponents.some((c) => c.status === HealthStatus.CRITICAL);
     if (coreCritical) {
       return OperationMode.CRITICAL;
     }
@@ -348,15 +335,9 @@ export class NeuralOrchestrator {
   private determineOverallHealth(): HealthStatus {
     const components = Array.from(this.components.values());
 
-    const offlineCount = components.filter(
-      (c) => c.status === HealthStatus.OFFLINE
-    ).length;
-    const criticalCount = components.filter(
-      (c) => c.status === HealthStatus.CRITICAL
-    ).length;
-    const degradedCount = components.filter(
-      (c) => c.status === HealthStatus.DEGRADED
-    ).length;
+    const offlineCount = components.filter((c) => c.status === HealthStatus.OFFLINE).length;
+    const criticalCount = components.filter((c) => c.status === HealthStatus.CRITICAL).length;
+    const degradedCount = components.filter((c) => c.status === HealthStatus.DEGRADED).length;
 
     if (offlineCount > 0) {
       return HealthStatus.CRITICAL;
@@ -371,10 +352,7 @@ export class NeuralOrchestrator {
     return HealthStatus.OPTIMAL;
   }
 
-  private async adaptToConditions(
-    newMode: OperationMode,
-    newHealth: HealthStatus
-  ): Promise<void> {
+  private async adaptToConditions(newMode: OperationMode, newHealth: HealthStatus): Promise<void> {
     const previousMode = this.systemState.mode;
 
     // Record adaptation event
@@ -417,18 +395,12 @@ export class NeuralOrchestrator {
       .map((c) => c.id);
   }
 
-  private generateAdaptationDescription(
-    from: OperationMode,
-    to: OperationMode
-  ): string {
+  private generateAdaptationDescription(from: OperationMode, to: OperationMode): string {
     const descriptions = {
       [OperationMode.COMPLETE]: 'Sistema neuronal en capacidad completa',
-      [OperationMode.ESSENTIAL]:
-        'Sistema neuronal en modo esencial - funcionalidades básicas',
-      [OperationMode.CRITICAL]:
-        'Sistema neuronal en modo crítico - solo funciones vitales',
-      [OperationMode.EMERGENCY]:
-        'Sistema neuronal en emergencia - modo supervivencia',
+      [OperationMode.ESSENTIAL]: 'Sistema neuronal en modo esencial - funcionalidades básicas',
+      [OperationMode.CRITICAL]: 'Sistema neuronal en modo crítico - solo funciones vitales',
+      [OperationMode.EMERGENCY]: 'Sistema neuronal en emergencia - modo supervivencia',
     };
 
     return `${descriptions[from]} → ${descriptions[to]}`;
@@ -436,19 +408,11 @@ export class NeuralOrchestrator {
 
   private updateComponentLists(): void {
     this.systemState.activeHemispheres = Array.from(this.components.values())
-      .filter(
-        (c) =>
-          c.type === ComponentType.HEMISPHERE &&
-          c.status !== HealthStatus.OFFLINE
-      )
+      .filter((c) => c.type === ComponentType.HEMISPHERE && c.status !== HealthStatus.OFFLINE)
       .map((c) => c.id);
 
     this.systemState.offlineExtremities = Array.from(this.components.values())
-      .filter(
-        (c) =>
-          c.type === ComponentType.EXTREMITY &&
-          c.status === HealthStatus.OFFLINE
-      )
+      .filter((c) => c.type === ComponentType.EXTREMITY && c.status === HealthStatus.OFFLINE)
       .map((c) => c.id);
   }
 
@@ -519,9 +483,7 @@ export class NeuralOrchestrator {
     try {
       // Check if workflow tables exist
       const client = await db.pool.connect();
-      await client.query(
-        "SELECT 1 FROM information_schema.tables WHERE table_name = 'workflows'"
-      );
+      await client.query("SELECT 1 FROM information_schema.tables WHERE table_name = 'workflows'");
       client.release();
       return true;
     } catch {
@@ -556,11 +518,11 @@ export class NeuralOrchestrator {
       const { integrationConfigService } = await import('./integrations');
       const secretId = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
-        configKey: 'secret_id'
+        configKey: 'secret_id',
       });
       const secretKey = await integrationConfigService.getConfig({
         integrationType: 'gocardless',
-        configKey: 'secret_key'
+        configKey: 'secret_key',
       });
       return !!(secretId && secretKey);
     } catch (error) {

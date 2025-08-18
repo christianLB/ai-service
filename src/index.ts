@@ -27,13 +27,12 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { csrfProtection, csrfErrorHandler, sendCSRFToken } from './middleware/csrf';
 import { standardRateLimit } from './middleware/express-rate-limit.middleware';
-import { setupOpenApiValidation } from './middleware/openapi-validator';
+import { applyOpenApiValidation } from './middleware/openapi-validator';
 import { createAuthRoutes } from './routes/auth/auth.routes';
 import flowGen from './routes/flow-gen';
 import flowUpdate from './routes/flow-update';
 import flowTest from './routes/flow-test';
-// import financialRoutes from './routes/financial';
-import financialTypedRoutes from './routes/financial-typed';
+import financialRoutes from './routes/financial';
 import versionRoutes from './routes/version';
 import telegramRoutes from './routes/telegram';
 import documentRoutes from './routes/documents';
@@ -108,7 +107,7 @@ app.use(csrfProtection);
 
 // OpenAPI validation middleware - validates requests/responses against OpenAPI specs
 // This ensures contract compliance and type safety
-setupOpenApiValidation(app);
+applyOpenApiValidation(app);
 
 // Middleware de métricas (debe ir antes de las rutas)
 app.use(metricsService.createApiMetricsMiddleware());
@@ -282,9 +281,7 @@ app.use('/api', flowUpdate);
 app.use('/api', flowTest);
 // Use typed financial routes for contract compliance (Single Source of Truth)
 // The typed routes ensure all requests/responses match OpenAPI specifications
-app.use('/api/financial', financialTypedRoutes);
-// Legacy financial routes (to be deprecated)
-// app.use('/api/financial', financialRoutes);
+app.use('/api/financial', financialRoutes);
 
 // const cryptoRoutes = createCryptoRoutes(db.pool);
 

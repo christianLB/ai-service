@@ -16,7 +16,7 @@ const OPENAPI_SPECS_DIR = join(__dirname, '../../openapi');
  */
 export function createOpenApiValidator(serviceName: string) {
   const specPath = join(OPENAPI_SPECS_DIR, `${serviceName}.yaml`);
-  
+
   if (!existsSync(specPath)) {
     console.warn(`OpenAPI spec not found for service: ${serviceName} at ${specPath}`);
     // Return a no-op middleware if spec doesn't exist
@@ -56,7 +56,8 @@ export function createOpenApiValidator(serviceName: string) {
         name: 'uuid',
         type: 'string',
         validate: (value: string) => {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          const uuidRegex =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
           return uuidRegex.test(value);
         },
       },
@@ -71,12 +72,7 @@ export function createOpenApiValidator(serviceName: string) {
 /**
  * Global error handler for OpenAPI validation errors
  */
-export function openApiErrorHandler(
-  err: unknown,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+export function openApiErrorHandler(err: unknown, req: Request, res: Response, next: NextFunction) {
   // Check if this is an OpenAPI validation error
   const error = err as any;
   if (error.status === 400 && error.errors) {
@@ -137,22 +133,22 @@ export function applyOpenApiValidation(app: Express.Application) {
 
   // Apply validators to specific route prefixes
   // These will be applied before the actual route handlers
-  
+
   // Financial routes
   app.use('/api/financial', validators.financial);
-  
+
   // Trading routes
   app.use('/api/trading', validators.trading);
-  
+
   // Auth routes
   app.use('/api/auth', validators.auth);
-  
+
   // AI Core routes
   app.use('/api/ai', validators.aiCore);
-  
+
   // Communication routes
   app.use('/api/comm', validators.comm);
-  
+
   // Gateway routes (catch-all for remaining)
   app.use('/api', validators.gateway);
 
@@ -165,7 +161,7 @@ export function applyOpenApiValidation(app: Express.Application) {
  */
 export function skipValidation(paths: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (paths.some(path => req.path.startsWith(path))) {
+    if (paths.some((path) => req.path.startsWith(path))) {
       // Skip validation by removing the OpenAPI validation context
       const reqWithOpenApi = req as any;
       reqWithOpenApi.openapi = undefined;

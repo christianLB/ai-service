@@ -5,7 +5,7 @@ import type {
   InvoiceTemplateWithRelations,
   CreateInvoiceTemplate,
   UpdateInvoiceTemplate,
-  InvoiceTemplateQuery
+  InvoiceTemplateQuery,
 } from '../types/invoice-template.types';
 import { AppError } from '../utils/errors';
 import logger from '../utils/logger';
@@ -93,7 +93,6 @@ export class InvoiceTemplateService {
    */
   async create(data: CreateInvoiceTemplate, userId?: string): Promise<InvoiceTemplate> {
     try {
-
       const invoiceTemplate = await prisma.invoiceTemplate.create({
         data: {
           ...data,
@@ -101,7 +100,7 @@ export class InvoiceTemplateService {
         },
       });
 
-      logger.info(`InvoiceTemplate created: ${ invoiceTemplate.id }`);
+      logger.info(`InvoiceTemplate created: ${invoiceTemplate.id}`);
       return invoiceTemplate;
     } catch (error) {
       logger.error('Error in InvoiceTemplateService.create:', error);

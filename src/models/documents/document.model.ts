@@ -1,4 +1,11 @@
-import { Document, DocumentAnalysis, DocumentContent, DocumentMetadata, DocumentType, FileFormat } from './types';
+import {
+  Document,
+  DocumentAnalysis,
+  DocumentContent,
+  DocumentMetadata,
+  DocumentType,
+  FileFormat,
+} from './types';
 
 export class DocumentModel {
   constructor(
@@ -37,7 +44,7 @@ export class DocumentModel {
       metadata: this.metadata,
       analysis: this.analysis,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
     };
   }
 
@@ -58,7 +65,7 @@ export class DocumentModel {
 
   removeTag(tag: string): void {
     if (this.metadata.tags) {
-      this.metadata.tags = this.metadata.tags.filter(t => t !== tag);
+      this.metadata.tags = this.metadata.tags.filter((t) => t !== tag);
       this.updatedAt = new Date();
     }
   }
@@ -122,7 +129,7 @@ export class DocumentModel {
       [DocumentType.PRESENTATION]: '📽️',
       [DocumentType.MANUAL]: '📖',
       [DocumentType.EMAIL]: '📧',
-      [DocumentType.OTHER]: '📄'
+      [DocumentType.OTHER]: '📄',
     };
 
     return iconMap[this.type] || '📄';
@@ -140,7 +147,7 @@ export class DocumentModel {
       [FileFormat.CSV]: '📊',
       [FileFormat.XLSX]: '📊',
       [FileFormat.PPTX]: '📽️',
-      [FileFormat.IMAGE]: '🖼️'
+      [FileFormat.IMAGE]: '🖼️',
     };
 
     return iconMap[this.format] || '📄';
@@ -167,7 +174,7 @@ export class DocumentModel {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }

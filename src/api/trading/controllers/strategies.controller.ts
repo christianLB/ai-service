@@ -18,22 +18,36 @@ class StrategiesController {
             slowMA: 50,
             rsiPeriod: 14,
             stopLoss: 2,
-            takeProfit: 5
+            takeProfit: 5,
           },
           parameterSchema: {
             fastMA: { type: 'number', label: 'Fast MA Period', min: 5, max: 50, default: 20 },
             slowMA: { type: 'number', label: 'Slow MA Period', min: 20, max: 200, default: 50 },
             rsiPeriod: { type: 'number', label: 'RSI Period', min: 5, max: 30, default: 14 },
-            stopLoss: { type: 'number', label: 'Stop Loss %', min: 0.5, max: 10, step: 0.1, default: 2 },
-            takeProfit: { type: 'number', label: 'Take Profit %', min: 1, max: 20, step: 0.1, default: 5 }
+            stopLoss: {
+              type: 'number',
+              label: 'Stop Loss %',
+              min: 0.5,
+              max: 10,
+              step: 0.1,
+              default: 2,
+            },
+            takeProfit: {
+              type: 'number',
+              label: 'Take Profit %',
+              min: 1,
+              max: 20,
+              step: 0.1,
+              default: 5,
+            },
           },
           performance: {
             totalTrades: 156,
             winRate: 0.62,
             totalPnL: 12500,
             sharpeRatio: 1.85,
-            maxDrawdown: -8.5
-          }
+            maxDrawdown: -8.5,
+          },
         },
         {
           id: 'market-making',
@@ -44,21 +58,46 @@ class StrategiesController {
             spread: 0.2,
             orderSize: 1000,
             orderRefreshInterval: 30000,
-            maxExposure: 10000
+            maxExposure: 10000,
           },
           parameterSchema: {
-            spread: { type: 'number', label: 'Spread %', min: 0.1, max: 1, step: 0.05, default: 0.2 },
-            orderSize: { type: 'number', label: 'Order Size (USD)', min: 100, max: 10000, default: 1000 },
-            orderRefreshInterval: { type: 'number', label: 'Refresh Interval (ms)', min: 5000, max: 60000, default: 30000 },
-            maxExposure: { type: 'number', label: 'Max Exposure (USD)', min: 1000, max: 100000, default: 10000 }
+            spread: {
+              type: 'number',
+              label: 'Spread %',
+              min: 0.1,
+              max: 1,
+              step: 0.05,
+              default: 0.2,
+            },
+            orderSize: {
+              type: 'number',
+              label: 'Order Size (USD)',
+              min: 100,
+              max: 10000,
+              default: 1000,
+            },
+            orderRefreshInterval: {
+              type: 'number',
+              label: 'Refresh Interval (ms)',
+              min: 5000,
+              max: 60000,
+              default: 30000,
+            },
+            maxExposure: {
+              type: 'number',
+              label: 'Max Exposure (USD)',
+              min: 1000,
+              max: 100000,
+              default: 10000,
+            },
           },
           performance: {
             totalTrades: 842,
             winRate: 0.58,
             totalPnL: 8200,
             sharpeRatio: 1.45,
-            maxDrawdown: -5.2
-          }
+            maxDrawdown: -5.2,
+          },
         },
         {
           id: 'arbitrage',
@@ -67,20 +106,33 @@ class StrategiesController {
           status: 'stopped',
           parameters: {
             minProfitThreshold: 0.1,
-            maxPositionSize: 5000
+            maxPositionSize: 5000,
           },
           parameterSchema: {
-            minProfitThreshold: { type: 'number', label: 'Min Profit %', min: 0.05, max: 1, step: 0.05, default: 0.1 },
-            maxPositionSize: { type: 'number', label: 'Max Position Size (USD)', min: 1000, max: 50000, default: 5000 }
+            minProfitThreshold: {
+              type: 'number',
+              label: 'Min Profit %',
+              min: 0.05,
+              max: 1,
+              step: 0.05,
+              default: 0.1,
+            },
+            maxPositionSize: {
+              type: 'number',
+              label: 'Max Position Size (USD)',
+              min: 1000,
+              max: 50000,
+              default: 5000,
+            },
           },
           performance: {
             totalTrades: 45,
             winRate: 0.82,
             totalPnL: 3200,
             sharpeRatio: 2.1,
-            maxDrawdown: -2.8
-          }
-        }
+            maxDrawdown: -2.8,
+          },
+        },
       ];
 
       res.json(strategies);
@@ -105,15 +157,15 @@ class StrategiesController {
           slowMA: 50,
           rsiPeriod: 14,
           stopLoss: 2,
-          takeProfit: 5
+          takeProfit: 5,
         },
         performance: {
           totalTrades: 156,
           winRate: 0.62,
           totalPnL: 12500,
           sharpeRatio: 1.85,
-          maxDrawdown: -8.5
-        }
+          maxDrawdown: -8.5,
+        },
       };
 
       res.json(strategy);
@@ -134,10 +186,10 @@ class StrategiesController {
           winRate: 0.62,
           totalPnL: 12500,
           sharpeRatio: 1.85,
-          maxDrawdown: -8.5
+          maxDrawdown: -8.5,
         },
         recentTrades: [],
-        equityCurve: []
+        equityCurve: [],
       };
 
       res.json(performance);

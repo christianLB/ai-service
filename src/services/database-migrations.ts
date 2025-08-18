@@ -12,10 +12,9 @@ async function ensureMigrationsTable(client: any): Promise<void> {
 }
 
 async function hasMigrationBeenApplied(client: any, version: string): Promise<boolean> {
-  const result = await client.query(
-    'SELECT 1 FROM public.schema_migrations WHERE version = $1',
-    [version]
-  );
+  const result = await client.query('SELECT 1 FROM public.schema_migrations WHERE version = $1', [
+    version,
+  ]);
   return result.rows.length > 0;
 }
 
@@ -375,7 +374,6 @@ export async function migrateFinancialSchema(client: any): Promise<void> {
       throw error;
     }
     */
-
   } catch (error: any) {
     logger.error('Financial schema migration failed:', error.message);
     throw error;
@@ -752,7 +750,7 @@ async function ensureMissingColumns(client: any): Promise<void> {
     { name: 'gas_price', type: 'VARCHAR(255)' },
     { name: 'from_address', type: 'VARCHAR(255)' },
     { name: 'to_address', type: 'VARCHAR(255)' },
-    { name: 'counterparty_account', type: 'VARCHAR(255)' }
+    { name: 'counterparty_account', type: 'VARCHAR(255)' },
   ];
 
   for (const column of columnsToAdd) {
@@ -784,7 +782,11 @@ async function ensureMissingColumns(client: any): Promise<void> {
   `);
 
   // Record this migration as applied
-  await recordMigration(client, migrationVersion, 'Add GoCardless and crypto columns to transactions table');
+  await recordMigration(
+    client,
+    migrationVersion,
+    'Add GoCardless and crypto columns to transactions table'
+  );
 
   logger.info('✅ All missing columns ensured');
 }

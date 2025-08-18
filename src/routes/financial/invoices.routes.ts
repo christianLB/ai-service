@@ -12,8 +12,8 @@ router.get('/health', async (req, res) => {
     data: {
       service: 'invoice-management',
       status: 'healthy',
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   });
 });
 

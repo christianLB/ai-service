@@ -12,7 +12,7 @@ export class CryptoComConnector implements CryptoConnector {
     this.secretKey = secretKey;
     this.api = axios.create({
       baseURL: 'https://api.crypto.com/v2',
-      timeout: 10000
+      timeout: 10000,
     });
   }
 
@@ -25,24 +25,24 @@ export class CryptoComConnector implements CryptoConnector {
     // Minimal implementation calling public get-account-summary
     const result = await this.api.post('/private/get-account-summary', {
       api_key: this.apiKey,
-      sig: this.signPayload({})
+      sig: this.signPayload({}),
     });
     return (result.data?.result?.accounts || []).map((a: any) => ({
       asset: a.currency,
-      amount: a.available || '0'
+      amount: a.available || '0',
     }));
   }
 
   async getTransactions(): Promise<CryptoTransaction[]> {
     const result = await this.api.post('/private/get-transactions', {
       api_key: this.apiKey,
-      sig: this.signPayload({})
+      sig: this.signPayload({}),
     });
     return (result.data?.result?.data || []).map((t: any) => ({
       txHash: t.id,
       asset: t.currency,
       amount: t.amount,
-      timestamp: t.create_time
+      timestamp: t.create_time,
     }));
   }
 

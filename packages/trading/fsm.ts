@@ -58,28 +58,28 @@ export class TradingFSM extends EventEmitter {
   private redis: Redis;
 
   // Valid state transitions
-  private readonly validTransitions: Map<TradingState, Map<TradingEvent, TradingState>> = new Map([
-    [TradingState.IDLE, new Map([
+  private readonly validTransitions: Map<TradingState, Map<TradingEvent, TradingState>> = new Map<TradingState, Map<TradingEvent, TradingState>>([
+    [TradingState.IDLE, new Map<TradingEvent, TradingState>([
       [TradingEvent.DEPLOY, TradingState.INITIALIZING]
     ])],
-    [TradingState.INITIALIZING, new Map([
+    [TradingState.INITIALIZING, new Map<TradingEvent, TradingState>([
       [TradingEvent.START, TradingState.LIVE],
       [TradingEvent.ERROR, TradingState.ERROR],
       [TradingEvent.STOP, TradingState.STOPPED]
     ])],
-    [TradingState.LIVE, new Map([
+    [TradingState.LIVE, new Map<TradingEvent, TradingState>([
       [TradingEvent.STOP, TradingState.STOPPING],
       [TradingEvent.ERROR, TradingState.ERROR]
     ])],
-    [TradingState.STOPPING, new Map([
+    [TradingState.STOPPING, new Map<TradingEvent, TradingState>([
       [TradingEvent.STOP, TradingState.STOPPED],
       [TradingEvent.ERROR, TradingState.ERROR]
     ])],
-    [TradingState.STOPPED, new Map([
+    [TradingState.STOPPED, new Map<TradingEvent, TradingState>([
       [TradingEvent.RESET, TradingState.IDLE],
       [TradingEvent.DEPLOY, TradingState.INITIALIZING]
     ])],
-    [TradingState.ERROR, new Map([
+    [TradingState.ERROR, new Map<TradingEvent, TradingState>([
       [TradingEvent.RESET, TradingState.IDLE]
     ])]
   ]);
@@ -413,6 +413,3 @@ export class TradingFSM extends EventEmitter {
 export function createTradingFSM(redisUrl: string): TradingFSM {
   return new TradingFSM(redisUrl);
 }
-
-// Export types for external use
-export type { StateTransition, TradingSession };

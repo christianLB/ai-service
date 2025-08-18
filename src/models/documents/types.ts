@@ -125,7 +125,7 @@ export enum DocumentType {
   PRESENTATION = 'presentation',
   MANUAL = 'manual',
   EMAIL = 'email',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 export enum FileFormat {
@@ -139,7 +139,7 @@ export enum FileFormat {
   CSV = 'csv',
   XLSX = 'xlsx',
   PPTX = 'pptx',
-  IMAGE = 'image'
+  IMAGE = 'image',
 }
 
 export enum DocumentSource {
@@ -148,7 +148,7 @@ export enum DocumentSource {
   API = 'api',
   EMAIL = 'email',
   IMPORT = 'import',
-  SCAN = 'scan'
+  SCAN = 'scan',
 }
 
 export enum EntityType {
@@ -162,7 +162,7 @@ export enum EntityType {
   URL = 'url',
   PRODUCT = 'product',
   EVENT = 'event',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 export enum ProcessingStatus {
@@ -170,7 +170,7 @@ export enum ProcessingStatus {
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 export interface ProcessingJob {

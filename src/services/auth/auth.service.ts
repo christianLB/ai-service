@@ -52,11 +52,16 @@ export class AuthService {
     const unit = match[2];
 
     switch (unit) {
-      case 's': return value * 1000;
-      case 'm': return value * 60 * 1000;
-      case 'h': return value * 60 * 60 * 1000;
-      case 'd': return value * 24 * 60 * 60 * 1000;
-      default: return 0;
+      case 's':
+        return value * 1000;
+      case 'm':
+        return value * 60 * 1000;
+      case 'h':
+        return value * 60 * 60 * 1000;
+      case 'd':
+        return value * 24 * 60 * 60 * 1000;
+      default:
+        return 0;
     }
   }
 
@@ -75,8 +80,8 @@ export class AuthService {
         password_hash: true,
         full_name: true,
         role: true,
-        is_active: true
-      }
+        is_active: true,
+      },
     });
 
     if (!user) {
@@ -97,7 +102,7 @@ export class AuthService {
     // Update last login
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { last_login: new Date() }
+      data: { last_login: new Date() },
     });
 
     // Generate tokens
@@ -118,11 +123,11 @@ export class AuthService {
       where: {
         user_id: userId,
         token_hash: tokenHash,
-        revoked_at: null
+        revoked_at: null,
       },
       data: {
-        revoked_at: new Date()
-      }
+        revoked_at: new Date(),
+      },
     });
   }
 
@@ -142,9 +147,9 @@ export class AuthService {
         token_hash: tokenHash,
         revoked_at: null,
         expires_at: {
-          gt: new Date()
-        }
-      }
+          gt: new Date(),
+        },
+      },
     });
 
     if (!storedToken) {
@@ -159,8 +164,8 @@ export class AuthService {
         email: true,
         full_name: true,
         role: true,
-        is_active: true
-      }
+        is_active: true,
+      },
     });
 
     if (!user || !user.is_active) {
@@ -170,7 +175,7 @@ export class AuthService {
     // Revoke old refresh token
     await this.prisma.refresh_tokens.update({
       where: { id: storedToken.id },
-      data: { revoked_at: new Date() }
+      data: { revoked_at: new Date() },
     });
 
     // Generate new tokens
@@ -191,8 +196,8 @@ export class AuthService {
         email: true,
         full_name: true,
         role: true,
-        is_active: true
-      }
+        is_active: true,
+      },
     });
 
     if (!user) {
@@ -204,17 +209,22 @@ export class AuthService {
       email: user.email,
       full_name: user.full_name || '',
       role: user.role || 'user',
-      is_active: user.is_active || false
+      is_active: user.is_active || false,
     };
   }
 
   /**
    * Create a new user
    */
-  async createUser(email: string, password: string, fullName: string, role: string = 'user'): Promise<User> {
+  async createUser(
+    email: string,
+    password: string,
+    fullName: string,
+    role: string = 'user'
+  ): Promise<User> {
     // Check if user already exists
     const existingUser = await this.prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (existingUser) {
@@ -231,15 +241,15 @@ export class AuthService {
         password_hash: passwordHash,
         full_name: fullName,
         role,
-        is_active: true
+        is_active: true,
       },
       select: {
         id: true,
         email: true,
         full_name: true,
         role: true,
-        is_active: true
-      }
+        is_active: true,
+      },
     });
 
     return {
@@ -247,7 +257,7 @@ export class AuthService {
       email: user.email,
       full_name: user.full_name || '',
       role: user.role || 'user',
-      is_active: user.is_active || false
+      is_active: user.is_active || false,
     };
   }
 
@@ -258,8 +268,8 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
-        password_hash: true
-      }
+        password_hash: true,
+      },
     });
 
     if (!user) {
@@ -278,16 +288,16 @@ export class AuthService {
     // Update password
     await this.prisma.user.update({
       where: { id: userId },
-      data: { password_hash: newPasswordHash }
+      data: { password_hash: newPasswordHash },
     });
 
     // Revoke all refresh tokens for security
     await this.prisma.refresh_tokens.updateMany({
       where: {
         user_id: userId,
-        revoked_at: null
+        revoked_at: null,
       },
-      data: { revoked_at: new Date() }
+      data: { revoked_at: new Date() },
     });
   }
 
@@ -296,7 +306,7 @@ export class AuthService {
    */
   async resetPassword(userId: string, newPassword: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
     });
 
     if (!user) {
@@ -309,16 +319,16 @@ export class AuthService {
     // Update password
     await this.prisma.user.update({
       where: { id: userId },
-      data: { password_hash: passwordHash }
+      data: { password_hash: passwordHash },
     });
 
     // Revoke all refresh tokens
     await this.prisma.refresh_tokens.updateMany({
       where: {
         user_id: userId,
-        revoked_at: null
+        revoked_at: null,
       },
-      data: { revoked_at: new Date() }
+      data: { revoked_at: new Date() },
     });
   }
 
@@ -328,7 +338,7 @@ export class AuthService {
   async setUserActive(userId: string, isActive: boolean): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
-      data: { is_active: isActive }
+      data: { is_active: isActive },
     });
 
     // If deactivating, revoke all refresh tokens
@@ -336,9 +346,9 @@ export class AuthService {
       await this.prisma.refresh_tokens.updateMany({
         where: {
           user_id: userId,
-          revoked_at: null
+          revoked_at: null,
         },
-        data: { revoked_at: new Date() }
+        data: { revoked_at: new Date() },
       });
     }
   }
@@ -374,24 +384,24 @@ export class AuthService {
           role: true,
           is_active: true,
           created_at: true,
-          last_login: true
+          last_login: true,
         },
         orderBy: {
-          created_at: 'desc'
-        }
+          created_at: 'desc',
+        },
       }),
-      this.prisma.user.count({ where })
+      this.prisma.user.count({ where }),
     ]);
 
     return {
-      users: users.map(user => ({
+      users: users.map((user) => ({
         id: user.id,
         email: user.email,
         full_name: user.full_name || '',
         role: user.role || 'user',
-        is_active: user.is_active || false
+        is_active: user.is_active || false,
       })),
-      total
+      total,
     };
   }
 
@@ -400,14 +410,16 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       role: user.role,
-      type: 'access'
+      type: 'access',
     };
 
     return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn } as any);
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {
-    const token = jwt.sign({ userId, type: 'refresh' }, this.jwtSecret, { expiresIn: this.refreshTokenExpiresIn } as any);
+    const token = jwt.sign({ userId, type: 'refresh' }, this.jwtSecret, {
+      expiresIn: this.refreshTokenExpiresIn,
+    } as any);
     const tokenHash = this.hashToken(token);
     const expiresAt = new Date(Date.now() + this.parseDuration(this.refreshTokenExpiresIn));
 
@@ -415,8 +427,8 @@ export class AuthService {
       data: {
         user_id: userId,
         token_hash: tokenHash,
-        expires_at: expiresAt
-      }
+        expires_at: expiresAt,
+      },
     });
 
     return token;
@@ -428,11 +440,8 @@ export class AuthService {
   async cleanupExpiredTokens(): Promise<void> {
     await this.prisma.refresh_tokens.deleteMany({
       where: {
-        OR: [
-          { expires_at: { lt: new Date() } },
-          { revoked_at: { not: null } }
-        ]
-      }
+        OR: [{ expires_at: { lt: new Date() } }, { revoked_at: { not: null } }],
+      },
     });
   }
 

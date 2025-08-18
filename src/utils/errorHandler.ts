@@ -23,7 +23,7 @@ export const handleSecureError = (
     stack: error?.stack,
     code: error?.code,
     statusCode: error?.statusCode,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   logger.error(`${context} failed:`, errorDetails);
@@ -36,9 +36,10 @@ export const handleSecureError = (
     success: false,
     error: defaultMessage,
     // Only include error code if it's a known safe code
-    ...(error?.code && ['INVALID_INPUT', 'NOT_FOUND', 'UNAUTHORIZED', 'FORBIDDEN'].includes(error.code)
+    ...(error?.code &&
+    ['INVALID_INPUT', 'NOT_FOUND', 'UNAUTHORIZED', 'FORBIDDEN'].includes(error.code)
       ? { code: error.code }
-      : {})
+      : {}),
   };
 
   res.status(statusCode).json(responseData);

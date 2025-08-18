@@ -91,8 +91,8 @@ export const INVOICE_LABELS: { [key: string]: InvoiceLabels } = {
       paid: 'Pagada',
       overdue: 'Vencida',
       cancelled: 'Cancelada',
-      refunded: 'Reembolsada'
-    }
+      refunded: 'Reembolsada',
+    },
   },
   en: {
     invoice: 'Invoice',
@@ -138,9 +138,9 @@ export const INVOICE_LABELS: { [key: string]: InvoiceLabels } = {
       paid: 'Paid',
       overdue: 'Overdue',
       cancelled: 'Cancelled',
-      refunded: 'Refunded'
-    }
-  }
+      refunded: 'Refunded',
+    },
+  },
 };
 
 export function getInvoiceLabels(language: string): InvoiceLabels {

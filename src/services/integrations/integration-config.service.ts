@@ -36,7 +36,10 @@ export class IntegrationConfigService {
 
   private constructor() {
     // Use a key from environment or generate one
-    const key = process.env.INTEGRATION_CONFIG_KEY || config.jwt.secret || 'default-encryption-key-32-chars!!';
+    const key =
+      process.env.INTEGRATION_CONFIG_KEY ||
+      config.jwt.secret ||
+      'default-encryption-key-32-chars!!';
     this.encryptionKey = crypto.scryptSync(key, 'salt', 32);
 
     // Clear cache periodically
@@ -93,7 +96,7 @@ export class IntegrationConfigService {
           keysToDelete.push(key);
         }
       });
-      keysToDelete.forEach(key => this.configCache.delete(key));
+      keysToDelete.forEach((key) => this.configCache.delete(key));
       logger.info(`Cleared cache for integration type: ${integrationType}`);
     } else {
       // Clear all cache
@@ -160,7 +163,7 @@ export class IntegrationConfigService {
       isGlobal = false,
       description,
       metadata = {},
-      encrypt = true
+      encrypt = true,
     } = options;
 
     try {
@@ -211,7 +214,7 @@ export class IntegrationConfigService {
         encrypt,
         isGlobal,
         description,
-        JSON.stringify(metadata)
+        JSON.stringify(metadata),
       ]);
 
       // Clear cache for this config
@@ -279,7 +282,7 @@ export class IntegrationConfigService {
         isEncrypted: row.is_encrypted,
         isGlobal: row.is_global,
         description: row.description,
-        metadata: row.metadata
+        metadata: row.metadata,
       }));
     } catch (error) {
       logger.error('Failed to get all configs', { error, userId, integrationType });
@@ -288,7 +291,10 @@ export class IntegrationConfigService {
   }
 
   // Helper method to get multiple configs at once
-  async getIntegrationConfigs(integrationType: string, userId?: string): Promise<Record<string, string>> {
+  async getIntegrationConfigs(
+    integrationType: string,
+    userId?: string
+  ): Promise<Record<string, string>> {
     const configs = await this.getAllConfigs(userId, integrationType);
     const result: Record<string, string> = {};
 
@@ -297,7 +303,10 @@ export class IntegrationConfigService {
         try {
           result[config.configKey] = this.decrypt(config.configValue);
         } catch (error) {
-          logger.error('Failed to decrypt config', { integrationType, configKey: config.configKey });
+          logger.error('Failed to decrypt config', {
+            integrationType,
+            configKey: config.configKey,
+          });
         }
       } else {
         result[config.configKey] = config.configValue;
