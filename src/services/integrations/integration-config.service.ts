@@ -1,9 +1,14 @@
 import crypto from 'crypto';
 import { Logger } from '../../utils/logger';
 import { config } from '../../config';
-import { db } from '../database';
+import { prisma } from '../../lib/prisma';
+import { Prisma } from '@prisma/client';
 
 const logger = new Logger('IntegrationConfigService');
+
+// =====================================================
+// INTERFACES
+// =====================================================
 
 interface IntegrationConfig {
   id?: string;
@@ -27,6 +32,10 @@ interface GetConfigOptions {
 interface SetConfigOptions extends IntegrationConfig {
   encrypt?: boolean;
 }
+
+// =====================================================
+// SERVICE CLASS
+// =====================================================
 
 export class IntegrationConfigService {
   private static instance: IntegrationConfigService;
@@ -63,7 +72,10 @@ export class IntegrationConfigService {
     return IntegrationConfigService.instance;
   }
 
-  // Cleanup method for proper shutdown
+  // =====================================================
+  // UTILITY METHODS
+  // =====================================================
+
   cleanup(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -106,6 +118,10 @@ export class IntegrationConfigService {
     this.configCache.clear();
   }
 
+  // =====================================================
+  // PUBLIC CACHE METHODS
+  // =====================================================
+
   async clearCache(integrationType?: string): Promise<void> {
     if (integrationType) {
       // Clear cache entries for specific integration type
@@ -124,6 +140,10 @@ export class IntegrationConfigService {
     }
   }
 
+  // =====================================================
+  // CRUD METHODS WITH SPECIAL FEATURES
+  // =====================================================
+
   async getConfig(options: GetConfigOptions): Promise<string | null> {
     const cacheKey = this.getCacheKey(options);
 
@@ -134,32 +154,31 @@ export class IntegrationConfigService {
     }
 
     try {
-      // Try to get user-specific config first
-      let query = `
-        SELECT config_value, is_encrypted 
-        FROM financial.integration_configs 
-        WHERE integration_type = $1 AND config_key = $2
-      `;
-
-      const params: any[] = [options.integrationType, options.configKey];
+      // Build where clause
+      const where: Prisma.integration_configsWhereInput = {
+        integration_type: options.integrationType,
+        config_key: options.configKey,
+      };
 
       if (options.userId) {
-        query += ' AND user_id = $3';
-        params.push(options.userId);
+        where.user_id = options.userId;
       } else {
-        query += ' AND user_id IS NULL AND is_global = true';
+        where.user_id = null;
+        where.is_global = true;
       }
 
-      const result = await db.pool.query(query, params);
+      // Use Prisma to fetch the config
+      const config = await prisma.integration_configs.findFirst({
+        where,
+      });
 
-      if (result.rows.length === 0) {
+      if (!config) {
         return null;
       }
 
-      const { config_value, is_encrypted } = result.rows[0];
-      let value = config_value;
+      let value = config.config_value;
 
-      if (is_encrypted && options.decrypt !== false) {
+      if (config.is_encrypted && options.decrypt !== false) {
         value = this.decrypt(value);
       }
 
@@ -188,53 +207,45 @@ export class IntegrationConfigService {
     try {
       const finalValue = encrypt ? this.encrypt(configValue) : configValue;
 
-      let query: string;
-
-      // Handle different ON CONFLICT cases based on whether it's a global config
-      if (isGlobal && !userId) {
-        // For global configs (user_id is NULL)
-        query = `
-          INSERT INTO financial.integration_configs (
-            user_id, integration_type, config_key, config_value, 
-            is_encrypted, is_global, description, metadata
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          ON CONFLICT (integration_type, config_key) 
-          WHERE user_id IS NULL AND is_global = true
-          DO UPDATE SET 
-            config_value = EXCLUDED.config_value,
-            is_encrypted = EXCLUDED.is_encrypted,
-            description = EXCLUDED.description,
-            metadata = EXCLUDED.metadata,
-            updated_at = NOW()
-        `;
-      } else {
-        // For user-specific configs
-        query = `
-          INSERT INTO financial.integration_configs (
-            user_id, integration_type, config_key, config_value, 
-            is_encrypted, is_global, description, metadata
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          ON CONFLICT (user_id, integration_type, config_key) 
-          WHERE user_id IS NOT NULL
-          DO UPDATE SET 
-            config_value = EXCLUDED.config_value,
-            is_encrypted = EXCLUDED.is_encrypted,
-            description = EXCLUDED.description,
-            metadata = EXCLUDED.metadata,
-            updated_at = NOW()
-        `;
-      }
-
-      await db.pool.query(query, [
-        userId || null,
-        integrationType,
-        configKey,
-        finalValue,
-        encrypt,
-        isGlobal,
+      // Prepare data for create/update
+      const dataFields = {
+        config_value: finalValue,
+        is_encrypted: encrypt,
+        is_global: isGlobal,
         description,
-        JSON.stringify(metadata),
-      ]);
+        metadata: metadata as Prisma.InputJsonValue,
+      };
+
+      // Since Prisma doesn't support composite unique constraints in where clause directly,
+      // we need to use findFirst + create/update pattern
+      const existingConfig = await prisma.integration_configs.findFirst({
+        where: {
+          integration_type: integrationType,
+          config_key: configKey,
+          user_id: userId || null,
+        },
+      });
+
+      if (existingConfig) {
+        // Update existing config
+        await prisma.integration_configs.update({
+          where: { id: existingConfig.id },
+          data: {
+            ...dataFields,
+            updated_at: new Date(),
+          },
+        });
+      } else {
+        // Create new config
+        await prisma.integration_configs.create({
+          data: {
+            user_id: userId || null,
+            integration_type: integrationType,
+            config_key: configKey,
+            ...dataFields,
+          },
+        });
+      }
 
       // Clear cache for this config
       const cacheKey = this.getCacheKey({ userId, integrationType, configKey });
@@ -249,24 +260,28 @@ export class IntegrationConfigService {
 
   async deleteConfig(options: GetConfigOptions): Promise<boolean> {
     try {
-      const query = `
-        DELETE FROM financial.integration_configs 
-        WHERE integration_type = $1 AND config_key = $2
-        ${options.userId ? 'AND user_id = $3' : 'AND user_id IS NULL'}
-      `;
+      // Build where clause
+      const where: Prisma.integration_configsWhereInput = {
+        integration_type: options.integrationType,
+        config_key: options.configKey,
+      };
 
-      const params = [options.integrationType, options.configKey];
       if (options.userId) {
-        params.push(options.userId);
+        where.user_id = options.userId;
+      } else {
+        where.user_id = null;
       }
 
-      const result = await db.pool.query(query, params);
+      // Delete using Prisma
+      const result = await prisma.integration_configs.deleteMany({
+        where,
+      });
 
       // Clear cache
       const cacheKey = this.getCacheKey(options);
       this.configCache.delete(cacheKey);
 
-      return (result.rowCount || 0) > 0;
+      return result.count > 0;
     } catch (error) {
       logger.error('Failed to delete config', { error, options });
       throw error;
@@ -275,39 +290,43 @@ export class IntegrationConfigService {
 
   async getAllConfigs(userId?: string, integrationType?: string): Promise<IntegrationConfig[]> {
     try {
-      let query = 'SELECT * FROM financial.integration_configs WHERE 1=1';
-      const params: any[] = [];
+      // Build where clause
+      const where: Prisma.integration_configsWhereInput = {};
 
       if (userId) {
-        params.push(userId);
-        query += ` AND user_id = $${params.length}`;
+        where.user_id = userId;
       }
 
       if (integrationType) {
-        params.push(integrationType);
-        query += ` AND integration_type = $${params.length}`;
+        where.integration_type = integrationType;
       }
 
-      query += ' ORDER BY integration_type, config_key';
+      // Fetch configs using Prisma
+      const configs = await prisma.integration_configs.findMany({
+        where,
+        orderBy: [{ integration_type: 'asc' }, { config_key: 'asc' }],
+      });
 
-      const result = await db.pool.query(query, params);
-
-      return result.rows.map((row: any) => ({
-        id: row.id,
-        userId: row.user_id,
-        integrationType: row.integration_type,
-        configKey: row.config_key,
-        configValue: row.config_value, // Keep encrypted
-        isEncrypted: row.is_encrypted,
-        isGlobal: row.is_global,
-        description: row.description,
-        metadata: row.metadata,
+      return configs.map((config) => ({
+        id: config.id,
+        userId: config.user_id || undefined,
+        integrationType: config.integration_type,
+        configKey: config.config_key,
+        configValue: config.config_value, // Keep encrypted
+        isEncrypted: config.is_encrypted,
+        isGlobal: config.is_global,
+        description: config.description || undefined,
+        metadata: config.metadata as Record<string, any> | undefined,
       }));
     } catch (error) {
       logger.error('Failed to get all configs', { error, userId, integrationType });
       throw error;
     }
   }
+
+  // =====================================================
+  // SPECIAL BUSINESS METHODS
+  // =====================================================
 
   // Helper method to get multiple configs at once
   async getIntegrationConfigs(
@@ -342,7 +361,34 @@ export class IntegrationConfigService {
     logger.info('Testing config', { integrationType });
     return true;
   }
+
+  // Audit log integration configuration changes
+  async logConfigChange(
+    action: string,
+    integrationType: string,
+    configKey: string,
+    userId?: string
+  ): Promise<void> {
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: userId || null,
+          action,
+          resource: 'integration_config',
+          resourceId: `${integrationType}:${configKey}`,
+          ipAddress: null, // Would be set from request context
+          userAgent: null, // Would be set from request context
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to log config change', { error, action, integrationType, configKey });
+    }
+  }
 }
+
+// =====================================================
+// SINGLETON EXPORT
+// =====================================================
 
 // Export singleton instance
 export const integrationConfigService = IntegrationConfigService.getInstance();

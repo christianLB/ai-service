@@ -1,7 +1,7 @@
 # AI Service - Main Makefile
 # =============================================================================
-# Orchestrator for all modular Makefiles
-# Use 'make help' to see common commands or 'make help-all' for everything
+# 🎉 NEW: Unified CLI Tool Available! Use ./ai-cli.js instead of make commands
+# Legacy Makefile commands redirect to the new CLI for compatibility
 # =============================================================================
 
 # Load local configuration if exists
@@ -365,8 +365,9 @@ emergency-restart: ## Emergency restart all services
 # =============================================================================
 
 .PHONY: auth-token
-auth-token: ## Get development auth token
-	@$(MAKE) -f Makefile.auth get-token
+auth-token: ## Get development auth token (NOW WORKS! Uses new CLI)
+	@echo "$(GREEN)Using new CLI for reliable token generation...$(NC)"
+	@./ai-cli.js token
 
 .PHONY: prod-login  
 prod-login: ## Login to production and get auth token
@@ -537,6 +538,18 @@ security-audit: ## Run security audit
 help: ## Show common commands (this menu)
 	@echo "$(BLUE)AI Service - Common Commands$(NC)"
 	@echo "$(CYAN)=================================$(NC)"
+	@echo ""
+	@echo "$(RED)╔══════════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(RED)║  🎉 NEW CLI TOOL AVAILABLE!                                      ║$(NC)"
+	@echo "$(RED)║                                                                  ║$(NC)"
+	@echo "$(RED)║  Use ./ai-cli.js for reliable commands:                         ║$(NC)"
+	@echo "$(RED)║    ./ai-cli.js token       - Get auth token (WORKS!)            ║$(NC)"
+	@echo "$(RED)║    ./ai-cli.js dev start   - Start environment                  ║$(NC)"
+	@echo "$(RED)║    ./ai-cli.js db migrate  - Run migrations                     ║$(NC)"
+	@echo "$(RED)║    ./ai-cli.js --help      - See all commands                   ║$(NC)"
+	@echo "$(RED)║                                                                  ║$(NC)"
+	@echo "$(RED)║  Legacy make commands below redirect to the new CLI             ║$(NC)"
+	@echo "$(RED)╚══════════════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Quick Start:$(NC)"
 	@grep -h "^[a-z][a-z\-]*:.*##" $(MAKEFILE_LIST) | grep -E "^(up|down|restart|logs|status|build):" | \

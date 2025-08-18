@@ -1,7 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Logger } from '../../utils/logger';
-import { integrationConfigService } from '../integrations/integration-config.service';
-import { config } from '../../config';
+import { integrationConfigService } from '../integrations';
 
 const logger = new Logger('ClaudeAIService');
 

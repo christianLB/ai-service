@@ -42,7 +42,7 @@ class IntegrationService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = '/api/integrations';
+    this.baseURL = '/integrations'; // Fixed: axios already adds /api prefix
   }
 
   async getIntegrationTypes(category?: string): Promise<IntegrationType[]> {

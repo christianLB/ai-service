@@ -7,35 +7,45 @@ import { SecurityLoggerService } from '../../services/security/security-logger.s
 import { Pool } from 'pg';
 import rateLimit from 'express-rate-limit';
 
-// Rate limiting for auth endpoints
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // DEVELOPMENT: Increased from 5 for testing. REVERT TO 5 FOR PRODUCTION!
-  message: 'Too many login attempts, please try again later',
-  standardHeaders: true,
-  legacyHeaders: false,
-  // Custom key generator to work with trust proxy
-  keyGenerator: (req) => {
-    // Use x-forwarded-for if available, otherwise fall back to req.ip
-    return (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
-  },
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/health';
-  },
-});
+// Check if we're in development or test mode
+const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+
+// Rate limiting for auth endpoints - DISABLED in development and test
+const loginLimiter = isDev
+  ? (req: Request, res: Response, next: NextFunction) => next() // Skip entirely in development/test
+  : rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 5, // 5 attempts in production (was 50)
+      message: 'Too many login attempts, please try again later',
+      standardHeaders: true,
+      legacyHeaders: false,
+      // Custom key generator to work with trust proxy
+      keyGenerator: (req) => {
+        // Use x-forwarded-for if available, otherwise fall back to req.ip
+        return (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+      },
+      skip: (req) => {
+        // Skip rate limiting for health checks
+        return req.path === '/health';
+      },
+    });
 
 export function createAuthRoutes(pool: Pool): Router {
   const router = Router();
   const authService = new AuthService();
   const securityLogger = new SecurityLoggerService(pool);
 
-  // Brute force protection
-  const bruteForceProtection = createBruteForceProtection(pool, {
-    maxAttempts: 5,
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    blockDurationMs: 30 * 60 * 1000, // 30 minutes
-  });
+  // Check if we're in development or test mode
+  const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+
+  // Brute force protection - DISABLED in development and test
+  const bruteForceProtection = isDevelopment
+    ? (req: Request, res: Response, next: NextFunction) => next() // Skip in development/test
+    : createBruteForceProtection(pool, {
+        maxAttempts: 5,
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        blockDurationMs: 30 * 60 * 1000, // 30 minutes
+      });
 
   // Login endpoint
   router.post(
@@ -61,10 +71,13 @@ export function createAuthRoutes(pool: Pool): Router {
         try {
           tokens = await authService.login({ email, password });
         } catch (error: any) {
-          await pool.query(
-            'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
-            [email, ip, false]
-          );
+          // Only log login attempts in production
+          if (!isDevelopment) {
+            await pool.query(
+              'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
+              [email, ip, false]
+            );
+          }
           await securityLogger.logSecurityEvent({
             event_type: 'login_failed',
             email,
@@ -76,10 +89,13 @@ export function createAuthRoutes(pool: Pool): Router {
           throw error;
         }
 
-        await pool.query(
-          'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
-          [email, ip, true]
-        );
+        // Only log login attempts in production
+        if (!isDevelopment) {
+          await pool.query(
+            'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
+            [email, ip, true]
+          );
+        }
         await securityLogger.logSecurityEvent({
           event_type: 'login_success',
           email,

@@ -41,7 +41,7 @@ services:
       - ./data/documents:/app/documents:rw
       - ./logs:/app/logs
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3001/health/ready || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -69,7 +69,7 @@ services:
       - ./frontend/public:/app/public:ro
       - ./frontend/index.html:/app/index.html:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5173 || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5173 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

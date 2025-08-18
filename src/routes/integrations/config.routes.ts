@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { integrationConfigService } from '../../services/integrations';
 import { Logger } from '../../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
+import { authMiddleware, AuthRequest } from '../../middleware/auth.middleware';
 
 const logger = new Logger('IntegrationConfigRoutes');
 const router = Router();
@@ -22,15 +23,17 @@ const validateRequest = (req: Request, res: Response, _next: NextFunction): void
 // GET /api/integrations/configs - Get all configurations
 router.get(
   '/configs',
-  [query('integrationType').optional().isString(), query('userId').optional().isUUID()],
+  authMiddleware,
+  [query('integrationType').optional().isString()],
   validateRequest,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { integrationType, userId } = req.query;
+      const { integrationType } = req.query;
+      const userId = req.user?.userId;
 
       // For security, only return non-sensitive config metadata
       const configs = await integrationConfigService.getAllConfigs(
-        userId as string,
+        userId,
         integrationType as string
       );
 
@@ -57,19 +60,16 @@ router.get(
 // GET /api/integrations/configs/:type/:key - Get specific config value
 router.get(
   '/configs/:integrationType/:configKey',
-  [
-    param('integrationType').isString(),
-    param('configKey').isString(),
-    query('userId').optional().isUUID(),
-  ],
+  authMiddleware,
+  [param('integrationType').isString(), param('configKey').isString()],
   validateRequest,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { integrationType, configKey } = req.params;
-      const { userId } = req.query;
+      const userId = req.user?.userId;
 
       const value = await integrationConfigService.getConfig({
-        userId: userId as string,
+        userId,
         integrationType,
         configKey,
         decrypt: true,
@@ -104,27 +104,27 @@ router.get(
 // POST /api/integrations/configs - Create or update configuration
 router.post(
   '/configs',
+  authMiddleware,
   [
     body('integrationType').isString().notEmpty(),
     body('configKey').isString().notEmpty(),
     body('configValue').isString().notEmpty(),
-    body('userId').optional().isUUID(),
     body('isGlobal').optional().isBoolean(),
     body('description').optional().isString(),
     body('encrypt').optional().isBoolean(),
   ],
   validateRequest,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const {
         integrationType,
         configKey,
         configValue,
-        userId,
         isGlobal = false,
         description,
         encrypt = true,
       } = req.body;
+      const userId = req.user?.userId;
 
       await integrationConfigService.setConfig({
         userId,
@@ -135,6 +135,14 @@ router.post(
         description,
         encrypt,
       });
+
+      // Log configuration change
+      await integrationConfigService.logConfigChange(
+        'config_created',
+        integrationType,
+        configKey,
+        userId
+      );
 
       res.json({
         success: true,
@@ -153,18 +161,19 @@ router.post(
 // PUT /api/integrations/configs/:type/:key - Update specific configuration
 router.put(
   '/configs/:integrationType/:configKey',
+  authMiddleware,
   [
     param('integrationType').isString(),
     param('configKey').isString(),
     body('configValue').isString().notEmpty(),
-    body('userId').optional().isUUID(),
     body('description').optional().isString(),
   ],
   validateRequest,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { integrationType, configKey } = req.params;
-      const { configValue, userId, description } = req.body;
+      const { configValue, description } = req.body;
+      const userId = req.user?.userId;
 
       await integrationConfigService.setConfig({
         userId,
@@ -174,6 +183,14 @@ router.put(
         description,
         encrypt: true,
       });
+
+      // Log configuration change
+      await integrationConfigService.logConfigChange(
+        'config_updated',
+        integrationType,
+        configKey,
+        userId
+      );
 
       res.json({
         success: true,
@@ -192,19 +209,16 @@ router.put(
 // DELETE /api/integrations/configs/:type/:key - Delete configuration
 router.delete(
   '/configs/:integrationType/:configKey',
-  [
-    param('integrationType').isString(),
-    param('configKey').isString(),
-    query('userId').optional().isUUID(),
-  ],
+  authMiddleware,
+  [param('integrationType').isString(), param('configKey').isString()],
   validateRequest,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { integrationType, configKey } = req.params;
-      const { userId } = req.query;
+      const userId = req.user?.userId;
 
       const deleted = await integrationConfigService.deleteConfig({
-        userId: userId as string,
+        userId,
         integrationType,
         configKey,
       });
@@ -216,6 +230,14 @@ router.delete(
         });
         return;
       }
+
+      // Log configuration change
+      await integrationConfigService.logConfigChange(
+        'config_deleted',
+        integrationType,
+        configKey,
+        userId
+      );
 
       res.json({
         success: true,
@@ -234,9 +256,10 @@ router.delete(
 // POST /api/integrations/test/:type - Test integration configuration
 router.post(
   '/test/:integrationType',
+  authMiddleware,
   [param('integrationType').isString(), body('configs').isObject()],
   validateRequest,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { integrationType } = req.params;
       const { configs } = req.body;
@@ -262,7 +285,7 @@ router.post(
 );
 
 // GET /api/integrations/types - Get available integration types
-router.get('/types', async (req: Request, res: Response, _next: NextFunction) => {
+router.get('/types', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { category } = req.query;
 

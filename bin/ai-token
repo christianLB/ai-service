@@ -1,0 +1,4 @@
+#!/bin/bash
+# Quick token generator wrapper
+cd /home/k2600x/dev/ai-service
+npx ts-node scripts/token.ts 2>/dev/null | tail -1

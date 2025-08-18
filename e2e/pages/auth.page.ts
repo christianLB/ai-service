@@ -16,9 +16,10 @@ export class AuthPage {
   constructor(page: Page) {
     this.page = page;
     // Use data-testid when available, fallback to other selectors
-    this.emailInput = page.locator('[data-testid="login-email-input"], input[name="email"], input[type="email"]');
-    this.passwordInput = page.locator('[data-testid="login-password-input"], input[name="password"], input[type="password"]');
-    this.loginButton = page.locator('[data-testid="login-submit-button"], button[type="submit"]:has-text("Sign In"), button:has-text("Sign in")');
+    // Updated selectors based on actual login page structure
+    this.emailInput = page.locator('input[placeholder="Email"], [data-testid="login-email-input"], input[name="email"], input[type="email"]').first();
+    this.passwordInput = page.locator('input[placeholder="Password"], [data-testid="login-password-input"], input[name="password"], input[type="password"]').first();
+    this.loginButton = page.locator('button:has-text("Sign In"), [data-testid="login-submit-button"], button[type="submit"]:has-text("Sign In")').first();
     this.logoutButton = page.locator('button:has-text("Logout"), button:has-text("Sign out")');
     this.errorMessage = page.locator('.error-message, .alert-danger, [role="alert"]');
     this.successMessage = page.locator('.success-message, .alert-success');
@@ -29,10 +30,12 @@ export class AuthPage {
     await this.page.waitForLoadState('networkidle');
   }
 
-  async login(email: string, password: string): Promise<void> {
+  async login(email: string = 'admin@ai-service.local', password: string = 'admin123'): Promise<void> {
+    await this.goto();
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);
     await this.loginButton.click();
+    await this.waitForAuthentication();
   }
 
   async logout(): Promise<void> {
@@ -41,11 +44,10 @@ export class AuthPage {
   }
 
   async waitForAuthentication(): Promise<void> {
-    // Wait for redirect to root (dashboard) or auth_token in localStorage
-    await Promise.race([
-      this.page.waitForURL('http://localhost:3000/', { timeout: 10000 }),
-      this.page.waitForFunction(() => localStorage.getItem('auth_token') !== null, { timeout: 10000 }),
-    ]);
+    // Wait for auth_token in localStorage (more reliable than URL change)
+    await this.page.waitForFunction(() => localStorage.getItem('auth_token') !== null, { timeout: 10000 });
+    // Give the app a moment to process the token
+    await this.page.waitForTimeout(500);
   }
 
   async isAuthenticated(): Promise<boolean> {

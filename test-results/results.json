@@ -1,7 +1,7 @@
 {
   "config": {
     "configFile": "/home/k2600x/dev/ai-service/playwright.config.ts",
-    "rootDir": "/home/k2600x/dev/ai-service/e2e",
+    "rootDir": "/home/k2600x/dev/ai-service/e2e/tests",
     "forbidOnly": false,
     "fullyParallel": true,
     "globalSetup": null,
@@ -18,7 +18,7 @@
       [
         "html",
         {
-          "outputFolder": "test-results/html"
+          "outputFolder": "playwright-report"
         }
       ],
       [
@@ -50,7 +50,7 @@
         },
         "id": "chromium",
         "name": "chromium",
-        "testDir": "/home/k2600x/dev/ai-service/e2e",
+        "testDir": "/home/k2600x/dev/ai-service/e2e/tests",
         "testIgnore": [],
         "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 60000
@@ -64,7 +64,7 @@
         },
         "id": "firefox",
         "name": "firefox",
-        "testDir": "/home/k2600x/dev/ai-service/e2e",
+        "testDir": "/home/k2600x/dev/ai-service/e2e/tests",
         "testIgnore": [],
         "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 60000
@@ -78,7 +78,7 @@
         },
         "id": "webkit",
         "name": "webkit",
-        "testDir": "/home/k2600x/dev/ai-service/e2e",
+        "testDir": "/home/k2600x/dev/ai-service/e2e/tests",
         "testIgnore": [],
         "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 60000
@@ -92,7 +92,7 @@
         },
         "id": "Mobile Chrome",
         "name": "Mobile Chrome",
-        "testDir": "/home/k2600x/dev/ai-service/e2e",
+        "testDir": "/home/k2600x/dev/ai-service/e2e/tests",
         "testIgnore": [],
         "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 60000
@@ -106,7 +106,7 @@
         },
         "id": "Mobile Safari",
         "name": "Mobile Safari",
-        "testDir": "/home/k2600x/dev/ai-service/e2e",
+        "testDir": "/home/k2600x/dev/ai-service/e2e/tests",
         "testIgnore": [],
         "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 60000
@@ -121,20 +121,20 @@
   },
   "suites": [
     {
-      "title": "tests/01-authentication.spec.ts",
-      "file": "tests/01-authentication.spec.ts",
+      "title": "manual-integration.spec.ts",
+      "file": "manual-integration.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [],
       "suites": [
         {
-          "title": "Authentication Flow",
-          "file": "tests/01-authentication.spec.ts",
+          "title": "Manual Integration Test",
+          "file": "manual-integration.spec.ts",
           "line": 8,
           "column": 6,
           "specs": [
             {
-              "title": "should successfully login with valid credentials",
+              "title": "integration page loads with authentication",
               "ok": false,
               "tags": [],
               "tests": [
@@ -149,62 +149,62 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "failed",
-                      "duration": 13009,
+                      "duration": 13214,
                       "error": {
-                        "message": "TimeoutError: page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"http://localhost:3000/\" until \"load\"\n============================================================",
-                        "stack": "TimeoutError: page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"http://localhost:3000/\" until \"load\"\n============================================================\n    at AuthPage.waitForAuthentication (/home/k2600x/dev/ai-service/e2e/pages/auth.page.ts:46:17)\n    at /home/k2600x/dev/ai-service/e2e/tests/01-authentication.spec.ts:28:20",
+                        "message": "TimeoutError: page.waitForResponse: Timeout 10000ms exceeded while waiting for event \"response\"",
+                        "stack": "TimeoutError: page.waitForResponse: Timeout 10000ms exceeded while waiting for event \"response\"\n    at /home/k2600x/dev/ai-service/e2e/tests/manual-integration.spec.ts:24:33",
                         "location": {
-                          "file": "/home/k2600x/dev/ai-service/e2e/pages/auth.page.ts",
-                          "column": 17,
-                          "line": 46
+                          "file": "/home/k2600x/dev/ai-service/e2e/tests/manual-integration.spec.ts",
+                          "column": 33,
+                          "line": 24
                         },
-                        "snippet": "\u001b[90m   at \u001b[39mpages/auth.page.ts:46\n\n  44 |     // Wait for redirect to root (dashboard) or auth_token in localStorage\n  45 |     await Promise.race([\n> 46 |       this.page.waitForURL('http://localhost:3000/', { timeout: 10000 }),\n     |                 ^\n  47 |       this.page.waitForFunction(() => localStorage.getItem('auth_token') !== null, { timeout: 10000 }),\n  48 |     ]);\n  49 |   }"
+                        "snippet": "  22 |     \n  23 |     // Wait for API response\n> 24 |     const response = await page.waitForResponse(\n     |                                 ^\n  25 |       resp => resp.url().includes('/auth/login'),\n  26 |       { timeout: 10000 }\n  27 |     );"
                       },
                       "errors": [
                         {
                           "location": {
-                            "file": "/home/k2600x/dev/ai-service/e2e/pages/auth.page.ts",
-                            "column": 17,
-                            "line": 46
+                            "file": "/home/k2600x/dev/ai-service/e2e/tests/manual-integration.spec.ts",
+                            "column": 33,
+                            "line": 24
                           },
-                          "message": "TimeoutError: page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"http://localhost:3000/\" until \"load\"\n============================================================\n\n   at pages/auth.page.ts:46\n\n  44 |     // Wait for redirect to root (dashboard) or auth_token in localStorage\n  45 |     await Promise.race([\n> 46 |       this.page.waitForURL('http://localhost:3000/', { timeout: 10000 }),\n     |                 ^\n  47 |       this.page.waitForFunction(() => localStorage.getItem('auth_token') !== null, { timeout: 10000 }),\n  48 |     ]);\n  49 |   }\n    at AuthPage.waitForAuthentication (/home/k2600x/dev/ai-service/e2e/pages/auth.page.ts:46:17)\n    at /home/k2600x/dev/ai-service/e2e/tests/01-authentication.spec.ts:28:20"
+                          "message": "TimeoutError: page.waitForResponse: Timeout 10000ms exceeded while waiting for event \"response\"\n\n  22 |     \n  23 |     // Wait for API response\n> 24 |     const response = await page.waitForResponse(\n     |                                 ^\n  25 |       resp => resp.url().includes('/auth/login'),\n  26 |       { timeout: 10000 }\n  27 |     );\n    at /home/k2600x/dev/ai-service/e2e/tests/manual-integration.spec.ts:24:33"
                         }
                       ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-08-18T13:10:09.291Z",
+                      "startTime": "2025-08-18T20:02:38.720Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "/home/k2600x/dev/ai-service/test-results/tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/test-failed-1.png"
+                          "path": "/home/k2600x/dev/ai-service/test-results/manual-integration-Manual--9159d-e-loads-with-authentication-chromium/test-failed-1.png"
                         },
                         {
                           "name": "video",
                           "contentType": "video/webm",
-                          "path": "/home/k2600x/dev/ai-service/test-results/tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/video.webm"
+                          "path": "/home/k2600x/dev/ai-service/test-results/manual-integration-Manual--9159d-e-loads-with-authentication-chromium/video.webm"
                         },
                         {
                           "name": "error-context",
                           "contentType": "text/markdown",
-                          "path": "/home/k2600x/dev/ai-service/test-results/tests-01-authentication-Au-d55d8-ogin-with-valid-credentials-chromium/error-context.md"
+                          "path": "/home/k2600x/dev/ai-service/test-results/manual-integration-Manual--9159d-e-loads-with-authentication-chromium/error-context.md"
                         }
                       ],
                       "errorLocation": {
-                        "file": "/home/k2600x/dev/ai-service/e2e/pages/auth.page.ts",
-                        "column": 17,
-                        "line": 46
+                        "file": "/home/k2600x/dev/ai-service/e2e/tests/manual-integration.spec.ts",
+                        "column": 33,
+                        "line": 24
                       }
                     }
                   ],
                   "status": "unexpected"
                 }
               ],
-              "id": "79cfce3a03b341eda474-aa3b30b2594f61048981",
-              "file": "tests/01-authentication.spec.ts",
-              "line": 17,
+              "id": "bc44524cfc34c21d9508-28b1c5a05a11cc86cef7",
+              "file": "manual-integration.spec.ts",
+              "line": 9,
               "column": 7
             }
           ]
@@ -214,8 +214,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-08-18T13:10:07.888Z",
-    "duration": 14617.101,
+    "startTime": "2025-08-18T20:02:37.464Z",
+    "duration": 14741.496,
     "expected": 0,
     "skipped": 0,
     "unexpected": 1,
