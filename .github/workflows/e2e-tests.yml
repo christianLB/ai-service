@@ -70,7 +70,7 @@ jobs:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
         run: |
           echo "📁 Creating database schemas..."
-          npx prisma db execute --stdin <<EOF
+          npx prisma db execute --schema prisma/schema.prisma --stdin <<EOF
           CREATE SCHEMA IF NOT EXISTS public;
           CREATE SCHEMA IF NOT EXISTS financial;
           EOF
