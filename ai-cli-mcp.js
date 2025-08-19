@@ -72,6 +72,33 @@ const tools = {
   test_run: (params = {}) => {
     const suite = params.suite || 'all';
     return executeCLI(`test ${suite}`, params);
+  },
+  
+  // Production commands (safe operations only via MCP)
+  prod_status: () => {
+    return executeCLI('prod status');
+  },
+  
+  prod_health: () => {
+    return executeCLI('prod health');
+  },
+  
+  prod_logs: (params = {}) => {
+    const tail = params.tail || 100;
+    return executeCLI('prod logs', { tail });
+  },
+  
+  prod_backup: (params = {}) => {
+    const name = params.name || `mcp-backup-${Date.now()}`;
+    return executeCLI('prod backup', { name, skipConfirm: true });
+  },
+  
+  prod_migrate_status: () => {
+    return executeCLI('prod migrate status');
+  },
+  
+  prod_admin_list: () => {
+    return executeCLI('prod admin list');
   }
 };
 

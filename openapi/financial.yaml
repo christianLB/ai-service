@@ -8,11 +8,18 @@ servers:
   - url: http://localhost:3001
     description: Local development server
 
+security:
+  - BearerAuth: []
+
 paths:
   /api/financial/accounts:
     get:
       summary: List bank accounts
       operationId: listAccounts
+      tags:
+        - Accounts
+      security:
+        - BearerAuth: []
       parameters:
         - name: page
           in: query
@@ -42,11 +49,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/accounts/{id}:
     get:
       summary: Get account by ID
       operationId: getAccount
+      tags:
+        - Accounts
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -67,11 +84,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/clients:
     get:
       summary: List clients
       operationId: listClients
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
       parameters:
         - name: page
           in: query
@@ -107,11 +134,162 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create client
+      operationId: createClient
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClient'
+      responses:
+        '201':
+          description: Client created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/clients/search:
+    post:
+      summary: Search clients
+      operationId: searchClients
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchQuery'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientListResponse'
+        '400':
+          description: Invalid search parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/clients/bulk:
+    post:
+      summary: Bulk operations on clients
+      operationId: bulkClients
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkOperationRequest'
+      responses:
+        '200':
+          description: Bulk operation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Invalid bulk operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/clients/tax/{taxId}:
+    get:
+      summary: Get client by tax ID
+      operationId: getClientByTaxId
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: taxId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Client details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/clients/{id}:
     get:
       summary: Get client by ID
       operationId: getClient
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -132,11 +310,206 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update client
+      operationId: updateClient
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClient'
+      responses:
+        '200':
+          description: Client updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete client
+      operationId: deleteClient
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Client deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/clients/{id}/stats:
+    get:
+      summary: Get client statistics
+      operationId: getClientStats
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Client statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientStats'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/clients/{id}/transactions:
+    get:
+      summary: Get client transactions
+      operationId: getClientTransactions
+      tags:
+        - Clients
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Client transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionListResponse'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/invoices:
     get:
       summary: List invoices
       operationId: listInvoices
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
       parameters:
         - name: page
           in: query
@@ -174,11 +547,130 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create invoice
+      operationId: createInvoice
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoice'
+      responses:
+        '201':
+          description: Invoice created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/overdue:
+    get:
+      summary: Get overdue invoices
+      operationId: getOverdueInvoices
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of overdue invoices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/number/{invoiceNumber}:
+    get:
+      summary: Get invoice by number
+      operationId: getInvoiceByNumber
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: invoiceNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/invoices/{id}:
     get:
       summary: Get invoice by ID
       operationId: getInvoice
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -199,11 +691,412 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update invoice
+      operationId: updateInvoice
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInvoice'
+      responses:
+        '200':
+          description: Invoice updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete invoice
+      operationId: deleteInvoice
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/{id}/mark-paid:
+    post:
+      summary: Mark invoice as paid
+      operationId: markInvoicePaid
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentDetails'
+      responses:
+        '200':
+          description: Invoice marked as paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid payment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/{id}/send:
+    post:
+      summary: Send invoice
+      operationId: sendInvoice
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendInvoiceRequest'
+      responses:
+        '200':
+          description: Invoice sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid send request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/{id}/duplicate:
+    post:
+      summary: Duplicate invoice
+      operationId: duplicateInvoice
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Invoice duplicated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/{id}/items:
+    post:
+      summary: Add item to invoice
+      operationId: addInvoiceItem
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceItem'
+      responses:
+        '200':
+          description: Item added to invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid item data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/{id}/generate-pdf:
+    post:
+      summary: Generate invoice PDF
+      operationId: generateInvoicePdf
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  pdfUrl:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/{id}/download-pdf:
+    get:
+      summary: Download invoice PDF
+      operationId: downloadInvoicePdf
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice or PDF not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/invoices/{id}/send-email:
+    post:
+      summary: Send invoice by email
+      operationId: sendInvoiceEmail
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '200':
+          description: Email sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid email request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/transactions:
     get:
       summary: List transactions
       operationId: listTransactions
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
       parameters:
         - name: page
           in: query
@@ -275,11 +1168,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/transactions/import:
+    post:
+      summary: Import transactions
+      operationId: importTransactions
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: JSON file containing transactions
+                accountId:
+                  type: string
+                  format: uuid
+                  description: Account ID to associate transactions with
+              required:
+                - file
+                - accountId
+      responses:
+        '200':
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResult'
+        '400':
+          description: Invalid file or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/transactions/{id}:
     get:
       summary: Get transaction by ID
       operationId: getTransaction
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -300,11 +1249,155 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete transaction
+      operationId: deleteTransaction
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Transaction deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/transactions/{id}/categorize:
+    post:
+      summary: Categorize transaction
+      operationId: categorizeTransaction
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorizationRequest'
+      responses:
+        '200':
+          description: Transaction categorized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid categorization request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/categorize/auto:
+    post:
+      summary: Auto-categorize transactions
+      operationId: autoCategorizeTransactions
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transactionIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+              required:
+                - transactionIds
+      responses:
+        '200':
+          description: Auto-categorization completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  categorizedCount:
+                    type: integer
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/transactions/export:
     get:
       summary: Export transactions
       operationId: exportTransactions
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
       parameters:
         - name: format
           in: query
@@ -344,11 +1437,414 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/account-status:
+    get:
+      summary: Get account status
+      operationId: getAccountStatus
+      tags:
+        - Accounts
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Account status information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountStatusResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/gocardless/credentials:
+    get:
+      summary: Check GoCardless credentials
+      operationId: checkGoCardlessCredentials
+      tags:
+        - GoCardless
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Credentials status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured:
+                    type: boolean
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Configure GoCardless credentials
+      operationId: configureGoCardlessCredentials
+      tags:
+        - GoCardless
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoCardlessConfig'
+      responses:
+        '200':
+          description: Credentials configured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete GoCardless credentials
+      operationId: deleteGoCardlessCredentials
+      tags:
+        - GoCardless
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Credentials deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/gocardless/status:
+    get:
+      summary: Get GoCardless status
+      operationId: getGoCardlessStatus
+      tags:
+        - GoCardless
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: GoCardless status information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoCardlessStatus'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/test-gocardless:
+    post:
+      summary: Test GoCardless connection
+      operationId: testGoCardlessConnection
+      tags:
+        - GoCardless
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Connection test failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/diagnose-gocardless:
+    post:
+      summary: Diagnose GoCardless issues
+      operationId: diagnoseGoCardlessIssues
+      tags:
+        - GoCardless
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Diagnosis report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosisReport'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/setup-bbva:
+    post:
+      summary: Setup BBVA connection
+      operationId: setupBbvaConnection
+      tags:
+        - Setup
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Setup initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupResponse'
+        '400':
+          description: Setup failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/complete-setup:
+    post:
+      summary: Complete setup process
+      operationId: completeSetup
+      tags:
+        - Setup
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requisitionId:
+                  type: string
+              required:
+                - requisitionId
+      responses:
+        '200':
+          description: Setup completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupResult'
+        '400':
+          description: Invalid requisition ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/sync:
+    post:
+      summary: Manual sync
+      operationId: manualSync
+      tags:
+        - Sync
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/sync/accounts:
+    post:
+      summary: Sync accounts
+      operationId: syncAccounts
+      tags:
+        - Sync
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Accounts synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/sync/balances:
+    post:
+      summary: Sync balances
+      operationId: syncBalances
+      tags:
+        - Sync
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                forceRefresh:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Balances synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/sync/transactions:
+    post:
+      summary: Sync transactions
+      operationId: syncTransactions
+      tags:
+        - Sync
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days:
+                  type: integer
+                  description: Number of days to sync
+                  default: 30
+      responses:
+        '200':
+          description: Transactions synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/scheduler/start:
+    post:
+      summary: Start scheduler
+      operationId: startScheduler
+      tags:
+        - Scheduler
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Scheduler started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/financial/scheduler/stop:
+    post:
+      summary: Stop scheduler
+      operationId: stopScheduler
+      tags:
+        - Scheduler
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Scheduler stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/attachments:
     get:
       summary: List attachments
       operationId: listAttachments
+      tags:
+        - Attachments
+      security:
+        - BearerAuth: []
       parameters:
         - name: page
           in: query
@@ -387,11 +1883,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /api/financial/attachments/{id}:
     get:
       summary: Get attachment by ID
       operationId: getAttachment
+      tags:
+        - Attachments
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -412,8 +1918,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     Error:
       type: object
@@ -427,6 +1944,480 @@ components:
         code:
           type: string
           description: Error code (BAD_REQUEST, NOT_FOUND, etc.)
+
+    StandardResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          description: Response data (varies by operation)
+        message:
+          type: string
+          description: Success message
+        error:
+          type: string
+          description: Error message (if success is false)
+
+    # Client Schemas
+    CreateClient:
+      type: object
+      required:
+        - name
+        - defaultCurrency
+        - paymentTerms
+        - isActive
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        taxId:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        postalCode:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        defaultCurrency:
+          type: string
+          default: 'EUR'
+        paymentTerms:
+          type: integer
+          minimum: 0
+          default: 30
+        notes:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          default: true
+        metadata:
+          type: object
+          nullable: true
+
+    UpdateClient:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        taxId:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        postalCode:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        defaultCurrency:
+          type: string
+        paymentTerms:
+          type: integer
+          minimum: 0
+        notes:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        metadata:
+          type: object
+          nullable: true
+
+    SearchQuery:
+      type: object
+      properties:
+        query:
+          type: string
+          description: Search term
+        filters:
+          type: object
+          description: Additional filters
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+
+    BulkOperationRequest:
+      type: object
+      required:
+        - operation
+        - ids
+      properties:
+        operation:
+          type: string
+          enum: [delete, activate, deactivate, export]
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        options:
+          type: object
+          description: Operation-specific options
+
+    BulkOperationResponse:
+      type: object
+      required:
+        - success
+        - processed
+        - failed
+      properties:
+        success:
+          type: boolean
+        processed:
+          type: integer
+        failed:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              error:
+                type: string
+
+    ClientStats:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+        totalInvoices:
+          type: integer
+        outstandingBalance:
+          type: number
+        averageInvoiceAmount:
+          type: number
+        lastInvoiceDate:
+          type: string
+          format: date
+        paymentHistory:
+          type: array
+          items:
+            type: object
+
+    # Invoice Schemas
+    CreateInvoice:
+      type: object
+      required:
+        - clientId
+        - status
+        - total
+        - subtotal
+        - tax
+        - issueDate
+        - dueDate
+        - items
+      properties:
+        clientId:
+          type: string
+          format: uuid
+        invoiceNumber:
+          type: string
+          description: Auto-generated if not provided
+        status:
+          type: string
+          enum: [draft, sent, paid, overdue, cancelled]
+          default: draft
+        total:
+          type: number
+        subtotal:
+          type: number
+        tax:
+          type: number
+        issueDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
+          minItems: 1
+
+    UpdateInvoice:
+      type: object
+      properties:
+        clientId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [draft, sent, paid, overdue, cancelled]
+        total:
+          type: number
+        subtotal:
+          type: number
+        tax:
+          type: number
+        issueDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        paidDate:
+          type: string
+          format: date
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
+
+    PaymentDetails:
+      type: object
+      required:
+        - paidDate
+      properties:
+        paidDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+        paymentReference:
+          type: string
+
+    SendInvoiceRequest:
+      type: object
+      required:
+        - method
+      properties:
+        method:
+          type: string
+          enum: [email, post, sms]
+        email:
+          type: string
+          format: email
+        message:
+          type: string
+        attachPdf:
+          type: boolean
+          default: true
+
+    EmailRequest:
+      type: object
+      required:
+        - to
+        - subject
+      properties:
+        to:
+          type: string
+          format: email
+        subject:
+          type: string
+        message:
+          type: string
+        attachPdf:
+          type: boolean
+          default: true
+
+    # Transaction Schemas
+    CategorizationRequest:
+      type: object
+      required:
+        - categoryId
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        method:
+          type: string
+          enum: [manual, ai, pattern]
+          default: manual
+
+    ImportResult:
+      type: object
+      required:
+        - success
+        - imported
+        - skipped
+      properties:
+        success:
+          type: boolean
+        imported:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              error:
+                type: string
+        duplicates:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              transactionId:
+                type: string
+
+    # Account Schemas
+    AccountStatusResponse:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        lastSync:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, inactive, error]
+        accountsCount:
+          type: integer
+        balanceTotal:
+          type: number
+
+    # GoCardless Schemas
+    GoCardlessConfig:
+      type: object
+      required:
+        - secretId
+        - secretKey
+        - environment
+      properties:
+        secretId:
+          type: string
+        secretKey:
+          type: string
+        environment:
+          type: string
+          enum: [sandbox, live]
+          default: sandbox
+
+    GoCardlessStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        connected:
+          type: boolean
+        lastSync:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, inactive, error]
+        error:
+          type: string
+
+    DiagnosisReport:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, warning, error]
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              severity:
+                type: string
+                enum: [low, medium, high, critical]
+              description:
+                type: string
+              solution:
+                type: string
+        lastChecked:
+          type: string
+          format: date-time
+
+    # Setup & Sync Schemas
+    SetupResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        requisitionId:
+          type: string
+        authUrl:
+          type: string
+        status:
+          type: string
+
+    SetupResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        accountsFound:
+          type: integer
+        message:
+          type: string
+
+    SyncResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        synchronized:
+          type: integer
+        failed:
+          type: integer
+        lastSync:
+          type: string
+          format: date-time
+        message:
+          type: string
 
     PaginationInfo:
       type: object

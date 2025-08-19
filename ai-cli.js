@@ -3,8 +3,9 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const prodHelpers = require('./lib/prod-helpers');
 
-// Simple CLI for AI Service
+// AI Service CLI v2.1.0 - Now with Production Support!
 const command = process.argv[2];
 const args = process.argv.slice(3);
 
@@ -34,7 +35,7 @@ function getToken() {
 // Command handlers
 const commands = {
   '--version': () => {
-    console.log('AI Service CLI v2.0.0');
+    console.log('AI Service CLI v2.1.0 - Production Ready');
   },
   
   '--help': () => {
@@ -43,7 +44,7 @@ AI Service CLI - Professional replacement for broken Makefiles
 
 Usage: ai <command> [options]
 
-Commands:
+Development Commands:
   token                Get authentication token
   dev start            Start development environment
   dev stop             Stop development environment
@@ -53,12 +54,25 @@ Commands:
   db migrate           Run migrations
   db backup [name]     Create database backup
   test [suite]         Run tests
+
+Production Commands:
+  prod status          Check production system status
+  prod health          Comprehensive health check
+  prod logs [service]  View production logs
+  prod backup [name]   Create production backup
+  prod admin create    Create admin user
+  prod admin list      List production users
+  prod admin reset     Reset user password
+  prod migrate status  Check migration status
+  prod migrate deploy  Deploy migrations
   
 Examples:
   ai token             # Get auth token
   ai dev start         # Start all services
-  ai dev status        # Check status
-  ai db migrate        # Run migrations
+  ai prod status       # Check production status
+  ai prod health       # Run health check
+  ai prod backup       # Create production backup
+  ai prod admin create # Create production admin user
 
 For detailed help: ai <command> --help
 `);
@@ -140,18 +154,191 @@ For detailed help: ai <command> --help
       runCommand(`npm test -- --testPathPattern=${suite}`);
     }
     console.log('✅ Tests completed');
+  },
+
+  'prod': async () => {
+    const subCommand = args[0];
+    const subArgs = args.slice(1);
+    
+    try {
+      switch (subCommand) {
+        case 'status':
+          console.log('🔍 Checking production status...');
+          const status = await prodHelpers.getProductionStatus();
+          console.log('\n=== PRODUCTION STATUS ===');
+          console.log(`Database: ${status.database}`);
+          console.log(`API: ${status.api}`);
+          console.log('\nContainers:');
+          status.containers.forEach(line => console.log(`  ${line}`));
+          break;
+          
+        case 'health':
+          console.log('🏥 Running comprehensive health check...');
+          const health = await prodHelpers.performHealthCheck();
+          console.log('\n=== HEALTH REPORT ===');
+          console.log(`Overall Status: ${health.overall.toUpperCase()}`);
+          console.log(`Database: ${health.database.healthy ? '✅ Healthy' : '❌ Unhealthy'}`);
+          console.log(`API: ${health.services.api?.healthy ? '✅ Healthy' : '❌ Unhealthy'}`);
+          console.log(`System: ${health.system.healthy ? '✅ Healthy' : '❌ Unhealthy'}`);
+          
+          if (health.recommendations.length > 0) {
+            console.log('\n🔧 Recommendations:');
+            health.recommendations.forEach(rec => console.log(`  • ${rec}`));
+          }
+          break;
+          
+        case 'logs':
+          const service = subArgs[0] || 'all';
+          const lines = subArgs[1] || 50;
+          console.log(`📋 Getting production logs for ${service}...`);
+          const logs = await prodHelpers.getProductionLogs(service, lines);
+          console.log(logs);
+          break;
+          
+        case 'backup':
+          const backupName = subArgs[0] || null;
+          console.log('💾 Creating production backup...');
+          const filename = await prodHelpers.createBackup(backupName);
+          console.log(`✅ Backup created: ${filename}`);
+          break;
+          
+        case 'admin':
+          await handleAdminCommands(subArgs);
+          break;
+          
+        case 'migrate':
+          await handleMigrateCommands(subArgs);
+          break;
+          
+        default:
+          console.log('Unknown production command.');
+          console.log('Available: status, health, logs, backup, admin, migrate');
+      }
+    } catch (error) {
+      console.error('❌ Production command failed:', error.message);
+      process.exit(1);
+    }
   }
 };
 
-// Main execution
-if (!command || command === '--help' || command === '-h') {
-  commands['--help']();
-} else if (command === '--version' || command === '-v') {
-  commands['--version']();
-} else if (commands[command]) {
-  commands[command]();
-} else {
-  console.error(`Unknown command: ${command}`);
-  console.log('Run "ai --help" for usage information');
-  process.exit(1);
+// Admin command handlers
+async function handleAdminCommands(subArgs) {
+  const adminCommand = subArgs[0];
+  
+  switch (adminCommand) {
+    case 'create':
+      console.log('👤 Creating production admin user...');
+      const confirmed = await prodHelpers.promptConfirmation(
+        'This will create/update the admin user in production.', 
+        { dangerLevel: 'medium' }
+      );
+      
+      if (!confirmed) {
+        console.log('❌ Admin user creation cancelled');
+        return;
+      }
+      
+      try {
+        // Create admin user via SQL
+        const createUserSQL = "INSERT INTO users (email, password_hash, full_name, role, is_active) VALUES ('admin@ai-service.local', '$2b$10$8YzH7X1vKpFdKjb8rqOAOe8uEpZ4UjQn9mGxK7bgQqFvI9o1aWVKq', 'System Administrator', 'admin', true) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'admin', is_active = true;";
+        
+        await prodHelpers.executeDockerSSH(`exec ai-postgres psql -U ai_user -d ai_service -c "${createUserSQL}"`);
+        
+        console.log('✅ Admin user created/updated successfully');
+        console.log('📧 Email: admin@ai-service.local');
+        console.log('🔑 Password: admin123');
+        console.log('⚠️  Please change the password after first login');
+      } catch (error) {
+        console.error('❌ Failed to create admin user:', error.message);
+      }
+      break;
+      
+    case 'list':
+      console.log('👥 Listing production users...');
+      try {
+        const users = await prodHelpers.executeDockerSSH(
+          `exec ai-postgres psql -U ai_user -d ai_service -c "SELECT email, full_name, role, is_active, created_at FROM users ORDER BY created_at DESC;"`
+        );
+        console.log(users);
+      } catch (error) {
+        console.error('❌ Failed to list users:', error.message);
+      }
+      break;
+      
+    case 'reset':
+      console.log('🔑 Password reset functionality not yet implemented');
+      console.log('💡 Use: ai prod admin create (to reset admin password)');
+      break;
+      
+    default:
+      console.log('Unknown admin command.');
+      console.log('Available: create, list, reset');
+  }
 }
+
+// Migration command handlers
+async function handleMigrateCommands(subArgs) {
+  const migrateCommand = subArgs[0];
+  
+  switch (migrateCommand) {
+    case 'status':
+      console.log('🔍 Checking migration status...');
+      try {
+        const status = await prodHelpers.getMigrationStatus();
+        console.log(status);
+      } catch (error) {
+        console.error('❌ Failed to check migration status:', error.message);
+      }
+      break;
+      
+    case 'deploy':
+      console.log('🚀 Deploying migrations to production...');
+      const confirmed = await prodHelpers.promptConfirmation(
+        'This will apply pending migrations to production database.',
+        { dangerLevel: 'high' }
+      );
+      
+      if (!confirmed) {
+        console.log('❌ Migration deployment cancelled');
+        return;
+      }
+      
+      try {
+        const result = await prodHelpers.deployMigrations(true);
+        console.log('✅ Migrations deployed successfully');
+        console.log(result);
+      } catch (error) {
+        console.error('❌ Migration deployment failed:', error.message);
+      }
+      break;
+      
+    default:
+      console.log('Unknown migration command.');
+      console.log('Available: status, deploy');
+  }
+}
+
+// Main execution
+async function main() {
+  if (!command || command === '--help' || command === '-h') {
+    commands['--help']();
+  } else if (command === '--version' || command === '-v') {
+    commands['--version']();
+  } else if (commands[command]) {
+    if (command === 'prod') {
+      await commands[command]();
+    } else {
+      commands[command]();
+    }
+  } else {
+    console.error(`Unknown command: ${command}`);
+    console.log('Run "ai --help" for usage information');
+    process.exit(1);
+  }
+}
+
+// Run main function
+main().catch(error => {
+  console.error('CLI Error:', error.message);
+  process.exit(1);
+});

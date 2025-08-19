@@ -32,6 +32,8 @@ The new CLI system provides:
 ./ai-cli.js token               # Get auth token
 ./ai-cli.js dev start           # Start environment
 ./ai-cli.js db migrate          # Run migrations
+./ai-cli.js prod status         # Check production status
+./ai-cli.js prod backup          # Create production backup
 ./ai-cli.js --help              # See all commands
 ```
 
@@ -54,6 +56,8 @@ The MCP configuration is at: `~/.claude/mcp_config.json`
 
 ### Available MCP Tools
 
+#### Development Tools
+
 | Tool Name    | Description           | Parameters                           | Returns          |
 | ------------ | --------------------- | ------------------------------------ | ---------------- |
 | `get_token`  | Get JWT auth token    | None                                 | Token string     |
@@ -65,6 +69,17 @@ The MCP configuration is at: `~/.claude/mcp_config.json`
 | `db_migrate` | Run migrations        | `backup: boolean`                    | Migration result |
 | `db_backup`  | Create DB backup      | `name: string`                       | Backup location  |
 | `test_run`   | Run test suite        | `suite: string`, `coverage: boolean` | Test results     |
+
+#### Production Tools (Safe Operations)
+
+| Tool Name             | Description              | Parameters     | Returns         |
+| --------------------- | ------------------------ | -------------- | --------------- |
+| `prod_status`         | Check production status  | None           | System status   |
+| `prod_health`         | Production health check  | None           | Health report   |
+| `prod_logs`           | View production logs     | `tail: number` | Log output      |
+| `prod_backup`         | Create production backup | `name: string` | Backup location |
+| `prod_migrate_status` | Check migration status   | None           | Migration info  |
+| `prod_admin_list`     | List production users    | None           | User list       |
 
 ### MCP Server Wrapper
 
@@ -146,20 +161,58 @@ for endpoint in health ready metrics; do
 done
 ```
 
+## Production Commands (NEW in v2.1.0)
+
+### Production Operations
+
+```bash
+# Status and health
+./ai-cli.js prod status         # Check production system status
+./ai-cli.js prod health         # Comprehensive health check
+./ai-cli.js prod logs           # View production logs
+
+# Backup operations
+./ai-cli.js prod backup         # Create production backup
+./ai-cli.js prod backup daily-backup  # Named backup
+
+# Admin operations
+./ai-cli.js prod admin create   # Create admin user
+./ai-cli.js prod admin list     # List all users
+./ai-cli.js prod admin reset    # Reset user password
+
+# Migration operations
+./ai-cli.js prod migrate status # Check migration status
+./ai-cli.js prod migrate deploy # Apply migrations (with confirmation)
+```
+
+### Production Safety Features
+
+- **Automatic confirmations** for destructive operations
+- **Color-coded danger levels** (green=safe, yellow=caution, red=danger)
+- **Automatic backups** before migrations
+- **SSH key authentication** for secure access
+- **Read-only operations** available without confirmation
+
 ## Migration from Makefiles
 
 ### Command Mapping
 
-| Old Make Command  | New CLI Command          | MCP Tool     |
-| ----------------- | ------------------------ | ------------ |
-| `make auth-token` | `./ai-cli.js token`      | `get_token`  |
-| `make dev-up`     | `./ai-cli.js dev start`  | `dev_start`  |
-| `make dev-down`   | `./ai-cli.js dev stop`   | `dev_stop`   |
-| `make dev-status` | `./ai-cli.js dev status` | `dev_status` |
-| `make dev-logs`   | `./ai-cli.js dev logs`   | `dev_logs`   |
-| `make db-migrate` | `./ai-cli.js db migrate` | `db_migrate` |
-| `make db-backup`  | `./ai-cli.js db backup`  | `db_backup`  |
-| `make test`       | `./ai-cli.js test`       | `test_run`   |
+| Old Make Command           | New CLI Command                   | MCP Tool              |
+| -------------------------- | --------------------------------- | --------------------- |
+| `make auth-token`          | `./ai-cli.js token`               | `get_token`           |
+| `make dev-up`              | `./ai-cli.js dev start`           | `dev_start`           |
+| `make dev-down`            | `./ai-cli.js dev stop`            | `dev_stop`            |
+| `make dev-status`          | `./ai-cli.js dev status`          | `dev_status`          |
+| `make dev-logs`            | `./ai-cli.js dev logs`            | `dev_logs`            |
+| `make db-migrate`          | `./ai-cli.js db migrate`          | `db_migrate`          |
+| `make db-backup`           | `./ai-cli.js db backup`           | `db_backup`           |
+| `make test`                | `./ai-cli.js test`                | `test_run`            |
+| `make prod-status`         | `./ai-cli.js prod status`         | `prod_status`         |
+| `make prod-backup`         | `./ai-cli.js prod backup`         | `prod_backup`         |
+| `make prod-health`         | `./ai-cli.js prod health`         | `prod_health`         |
+| `make prod-logs`           | `./ai-cli.js prod logs`           | `prod_logs`           |
+| `make prod-create-admin`   | `./ai-cli.js prod admin create`   | -                     |
+| `make prod-migrate-status` | `./ai-cli.js prod migrate status` | `prod_migrate_status` |
 
 ### Backward Compatibility
 
