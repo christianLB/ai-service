@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
-import type { 
-  InvoiceAttachment, 
-  CreateInvoiceAttachment, 
-  InvoiceAttachmentQuery 
+import type { AxiosError } from 'axios';
+import type {
+  InvoiceAttachment,
+  CreateInvoiceAttachment,
+  InvoiceAttachmentQuery,
 } from '../types/invoice-attachment.types';
 
 const QUERY_KEY = 'invoice-attachments';
@@ -33,7 +34,9 @@ export function useInvoiceAttachments(params?: InvoiceAttachmentQuery) {
   return useQuery({
     queryKey: [QUERY_KEY, params],
     queryFn: async () => {
-      const response = await api.get<InvoiceAttachmentListResponse>('/invoice-attachments', { params });
+      const response = await api.get<InvoiceAttachmentListResponse>('/invoice-attachments', {
+        params,
+      });
       return response.data.data;
     },
   });
@@ -86,8 +89,8 @@ export function useInvoiceAttachmentMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceAttachment created successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to create invoiceattachment');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to create invoiceattachment');
     },
   });
 
@@ -101,39 +104,42 @@ export function useInvoiceAttachmentMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'InvoiceAttachment updated successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to update invoiceattachment');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to update invoiceattachment');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/invoice-attachments/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(
+        `/invoice-attachments/${id}`
+      );
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceAttachment deleted successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete invoiceattachment');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to delete invoiceattachment');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/invoice-attachments/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/invoice-attachments/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'InvoiceAttachments deleted successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete invoiceattachments');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to delete invoiceattachments');
     },
   });
 
@@ -169,7 +175,9 @@ export function useInvoiceAttachmentPrefetch() {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, params],
       queryFn: async () => {
-        const response = await api.get<InvoiceAttachmentListResponse>('/invoice-attachments', { params });
+        const response = await api.get<InvoiceAttachmentListResponse>('/invoice-attachments', {
+          params,
+        });
         return response.data.data;
       },
     });

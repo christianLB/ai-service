@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
-import type { 
-  UniversalTag, 
-  CreateUniversalTag, 
-  UniversalTagQuery 
+import type { AxiosError } from 'axios';
+import type {
+  UniversalTag,
+  CreateUniversalTag,
+  UniversalTagQuery,
 } from '../types/universal-tag.types';
 
 const QUERY_KEY = 'universal-tags';
@@ -86,8 +87,8 @@ export function useUniversalTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'UniversalTag created successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to create universaltag');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to create universaltag');
     },
   });
 
@@ -101,39 +102,42 @@ export function useUniversalTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'UniversalTag updated successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to update universaltag');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to update universaltag');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/universal-tags/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(
+        `/universal-tags/${id}`
+      );
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'UniversalTag deleted successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete universaltag');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to delete universaltag');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/universal-tags/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/universal-tags/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'UniversalTags deleted successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete universaltags');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to delete universaltags');
     },
   });
 

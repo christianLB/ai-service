@@ -2,11 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { AxiosError } from 'axios';
-import type { 
-  Report, 
-  CreateReport, 
-  ReportQuery 
-} from '../types/report.types';
+import type { Report, CreateReport, ReportQuery } from '../types/report.types';
 
 const QUERY_KEY = 'reports';
 
@@ -62,10 +58,9 @@ export function useReportSearch(query: string) {
   return useQuery({
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: Report[] }>(
-        '/reports/search',
-        { params: { q: query } }
-      );
+      const response = await api.get<{ success: boolean; data: Report[] }>('/reports/search', {
+        params: { q: query },
+      });
       return response.data.data;
     },
     enabled: query.length > 0,
@@ -88,7 +83,7 @@ export function useReportMutations() {
       message.success(response.message || 'Report created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to create report');
+      message.error(error.response?.data?.message || 'Failed to create report');
     },
   });
 
@@ -103,7 +98,7 @@ export function useReportMutations() {
       message.success(response.message || 'Report updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to update report');
+      message.error(error.response?.data?.message || 'Failed to update report');
     },
   });
 
@@ -117,16 +112,17 @@ export function useReportMutations() {
       message.success(response.message || 'Report deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete report');
+      message.error(error.response?.data?.message || 'Failed to delete report');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/reports/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/reports/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
@@ -134,7 +130,7 @@ export function useReportMutations() {
       message.success(response.message || 'Reports deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete reports');
+      message.error(error.response?.data?.message || 'Failed to delete reports');
     },
   });
 

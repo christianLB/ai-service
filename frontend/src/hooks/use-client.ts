@@ -2,11 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { AxiosError } from 'axios';
-import type { 
-  Client, 
-  CreateClient, 
-  ClientQuery 
-} from '../types/client.types';
+import type { Client, CreateClient, ClientQuery } from '../types/client.types';
 
 const QUERY_KEY = 'clients';
 
@@ -62,10 +58,9 @@ export function useClientSearch(query: string) {
   return useQuery({
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: Client[] }>(
-        '/clients/search',
-        { params: { q: query } }
-      );
+      const response = await api.get<{ success: boolean; data: Client[] }>('/clients/search', {
+        params: { q: query },
+      });
       return response.data.data;
     },
     enabled: query.length > 0,
@@ -88,7 +83,7 @@ export function useClientMutations() {
       message.success(response.message || 'Client created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to create client');
+      message.error(error.response?.data?.message || 'Failed to create client');
     },
   });
 
@@ -103,7 +98,7 @@ export function useClientMutations() {
       message.success(response.message || 'Client updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to update client');
+      message.error(error.response?.data?.message || 'Failed to update client');
     },
   });
 
@@ -117,16 +112,17 @@ export function useClientMutations() {
       message.success(response.message || 'Client deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete client');
+      message.error(error.response?.data?.message || 'Failed to delete client');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/clients/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/clients/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
@@ -134,7 +130,7 @@ export function useClientMutations() {
       message.success(response.message || 'Clients deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete clients');
+      message.error(error.response?.data?.message || 'Failed to delete clients');
     },
   });
 

@@ -2,11 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { AxiosError } from 'axios';
-import type { 
-  Trade, 
-  CreateTrade, 
-  TradeQuery 
-} from '../types/trade.types';
+import type { Trade, CreateTrade, TradeQuery } from '../types/trade.types';
 
 const QUERY_KEY = 'trades';
 
@@ -62,10 +58,9 @@ export function useTradeSearch(query: string) {
   return useQuery({
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: Trade[] }>(
-        '/trades/search',
-        { params: { q: query } }
-      );
+      const response = await api.get<{ success: boolean; data: Trade[] }>('/trades/search', {
+        params: { q: query },
+      });
       return response.data.data;
     },
     enabled: query.length > 0,
@@ -88,7 +83,7 @@ export function useTradeMutations() {
       message.success(response.message || 'Trade created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to create trade');
+      message.error(error.response?.data?.message || 'Failed to create trade');
     },
   });
 
@@ -103,7 +98,7 @@ export function useTradeMutations() {
       message.success(response.message || 'Trade updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to update trade');
+      message.error(error.response?.data?.message || 'Failed to update trade');
     },
   });
 
@@ -117,16 +112,17 @@ export function useTradeMutations() {
       message.success(response.message || 'Trade deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete trade');
+      message.error(error.response?.data?.message || 'Failed to delete trade');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/trades/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/trades/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
@@ -134,7 +130,7 @@ export function useTradeMutations() {
       message.success(response.message || 'Trades deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete trades');
+      message.error(error.response?.data?.message || 'Failed to delete trades');
     },
   });
 

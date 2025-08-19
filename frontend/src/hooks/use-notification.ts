@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { AxiosError } from 'axios';
-import type { 
-  Notification, 
-  CreateNotification, 
-  NotificationQuery 
+import type {
+  Notification,
+  CreateNotification,
+  NotificationQuery,
 } from '../types/notification.types';
 
 const QUERY_KEY = 'notifications';
@@ -88,7 +88,7 @@ export function useNotificationMutations() {
       message.success(response.message || 'Notification created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to create notification');
+      message.error(error.response?.data?.message || 'Failed to create notification');
     },
   });
 
@@ -103,13 +103,15 @@ export function useNotificationMutations() {
       message.success(response.message || 'Notification updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to update notification');
+      message.error(error.response?.data?.message || 'Failed to update notification');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/notifications/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(
+        `/notifications/${id}`
+      );
       return response.data;
     },
     onSuccess: (response) => {
@@ -117,16 +119,17 @@ export function useNotificationMutations() {
       message.success(response.message || 'Notification deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete notification');
+      message.error(error.response?.data?.message || 'Failed to delete notification');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/notifications/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/notifications/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
@@ -134,7 +137,7 @@ export function useNotificationMutations() {
       message.success(response.message || 'Notifications deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete notifications');
+      message.error(error.response?.data?.message || 'Failed to delete notifications');
     },
   });
 

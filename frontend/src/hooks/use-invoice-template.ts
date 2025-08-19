@@ -2,11 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { AxiosError } from 'axios';
-import type { 
-  InvoiceTemplate, 
-  CreateInvoiceTemplate, 
+import type {
+  InvoiceTemplate,
+  CreateInvoiceTemplate,
   UpdateInvoiceTemplate,
-  InvoiceTemplateQuery 
+  InvoiceTemplateQuery,
 } from '../types/invoice-template.types';
 
 const QUERY_KEY = 'invoice-templates';
@@ -35,7 +35,9 @@ export function useInvoiceTemplates(params?: InvoiceTemplateQuery) {
   return useQuery({
     queryKey: [QUERY_KEY, params],
     queryFn: async () => {
-      const response = await api.get<InvoiceTemplateListResponse>('/financial/invoice-templates', { params });
+      const response = await api.get<InvoiceTemplateListResponse>('/financial/invoice-templates', {
+        params,
+      });
       return response.data.data;
     },
   });
@@ -81,7 +83,10 @@ export function useInvoiceTemplateMutations() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateInvoiceTemplate) => {
-      const response = await api.post<InvoiceTemplateResponse>('/financial/invoice-templates', data);
+      const response = await api.post<InvoiceTemplateResponse>(
+        '/financial/invoice-templates',
+        data
+      );
       return response.data;
     },
     onSuccess: (response) => {
@@ -89,13 +94,16 @@ export function useInvoiceTemplateMutations() {
       message.success(response.message || 'InvoiceTemplate created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to create invoicetemplate');
+      message.error(error.response?.data?.message || 'Failed to create invoicetemplate');
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InvoiceTemplate> }) => {
-      const response = await api.put<InvoiceTemplateResponse>(`/financial/invoice-templates/${id}`, data);
+      const response = await api.put<InvoiceTemplateResponse>(
+        `/financial/invoice-templates/${id}`,
+        data
+      );
       return response.data;
     },
     onSuccess: (response, variables) => {
@@ -104,13 +112,15 @@ export function useInvoiceTemplateMutations() {
       message.success(response.message || 'InvoiceTemplate updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to update invoicetemplate');
+      message.error(error.response?.data?.message || 'Failed to update invoicetemplate');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/financial/invoice-templates/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(
+        `/financial/invoice-templates/${id}`
+      );
       return response.data;
     },
     onSuccess: (response) => {
@@ -118,16 +128,17 @@ export function useInvoiceTemplateMutations() {
       message.success(response.message || 'InvoiceTemplate deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete invoicetemplate');
+      message.error(error.response?.data?.message || 'Failed to delete invoicetemplate');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/financial/invoice-templates/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/financial/invoice-templates/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
@@ -135,7 +146,7 @@ export function useInvoiceTemplateMutations() {
       message.success(response.message || 'InvoiceTemplates deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete invoicetemplates');
+      message.error(error.response?.data?.message || 'Failed to delete invoicetemplates');
     },
   });
 
@@ -159,7 +170,10 @@ export function useCreateInvoiceTemplate() {
 
   return useMutation({
     mutationFn: async (data: CreateInvoiceTemplate) => {
-      const response = await api.post<InvoiceTemplateResponse>('/financial/invoice-templates', data);
+      const response = await api.post<InvoiceTemplateResponse>(
+        '/financial/invoice-templates',
+        data
+      );
       return response.data;
     },
     onSuccess: (response) => {
@@ -167,7 +181,7 @@ export function useCreateInvoiceTemplate() {
       message.success(response.message || 'Invoice template created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to create invoice template');
+      message.error(error.response?.data?.message || 'Failed to create invoice template');
     },
   });
 }
@@ -177,7 +191,10 @@ export function useUpdateInvoiceTemplate() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: UpdateInvoiceTemplate) => {
-      const response = await api.put<InvoiceTemplateResponse>(`/financial/invoice-templates/${id}`, data);
+      const response = await api.put<InvoiceTemplateResponse>(
+        `/financial/invoice-templates/${id}`,
+        data
+      );
       return response.data;
     },
     onSuccess: (response, variables) => {
@@ -186,7 +203,7 @@ export function useUpdateInvoiceTemplate() {
       message.success(response.message || 'Invoice template updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to update invoice template');
+      message.error(error.response?.data?.message || 'Failed to update invoice template');
     },
   });
 }
@@ -196,7 +213,9 @@ export function useDeleteInvoiceTemplate() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/financial/invoice-templates/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(
+        `/financial/invoice-templates/${id}`
+      );
       return response.data;
     },
     onSuccess: (response) => {
@@ -204,7 +223,7 @@ export function useDeleteInvoiceTemplate() {
       message.success(response.message || 'Invoice template deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete invoice template');
+      message.error(error.response?.data?.message || 'Failed to delete invoice template');
     },
   });
 }
@@ -219,7 +238,9 @@ export function useInvoiceTemplatePrefetch() {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, id],
       queryFn: async () => {
-        const response = await api.get<InvoiceTemplateResponse>(`/financial/invoice-templates/${id}`);
+        const response = await api.get<InvoiceTemplateResponse>(
+          `/financial/invoice-templates/${id}`
+        );
         return response.data.data;
       },
     });
@@ -229,7 +250,10 @@ export function useInvoiceTemplatePrefetch() {
     await queryClient.prefetchQuery({
       queryKey: [QUERY_KEY, params],
       queryFn: async () => {
-        const response = await api.get<InvoiceTemplateListResponse>('/financial/invoice-templates', { params });
+        const response = await api.get<InvoiceTemplateListResponse>(
+          '/financial/invoice-templates',
+          { params }
+        );
         return response.data.data;
       },
     });
