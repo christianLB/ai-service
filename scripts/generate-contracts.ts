@@ -89,13 +89,12 @@ function generateIndexFile(specs: string[]): string {
 
   return `/**
  * Auto-generated index file for OpenAPI contracts
- * Generated on: ${new Date().toISOString()}
  */
 
 ${exports}
 
 // Export version for runtime checks
-export const GENERATED_AT = '${new Date().toISOString()}';
+export const CONTRACT_VERSION = '1.0.0';
 `;
 }
 
