@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { Logger } from '../../utils/logger';
 import { config } from '../../config';
 import { prisma } from '../../lib/prisma';

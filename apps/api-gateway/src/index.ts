@@ -1,66 +1,21 @@
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import { Pool } from "pg";
-import Redis from "ioredis";
-import { env } from "@ai/config";
-import type { AiServicePaths } from "@ai/contracts";
-import { createAiServiceClient } from "@ai/contracts";
-import crypto from "crypto";
-import { createStandardObservability, MetricsRegistry, createDependencyCheckers } from "@ai/observability";
+import express from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import * as dotenv from 'dotenv';
 
-// DB and Redis clients
-const pool = new Pool({ connectionString: env.DATABASE_URL });
-const redis = new Redis(env.REDIS_URL);
-
-// Create observability setup
-const observability = createStandardObservability({
-  serviceName: 'api-gateway',
-  version: process.env.npm_package_version,
-  environment: process.env.NODE_ENV,
-  dependencies: {
-    database: { connectionString: env.DATABASE_URL },
-    redis: { url: env.REDIS_URL },
-    services: [
-      { name: 'financial-svc', url: process.env.FINANCIAL_SVC_URL || "http://financial-svc:3001" }
-    ]
-  }
-});
-
-const { metricsRegistry } = observability;
-
-// Create custom metrics for API Gateway
-const proxyRequestsTotal = metricsRegistry!.createCounter(
-  'proxy_requests_total',
-  'Total number of proxy requests to downstream services',
-  ['service', 'endpoint', 'status']
-);
-
-const proxyRequestDuration = metricsRegistry!.createHistogram(
-  'proxy_request_duration_seconds',
-  'Duration of proxy requests to downstream services',
-  ['service', 'endpoint', 'status'],
-  [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5]
-);
-
-const integrationConfigOps = metricsRegistry!.createCounter(
-  'integration_config_operations_total',
-  'Total integration configuration operations',
-  ['operation', 'integration_type', 'status']
-);
-
-const csrfTokensGenerated = metricsRegistry!.createCounter(
-  'csrf_tokens_generated_total',
-  'Total CSRF tokens generated'
-);
+// Load environment variables
+dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 8080;
+
+// Middleware
 app.use(helmet());
 app.use(cors());
+app.use(morgan('combined'));
 app.use(express.json());
-
-// Setup observability middleware
-observability.setupExpress(app);
 
 // Helper function to parse pagination query parameters
 function parsePaginationQuery(query: any): { page?: number; limit?: number } {

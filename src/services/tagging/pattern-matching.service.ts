@@ -4,7 +4,7 @@ import { EntityType } from '../../types/tagging/tag.types';
 import { IPatternMatchingService } from './interfaces';
 import { handleTaggingError } from './errors';
 import logger from '../../utils/logger';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 @injectable()
 export class PatternMatchingService implements IPatternMatchingService {

@@ -74,7 +74,7 @@ export function createAuthRoutes(pool: Pool): Router {
           // Only log login attempts in production
           if (!isDevelopment) {
             await pool.query(
-              'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
+              'INSERT INTO auth.login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
               [email, ip, false]
             );
           }
@@ -92,7 +92,7 @@ export function createAuthRoutes(pool: Pool): Router {
         // Only log login attempts in production
         if (!isDevelopment) {
           await pool.query(
-            'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
+            'INSERT INTO auth.login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
             [email, ip, true]
           );
         }

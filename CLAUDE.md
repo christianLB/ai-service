@@ -503,7 +503,9 @@ The CRUD generator now includes:
 ## 🔍 Development Reminders
 
 - recuerda siempre verificar make dev-refresh
-- CRUD generation: Model → Prisma generate → Migration → CRUD generate
+- **CONTRACT-FIRST**: OpenAPI spec → Prisma schema → Database (NOT the other way!)
+- CRUD generation: OpenAPI → Prisma generate → Migration → CRUD generate
+- See: `/docs/CONTRACT_FIRST_SCHEMA_GENERATION.md` for schema generation
 
 ## 🔌 MCP Local Server
 

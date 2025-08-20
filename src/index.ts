@@ -39,9 +39,7 @@ import documentRoutes from './routes/documents';
 // import { createCryptoRoutes } from './routes/crypto.routes';
 import realEstateRoutes from './routes/real-estate';
 import integrationRoutes from './routes/integrations';
-// TODO: Fix tag service TypeScript errors before enabling
-// import taggingRoutes from './routes/tagging';
-// import { taggingErrorHandler } from './middleware/tagging-error.middleware';
+import taggingRoutes from './routes/tagging';
 // Trading module removed
 import { logger } from './utils/log';
 import { db } from './services/database';
@@ -292,8 +290,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/integrations', integrationRoutes);
 
 // Universal AI Tagging System routes
-// TODO: Fix tag service TypeScript errors before enabling
-// app.use('/api', taggingRoutes);
+app.use('/api', taggingRoutes);
 
 // Trading routes removed
 

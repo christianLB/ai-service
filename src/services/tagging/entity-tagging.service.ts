@@ -428,9 +428,15 @@ export class EntityTaggingService implements IEntityTaggingService {
 
       if (request.filter.hasNoTags) {
         // Find entities without tags
+        const dateRange = request.filter.dateRange && 
+          request.filter.dateRange.start && 
+          request.filter.dateRange.end 
+          ? request.filter.dateRange as { start: Date; end: Date }
+          : undefined;
+        
         entityIds = await this.findEntitiesWithoutTags(
           request.filter.entityType!,
-          request.filter.dateRange
+          dateRange
         );
       } else if (request.filter.tags && request.filter.tags.length > 0) {
         // Find entities with specific tags

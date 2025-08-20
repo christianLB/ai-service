@@ -21,511 +21,503 @@ export type TagConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 export type AIProvider = 'claude' | 'openai';
 
 export type Tag = {
-  id: string;
-  /**
-   * Uppercase tag code with underscores
-   */
-  code: string;
-  name: string;
-  description?: string | null;
-  entityTypes: Array<EntityType>;
-  patterns?: TagPatterns;
-  rules?: {
-    [key: string]: unknown;
-  } | null;
-  confidence: number;
-  embeddingModel?: string | null;
-  parentId?: string | null;
-  /**
-   * Hierarchical path
-   */
-  path: string;
-  level: number;
-  /**
-   * Hex color code
-   */
-  color?: string | null;
-  icon?: string | null;
-  isActive: boolean;
-  isSystem: boolean;
-  metadata?: {
-    [key: string]: unknown;
-  } | null;
-  usageCount: number;
-  successRate: number;
-  lastUsed?: string | null;
-  createdAt: string;
-  updatedAt: string;
+    id: string;
+    /**
+     * Uppercase tag code with underscores
+     */
+    code: string;
+    name: string;
+    description?: string | null;
+    entityTypes: Array<EntityType>;
+    patterns?: TagPatterns;
+    rules?: {
+        [key: string]: unknown;
+    } | null;
+    confidence: number;
+    embeddingModel?: string | null;
+    parentId?: string | null;
+    /**
+     * Hierarchical path
+     */
+    path: string;
+    level: number;
+    /**
+     * Hex color code
+     */
+    color?: string | null;
+    icon?: string | null;
+    isActive: boolean;
+    isSystem: boolean;
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    usageCount: number;
+    successRate: number;
+    lastUsed?: string | null;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export type TagPatterns = {
-  keywords?: Array<string>;
-  merchants?: Array<string>;
-  categories?: Array<string>;
-  regex?: string;
-  customRules?: {
-    [key: string]: unknown;
-  };
+    keywords?: Array<(string)>;
+    merchants?: Array<(string)>;
+    categories?: Array<(string)>;
+    regex?: string;
+    customRules?: {
+        [key: string]: unknown;
+    };
 } | null;
 
 export type CreateTagRequest = {
-  /**
-   * Uppercase tag code with underscores
-   */
-  code: string;
-  name: string;
-  description?: string;
-  entityTypes: Array<EntityType>;
-  patterns?: TagPatterns;
-  rules?: {
-    [key: string]: unknown;
-  };
-  confidence?: number;
-  embeddingModel?: string;
-  parentId?: string;
-  color?: string;
-  icon?: string;
-  isActive?: boolean;
-  isSystem?: boolean;
-  metadata?: {
-    [key: string]: unknown;
-  };
+    /**
+     * Uppercase tag code with underscores
+     */
+    code: string;
+    name: string;
+    description?: string;
+    entityTypes: Array<EntityType>;
+    patterns?: TagPatterns;
+    rules?: {
+        [key: string]: unknown;
+    };
+    confidence?: number;
+    embeddingModel?: string;
+    parentId?: string;
+    color?: string;
+    icon?: string;
+    isActive?: boolean;
+    isSystem?: boolean;
+    metadata?: {
+        [key: string]: unknown;
+    };
 };
 
 export type UpdateTagRequest = {
-  name?: string;
-  description?: string;
-  entityTypes?: Array<EntityType>;
-  patterns?: TagPatterns;
-  rules?: {
-    [key: string]: unknown;
-  };
-  confidence?: number;
-  embeddingModel?: string;
-  parentId?: string;
-  color?: string;
-  icon?: string;
-  isActive?: boolean;
-  metadata?: {
-    [key: string]: unknown;
-  };
+    name?: string;
+    description?: string;
+    entityTypes?: Array<EntityType>;
+    patterns?: TagPatterns;
+    rules?: {
+        [key: string]: unknown;
+    };
+    confidence?: number;
+    embeddingModel?: string;
+    parentId?: string;
+    color?: string;
+    icon?: string;
+    isActive?: boolean;
+    metadata?: {
+        [key: string]: unknown;
+    };
 };
 
 export type DeleteTagRequest = {
-  /**
-   * Tag ID to reassign existing entity tags to
-   */
-  reassignTo?: string;
+    /**
+     * Tag ID to reassign existing entity tags to
+     */
+    reassignTo?: string;
 };
 
 export type TagSearchRequest = {
-  /**
-   * Search query
-   */
-  q: string;
-  entityType?: EntityType;
-  limit?: number;
+    /**
+     * Search query
+     */
+    q: string;
+    entityType?: EntityType;
+    limit?: number;
 };
 
 export type EntityTag = {
-  id: string;
-  entityType: EntityType;
-  entityId: string;
-  tagId: string;
-  confidence: number;
-  method: TagMethod;
-  appliedAt: string;
-  appliedBy?: string;
-  isVerified: boolean;
-  verifiedBy?: string | null;
-  verifiedAt?: string | null;
-  metadata?: {
-    [key: string]: unknown;
-  } | null;
-  tag?: Tag;
+    id: string;
+    entityType: EntityType;
+    entityId: string;
+    tagId: string;
+    confidence: number;
+    method: TagMethod;
+    appliedAt: string;
+    appliedBy?: string;
+    isVerified: boolean;
+    verifiedBy?: string | null;
+    verifiedAt?: string | null;
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    tag?: Tag;
 };
 
 export type TagEntityRequest = {
-  method?: 'auto' | 'ai' | 'pattern' | 'manual';
-  options?: {
-    aiProvider?: AIProvider;
-    confidenceThreshold?: number;
-    maxTags?: number;
-    includeRelated?: boolean;
-    forceReTag?: boolean;
-  };
+    method?: 'auto' | 'ai' | 'pattern' | 'manual';
+    options?: {
+        aiProvider?: AIProvider;
+        confidenceThreshold?: number;
+        maxTags?: number;
+        includeRelated?: boolean;
+        forceReTag?: boolean;
+    };
 };
 
 export type method = 'auto' | 'ai' | 'pattern' | 'manual';
 
 export type UpdateEntityTagRequest = {
-  confidence?: number;
-  isVerified?: boolean;
+    confidence?: number;
+    isVerified?: boolean;
 };
 
 export type BatchTagRequest = {
-  entities: Array<{
-    type: EntityType;
-    id: string;
-    content?: string;
-    metadata?: {
-      [key: string]: unknown;
+    entities: Array<{
+        type: EntityType;
+        id: string;
+        content?: string;
+        metadata?: {
+            [key: string]: unknown;
+        };
+    }>;
+    options?: {
+        aiProvider?: AIProvider;
+        confidenceThreshold?: number;
+        maxTags?: number;
+        includeRelated?: boolean;
+        forceReTag?: boolean;
     };
-  }>;
-  options?: {
-    aiProvider?: AIProvider;
-    confidenceThreshold?: number;
-    maxTags?: number;
-    includeRelated?: boolean;
-    forceReTag?: boolean;
-  };
 };
 
 export type ReTagRequest = {
-  filter: {
-    entityType?: EntityType;
-    dateRange?: {
-      start: string;
-      end: string;
+    filter: {
+        entityType?: EntityType;
+        dateRange?: {
+            start: string;
+            end: string;
+        };
+        tags?: Array<(string)>;
+        hasNoTags?: boolean;
     };
-    tags?: Array<string>;
-    hasNoTags?: boolean;
-  };
-  options?: {
-    method?: 'ai' | 'pattern';
-    batchSize?: number;
-    dryRun?: boolean;
-  };
+    options?: {
+        method?: 'ai' | 'pattern';
+        batchSize?: number;
+        dryRun?: boolean;
+    };
 };
 
 export type method2 = 'ai' | 'pattern';
 
 export type TagFeedbackRequest = {
-  entityType: EntityType;
-  entityId: string;
-  entityTagId: string;
-  feedback: {
-    isCorrect: boolean;
-    suggestedTagId?: string;
-    reason?: string;
-    confidence?: number;
-  };
+    entityType: EntityType;
+    entityId: string;
+    entityTagId: string;
+    feedback: {
+        isCorrect: boolean;
+        suggestedTagId?: string;
+        reason?: string;
+        confidence?: number;
+    };
 };
 
 export type TelegramMessageRequest = {
-  /**
-   * Telegram chat ID
-   */
-  chatId: string;
-  /**
-   * Message text
-   */
-  text: string;
-  parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2';
-  disableWebPagePreview?: boolean;
-  disableNotification?: boolean;
+    /**
+     * Telegram chat ID
+     */
+    chatId: string;
+    /**
+     * Message text
+     */
+    text: string;
+    parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2';
+    disableWebPagePreview?: boolean;
+    disableNotification?: boolean;
 };
 
 export type parseMode = 'HTML' | 'Markdown' | 'MarkdownV2';
 
 export type TelegramWebhookRequest = {
-  /**
-   * Webhook URL
-   */
-  url: string;
-  /**
-   * Public key certificate
-   */
-  certificate?: string;
-  /**
-   * Secret token for webhook security
-   */
-  secretToken?: string;
+    /**
+     * Webhook URL
+     */
+    url: string;
+    /**
+     * Public key certificate
+     */
+    certificate?: string;
+    /**
+     * Secret token for webhook security
+     */
+    secretToken?: string;
 };
 
 export type TelegramChat = {
-  id?: string;
-  type?: 'private' | 'group' | 'supergroup' | 'channel';
-  title?: string;
-  username?: string;
-  firstName?: string;
-  lastName?: string;
+    id?: string;
+    type?: 'private' | 'group' | 'supergroup' | 'channel';
+    title?: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
 };
 
 export type type = 'private' | 'group' | 'supergroup' | 'channel';
 
 export type SetConfigRequest = {
-  type: 'ai' | 'telegram' | 'notification' | 'integration';
-  key: string;
-  value:
-    | string
-    | number
-    | boolean
-    | {
-        [key: string]: unknown;
-      };
-  encrypted?: boolean;
+    type: 'ai' | 'telegram' | 'notification' | 'integration';
+    key: string;
+    value: string | number | boolean | {
+    [key: string]: unknown;
+};
+    encrypted?: boolean;
 };
 
 export type type2 = 'ai' | 'telegram' | 'notification' | 'integration';
 
 export type ConfigValue = {
-  type: string;
-  key: string;
-  value:
-    | string
-    | number
-    | boolean
-    | {
-        [key: string]: unknown;
-      };
-  encrypted?: boolean;
-  createdAt: string;
-  updatedAt: string;
+    type: string;
+    key: string;
+    value: string | number | boolean | {
+    [key: string]: unknown;
+};
+    encrypted?: boolean;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export type DocumentAnalysisRequest = {
-  /**
-   * Document content to analyze
-   */
-  content: string;
-  /**
-   * Document identifier
-   */
-  documentId?: string;
-  options?: {
-    extractEntities?: boolean;
-    detectTopics?: boolean;
-    analyzeSentiment?: boolean;
-    generateSummary?: boolean;
-  };
+    /**
+     * Document content to analyze
+     */
+    content: string;
+    /**
+     * Document identifier
+     */
+    documentId?: string;
+    options?: {
+        extractEntities?: boolean;
+        detectTopics?: boolean;
+        analyzeSentiment?: boolean;
+        generateSummary?: boolean;
+    };
 };
 
 export type TextCategorizationRequest = {
-  /**
-   * Text to categorize
-   */
-  text: string;
-  /**
-   * Predefined categories to choose from
-   */
-  categories?: Array<string>;
-  maxCategories?: number;
+    /**
+     * Text to categorize
+     */
+    text: string;
+    /**
+     * Predefined categories to choose from
+     */
+    categories?: Array<(string)>;
+    maxCategories?: number;
 };
 
 export type EntityExtractionRequest = {
-  /**
-   * Text to extract entities from
-   */
-  text: string;
-  /**
-   * Entity types to extract
-   */
-  entityTypes?: Array<'person' | 'organization' | 'location' | 'date' | 'money' | 'other'>;
+    /**
+     * Text to extract entities from
+     */
+    text: string;
+    /**
+     * Entity types to extract
+     */
+    entityTypes?: Array<('person' | 'organization' | 'location' | 'date' | 'money' | 'other')>;
 };
 
 export type EntityTagResult = {
-  entityTags?: Array<EntityTag>;
-  statistics?: {
-    totalTags?: number;
-    averageConfidence?: number;
-    methodUsed?: TagMethod;
-    aiProvider?: AIProvider;
-    /**
-     * Processing time in milliseconds
-     */
-    processingTime?: number;
-  };
+    entityTags?: Array<EntityTag>;
+    statistics?: {
+        totalTags?: number;
+        averageConfidence?: number;
+        methodUsed?: TagMethod;
+        aiProvider?: AIProvider;
+        /**
+         * Processing time in milliseconds
+         */
+        processingTime?: number;
+    };
 };
 
 export type BatchTagResult = {
-  processedEntities?: number;
-  successfullyTagged?: number;
-  failed?: number;
-  results?: Array<{
-    entityId?: string;
-    entityType?: EntityType;
-    success?: boolean;
-    tags?: Array<EntityTag>;
-    error?: string;
-  }>;
+    processedEntities?: number;
+    successfullyTagged?: number;
+    failed?: number;
+    results?: Array<{
+        entityId?: string;
+        entityType?: EntityType;
+        success?: boolean;
+        tags?: Array<EntityTag>;
+        error?: string;
+    }>;
 };
 
 export type ReTagResult = {
-  /**
-   * Job identifier for tracking progress
-   */
-  jobId?: string;
-  estimatedEntities?: number;
-  batchSize?: number;
-  dryRun?: boolean;
-  started?: boolean;
+    /**
+     * Job identifier for tracking progress
+     */
+    jobId?: string;
+    estimatedEntities?: number;
+    batchSize?: number;
+    dryRun?: boolean;
+    started?: boolean;
 };
 
 export type TaggingLearningStats = {
-  totalEntitiesTagged?: number;
-  totalFeedbackReceived?: number;
-  /**
-   * Overall accuracy based on feedback
-   */
-  accuracyRate?: number;
-  topTags?: Array<{
-    tag?: Tag;
-    usageCount?: number;
-    successRate?: number;
-  }>;
-  aiProviderStats?: {
-    [key: string]: {
-      totalRequests?: number;
-      averageConfidence?: number;
-      successRate?: number;
+    totalEntitiesTagged?: number;
+    totalFeedbackReceived?: number;
+    /**
+     * Overall accuracy based on feedback
+     */
+    accuracyRate?: number;
+    topTags?: Array<{
+        tag?: Tag;
+        usageCount?: number;
+        successRate?: number;
+    }>;
+    aiProviderStats?: {
+        [key: string]: {
+            totalRequests?: number;
+            averageConfidence?: number;
+            successRate?: number;
+        };
     };
-  };
 };
 
 export type CategorizationResult = {
-  categories?: Array<{
-    category?: string;
-    confidence?: number;
-    reasoning?: string;
-  }>;
+    categories?: Array<{
+        category?: string;
+        confidence?: number;
+        reasoning?: string;
+    }>;
 };
 
 export type EntityExtractionResult = {
-  entities?: Array<{
-    text?: string;
-    type?: string;
-    confidence?: number;
-    startPosition?: number;
-    endPosition?: number;
-  }>;
+    entities?: Array<{
+        text?: string;
+        type?: string;
+        confidence?: number;
+        startPosition?: number;
+        endPosition?: number;
+    }>;
 };
 
 export type TagResponse = {
-  success: boolean;
-  data: Tag;
+    success: boolean;
+    data: Tag;
 };
 
 export type TagListResponse = {
-  success: boolean;
-  data: Array<Tag>;
-  pagination: PaginationMeta;
+    success: boolean;
+    data: Array<Tag>;
+    pagination: PaginationMeta;
 };
 
 export type EntityTagResponse = {
-  success: boolean;
-  data: EntityTag;
+    success: boolean;
+    data: EntityTag;
 };
 
 export type EntityTagListResponse = {
-  success: boolean;
-  data: Array<EntityTag>;
+    success: boolean;
+    data: Array<EntityTag>;
 };
 
 export type EntityTagResultResponse = {
-  success: boolean;
-  data: EntityTagResult;
+    success: boolean;
+    data: EntityTagResult;
 };
 
 export type EntityListResponse = {
-  success: boolean;
-  data: Array<{
-    entityType?: EntityType;
-    entityId?: string;
-    entityData?: {
-      [key: string]: unknown;
-    };
-    tags?: Array<EntityTag>;
-  }>;
-  pagination: PaginationMeta;
+    success: boolean;
+    data: Array<{
+        entityType?: EntityType;
+        entityId?: string;
+        entityData?: {
+            [key: string]: unknown;
+        };
+        tags?: Array<EntityTag>;
+    }>;
+    pagination: PaginationMeta;
 };
 
 export type BatchTagResultResponse = {
-  success: boolean;
-  data: BatchTagResult;
+    success: boolean;
+    data: BatchTagResult;
 };
 
 export type ReTagResultResponse = {
-  success: boolean;
-  data: ReTagResult;
+    success: boolean;
+    data: ReTagResult;
 };
 
 export type TaggingLearningStatsResponse = {
-  success: boolean;
-  data: TaggingLearningStats;
+    success: boolean;
+    data: TaggingLearningStats;
 };
 
 export type TelegramMessageResponse = {
-  success: boolean;
-  data: {
-    messageId?: number;
-    sent?: boolean;
-  };
+    success: boolean;
+    data: {
+        messageId?: number;
+        sent?: boolean;
+    };
 };
 
 export type TelegramChatResponse = {
-  success: boolean;
-  data: TelegramChat;
+    success: boolean;
+    data: TelegramChat;
 };
 
 export type ConfigResponse = {
-  success: boolean;
-  data: ConfigValue;
+    success: boolean;
+    data: ConfigValue;
 };
 
 export type ConfigListResponse = {
-  success: boolean;
-  data: Array<ConfigValue>;
+    success: boolean;
+    data: Array<ConfigValue>;
 };
 
 export type DocumentAnalysisResponse = {
-  success: boolean;
-  data: {
-    summary?: string;
-    entities?: Array<{
-      text?: string;
-      type?: string;
-      confidence?: number;
-    }>;
-    topics?: Array<string>;
-    sentiment?: {
-      score?: number;
-      label?: string;
+    success: boolean;
+    data: {
+        summary?: string;
+        entities?: Array<{
+            text?: string;
+            type?: string;
+            confidence?: number;
+        }>;
+        topics?: Array<(string)>;
+        sentiment?: {
+            score?: number;
+            label?: string;
+        };
     };
-  };
 };
 
 export type CategorizationResponse = {
-  success: boolean;
-  data: CategorizationResult;
+    success: boolean;
+    data: CategorizationResult;
 };
 
 export type EntityExtractionResponse = {
-  success: boolean;
-  data: EntityExtractionResult;
+    success: boolean;
+    data: EntityExtractionResult;
 };
 
 export type MessageResponse = {
-  success: boolean;
-  message: string;
+    success: boolean;
+    message: string;
 };
 
 export type PaginationMeta = {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
 };
 
 export type ErrorResponse = {
-  success: boolean;
-  error: {
-    code: string;
-    message: string;
-    details?: {
-      [key: string]: unknown;
+    success: boolean;
+    error: {
+        code: string;
+        message: string;
+        details?: {
+            [key: string]: unknown;
+        };
     };
-  };
 };
 
 /**
@@ -564,184 +556,184 @@ export type ParameterConfigTypeParam = 'ai' | 'telegram' | 'notification' | 'int
 export type ParameterConfigKeyParam = string;
 
 export type ListTagsData = {
-  /**
-   * Filter by entity type
-   */
-  entityType?: EntityType;
-  /**
-   * Filter by active status
-   */
-  isActive?: boolean;
-  /**
-   * Items per page
-   */
-  limit?: number;
-  /**
-   * Page number
-   */
-  page?: number;
-  /**
-   * Filter by parent tag ID
-   */
-  parentId?: string;
-  /**
-   * Search in tag name, code, or description
-   */
-  search?: string;
-  /**
-   * Sort field
-   */
-  sortBy?: 'name' | 'code' | 'usageCount' | 'createdAt';
-  /**
-   * Sort order
-   */
-  sortOrder?: 'asc' | 'desc';
+    /**
+     * Filter by entity type
+     */
+    entityType?: EntityType;
+    /**
+     * Filter by active status
+     */
+    isActive?: boolean;
+    /**
+     * Items per page
+     */
+    limit?: number;
+    /**
+     * Page number
+     */
+    page?: number;
+    /**
+     * Filter by parent tag ID
+     */
+    parentId?: string;
+    /**
+     * Search in tag name, code, or description
+     */
+    search?: string;
+    /**
+     * Sort field
+     */
+    sortBy?: 'name' | 'code' | 'usageCount' | 'createdAt';
+    /**
+     * Sort order
+     */
+    sortOrder?: 'asc' | 'desc';
 };
 
 export type ListTagsResponse = TagListResponse;
 
 export type CreateTagData = {
-  requestBody: CreateTagRequest;
+    requestBody: CreateTagRequest;
 };
 
 export type CreateTagResponse = TagResponse;
 
 export type SearchTagsData = {
-  requestBody: TagSearchRequest;
+    requestBody: TagSearchRequest;
 };
 
 export type SearchTagsResponse = TagListResponse;
 
 export type GetTagData = {
-  /**
-   * Tag identifier
-   */
-  tagId: string;
+    /**
+     * Tag identifier
+     */
+    tagId: string;
 };
 
 export type GetTagResponse = TagResponse;
 
 export type UpdateTagData = {
-  requestBody: UpdateTagRequest;
-  /**
-   * Tag identifier
-   */
-  tagId: string;
+    requestBody: UpdateTagRequest;
+    /**
+     * Tag identifier
+     */
+    tagId: string;
 };
 
 export type UpdateTagResponse = TagResponse;
 
 export type DeleteTagData = {
-  requestBody?: DeleteTagRequest;
-  /**
-   * Tag identifier
-   */
-  tagId: string;
+    requestBody?: DeleteTagRequest;
+    /**
+     * Tag identifier
+     */
+    tagId: string;
 };
 
 export type DeleteTagResponse = MessageResponse;
 
 export type GetEntityTagsData = {
-  /**
-   * Entity identifier
-   */
-  entityId: string;
-  /**
-   * Entity type
-   */
-  entityType: EntityType;
+    /**
+     * Entity identifier
+     */
+    entityId: string;
+    /**
+     * Entity type
+     */
+    entityType: EntityType;
 };
 
 export type GetEntityTagsResponse = EntityTagListResponse;
 
 export type TagEntityData = {
-  /**
-   * Entity identifier
-   */
-  entityId: string;
-  /**
-   * Entity type
-   */
-  entityType: EntityType;
-  requestBody: TagEntityRequest;
+    /**
+     * Entity identifier
+     */
+    entityId: string;
+    /**
+     * Entity type
+     */
+    entityType: EntityType;
+    requestBody: TagEntityRequest;
 };
 
 export type TagEntityResponse = EntityTagResultResponse;
 
 export type UpdateEntityTagData = {
-  /**
-   * Entity identifier
-   */
-  entityId: string;
-  /**
-   * Entity type
-   */
-  entityType: EntityType;
-  requestBody: UpdateEntityTagRequest;
-  /**
-   * Tag identifier
-   */
-  tagId: string;
+    /**
+     * Entity identifier
+     */
+    entityId: string;
+    /**
+     * Entity type
+     */
+    entityType: EntityType;
+    requestBody: UpdateEntityTagRequest;
+    /**
+     * Tag identifier
+     */
+    tagId: string;
 };
 
 export type UpdateEntityTagResponse = EntityTagResponse;
 
 export type RemoveEntityTagData = {
-  /**
-   * Entity identifier
-   */
-  entityId: string;
-  /**
-   * Entity type
-   */
-  entityType: EntityType;
-  /**
-   * Tag identifier
-   */
-  tagId: string;
+    /**
+     * Entity identifier
+     */
+    entityId: string;
+    /**
+     * Entity type
+     */
+    entityType: EntityType;
+    /**
+     * Tag identifier
+     */
+    tagId: string;
 };
 
 export type RemoveEntityTagResponse = MessageResponse;
 
 export type FindEntitiesByTagData = {
-  /**
-   * Filter by entity type
-   */
-  entityType?: EntityType;
-  /**
-   * Items per page
-   */
-  limit?: number;
-  /**
-   * Minimum confidence threshold
-   */
-  minConfidence?: number;
-  /**
-   * Page number
-   */
-  page?: number;
-  /**
-   * Tag identifier
-   */
-  tagId: string;
+    /**
+     * Filter by entity type
+     */
+    entityType?: EntityType;
+    /**
+     * Items per page
+     */
+    limit?: number;
+    /**
+     * Minimum confidence threshold
+     */
+    minConfidence?: number;
+    /**
+     * Page number
+     */
+    page?: number;
+    /**
+     * Tag identifier
+     */
+    tagId: string;
 };
 
 export type FindEntitiesByTagResponse = EntityListResponse;
 
 export type BatchTagEntitiesData = {
-  requestBody: BatchTagRequest;
+    requestBody: BatchTagRequest;
 };
 
 export type BatchTagEntitiesResponse = BatchTagResultResponse;
 
 export type ReTagEntitiesData = {
-  requestBody: ReTagRequest;
+    requestBody: ReTagRequest;
 };
 
 export type ReTagEntitiesResponse = ReTagResultResponse;
 
 export type ProvideTaggingFeedbackData = {
-  requestBody: TagFeedbackRequest;
+    requestBody: TagFeedbackRequest;
 };
 
 export type ProvideTaggingFeedbackResponse = MessageResponse;
@@ -749,550 +741,550 @@ export type ProvideTaggingFeedbackResponse = MessageResponse;
 export type GetTaggingLearningStatsResponse = TaggingLearningStatsResponse;
 
 export type SendTelegramMessageData = {
-  requestBody: TelegramMessageRequest;
+    requestBody: TelegramMessageRequest;
 };
 
 export type SendTelegramMessageResponse = TelegramMessageResponse;
 
 export type SetTelegramWebhookData = {
-  requestBody: TelegramWebhookRequest;
+    requestBody: TelegramWebhookRequest;
 };
 
 export type SetTelegramWebhookResponse = MessageResponse;
 
 export type GetTelegramChatInfoData = {
-  /**
-   * Telegram chat ID
-   */
-  chatId: string;
+    /**
+     * Telegram chat ID
+     */
+    chatId: string;
 };
 
 export type GetTelegramChatInfoResponse = TelegramChatResponse;
 
 export type SetIntegrationConfigData = {
-  requestBody: SetConfigRequest;
+    requestBody: SetConfigRequest;
 };
 
 export type SetIntegrationConfigResponse = MessageResponse;
 
 export type ListConfigsByTypeData = {
-  /**
-   * Configuration type
-   */
-  type: 'ai' | 'telegram' | 'notification' | 'integration';
+    /**
+     * Configuration type
+     */
+    type: 'ai' | 'telegram' | 'notification' | 'integration';
 };
 
 export type ListConfigsByTypeResponse = ConfigListResponse;
 
 export type GetIntegrationConfigData = {
-  /**
-   * Configuration key
-   */
-  key: string;
-  /**
-   * Configuration type
-   */
-  type: 'ai' | 'telegram' | 'notification' | 'integration';
+    /**
+     * Configuration key
+     */
+    key: string;
+    /**
+     * Configuration type
+     */
+    type: 'ai' | 'telegram' | 'notification' | 'integration';
 };
 
 export type GetIntegrationConfigResponse = ConfigResponse;
 
 export type DeleteIntegrationConfigData = {
-  /**
-   * Configuration key
-   */
-  key: string;
-  /**
-   * Configuration type
-   */
-  type: 'ai' | 'telegram' | 'notification' | 'integration';
+    /**
+     * Configuration key
+     */
+    key: string;
+    /**
+     * Configuration type
+     */
+    type: 'ai' | 'telegram' | 'notification' | 'integration';
 };
 
 export type DeleteIntegrationConfigResponse = MessageResponse;
 
 export type AnalyzeDocumentAiData = {
-  requestBody: DocumentAnalysisRequest;
+    requestBody: DocumentAnalysisRequest;
 };
 
 export type AnalyzeDocumentAiResponse = DocumentAnalysisResponse;
 
 export type CategorizeTextAiData = {
-  requestBody: TextCategorizationRequest;
+    requestBody: TextCategorizationRequest;
 };
 
 export type CategorizeTextAiResponse = CategorizationResponse;
 
 export type ExtractEntitiesAiData = {
-  requestBody: EntityExtractionRequest;
+    requestBody: EntityExtractionRequest;
 };
 
 export type ExtractEntitiesAiResponse = EntityExtractionResponse;
 
 export type $OpenApiTs = {
-  '/tags': {
-    get: {
-      req: ListTagsData;
-      res: {
-        /**
-         * Tags retrieved successfully
-         */
-        200: TagListResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/tags': {
+        get: {
+            req: ListTagsData;
+            res: {
+                /**
+                 * Tags retrieved successfully
+                 */
+                200: TagListResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
+        post: {
+            req: CreateTagData;
+            res: {
+                /**
+                 * Tag created successfully
+                 */
+                201: TagResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-    post: {
-      req: CreateTagData;
-      res: {
-        /**
-         * Tag created successfully
-         */
-        201: TagResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/tags/search': {
+        post: {
+            req: SearchTagsData;
+            res: {
+                /**
+                 * Tag search completed successfully
+                 */
+                200: TagListResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/tags/search': {
-    post: {
-      req: SearchTagsData;
-      res: {
-        /**
-         * Tag search completed successfully
-         */
-        200: TagListResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/tags/{tagId}': {
+        get: {
+            req: GetTagData;
+            res: {
+                /**
+                 * Tag retrieved successfully
+                 */
+                200: TagResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
+        put: {
+            req: UpdateTagData;
+            res: {
+                /**
+                 * Tag updated successfully
+                 */
+                200: TagResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
+        delete: {
+            req: DeleteTagData;
+            res: {
+                /**
+                 * Tag deleted successfully
+                 */
+                200: MessageResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
     };
-  };
-  '/tags/{tagId}': {
-    get: {
-      req: GetTagData;
-      res: {
-        /**
-         * Tag retrieved successfully
-         */
-        200: TagResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/entities/{entityType}/{entityId}/tags': {
+        get: {
+            req: GetEntityTagsData;
+            res: {
+                /**
+                 * Entity tags retrieved successfully
+                 */
+                200: EntityTagListResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
+        post: {
+            req: TagEntityData;
+            res: {
+                /**
+                 * Entity tagged successfully
+                 */
+                201: EntityTagResultResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
     };
-    put: {
-      req: UpdateTagData;
-      res: {
-        /**
-         * Tag updated successfully
-         */
-        200: TagResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/entities/{entityType}/{entityId}/tags/{tagId}': {
+        patch: {
+            req: UpdateEntityTagData;
+            res: {
+                /**
+                 * Entity tag updated successfully
+                 */
+                200: EntityTagResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
+        delete: {
+            req: RemoveEntityTagData;
+            res: {
+                /**
+                 * Entity tag removed successfully
+                 */
+                200: MessageResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
     };
-    delete: {
-      req: DeleteTagData;
-      res: {
-        /**
-         * Tag deleted successfully
-         */
-        200: MessageResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/entities/by-tag/{tagId}': {
+        get: {
+            req: FindEntitiesByTagData;
+            res: {
+                /**
+                 * Entities retrieved successfully
+                 */
+                200: EntityListResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
     };
-  };
-  '/entities/{entityType}/{entityId}/tags': {
-    get: {
-      req: GetEntityTagsData;
-      res: {
-        /**
-         * Entity tags retrieved successfully
-         */
-        200: EntityTagListResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/entities/batch/tag': {
+        post: {
+            req: BatchTagEntitiesData;
+            res: {
+                /**
+                 * Batch tagging completed
+                 */
+                200: BatchTagResultResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-    post: {
-      req: TagEntityData;
-      res: {
-        /**
-         * Entity tagged successfully
-         */
-        201: EntityTagResultResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/entities/re-tag': {
+        post: {
+            req: ReTagEntitiesData;
+            res: {
+                /**
+                 * Re-tagging process started
+                 */
+                200: ReTagResultResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/entities/{entityType}/{entityId}/tags/{tagId}': {
-    patch: {
-      req: UpdateEntityTagData;
-      res: {
-        /**
-         * Entity tag updated successfully
-         */
-        200: EntityTagResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/entities/feedback': {
+        post: {
+            req: ProvideTaggingFeedbackData;
+            res: {
+                /**
+                 * Feedback recorded successfully
+                 */
+                200: MessageResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-    delete: {
-      req: RemoveEntityTagData;
-      res: {
-        /**
-         * Entity tag removed successfully
-         */
-        200: MessageResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/tags/learning/stats': {
+        get: {
+            res: {
+                /**
+                 * Learning statistics retrieved successfully
+                 */
+                200: TaggingLearningStatsResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/entities/by-tag/{tagId}': {
-    get: {
-      req: FindEntitiesByTagData;
-      res: {
-        /**
-         * Entities retrieved successfully
-         */
-        200: EntityListResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/telegram/send': {
+        post: {
+            req: SendTelegramMessageData;
+            res: {
+                /**
+                 * Message sent successfully
+                 */
+                200: TelegramMessageResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/entities/batch/tag': {
-    post: {
-      req: BatchTagEntitiesData;
-      res: {
-        /**
-         * Batch tagging completed
-         */
-        200: BatchTagResultResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/telegram/webhook': {
+        post: {
+            req: SetTelegramWebhookData;
+            res: {
+                /**
+                 * Webhook configured successfully
+                 */
+                200: MessageResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/entities/re-tag': {
-    post: {
-      req: ReTagEntitiesData;
-      res: {
-        /**
-         * Re-tagging process started
-         */
-        200: ReTagResultResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/telegram/chat/{chatId}': {
+        get: {
+            req: GetTelegramChatInfoData;
+            res: {
+                /**
+                 * Chat information retrieved successfully
+                 */
+                200: TelegramChatResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
     };
-  };
-  '/entities/feedback': {
-    post: {
-      req: ProvideTaggingFeedbackData;
-      res: {
-        /**
-         * Feedback recorded successfully
-         */
-        200: MessageResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/integrations/config': {
+        post: {
+            req: SetIntegrationConfigData;
+            res: {
+                /**
+                 * Configuration set successfully
+                 */
+                200: MessageResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/tags/learning/stats': {
-    get: {
-      res: {
-        /**
-         * Learning statistics retrieved successfully
-         */
-        200: TaggingLearningStatsResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/integrations/config/{type}': {
+        get: {
+            req: ListConfigsByTypeData;
+            res: {
+                /**
+                 * Configurations retrieved successfully
+                 */
+                200: ConfigListResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/telegram/send': {
-    post: {
-      req: SendTelegramMessageData;
-      res: {
-        /**
-         * Message sent successfully
-         */
-        200: TelegramMessageResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/integrations/config/{type}/{key}': {
+        get: {
+            req: GetIntegrationConfigData;
+            res: {
+                /**
+                 * Configuration retrieved successfully
+                 */
+                200: ConfigResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
+        delete: {
+            req: DeleteIntegrationConfigData;
+            res: {
+                /**
+                 * Configuration deleted successfully
+                 */
+                200: MessageResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+                /**
+                 * Not found
+                 */
+                404: ErrorResponse;
+            };
+        };
     };
-  };
-  '/telegram/webhook': {
-    post: {
-      req: SetTelegramWebhookData;
-      res: {
-        /**
-         * Webhook configured successfully
-         */
-        200: MessageResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/ai/analyze/document': {
+        post: {
+            req: AnalyzeDocumentAiData;
+            res: {
+                /**
+                 * Document analysis completed
+                 */
+                200: DocumentAnalysisResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/telegram/chat/{chatId}': {
-    get: {
-      req: GetTelegramChatInfoData;
-      res: {
-        /**
-         * Chat information retrieved successfully
-         */
-        200: TelegramChatResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
+    '/ai/categorize/text': {
+        post: {
+            req: CategorizeTextAiData;
+            res: {
+                /**
+                 * Text categorization completed
+                 */
+                200: CategorizationResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/integrations/config': {
-    post: {
-      req: SetIntegrationConfigData;
-      res: {
-        /**
-         * Configuration set successfully
-         */
-        200: MessageResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
+    '/ai/extract/entities': {
+        post: {
+            req: ExtractEntitiesAiData;
+            res: {
+                /**
+                 * Entity extraction completed
+                 */
+                200: EntityExtractionResponse;
+                /**
+                 * Bad request
+                 */
+                400: ErrorResponse;
+                /**
+                 * Unauthorized
+                 */
+                401: ErrorResponse;
+            };
+        };
     };
-  };
-  '/integrations/config/{type}': {
-    get: {
-      req: ListConfigsByTypeData;
-      res: {
-        /**
-         * Configurations retrieved successfully
-         */
-        200: ConfigListResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
-    };
-  };
-  '/integrations/config/{type}/{key}': {
-    get: {
-      req: GetIntegrationConfigData;
-      res: {
-        /**
-         * Configuration retrieved successfully
-         */
-        200: ConfigResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
-    };
-    delete: {
-      req: DeleteIntegrationConfigData;
-      res: {
-        /**
-         * Configuration deleted successfully
-         */
-        200: MessageResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-        /**
-         * Not found
-         */
-        404: ErrorResponse;
-      };
-    };
-  };
-  '/ai/analyze/document': {
-    post: {
-      req: AnalyzeDocumentAiData;
-      res: {
-        /**
-         * Document analysis completed
-         */
-        200: DocumentAnalysisResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
-    };
-  };
-  '/ai/categorize/text': {
-    post: {
-      req: CategorizeTextAiData;
-      res: {
-        /**
-         * Text categorization completed
-         */
-        200: CategorizationResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
-    };
-  };
-  '/ai/extract/entities': {
-    post: {
-      req: ExtractEntitiesAiData;
-      res: {
-        /**
-         * Entity extraction completed
-         */
-        200: EntityExtractionResponse;
-        /**
-         * Bad request
-         */
-        400: ErrorResponse;
-        /**
-         * Unauthorized
-         */
-        401: ErrorResponse;
-      };
-    };
-  };
 };

@@ -7,7 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["financial", "public", "tagging", "trading"]
+  schemas  = ["auth", "financial", "public", "tagging", "trading"]
 }
 
 model accounts {
@@ -403,7 +403,7 @@ model refresh_tokens {
   @@unique([user_id, token_hash], map: "unique_active_token")
   @@index([expires_at], map: "idx_refresh_tokens_expires_at")
   @@index([user_id], map: "idx_refresh_tokens_user_id")
-  @@schema("public")
+  @@schema("auth")
 }
 
 model schema_migrations {
@@ -432,7 +432,7 @@ model security_logs {
   @@index([email, created_at], map: "idx_security_logs_email")
   @@index([event_type, created_at], map: "idx_security_logs_event_type")
   @@index([ip_address, created_at], map: "idx_security_logs_ip")
-  @@schema("public")
+  @@schema("auth")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -462,7 +462,20 @@ model User {
 
   @@index([email], map: "idx_users_email")
   @@map("users")
-  @@schema("public")
+  @@schema("auth")
+}
+
+model LoginAttempt {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email       String    @db.VarChar(255)
+  ipAddress   String    @map("ip_address") @db.Inet
+  success     Boolean
+  attemptedAt DateTime? @default(now()) @map("attempted_at") @db.Timestamptz(6)
+
+  @@index([email, attemptedAt], map: "idx_login_attempts_email")
+  @@index([ipAddress, attemptedAt], map: "idx_login_attempts_ip")
+  @@map("login_attempts")
+  @@schema("auth")
 }
 
 model workflows {

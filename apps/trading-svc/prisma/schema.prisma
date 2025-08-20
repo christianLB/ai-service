@@ -1,0 +1,434 @@
+// Trading Service - Strategies, Positions, Orders, Market Data
+// Generated from monolithic schema - 2025-08-20T15:03:01.746Z
+// DATABASE: postgresql://trading_user:trading_secure_2025@localhost:5436/trading_db
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============= MODELS =============
+
+model Trade {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  positionId       String?  @map("position_id") @db.Uuid
+  userId           String?  @map("user_id") @db.Uuid
+  strategyId       String?  @map("strategy_id") @db.Uuid
+  exchange         String   @db.VarChar(50)
+  symbol           String   @db.VarChar(50)
+  side             String   @db.VarChar(10)
+  type             String   @default("market") @db.VarChar(20)
+  quantity         Decimal  @db.Decimal(20, 8)
+  price            Decimal  @db.Decimal(20, 8)
+  fee              Decimal? @default(0) @db.Decimal(20, 8)
+  fee_currency     String?  @db.VarChar(10)
+  pnl              Decimal? @default(0) @db.Decimal(20, 8)
+  exchangeOrderId  String?  @map("exchange_order_id") @db.VarChar(255)
+  status           String   @default("executed") @db.VarChar(20)
+  ai_analysis      Json?
+  confidence_score Decimal? @db.Decimal(5, 4)
+  executedAt       DateTime @default(now()) @map("executed_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  metadata         Json?    @default("{}")
+  strategy         Strategy? @relation(fields: [strategyId], references: [id])
+
+  @@map("trades")
+}
+model Strategy {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String?               @map("user_id") @db.Uuid
+  name             String                @db.VarChar(100)
+  type             String                @db.VarChar(50)
+  status           String                @default("inactive") @db.VarChar(20)
+  parameters       Json                  @default("{}")
+  risk_parameters  Json?                 @default("{}")
+  total_trades     Int?                  @default(0)
+  winning_trades   Int?                  @default(0)
+  losing_trades    Int?                  @default(0)
+  total_pnl        Decimal?              @default(0) @db.Decimal(20, 8)
+  sharpe_ratio     Decimal?              @db.Decimal(10, 4)
+  max_drawdown     Decimal?              @db.Decimal(10, 4)
+  win_rate         Decimal?              @db.Decimal(5, 4)
+  is_paper_trading Boolean?              @default(true)
+  isActive         Boolean?              @default(false) @map("is_active")
+  last_execution   DateTime?             @db.Timestamptz(6)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  metadata         Json?                 @default("{}")
+  marketplace      StrategyMarketplace[]
+  trades           Trade[]
+  positions        Position[]
+  alerts           Alert[]
+  strategyTradingPairs StrategyTradingPair[]
+  orders           Order[]
+
+  @@index([userId], map: "idx_trading_strategies_user")
+  @@map("strategies")
+}
+model Position {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  exchange      String    @db.VarChar(50)
+  symbol        String    @db.VarChar(50)
+  side          String    @db.VarChar(10)
+  status        String    @default("open") @db.VarChar(20)
+  quantity      Decimal   @db.Decimal(20, 8)
+  realizedPnl   Decimal?  @default(0) @map("realized_pnl") @db.Decimal(20, 8)
+  unrealizedPnl Decimal?  @default(0) @map("unrealized_pnl") @db.Decimal(20, 8)
+  fees          Decimal?  @default(0) @db.Decimal(20, 8)
+  strategyId    String?   @map("strategy_id") @db.Uuid
+  openedAt      DateTime  @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedAt      DateTime? @map("closed_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  metadata      Json?     @default("{}")
+  avgEntryPrice Decimal   @map("avg_entry_price") @db.Decimal(20, 8)
+  avgExitPrice  Decimal?  @map("avg_exit_price") @db.Decimal(20, 8)
+  exchangeId    String?   @db.Uuid
+  tradingPairId String?   @db.Uuid
+  strategy      Strategy? @relation(fields: [strategyId], references: [id])
+  tradingPair   TradingPair? @relation(fields: [tradingPairId], references: [id])
+
+  @@index([strategyId], map: "idx_trading_positions_strategy")
+  @@index([userId, status], map: "idx_trading_positions_user_status")
+  @@map("positions")
+}
+model StrategyMarketplace {
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  strategyId       String                 @map("strategy_id") @db.Uuid
+  userId           String                 @map("user_id") @db.Uuid
+  name             String                 @db.VarChar(255)
+  description      String?
+  price            Decimal                @db.Decimal(10, 2)
+  subscriptionType String                 @map("subscription_type") @db.VarChar(20)
+  performanceData  Json                   @default("{}") @map("performance_data")
+  isVerified       Boolean                @default(false) @map("is_verified")
+  rating           Decimal?               @db.Decimal(3, 2)
+  totalSubscribers Int                    @default(0) @map("total_subscribers")
+  totalRevenue     Decimal                @default(0) @map("total_revenue") @db.Decimal(20, 2)
+  status           String                 @default("active") @db.VarChar(20)
+  tags             String[]               @default([])
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+  strategy         Strategy               @relation(fields: [strategyId], references: [id])
+  // Cross-service reference: User is in auth service
+  performance      StrategyPerformance[]
+  reviews          StrategyReview[]
+  subscriptions    StrategySubscription[]
+
+  @@index([status, rating])
+  @@index([userId])
+  @@index([tags])
+  @@map("strategy_marketplace")
+}
+model StrategySubscription {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  marketplaceId   String              @map("marketplace_id") @db.Uuid
+  tier            String              @db.VarChar(20)
+  status          String              @default("active") @db.VarChar(20)
+  startDate       DateTime            @default(now()) @map("start_date") @db.Timestamptz(6)
+  expiresAt       DateTime            @map("expires_at") @db.Timestamptz(6)
+  autoRenew       Boolean             @default(true) @map("auto_renew")
+  paymentMethod   String?             @map("payment_method") @db.VarChar(50)
+  amount          Decimal             @db.Decimal(10, 2)
+  currency        String              @default("USD") @db.VarChar(3)
+  lastPaymentDate DateTime?           @map("last_payment_date") @db.Timestamptz(6)
+  nextPaymentDate DateTime?           @map("next_payment_date") @db.Timestamptz(6)
+  metadata        Json?               @default("{}")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  payments        Payment[]
+  marketplace     StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+  // Cross-service reference: User is in auth service
+
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@index([marketplaceId])
+  @@map("strategy_subscriptions")
+}
+model StrategyPerformance {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  marketplaceId  String              @map("marketplace_id") @db.Uuid
+  period         String              @db.VarChar(20)
+  startDate      DateTime            @map("start_date") @db.Timestamptz(6)
+  endDate        DateTime            @map("end_date") @db.Timestamptz(6)
+  totalTrades    Int                 @default(0) @map("total_trades")
+  winRate        Decimal             @default(0) @map("win_rate") @db.Decimal(5, 2)
+  totalPnl       Decimal             @default(0) @map("total_pnl") @db.Decimal(20, 2)
+  sharpeRatio    Decimal?            @map("sharpe_ratio") @db.Decimal(10, 4)
+  maxDrawdown    Decimal?            @map("max_drawdown") @db.Decimal(10, 4)
+  avgTradeReturn Decimal?            @map("avg_trade_return") @db.Decimal(10, 4)
+  metadata       Json?               @default("{}")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  marketplace    StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+
+  @@index([marketplaceId, period])
+  @@index([startDate, endDate])
+  @@map("strategy_performance")
+}
+model StrategyReview {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  marketplaceId String              @map("marketplace_id") @db.Uuid
+  userId        String              @map("user_id") @db.Uuid
+  rating        Int
+  title         String?             @db.VarChar(255)
+  comment       String?
+  isVerified    Boolean             @default(false) @map("is_verified")
+  helpful       Int                 @default(0)
+  unhelpful     Int                 @default(0)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  marketplace   StrategyMarketplace @relation(fields: [marketplaceId], references: [id])
+  // Cross-service reference: User is in auth service
+
+  @@unique([marketplaceId, userId])
+  @@index([marketplaceId, rating])
+  @@map("strategy_reviews")
+}
+model Payment {
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String                @map("user_id") @db.Uuid
+  subscriptionId  String?               @map("subscription_id") @db.Uuid
+  amount          Decimal               @db.Decimal(10, 2)
+  currency        String                @default("USD") @db.VarChar(3)
+  status          String                @db.VarChar(20)
+  paymentMethod   String                @map("payment_method") @db.VarChar(50)
+  transactionId   String?               @map("transaction_id") @db.VarChar(255)
+  paymentProvider String?               @map("payment_provider") @db.VarChar(50)
+  description     String?
+  metadata        Json?                 @default("{}")
+  processedAt     DateTime?             @map("processed_at") @db.Timestamptz(6)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  subscription    StrategySubscription? @relation(fields: [subscriptionId], references: [id])
+  // Cross-service reference: User is in auth service
+
+  @@index([userId, status])
+  @@index([subscriptionId])
+  @@index([transactionId])
+  @@map("payments")
+}
+model Alert {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  strategyId String?   @map("strategy_id") @db.Uuid
+  type       String    @db.VarChar(50) // price_alert, strategy_trigger, risk_warning, etc
+  severity   String    @default("info") @db.VarChar(20) // info, warning, critical
+  title      String    @db.VarChar(255)
+  message    String
+  data       Json?     @default("{}")
+  isRead     Boolean   @default(false) @map("is_read")
+  readAt     DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  // Cross-service reference: User is in auth service
+  strategy   Strategy? @relation(fields: [strategyId], references: [id])
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@index([type])
+  @@index([severity])
+  @@map("alerts")
+}
+model Exchange {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String        @unique @db.VarChar(50)
+  displayName     String        @map("display_name") @db.VarChar(100)
+  exchangeType    String        @map("exchange_type") @db.VarChar(20) // spot, futures, options
+  isActive        Boolean       @default(true) @map("is_active")
+  supportedAssets String[]      @default([]) @map("supported_assets")
+  tradingFees     Json          @default("{}") @map("trading_fees") // maker/taker fees
+  metadata        Json?         @default("{}")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  tradingPairs    TradingPair[]
+  orders          Order[]
+  marketData      MarketData[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("exchanges")
+}
+model TradingPair {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exchangeId          String                @map("exchange_id") @db.Uuid
+  symbol              String                @db.VarChar(50)
+  baseAsset           String                @map("base_asset") @db.VarChar(20)
+  quoteAsset          String                @map("quote_asset") @db.VarChar(20)
+  isActive            Boolean               @default(true) @map("is_active")
+  minOrderSize        Decimal               @map("min_order_size") @db.Decimal(20, 8)
+  maxOrderSize        Decimal?              @map("max_order_size") @db.Decimal(20, 8)
+  tickSize            Decimal               @map("tick_size") @db.Decimal(20, 8)
+  pricePrecision      Int                   @map("price_precision")
+  quantityPrecision   Int                   @map("quantity_precision")
+  metadata            Json?                 @default("{}")
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  exchange            Exchange              @relation(fields: [exchangeId], references: [id])
+  strategyTradingPair StrategyTradingPair[]
+  orders              Order[]
+  marketData          MarketData[]
+  positions           Position[]
+
+  @@unique([exchangeId, symbol])
+  @@index([exchangeId])
+  @@index([symbol])
+  @@index([baseAsset, quoteAsset])
+  @@map("trading_pairs")
+}
+model StrategyTradingPair {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  strategyId      String      @map("strategy_id") @db.Uuid
+  tradingPairId   String      @map("trading_pair_id") @db.Uuid
+  isActive        Boolean     @default(true) @map("is_active")
+  allocation      Decimal     @db.Decimal(5, 4) // Percentage allocation
+  maxPositionSize Decimal?    @map("max_position_size") @db.Decimal(20, 8)
+  metadata        Json?       @default("{}")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  strategy        Strategy    @relation(fields: [strategyId], references: [id])
+  tradingPair     TradingPair @relation(fields: [tradingPairId], references: [id])
+
+  @@unique([strategyId, tradingPairId])
+  @@index([strategyId])
+  @@index([tradingPairId])
+  @@map("strategy_trading_pairs")
+}
+model Order {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String?      @map("user_id") @db.Uuid
+  strategyId        String?      @map("strategy_id") @db.Uuid
+  exchangeId        String       @map("exchange_id") @db.Uuid
+  tradingPairId     String       @map("trading_pair_id") @db.Uuid
+  exchangeOrderId   String?      @map("exchange_order_id") @db.VarChar(255)
+  clientOrderId     String?      @map("client_order_id") @db.VarChar(255)
+  type              String       @db.VarChar(20) // market, limit, stop, stop_limit
+  side              String       @db.VarChar(10) // buy, sell
+  status            String       @default("pending") @db.VarChar(20) // pending, open, filled, cancelled, rejected
+  price             Decimal?     @db.Decimal(20, 8)
+  stopPrice         Decimal?     @map("stop_price") @db.Decimal(20, 8)
+  quantity          Decimal      @db.Decimal(20, 8)
+  filledQuantity    Decimal      @default(0) @map("filled_quantity") @db.Decimal(20, 8)
+  avgFillPrice      Decimal?     @map("avg_fill_price") @db.Decimal(20, 8)
+  fee               Decimal?     @default(0) @db.Decimal(20, 8)
+  feeCurrency       String?      @map("fee_currency") @db.VarChar(10)
+  timeInForce       String?      @map("time_in_force") @db.VarChar(10) // GTC, IOC, FOK
+  postOnly          Boolean      @default(false) @map("post_only")
+  reduceOnly        Boolean      @default(false) @map("reduce_only")
+  metadata          Json?        @default("{}")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  filledAt          DateTime?    @map("filled_at") @db.Timestamptz(6)
+  cancelledAt       DateTime?    @map("cancelled_at") @db.Timestamptz(6)
+  // Cross-service reference: User is in auth service
+  strategy          Strategy?    @relation(fields: [strategyId], references: [id])
+  exchange          Exchange     @relation(fields: [exchangeId], references: [id])
+  tradingPair       TradingPair  @relation(fields: [tradingPairId], references: [id])
+
+  @@index([userId])
+  @@index([strategyId])
+  @@index([exchangeId])
+  @@index([tradingPairId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+model MarketData {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exchangeId    String      @map("exchange_id") @db.Uuid
+  tradingPairId String      @map("trading_pair_id") @db.Uuid
+  timestamp     DateTime    @db.Timestamptz(6)
+  open          Decimal     @db.Decimal(20, 8)
+  high          Decimal     @db.Decimal(20, 8)
+  low           Decimal     @db.Decimal(20, 8)
+  close         Decimal     @db.Decimal(20, 8)
+  volume        Decimal     @db.Decimal(20, 8)
+  quoteVolume   Decimal?    @map("quote_volume") @db.Decimal(20, 8)
+  trades        Int?
+  timeframe     String      @db.VarChar(10) // 1m, 5m, 15m, 1h, 4h, 1d
+  metadata      Json?       @default("{}")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  exchange      Exchange    @relation(fields: [exchangeId], references: [id])
+  tradingPair   TradingPair @relation(fields: [tradingPairId], references: [id])
+
+  @@index([exchangeId, tradingPairId, timestamp])
+  @@index([timestamp])
+  @@map("market_data")
+}
+model BacktestResult {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  strategyId     String   @map("strategy_id") @db.Uuid
+  startDate      DateTime @map("start_date") @db.Timestamptz(6)
+  endDate        DateTime @map("end_date") @db.Timestamptz(6)
+  initialCapital Decimal  @map("initial_capital") @db.Decimal(20, 8)
+  finalCapital   Decimal  @map("final_capital") @db.Decimal(20, 8)
+  totalReturn    Decimal  @map("total_return") @db.Decimal(20, 8)
+  totalTrades    Int      @map("total_trades")
+  winningTrades  Int      @map("winning_trades")
+  losingTrades   Int      @map("losing_trades")
+  sharpeRatio    Decimal? @map("sharpe_ratio") @db.Decimal(10, 4)
+  sortinoRatio   Decimal? @map("sortino_ratio") @db.Decimal(10, 4)
+  maxDrawdown    Decimal  @map("max_drawdown") @db.Decimal(20, 8)
+  winRate        Decimal  @map("win_rate") @db.Decimal(5, 4)
+  profitFactor   Decimal? @map("profit_factor") @db.Decimal(10, 4)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt    DateTime @map("completed_at") @db.Timestamptz(6)
+  metadata       Json?
+  name           String   @db.VarChar(255)
+  parameters     Json
+
+  @@map("backtest_results")
+}
+model config {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String?  @db.Uuid
+  config_key   String   @db.VarChar(100)
+  config_value Json
+  description  String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([user_id, config_key])
+}
+model market_data_cache {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exchange   String   @db.VarChar(50)
+  symbol     String   @db.VarChar(50)
+  timeframe  String   @db.VarChar(10)
+  timestamp  DateTime @db.Timestamptz(6)
+  open       Decimal  @db.Decimal(20, 8)
+  high       Decimal  @db.Decimal(20, 8)
+  low        Decimal  @db.Decimal(20, 8)
+  close      Decimal  @db.Decimal(20, 8)
+  volume     Decimal  @db.Decimal(20, 8)
+  indicators Json?    @default("{}")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([exchange, symbol, timeframe, timestamp])
+  @@index([exchange, symbol, timeframe, timestamp(sort: Desc)], map: "idx_market_data_lookup")
+  @@index([timestamp(sort: Desc)], map: "idx_market_data_timestamp")
+}
+model signals {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  strategy_id     String?   @db.Uuid
+  exchange        String    @db.VarChar(50)
+  symbol          String    @db.VarChar(50)
+  action          String    @db.VarChar(20)
+  strength        Decimal   @db.Decimal(5, 4)
+  analysis        Json
+  indicators_used Json?     @default("[]")
+  is_executed     Boolean?  @default(false)
+  position_id     String?   @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at      DateTime? @db.Timestamptz(6)
+  executed_at     DateTime? @db.Timestamptz(6)
+  metadata        Json?     @default("{}")
+
+  @@index([created_at(sort: Desc)], map: "idx_trading_signals_created")
+  @@index([strategy_id], map: "idx_trading_signals_strategy")
+  @@index([symbol], map: "idx_trading_signals_symbol")
+}

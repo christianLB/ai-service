@@ -20,6 +20,7 @@ import type { paths as TradingPaths } from './generated/trading';
 import type { paths as AiCorePaths } from './generated/ai-core';
 import type { paths as CommPaths } from './generated/comm';
 export type { GatewayPaths, AuthPaths, FinancialPaths, TradingPaths, AiCorePaths, CommPaths };
+export type AiServicePaths = GatewayPaths;
 export declare const CONTRACT_VERSION = "1.0.0";
 export interface ApiResponse<T = any> {
     success: boolean;

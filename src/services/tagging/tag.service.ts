@@ -81,18 +81,32 @@ export class TagService implements ITagService {
       }
 
       // Create the tag
+      const tagData: any = {
+        code: data.code,
+        name: data.name,
+        description: data.description,
+        entityTypes: data.entityTypes,
+        patterns: data.patterns as any,
+        rules: data.rules as any,
+        metadata: data.metadata as any,
+        confidence: data.confidence,
+        embeddingModel: data.embeddingModel,
+        color: data.color,
+        icon: data.icon,
+        isActive: data.isActive,
+        isSystem: data.isSystem,
+        path,
+        level,
+        usageCount: 0,
+        successRate: 0.0,
+      };
+
+      if (data.parentId) {
+        tagData.parentId = data.parentId;
+      }
+
       const tag = await prisma.universalTag.create({
-        data: {
-          ...data,
-          entityTypes: data.entityTypes,
-          patterns: data.patterns as any,
-          rules: data.rules as any,
-          metadata: data.metadata as any,
-          path,
-          level,
-          usageCount: 0,
-          successRate: 0.0,
-        },
+        data: tagData,
       });
 
       logger.info('Tag created', { tagId: tag.id, code: tag.code });
@@ -456,21 +470,35 @@ export class TagService implements ITagService {
 
       // Create all tags
       const created = await prisma.$transaction(
-        tags.map((tag) =>
-          prisma.universalTag.create({
-            data: {
-              ...tag,
-              entityTypes: tag.entityTypes,
-              patterns: tag.patterns as any,
-              rules: tag.rules as any,
-              metadata: tag.metadata as any,
-              path: '/', // TODO: Calculate based on parent
-              level: 0, // TODO: Calculate based on parent
-              usageCount: 0,
-              successRate: 0.0,
-            },
-          })
-        )
+        tags.map((tag) => {
+          const tagData: any = {
+            code: tag.code,
+            name: tag.name,
+            description: tag.description,
+            entityTypes: tag.entityTypes,
+            patterns: tag.patterns as any,
+            rules: tag.rules as any,
+            metadata: tag.metadata as any,
+            confidence: tag.confidence,
+            embeddingModel: tag.embeddingModel,
+            color: tag.color,
+            icon: tag.icon,
+            isActive: tag.isActive,
+            isSystem: tag.isSystem,
+            path: '/', // TODO: Calculate based on parent
+            level: 0, // TODO: Calculate based on parent
+            usageCount: 0,
+            successRate: 0.0,
+          };
+
+          if (tag.parentId) {
+            tagData.parentId = tag.parentId;
+          }
+
+          return prisma.universalTag.create({
+            data: tagData,
+          });
+        })
       );
 
       logger.info('Bulk tags created', { count: created.length });

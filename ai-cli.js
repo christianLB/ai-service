@@ -60,6 +60,7 @@ Production Commands:
   prod health          Comprehensive health check
   prod logs [service]  View production logs
   prod backup [name]   Create production backup
+  prod db-compare      Compare dev and prod databases
   prod admin create    Create admin user
   prod admin list      List production users
   prod admin reset     Reset user password
@@ -162,6 +163,21 @@ For detailed help: ai <command> --help
     
     try {
       switch (subCommand) {
+        case 'db-compare':
+          console.log('🔍 Comparing development and production databases...');
+          const comparison = await prodHelpers.compareDatabase();
+          
+          // Print the detailed report
+          console.log(comparison.detailedReport);
+          
+          // Exit with appropriate code
+          if (comparison.overall === 'match') {
+            process.exit(0);
+          } else {
+            process.exit(1);
+          }
+          break;
+          
         case 'status':
           console.log('🔍 Checking production status...');
           const status = await prodHelpers.getProductionStatus();
@@ -212,7 +228,7 @@ For detailed help: ai <command> --help
           
         default:
           console.log('Unknown production command.');
-          console.log('Available: status, health, logs, backup, admin, migrate');
+          console.log('Available: status, health, logs, backup, admin, migrate, db-compare');
       }
     } catch (error) {
       console.error('❌ Production command failed:', error.message);

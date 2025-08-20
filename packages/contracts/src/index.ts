@@ -29,6 +29,9 @@ import type { paths as CommPaths } from './generated/comm';
 // Export path types for convenience
 export type { GatewayPaths, AuthPaths, FinancialPaths, TradingPaths, AiCorePaths, CommPaths };
 
+// Critical alias for microservices compatibility
+export type AiServicePaths = GatewayPaths;
+
 // Export contract version for runtime checks
 export const CONTRACT_VERSION = '1.0.0';
 

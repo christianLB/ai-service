@@ -5,7 +5,7 @@ import { FeedbackResponse, LearningResponse } from '../../types/tagging/response
 import { IAITaggingService } from './interfaces';
 import { AIProviderError, handleTaggingError } from './errors';
 import logger from '../../utils/logger';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { claudeAIService, TradingContext } from '../ai/claude.service';
 import { OpenAIAnalysisService } from '../document-intelligence/openai-analysis.service';
 
