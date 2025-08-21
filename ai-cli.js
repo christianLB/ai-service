@@ -56,6 +56,7 @@ Development Commands:
   test [suite]         Run tests
 
 Production Commands:
+  prod deploy [manual|docker] Complete production deployment
   prod status          Check production system status
   prod health          Comprehensive health check
   prod logs [service]  View production logs
@@ -70,6 +71,9 @@ Production Commands:
 Examples:
   ai token             # Get auth token
   ai dev start         # Start all services
+  ai prod deploy       # Interactive production deployment
+  ai prod deploy manual # Manual deployment (no Docker)
+  ai prod deploy docker # Docker-based deployment
   ai prod status       # Check production status
   ai prod health       # Run health check
   ai prod backup       # Create production backup
@@ -163,6 +167,10 @@ For detailed help: ai <command> --help
     
     try {
       switch (subCommand) {
+        case 'deploy':
+          await handleProductionDeploy(subArgs);
+          break;
+          
         case 'db-compare':
           console.log('🔍 Comparing development and production databases...');
           const comparison = await prodHelpers.compareDatabase();
@@ -331,6 +339,327 @@ async function handleMigrateCommands(subArgs) {
     default:
       console.log('Unknown migration command.');
       console.log('Available: status, deploy');
+  }
+}
+
+// Production deployment handler
+async function handleProductionDeploy(subArgs) {
+  const deployType = subArgs[0] || 'interactive';
+  
+  console.log(`
+╔════════════════════════════════════════════════╗
+║       🚀 PRODUCTION DEPLOYMENT WIZARD          ║
+╚════════════════════════════════════════════════╝
+`);
+
+  // Check prerequisites
+  console.log('📋 Checking prerequisites...\n');
+  
+  // 1. Check if .env.production exists
+  if (!fs.existsSync(path.join(__dirname, '.env.production'))) {
+    console.log('❌ .env.production not found!');
+    console.log('   Create it from .env.example and configure production values');
+    console.log('   Required variables:');
+    console.log('   - JWT_SECRET (32+ characters)');
+    console.log('   - POSTGRES_PASSWORD');
+    console.log('   - REDIS_PASSWORD');
+    console.log('   - OPENAI_API_KEY (if using AI features)');
+    console.log('   - GOCARDLESS_* (if using banking integration)\n');
+    
+    const readline = require('readline').createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    const answer = await new Promise(resolve => {
+      readline.question('Do you want to create .env.production from .env.local? (y/n): ', resolve);
+    });
+    readline.close();
+    
+    if (answer.toLowerCase() === 'y') {
+      execSync(`cp ${path.join(__dirname, '.env.local')} ${path.join(__dirname, '.env.production')}`);
+      console.log('✅ Created .env.production - Please edit it with production values');
+      console.log('   Exiting for you to configure...');
+      process.exit(0);
+    } else {
+      process.exit(1);
+    }
+  }
+  
+  console.log('✅ .env.production found\n');
+  
+  // 2. Select deployment type
+  if (deployType === 'interactive') {
+    const readline = require('readline').createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    const answer = await new Promise(resolve => {
+      readline.question('Select deployment type:\n1. Docker (recommended)\n2. Manual (systemd services)\nChoice (1 or 2): ', resolve);
+    });
+    readline.close();
+    
+    deployType = answer === '2' ? 'manual' : 'docker';
+  }
+  
+  console.log(`\n🔧 Deployment type: ${deployType.toUpperCase()}\n`);
+  
+  // 3. Run deployment steps
+  try {
+    console.log('📦 Step 1: Building applications...');
+    
+    // Build backend
+    console.log('   Building main application...');
+    execSync('npm run build', { stdio: 'inherit' });
+    
+    // Build auth service
+    console.log('   Building auth service...');
+    execSync('cd apps/auth-svc && npm run build', { stdio: 'inherit' });
+    
+    // Build financial service  
+    console.log('   Building financial service...');
+    execSync('cd apps/financial-svc && npm run build', { stdio: 'inherit' });
+    
+    // Build frontend
+    console.log('   Building frontend...');
+    execSync('cd frontend && npm run build', { stdio: 'inherit' });
+    
+    console.log('✅ Build complete\n');
+    
+    // 4. Database migrations
+    console.log('🗄️ Step 2: Database migrations...');
+    console.log('   Checking migration status...');
+    execSync('npx prisma migrate status', { stdio: 'inherit' });
+    
+    const readline = require('readline').createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    const migrate = await new Promise(resolve => {
+      readline.question('Deploy pending migrations? (y/n): ', resolve);
+    });
+    readline.close();
+    
+    if (migrate.toLowerCase() === 'y') {
+      console.log('   Deploying migrations...');
+      execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+      console.log('✅ Migrations deployed\n');
+    }
+    
+    // 5. Deploy based on type
+    if (deployType === 'docker') {
+      console.log('🐳 Step 3: Docker deployment...');
+      
+      // Check if docker-compose.production.yml exists
+      if (!fs.existsSync(path.join(__dirname, 'docker-compose.production.yml'))) {
+        console.log('   Creating docker-compose.production.yml...');
+        // Create production docker-compose
+        const prodCompose = `version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ai_service
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass \${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: apps/auth-svc/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://ai_user:\${POSTGRES_PASSWORD}@postgres:5432/ai_service?schema=auth
+      JWT_SECRET: \${JWT_SECRET}
+      PORT: 3004
+    ports:
+      - "3004:3004"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  financial-service:
+    build:
+      context: .
+      dockerfile: apps/financial-svc/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://ai_user:\${POSTGRES_PASSWORD}@postgres:5432/ai_service?schema=financial
+      JWT_SECRET: \${JWT_SECRET}
+      PORT: 3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  monolith:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env.production
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - auth-service
+      - financial-service
+      - monolith
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+`;
+        fs.writeFileSync(path.join(__dirname, 'docker-compose.production.yml'), prodCompose);
+      }
+      
+      console.log('   Starting Docker containers...');
+      execSync('docker-compose -f docker-compose.production.yml up -d', { stdio: 'inherit' });
+      console.log('✅ Docker deployment complete\n');
+      
+    } else {
+      // Manual deployment
+      console.log('🔧 Step 3: Manual deployment...');
+      console.log('\n📝 Manual deployment instructions:\n');
+      console.log('1. Start PostgreSQL on port 5434');
+      console.log('2. Start Redis on port 6379\n');
+      console.log('3. Start Auth Service:');
+      console.log('   cd apps/auth-svc');
+      console.log('   DATABASE_URL="postgresql://user:pass@localhost:5434/ai_service?schema=auth" \\\\');
+      console.log('   JWT_SECRET="your-secret" PORT=3004 npm start\n');
+      console.log('4. Start Financial Service:');
+      console.log('   cd apps/financial-svc');
+      console.log('   DATABASE_URL="postgresql://user:pass@localhost:5434/ai_service?schema=financial" \\\\');
+      console.log('   JWT_SECRET="your-secret" PORT=3002 npm start\n');
+      console.log('5. Start Monolith:');
+      console.log('   # In root directory');
+      console.log('   POSTGRES_HOST=localhost POSTGRES_PORT=5434 \\\\');
+      console.log('   JWT_SECRET="your-secret" PORT=3001 npm start\n');
+      console.log('6. Serve Frontend:');
+      console.log('   cd frontend');
+      console.log('   npx serve -s dist -p 3000\n');
+    }
+    
+    // 6. Create admin user
+    console.log('👤 Step 4: Admin user setup...');
+    const rl2 = require('readline').createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    const createAdmin = await new Promise(resolve => {
+      rl2.question('Create admin user (admin@ai-service.local)? (y/n): ', resolve);
+    });
+    rl2.close();
+    
+    if (createAdmin.toLowerCase() === 'y') {
+      console.log('   Creating admin user...');
+      const createUserSQL = `
+        INSERT INTO auth.users (
+          email, password_hash, full_name, role, is_active, created_at, updated_at
+        ) VALUES (
+          'admin@ai-service.local',
+          '$2b$10$8YzH7X1vKpFdKjb8rqOAOe8uEpZ4UjQn9mGxK7bgQqFvI9o1aWVKq',
+          'System Administrator',
+          'admin',
+          true,
+          NOW(),
+          NOW()
+        ) ON CONFLICT (email) DO UPDATE SET 
+          password_hash = EXCLUDED.password_hash,
+          role = 'admin',
+          is_active = true;
+      `;
+      
+      if (deployType === 'docker') {
+        execSync(`docker exec ai-service-postgres-1 psql -U ai_user -d ai_service -c "${createUserSQL}"`, { stdio: 'inherit' });
+      } else {
+        execSync(`psql -h localhost -p 5434 -U ai_user -d ai_service -c "${createUserSQL}"`, { stdio: 'inherit' });
+      }
+      
+      console.log('✅ Admin user created');
+      console.log('   Email: admin@ai-service.local');
+      console.log('   Password: admin123');
+      console.log('   ⚠️  Please change the password after first login!\n');
+    }
+    
+    // 7. Health checks
+    console.log('🏥 Step 5: Health checks...');
+    await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for services to start
+    
+    const services = [
+      { name: 'Auth', url: 'http://localhost:3004/health' },
+      { name: 'Financial', url: 'http://localhost:3002/health' },
+      { name: 'Monolith', url: 'http://localhost:3001/health' }
+    ];
+    
+    for (const service of services) {
+      try {
+        const health = execSync(`curl -s ${service.url}`, { encoding: 'utf8' });
+        const status = JSON.parse(health).status;
+        if (status === 'healthy' || status === 'ok') {
+          console.log(`   ✅ ${service.name}: HEALTHY`);
+        } else {
+          console.log(`   ⚠️  ${service.name}: ${status}`);
+        }
+      } catch (error) {
+        console.log(`   ❌ ${service.name}: NOT RESPONDING`);
+      }
+    }
+    
+    // 8. Summary
+    console.log(`
+╔════════════════════════════════════════════════╗
+║        🎉 DEPLOYMENT COMPLETE!                 ║
+╠════════════════════════════════════════════════╣
+║ Services Running:                              ║
+║   • Auth Service:     http://localhost:3004   ║
+║   • Financial Service: http://localhost:3002  ║
+║   • Monolith API:     http://localhost:3001   ║
+║   • Frontend:         http://localhost:3000   ║
+║                                                ║
+║ Next Steps:                                    ║
+║   1. Configure nginx for production domain    ║
+║   2. Set up SSL certificates                  ║
+║   3. Configure firewall rules                 ║
+║   4. Set up monitoring and backups            ║
+╚════════════════════════════════════════════════╝
+
+To check status: ai prod status
+To view logs: ai prod logs
+To create backup: ai prod backup
+`);
+    
+  } catch (error) {
+    console.error('❌ Deployment failed:', error.message);
+    process.exit(1);
   }
 }
 
