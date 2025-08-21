@@ -60,6 +60,8 @@ app.get('/api/services', (req, res) => {
 const proxyOptions = {
   changeOrigin: true,
   logLevel: 'debug' as const,
+  timeout: 30000,
+  proxyTimeout: 30000,
   onError: (err: any, req: any, res: any) => {
     console.error('Proxy error:', err);
     res.status(503).json({
@@ -67,8 +69,15 @@ const proxyOptions = {
       message: err.message
     });
   },
-  onProxyReq: (proxyReq: any, req: any) => {
+  onProxyReq: (proxyReq: any, req: any, res: any) => {
     console.log(`Proxying ${req.method} ${req.path} to service`);
+    // Fix body parsing for POST requests
+    if (req.body) {
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader('Content-Type', 'application/json');
+      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
+    }
   }
 };
 
@@ -78,11 +87,19 @@ app.use('/api/financial', createProxyMiddleware({
   ...proxyOptions
 }));
 
-// Trading Service routes
-app.use('/api/trading', createProxyMiddleware({
-  target: 'http://localhost:3003',
+// Auth Service routes (NEW MICROSERVICE)
+app.use('/api/auth', createProxyMiddleware({
+  target: 'http://localhost:3004',
   ...proxyOptions
 }));
+
+// Trading Service routes - REMOVED
+app.use('/api/trading', (req, res) => {
+  res.status(501).json({
+    error: 'Trading Service removed',
+    message: 'This service has been removed from scope'
+  });
+});
 
 // AI Service routes (NOT IMPLEMENTED YET)
 app.use('/api/ai', (req, res) => {
@@ -100,14 +117,8 @@ app.use('/api/comm', (req, res) => {
   });
 });
 
-// Dashboard and other routes to monolith (fallback)
+// Dashboard routes to monolith
 app.use('/api/dashboard', createProxyMiddleware({
-  target: 'http://localhost:3001',
-  ...proxyOptions
-}));
-
-// Auth routes to monolith
-app.use('/api/auth', createProxyMiddleware({
   target: 'http://localhost:3001',
   ...proxyOptions
 }));

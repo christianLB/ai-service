@@ -18,6 +18,7 @@ import { invoiceService } from './services/invoice.service';
 import { invoiceAttachmentService } from './services/invoice-attachment.service';
 import { transactionService } from './services/transaction.service';
 import { goCardlessService } from './services/gocardless.service';
+import { authenticateToken, extractUserId, AuthRequest } from "./middleware/auth";
 
 // DB and Redis clients
 const prisma = new PrismaClient();
@@ -131,11 +132,11 @@ updateGaugeMetrics();
 // =============================================================================
 
 // Clients: list
-app.get("/api/financial/clients", async (req, res) => {
+app.get("/api/financial/clients", authenticateToken, async (req: AuthRequest, res) => {
   try {
     const email = typeof req.query.email === 'string' ? req.query.email : undefined;
     const name = typeof req.query.name === 'string' ? req.query.name : undefined;
-    const userId = req.query.userId as string || 'default-user'; // In production, get from auth
+    const userId = extractUserId(req);
     
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     
@@ -168,7 +169,7 @@ app.get("/api/financial/clients", async (req, res) => {
 });
 
 // Clients: get by id
-app.get("/api/financial/clients/:id", async (req, res) => {
+app.get("/api/financial/clients/:id", authenticateToken, async (req: AuthRequest, res) => {
   try {
     const id = req.params.id;
     const result = await clientService.getClientById(id);
@@ -192,9 +193,9 @@ app.get("/api/financial/clients/:id", async (req, res) => {
 });
 
 // Clients: create
-app.post("/api/financial/clients", async (req, res) => {
+app.post("/api/financial/clients", authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const userId = req.body.userId || 'default-user'; // In production, get from auth
+    const userId = extractUserId(req);
     const result = await clientService.createClient(req.body, userId);
     res.status(201).json(result);
   } catch (err) {
@@ -204,10 +205,10 @@ app.post("/api/financial/clients", async (req, res) => {
 });
 
 // Clients: update
-app.put("/api/financial/clients/:id", async (req, res) => {
+app.put("/api/financial/clients/:id", authenticateToken, async (req: AuthRequest, res) => {
   try {
     const id = req.params.id;
-    const userId = req.body.userId || 'default-user'; // In production, get from auth
+    const userId = extractUserId(req);
     const result = await clientService.updateClient(id, req.body, userId);
     res.json(result);
   } catch (err) {
@@ -221,10 +222,10 @@ app.put("/api/financial/clients/:id", async (req, res) => {
 });
 
 // Clients: delete
-app.delete("/api/financial/clients/:id", async (req, res) => {
+app.delete("/api/financial/clients/:id", authenticateToken, async (req: AuthRequest, res) => {
   try {
     const id = req.params.id;
-    const userId = req.query.userId as string || 'default-user'; // In production, get from auth
+    const userId = extractUserId(req);
     const result = await clientService.deleteClient(id, userId);
     res.json(result);
   } catch (err) {
@@ -246,7 +247,7 @@ app.get("/api/financial/invoices", async (req, res) => {
   try {
     const clientId = typeof req.query.clientId === 'string' ? req.query.clientId : undefined;
     const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-    const userId = req.query.userId as string || 'default-user'; // In production, get from auth
+    const userId = extractUserId(req);
     
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     
@@ -306,7 +307,7 @@ app.get("/api/financial/invoices/:id", async (req, res) => {
 // Invoices: create
 app.post("/api/financial/invoices", async (req, res) => {
   try {
-    const userId = req.body.userId || 'default-user'; // In production, get from auth
+    const userId = extractUserId(req);
     const result = await invoiceService.createInvoice(req.body, userId);
     res.status(201).json(result);
   } catch (err) {
@@ -319,7 +320,7 @@ app.post("/api/financial/invoices", async (req, res) => {
 app.put("/api/financial/invoices/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    const userId = req.body.userId || 'default-user'; // In production, get from auth
+    const userId = extractUserId(req);
     const result = await invoiceService.updateInvoice(id, req.body, userId);
     res.json(result);
   } catch (err) {
@@ -336,7 +337,7 @@ app.put("/api/financial/invoices/:id", async (req, res) => {
 app.delete("/api/financial/invoices/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    const userId = req.query.userId as string || 'default-user'; // In production, get from auth
+    const userId = extractUserId(req);
     const result = await invoiceService.deleteInvoice(id, userId);
     res.json(result);
   } catch (err) {

@@ -10,8 +10,21 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // Auth microservice
+      '/api/auth': {
+        target: 'http://localhost:3004',
+        changeOrigin: true,
+        secure: false,
+      },
+      // Financial microservice  
+      '/api/financial': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+        secure: false,
+      },
+      // Monolith for dashboard, tagging, users, etc
       '/api': {
-        target: 'http://localhost:3005',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       }
