@@ -14,7 +14,7 @@ router.use(authMiddleware);
 const numberingService = new InvoiceNumberingService(prisma, {
   defaultPrefix: 'INV',
   defaultFormat: 'PREFIX-YYYY-0000',
-  yearlyReset: true
+  yearlyReset: true,
 });
 
 /**
@@ -29,8 +29,8 @@ router.get('/sequences', async (req, res, next) => {
       success: true,
       data: {
         sequences,
-        total: sequences.length
-      }
+        total: sequences.length,
+      },
     });
   } catch (error) {
     logger.error('Error fetching sequences:', error);
@@ -51,8 +51,8 @@ router.get('/sequences/:series', async (req, res, next) => {
       success: true,
       data: {
         sequences,
-        total: sequences.length
-      }
+        total: sequences.length,
+      },
     });
   } catch (error) {
     logger.error('Error fetching sequence info:', error);
@@ -99,8 +99,8 @@ router.get('/preview', async (req, res, next) => {
         nextNumber,
         series,
         prefix,
-        format: format || 'PREFIX-YYYY-0000'
-      }
+        format: format || 'PREFIX-YYYY-0000',
+      },
     });
   } catch (error) {
     logger.error('Error previewing next number:', error);
@@ -134,8 +134,8 @@ router.post('/set-next', async (req, res, next) => {
         series,
         prefix,
         nextNumber,
-        year: year || new Date().getFullYear()
-      }
+        year: year || new Date().getFullYear(),
+      },
     });
   } catch (error) {
     logger.error('Error setting next number:', error);
@@ -156,11 +156,7 @@ router.post('/reset', async (req, res, next) => {
       throw new AppError('Please confirm the reset operation by setting confirm: true', 400);
     }
 
-    await numberingService.resetSequence(
-      series,
-      prefix,
-      year || new Date().getFullYear()
-    );
+    await numberingService.resetSequence(series, prefix, year || new Date().getFullYear());
 
     res.json({
       success: true,
@@ -168,8 +164,8 @@ router.post('/reset', async (req, res, next) => {
       data: {
         series,
         prefix,
-        year: year || new Date().getFullYear()
-      }
+        year: year || new Date().getFullYear(),
+      },
     });
   } catch (error) {
     logger.error('Error resetting sequence:', error);
@@ -187,7 +183,7 @@ router.get('/statistics', async (req, res, next) => {
 
     res.json({
       success: true,
-      data: statistics
+      data: statistics,
     });
   } catch (error) {
     logger.error('Error fetching statistics:', error);
@@ -214,8 +210,8 @@ router.post('/validate', async (req, res, next) => {
       data: {
         invoiceNumber,
         isValid,
-        message: isValid ? 'Invoice number is available' : 'Invoice number already exists'
-      }
+        message: isValid ? 'Invoice number is available' : 'Invoice number already exists',
+      },
     });
   } catch (error) {
     logger.error('Error validating invoice number:', error);

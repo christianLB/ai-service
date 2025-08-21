@@ -2,11 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { AxiosError } from 'axios';
-import type { 
-  Position, 
-  CreatePosition, 
-  PositionQuery 
-} from '../types/position.types';
+import type { Position, CreatePosition, PositionQuery } from '../types/position.types';
 
 const QUERY_KEY = 'positions';
 
@@ -62,10 +58,9 @@ export function usePositionSearch(query: string) {
   return useQuery({
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: Position[] }>(
-        '/positions/search',
-        { params: { q: query } }
-      );
+      const response = await api.get<{ success: boolean; data: Position[] }>('/positions/search', {
+        params: { q: query },
+      });
       return response.data.data;
     },
     enabled: query.length > 0,
@@ -88,7 +83,7 @@ export function usePositionMutations() {
       message.success(response.message || 'Position created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to create position');
+      message.error(error.response?.data?.message || 'Failed to create position');
     },
   });
 
@@ -103,7 +98,7 @@ export function usePositionMutations() {
       message.success(response.message || 'Position updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to update position');
+      message.error(error.response?.data?.message || 'Failed to update position');
     },
   });
 
@@ -117,16 +112,17 @@ export function usePositionMutations() {
       message.success(response.message || 'Position deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete position');
+      message.error(error.response?.data?.message || 'Failed to delete position');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/positions/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/positions/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
@@ -134,7 +130,7 @@ export function usePositionMutations() {
       message.success(response.message || 'Positions deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete positions');
+      message.error(error.response?.data?.message || 'Failed to delete positions');
     },
   });
 

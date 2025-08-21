@@ -1,0 +1,45 @@
+{
+  "name": "trading-svc",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/main.ts",
+    "dev:legacy": "tsx watch src/index.ts",
+    "start": "node dist/main.js",
+    "start:legacy": "node dist/index.js",
+    "clean": "rimraf dist",
+    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
+    "db:deploy": "prisma migrate deploy --schema=./prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=./prisma/schema.prisma"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "prom-client": "^15.1.2",
+    "pg": "^8.12.0",
+    "ioredis": "^5.7.0",
+    "@ai/config": "workspace:*",
+    "@ai/observability": "workspace:*",
+    "@ai/queue-system": "workspace:*",
+    "@ai/trading": "workspace:*",
+    "bull": "^4.16.3",
+    "@prisma/client": "^5.19.1",
+    "prisma": "^5.19.1",
+    "uuid": "^10.0.0",
+    "decimal.js": "^10.4.3"
+  },
+  "devDependencies": {
+    "tslib": "^2.6.2",
+    "tsx": "^4.16.2",
+    "typescript": "^5.4.5",
+    "rimraf": "^5.0.5",
+    "@types/uuid": "^10.0.0",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17"
+  }
+}

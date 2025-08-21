@@ -24,7 +24,7 @@ router.get('/health', async (req, res) => {
     logger.error('Health check failed', error);
     res.status(500).json({
       success: false,
-      error: 'Health check failed'
+      error: 'Health check failed',
     });
   }
 });
@@ -38,7 +38,7 @@ router.get('/client-metrics', requireAuth, async (req, res) => {
     logger.error('Failed to get client metrics', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to get client metrics'
+      error: 'Failed to get client metrics',
     });
   }
 });
@@ -47,16 +47,21 @@ router.get('/client-metrics', requireAuth, async (req, res) => {
 router.get('/revenue-metrics', requireAuth, async (req, res) => {
   try {
     const timeRange = {
-      startDate: req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      startDate: req.query.startDate
+        ? new Date(req.query.startDate as string)
+        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       endDate: req.query.endDate ? new Date(req.query.endDate as string) : new Date(),
     };
-    const metrics = await financialDashboardService.getRevenueMetrics(timeRange, req.query.currency as string);
+    const metrics = await financialDashboardService.getRevenueMetrics(
+      timeRange,
+      req.query.currency as string
+    );
     res.json(metrics);
   } catch (error) {
     logger.error('Failed to get revenue metrics', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to get revenue metrics'
+      error: 'Failed to get revenue metrics',
     });
   }
 });
@@ -74,7 +79,7 @@ router.get('/invoice-statistics', requireAuth, async (req, res) => {
     logger.error('Failed to get invoice statistics', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to get invoice statistics'
+      error: 'Failed to get invoice statistics',
     });
   }
 });
@@ -95,7 +100,7 @@ router.get('/cash-flow-projections', requireAuth, async (req, res) => {
     logger.error('Failed to get cash flow projections', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to get cash flow projections'
+      error: 'Failed to get cash flow projections',
     });
   }
 });
@@ -129,7 +134,7 @@ router.get('/quick-stats', requireAuth, async (req, res) => {
     logger.error('Failed to get quick stats', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to get quick stats'
+      error: 'Failed to get quick stats',
     });
   }
 });

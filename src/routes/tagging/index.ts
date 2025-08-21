@@ -28,29 +28,29 @@ router.get('/', (req, res) => {
           search: 'GET /api/tags/search',
           get: 'GET /api/tags/:id',
           update: 'PUT /api/tags/:id',
-          delete: 'DELETE /api/tags/:id'
+          delete: 'DELETE /api/tags/:id',
         },
         entities: {
           tag: 'POST /api/entities/:type/:id/tags',
           getTags: 'GET /api/entities/:type/:id/tags',
           removeTag: 'DELETE /api/entities/:type/:id/tags/:tagId',
           updateTag: 'PATCH /api/entities/:type/:id/tags/:tagId',
-          findByTag: 'GET /api/entities/by-tag/:tagId'
+          findByTag: 'GET /api/entities/by-tag/:tagId',
         },
         operations: {
           batch: 'POST /api/tagging/batch',
           retag: 'POST /api/tagging/retag',
           feedback: 'POST /api/tagging/feedback',
           learn: 'POST /api/tagging/learn',
-          accuracy: 'GET /api/tagging/accuracy'
+          accuracy: 'GET /api/tagging/accuracy',
         },
         analytics: {
           tagMetrics: 'GET /api/tags/:id/metrics',
-          relationships: 'GET /api/relationships/:type/:id'
-        }
+          relationships: 'GET /api/relationships/:type/:id',
+        },
       },
-      documentation: '/docs/universal-tagging/api-reference.md'
-    }
+      documentation: '/docs/universal-tagging/api-reference.md',
+    },
   });
 });
 

@@ -1,0 +1,388 @@
+name: CI Build & Extended Smoke Tests
+
+on:
+  push:
+    branches: [ main, feat/** ]
+  pull_request:
+    branches: [ main, feat/** ]
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '10.12.1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Get pnpm store
+        id: pnpm-cache
+        run: echo "store-path=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.store-path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing dependencies with pnpm..."
+          pnpm install --frozen-lockfile
+
+      - name: Generate and build contracts
+        run: |
+          echo "📝 Generating contracts..."
+          pnpm contracts:generate
+          echo "🔨 Building contracts..."
+          pnpm contracts:build
+
+      - name: Contracts drift check
+        run: |
+          echo "🔍 Checking for contract drift..."
+          pnpm contracts:check || {
+            echo "❌ Contract drift detected!"
+            echo "Run: pnpm contracts:generate && pnpm contracts:build"
+            exit 1
+          }
+
+      - name: Build all packages
+        run: |
+          echo "📦 Building workspace packages..."
+          pnpm -r --filter "./packages/*" build || {
+            echo "❌ Package build failed"
+            exit 1
+          }
+
+      - name: Build all apps
+        run: |
+          echo "🚀 Building workspace apps..."
+          pnpm -r --filter "./apps/*" build || {
+            echo "❌ Apps build failed"
+            exit 1
+          }
+
+      - name: Typecheck workspace
+        run: |
+          echo "🔍 Type checking entire workspace..."
+          npx tsc -b --noEmit || {
+            echo "❌ TypeScript errors found in workspace"
+            exit 1
+          }
+
+  smoke:
+    name: Extended Smoke Tests
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Prepare environment
+        run: |
+          echo "🔧 Preparing environment..."
+          touch .env
+          echo "NODE_ENV=test" >> .env
+          echo "JWT_SECRET=smoke-test-secret" >> .env
+          echo "DATABASE_URL=postgresql://ai_user:password@db:5432/ai_service" >> .env
+
+      - name: Start stack (dev compose)
+        run: |
+          echo "🐳 Starting Docker services..."
+          docker compose -f infra/compose/docker-compose.dev.yml up -d --build
+          echo "⏳ Waiting for initialization (15s)..."
+          sleep 15
+
+      - name: Show compose status
+        run: |
+          echo "📊 Service status:"
+          docker compose -f infra/compose/docker-compose.dev.yml ps
+
+      - name: Wait for gateway readiness
+        run: |
+          echo "⏳ Waiting for API Gateway to be ready..."
+          max_attempts=60
+          attempt=1
+          start_time=$(date +%s)
+          
+          while [ $attempt -le $max_attempts ]; do
+            if curl -sf http://localhost:3005/health/ready > /dev/null; then
+              end_time=$(date +%s)
+              duration=$((end_time - start_time))
+              echo "✅ Gateway ready after ${duration}s"
+              exit 0
+            fi
+            echo "Attempt $attempt/$max_attempts: Gateway not ready yet..."
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+          
+          echo "❌ Gateway failed to become ready after 120s"
+          echo ""
+          echo "=== Gateway Logs (last 100 lines) ==="
+          docker compose -f infra/compose/docker-compose.dev.yml logs api-gateway --tail=100
+          exit 1
+
+      - name: On failure - dump failing container logs
+        if: failure()
+        run: |
+          echo "==== docker ps ===="
+          docker ps -a || true
+          echo "==== compose ps ===="
+          docker compose -f infra/compose/docker-compose.dev.yml ps || true
+          echo "==== financial-svc logs ===="
+          docker compose -f infra/compose/docker-compose.dev.yml logs financial-svc || true
+          echo "==== db logs ===="
+          docker compose -f infra/compose/docker-compose.dev.yml logs db || true
+          echo "==== gateway logs ===="
+          docker compose -f infra/compose/docker-compose.dev.yml logs api-gateway || true
+
+      - name: Install test utilities
+        run: |
+          echo "🔧 Installing test utilities..."
+          sudo apt-get update && sudo apt-get install -y jq bc
+
+      - name: Smoke - list accounts with diagnostics
+        run: |
+          echo "🔍 Testing GET /api/financial/accounts..."
+          response=$(curl -sf -w '\n{"http_code":%{http_code},"time_total":%{time_total}}' \
+                          http://localhost:3005/api/financial/accounts)
+          http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
+          time_total=$(echo "$response" | tail -1 | jq -r '.time_total')
+          body=$(echo "$response" | head -n -1)
+          
+          echo "⏱️  Response time: ${time_total}s"
+          echo "📊 HTTP Status: $http_code"
+          echo "📦 Response body:"
+          echo "$body" | jq '.' | tee accounts.json
+          
+          # Validate structure
+          echo "$body" | jq -e '.accounts | type == "array"' || {
+            echo "❌ Invalid response structure"
+            exit 1
+          }
+
+      - name: Smoke - accounts pagination valid (enhanced)
+        run: |
+          set -e
+          url="http://localhost:3005/api/financial/accounts?page=2&limit=1"
+          echo "🔍 Testing pagination: GET $url"
+          
+          response=$(curl -s -w '\n{"http_code":%{http_code},"time_total":%{time_total}}' "$url")
+          http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
+          time_total=$(echo "$response" | tail -1 | jq -r '.time_total')
+          body=$(echo "$response" | head -n -1)
+          
+          echo "⏱️  Response time: ${time_total}s"
+          echo "📊 HTTP Status: $http_code"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Expected 200, got $http_code"
+            echo "Response body:"
+            echo "$body" | jq '.' 2>/dev/null || echo "$body"
+            exit 1
+          fi
+          
+          echo "✅ Status check passed"
+          echo "$body" | jq -e '.page == 2 and .limit == 1' || {
+            echo "❌ Pagination metadata incorrect"
+            echo "Response:"
+            echo "$body" | jq '.'
+            exit 1
+          }
+          echo "✅ Pagination test passed"
+
+      - name: Smoke - accounts pagination invalid (page=0)
+        run: |
+          set -e
+          url="http://localhost:3005/api/financial/accounts?page=0&limit=10"
+          echo "🔍 Testing invalid pagination: GET $url"
+          
+          response=$(curl -s -w '\n{"http_code":%{http_code}}' "$url")
+          http_code=$(echo "$response" | tail -1 | jq -r '.http_code')
+          body=$(echo "$response" | head -n -1)
+          
+          echo "📊 HTTP Status: $http_code"
+          
+          if [ "$http_code" != "400" ]; then
+            echo "❌ Expected 400, got $http_code"
+            echo "Response body:"
+            echo "$body" | jq '.' 2>/dev/null || echo "$body"
+            exit 1
+          fi
+          
+          echo "✅ Correctly rejected with 400"
+          echo "Error message: $(echo "$body" | jq -r '.error // .message // "No error message"')"
+
+      - name: Smoke - clients pagination valid
+        run: |
+          set -e
+          resp=$(curl -sf "http://localhost:3005/api/financial/clients?page=1&limit=2")
+          echo "$resp" | jq -e '.page == 1 and .limit == 2 and (.clients | type == "array")' >/dev/null
+
+      - name: Smoke - clients pagination invalid (limit=0)
+        run: |
+          set -e
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3005/api/financial/clients?page=1&limit=0")
+          test "$code" = "400"
+
+      - name: Smoke - invoices pagination valid
+        run: |
+          set -e
+          resp=$(curl -sf "http://localhost:3005/api/financial/invoices?page=1&limit=1")
+          echo "$resp" | jq -e '.page == 1 and .limit == 1 and (.invoices | type == "array")' >/dev/null
+
+      - name: Smoke - invoices pagination invalid (page=0)
+        run: |
+          set -e
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3005/api/financial/invoices?page=0&limit=10")
+          test "$code" = "400"
+
+      - name: Smoke - test other services
+        run: |
+          echo "🔍 Testing additional service endpoints..."
+          
+          # Test trading service if available
+          if curl -sf http://localhost:3002/health > /dev/null 2>&1; then
+            echo "✅ Trading service is healthy"
+          else
+            echo "ℹ️ Trading service not available"
+          fi
+          
+          # Test AI core service if available  
+          if curl -sf http://localhost:3004/health > /dev/null 2>&1; then
+            echo "✅ AI Core service is healthy"
+          else
+            echo "ℹ️ AI Core service not available"
+          fi
+          
+          # Test comm service if available
+          if curl -sf http://localhost:3003/health > /dev/null 2>&1; then
+            echo "✅ Communication service is healthy"
+          else
+            echo "ℹ️ Communication service not available"
+          fi
+
+      - name: Performance benchmarks
+        run: |
+          echo "⚡ Running performance benchmarks..."
+          
+          # Test response times for critical endpoints
+          for endpoint in "/health/ready" "/api/financial/accounts?page=1&limit=10" "/api/financial/clients?page=1&limit=10"; do
+            echo ""
+            echo "Testing $endpoint..."
+            total_time=0
+            iterations=3
+            
+            for i in $(seq 1 $iterations); do
+              time=$(curl -o /dev/null -s -w '%{time_total}' "http://localhost:3005$endpoint")
+              total_time=$(echo "$total_time + $time" | bc)
+              echo "  Attempt $i: ${time}s"
+            done
+            
+            avg_time=$(echo "scale=3; $total_time / $iterations" | bc)
+            echo "  Average: ${avg_time}s"
+            
+            # Alert if average is over 1 second
+            if (( $(echo "$avg_time > 1" | bc -l) )); then
+              echo "  ⚠️ Slow response detected (>1s)"
+            else
+              echo "  ✅ Performance acceptable"
+            fi
+          done
+
+      - name: Collect comprehensive diagnostics on failure
+        if: failure()
+        run: |
+          echo "📋 Collecting comprehensive failure diagnostics..."
+          echo ""
+          echo "=== Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+          echo ""
+          echo "=== Container Status ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          echo ""
+          echo "=== Docker Compose Status ==="
+          docker compose -f infra/compose/docker-compose.dev.yml ps
+          echo ""
+          echo "=== Resource Usage ==="
+          docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+          echo ""
+          
+          # Collect logs for each service
+          services=("api-gateway" "financial-svc" "db" "redis" "trading-svc" "ai-core" "comm-svc")
+          for service in "${services[@]}"; do
+            echo ""
+            echo "=== $service logs (last 75 lines) ==="
+            docker compose -f infra/compose/docker-compose.dev.yml logs "$service" --tail=75 2>/dev/null || echo "Service $service not found"
+          done
+          
+          echo ""
+          echo "=== Network Information ==="
+          docker network ls
+          docker network inspect compose_default 2>/dev/null | jq '.[0].Containers' || true
+          
+          echo ""
+          echo "=== Environment Variables (sanitized) ==="
+          docker compose -f infra/compose/docker-compose.dev.yml exec -T api-gateway env 2>/dev/null | \
+            grep -v -E "(PASSWORD|SECRET|KEY|TOKEN)" | sort || true
+
+      - name: Smoke - get account by id (skip if none)
+        run: |
+          set -e
+          id=$(jq -r '.accounts[0].id // empty' accounts.json)
+          if [ -z "$id" ]; then
+            echo "No account found; skipping get-by-id"
+            exit 0
+          fi
+          echo "Querying account id: $id"
+          curl -sf "http://localhost:3005/api/financial/accounts/$id"
+
+      - name: Cold-start test - verify schemas exist
+        run: |
+          set -e
+          echo "Testing cold-start schema creation..."
+          docker compose -f infra/compose/docker-compose.dev.yml exec -T db psql -U ai_user -d ai_service -c "
+            SELECT schema_name FROM information_schema.schemata 
+            WHERE schema_name IN ('financial', 'public', 'tagging', 'trading')
+            ORDER BY schema_name
+          " | grep -E "(financial|public|tagging|trading)" || exit 1
+          echo "✅ All schemas exist"
+
+      - name: Cold-start test - verify indices exist
+        run: |
+          set -e
+          echo "Testing pagination indices..."
+          docker compose -f infra/compose/docker-compose.dev.yml exec -T db psql -U ai_user -d ai_service -c "
+            SELECT indexname FROM pg_indexes 
+            WHERE schemaname = 'financial' 
+            AND tablename IN ('clients', 'accounts', 'invoices', 'transactions')
+            AND indexname LIKE 'idx_%'
+            ORDER BY indexname
+          " | grep -E "idx_" || exit 1
+          echo "✅ Pagination indices exist"
+
+      - name: Teardown stack
+        if: always()
+        working-directory: infra/compose
+        run: docker compose -f docker-compose.dev.yml down -v

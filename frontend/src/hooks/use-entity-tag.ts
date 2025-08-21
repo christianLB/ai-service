@@ -1,11 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
-import type { 
-  EntityTag, 
-  CreateEntityTag, 
-  EntityTagQuery 
-} from '../types/entity-tag.types';
+import type { AxiosError } from 'axios';
+import type { EntityTag, CreateEntityTag, EntityTagQuery } from '../types/entity-tag.types';
 
 const QUERY_KEY = 'entity-tags';
 
@@ -86,8 +83,8 @@ export function useEntityTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'EntityTag created successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to create entitytag');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to create entitytag');
     },
   });
 
@@ -101,39 +98,42 @@ export function useEntityTagMutations() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.id] });
       message.success(response.message || 'EntityTag updated successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to update entitytag');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to update entitytag');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await api.delete<{ success: boolean; message: string }>(`/entity-tags/${id}`);
+      const response = await api.delete<{ success: boolean; message: string }>(
+        `/entity-tags/${id}`
+      );
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'EntityTag deleted successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete entitytag');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to delete entitytag');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/entity-tags/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/entity-tags/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       message.success(response.message || 'EntityTags deleted successfully');
     },
-    onError: (error) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete entitytags');
+    onError: (error: AxiosError<{ message?: string }>) => {
+      message.error(error.response?.data?.message || 'Failed to delete entitytags');
     },
   });
 

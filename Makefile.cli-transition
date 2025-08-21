@@ -1,0 +1,215 @@
+# =============================================================================
+# AI Service - CLI Transition Makefile
+# =============================================================================
+# This Makefile provides aliases from old Make commands to the new CLI
+# Gradually migrate to using 'ai' commands directly
+# =============================================================================
+
+# Check if CLI is available
+CLI_AVAILABLE := $(shell which ai 2>/dev/null)
+ifeq ($(CLI_AVAILABLE),)
+    CLI_CMD := node cli/dist/index.js
+else
+    CLI_CMD := ai
+endif
+
+# =============================================================================
+# Development Environment Commands
+# =============================================================================
+
+.PHONY: dev-up
+dev-up: ## Start development environment (NEW: ai dev start)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) dev start
+
+.PHONY: dev-down
+dev-down: ## Stop development environment (NEW: ai dev stop)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) dev stop
+
+.PHONY: dev-restart
+dev-restart: ## Restart development environment (NEW: ai dev restart)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) dev restart
+
+.PHONY: dev-status
+dev-status: ## Check service status (NEW: ai dev status)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) dev status
+
+.PHONY: dev-logs
+dev-logs: ## View logs (NEW: ai dev logs)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) dev logs
+
+.PHONY: dev-health
+dev-health: ## Check health (NEW: ai dev health)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) dev health
+
+.PHONY: dev-refresh
+dev-refresh: ## Refresh environment (NEW: ai dev refresh)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) dev refresh
+
+# =============================================================================
+# Authentication Commands
+# =============================================================================
+
+.PHONY: auth-token
+auth-token: ## Get auth token (NEW: ai auth token or ai token)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) token
+
+.PHONY: get-token
+get-token: auth-token ## Alias for auth-token
+
+# =============================================================================
+# Database Commands
+# =============================================================================
+
+.PHONY: db-migrate
+db-migrate: ## Run migrations (NEW: ai db migrate)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) prisma migrate apply
+
+.PHONY: db-migrate-create
+db-migrate-create: ## Create migration (NEW: ai db migrate create <name>)
+	@echo "🔄 Redirecting to new CLI command..."
+	@echo "⚠️  Please provide migration name: ai db migrate create <name>"
+	@$(CLI_CMD) prisma migrate create
+
+.PHONY: db-migrate-status
+db-migrate-status: ## Migration status (NEW: ai db status)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) prisma status
+
+.PHONY: db-studio
+db-studio: ## Open Prisma Studio (NEW: ai db studio)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) prisma studio
+
+.PHONY: db-backup
+db-backup: ## Create backup (NEW: ai db backup create)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) prisma backup create
+
+.PHONY: db-seed
+db-seed: ## Run seed (NEW: ai db seed run)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) prisma seed run
+
+.PHONY: db-reset
+db-reset: ## Reset database (NEW: ai db migrate reset)
+	@echo "🔄 Redirecting to new CLI command..."
+	@echo "⚠️  WARNING: This will destroy all data!"
+	@$(CLI_CMD) prisma migrate reset
+
+# =============================================================================
+# Test Commands
+# =============================================================================
+
+.PHONY: test
+test: ## Run all tests (NEW: ai test all)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) test all
+
+.PHONY: test-unit
+test-unit: ## Run unit tests (NEW: ai test unit)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) test unit
+
+.PHONY: test-e2e
+test-e2e: ## Run E2E tests (NEW: ai test e2e)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) test e2e
+
+.PHONY: test-coverage
+test-coverage: ## Test coverage (NEW: ai test coverage)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) test coverage
+
+# =============================================================================
+# Build Commands
+# =============================================================================
+
+.PHONY: build
+build: ## Build all (NEW: ai build)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) build
+
+.PHONY: build-api
+build-api: ## Build API (NEW: ai build api)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) build api
+
+.PHONY: build-frontend
+build-frontend: ## Build frontend (NEW: ai build frontend)
+	@echo "🔄 Redirecting to new CLI command..."
+	@$(CLI_CMD) build frontend
+
+# =============================================================================
+# Migration Help
+# =============================================================================
+
+.PHONY: cli-help
+cli-help: ## Show new CLI commands
+	@echo "🚀 NEW CLI COMMANDS AVAILABLE!"
+	@echo ""
+	@echo "The old Makefile commands are being replaced with a modern CLI."
+	@echo "Here's how to use the new commands:"
+	@echo ""
+	@echo "DEVELOPMENT:"
+	@echo "  ai dev start           # Start environment"
+	@echo "  ai dev stop            # Stop environment"
+	@echo "  ai dev status          # Check status"
+	@echo "  ai dev logs            # View logs"
+	@echo ""
+	@echo "AUTHENTICATION:"
+	@echo "  ai token               # Get auth token"
+	@echo "  ai auth login          # Interactive login"
+	@echo ""
+	@echo "DATABASE:"
+	@echo "  ai db status           # Check database"
+	@echo "  ai db migrate          # Run migrations"
+	@echo "  ai db studio           # Open Prisma Studio"
+	@echo "  ai db backup create    # Create backup"
+	@echo ""
+	@echo "TESTING:"
+	@echo "  ai test                # Run all tests"
+	@echo "  ai test unit           # Unit tests only"
+	@echo "  ai test e2e            # E2E tests only"
+	@echo ""
+	@echo "For more help: ai --help"
+
+.PHONY: cli-install
+cli-install: ## Install the CLI globally
+	@echo "📦 Installing AI Service CLI..."
+	@cd cli && npm install && npm run build && npm link
+	@echo "✅ CLI installed globally. You can now use 'ai' command anywhere!"
+
+.PHONY: cli-upgrade
+cli-upgrade: ## Upgrade to latest CLI
+	@echo "🔄 Upgrading AI Service CLI..."
+	@cd cli && git pull && npm install && npm run build
+	@echo "✅ CLI upgraded to latest version!"
+
+# =============================================================================
+# Default Help
+# =============================================================================
+
+.PHONY: help
+help: ## Show this help message
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║                   CLI TRANSITION MAKEFILE                        ║"
+	@echo "║                                                                  ║"
+	@echo "║  These Make commands now redirect to the new CLI.               ║"
+	@echo "║  Please start using 'ai' commands directly!                     ║"
+	@echo "║                                                                  ║"
+	@echo "║  Install CLI globally: make cli-install                         ║"
+	@echo "║  Show new commands:    make cli-help                            ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+
+.DEFAULT_GOAL := help

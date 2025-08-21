@@ -108,6 +108,18 @@
         "priority": "high",
         "use": ["ui-components", "dashboard", "frontend"]
       }
+    },
+    "specialists": {
+      "qa-specialist": "Testing, quality assurance, E2E testing",
+      "ui-specialist": "Frontend development, React, Tailwind CSS",
+      "crud-specialist": "CRUD operations, Prisma, API endpoints",
+      "prisma-specialist": "Database schema, migrations, optimization",
+      "devops-specialist": "Docker, CI/CD, deployment automation",
+      "security-specialist": "Vulnerability assessment, OWASP compliance",
+      "architecture-consultant": "System design, technical decisions",
+      "financial-specialist": "Banking integration, invoicing, transactions",
+      "trading-specialist": "Trading strategies, market analysis, exchanges",
+      "agent-optimizer": "Agent configuration optimization, learning integration"
     }
   },
   "intelligentMakeIntegration": {
@@ -155,6 +167,30 @@
       "description": "Enhance frontend components and UX",
       "flags": ["--persona-frontend", "--magic", "--c7"],
       "focus": ["frontend/src"]
+    },
+    "/orchestrate-analysis": {
+      "description": "Multi-agent comprehensive analysis and requirements gathering",
+      "flags": ["--think-hard", "--parallel", "--validate"],
+      "agents": ["architecture-consultant", "security-specialist", "qa-specialist", "domain-specialists"],
+      "output": "docs/analysis/"
+    },
+    "/orchestrate-implement": {
+      "description": "Coordinated multi-agent implementation from analysis documents",
+      "flags": ["--parallel", "--validate", "--quality-gates"],
+      "agents": ["crud-specialist", "ui-specialist", "qa-specialist", "devops-specialist"],
+      "phases": ["foundation", "core", "enhancement"]
+    },
+    "/architect-orchestrate": {
+      "description": "Architecture-led solution design with specialist coordination",
+      "flags": ["--think-hard", "--validate", "--progressive"],
+      "lead": "architecture-consultant",
+      "workflow": ["analysis", "consultation", "blueprint", "implementation"]
+    },
+    "/agent-optimize": {
+      "description": "Optimize agent configurations based on conversation learnings",
+      "flags": ["--auto-learn", "--validate", "--backup"],
+      "target": "~/.claude/agent-configs/",
+      "modes": ["explicit", "auto-learn", "targeted"]
     },
     "/tdd": {
       "description": "Test-driven development workflow",

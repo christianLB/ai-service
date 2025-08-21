@@ -2,11 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import api from '../services/api';
 import type { AxiosError } from 'axios';
-import type { 
-  Accounts, 
-  CreateAccounts, 
-  AccountsQuery 
-} from '../types/accounts.types';
+import type { Accounts, CreateAccounts, AccountsQuery } from '../types/accounts.types';
 
 const QUERY_KEY = 'accountss';
 
@@ -62,10 +58,9 @@ export function useAccountsSearch(query: string) {
   return useQuery({
     queryKey: [QUERY_KEY, 'search', query],
     queryFn: async () => {
-      const response = await api.get<{ success: boolean; data: Accounts[] }>(
-        '/accountss/search',
-        { params: { q: query } }
-      );
+      const response = await api.get<{ success: boolean; data: Accounts[] }>('/accountss/search', {
+        params: { q: query },
+      });
       return response.data.data;
     },
     enabled: query.length > 0,
@@ -88,7 +83,7 @@ export function useAccountsMutations() {
       message.success(response.message || 'Accounts created successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to create accounts');
+      message.error(error.response?.data?.message || 'Failed to create accounts');
     },
   });
 
@@ -103,7 +98,7 @@ export function useAccountsMutations() {
       message.success(response.message || 'Accounts updated successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to update accounts');
+      message.error(error.response?.data?.message || 'Failed to update accounts');
     },
   });
 
@@ -117,16 +112,17 @@ export function useAccountsMutations() {
       message.success(response.message || 'Accounts deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete accounts');
+      message.error(error.response?.data?.message || 'Failed to delete accounts');
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await api.delete<{ success: boolean; data: { count: number }; message: string }>(
-        '/accountss/bulk',
-        { data: { ids } }
-      );
+      const response = await api.delete<{
+        success: boolean;
+        data: { count: number };
+        message: string;
+      }>('/accountss/bulk', { data: { ids } });
       return response.data;
     },
     onSuccess: (response) => {
@@ -134,7 +130,7 @@ export function useAccountsMutations() {
       message.success(response.message || 'Accountss deleted successfully');
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      message.error((error as any).response?.data?.message || 'Failed to delete accountss');
+      message.error(error.response?.data?.message || 'Failed to delete accountss');
     },
   });
 

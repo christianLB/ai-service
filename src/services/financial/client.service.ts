@@ -17,7 +17,15 @@ export class ClientService {
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
   }) {
-    const { userId, limit = 20, offset = 0, search, status, sortBy = 'created_at', sortOrder = 'DESC' } = params;
+    const {
+      userId,
+      limit = 20,
+      offset = 0,
+      search,
+      status,
+      sortBy = 'created_at',
+      sortOrder = 'DESC',
+    } = params;
 
     try {
       // Build where clause
@@ -248,7 +256,10 @@ export class ClientService {
         },
       });
 
-      const totalRevenue = invoices.reduce((sum: number, inv: any) => sum + Number(inv.total || 0), 0);
+      const totalRevenue = invoices.reduce(
+        (sum: number, inv: any) => sum + Number(inv.total || 0),
+        0
+      );
       const totalInvoices = invoices.length;
       const totalPaid = invoices
         .filter((inv: any) => inv.status === 'paid')
@@ -315,13 +326,16 @@ export class ClientService {
    * Note: Currently the schema doesn't directly link transactions to clients
    * This would need to be implemented through invoices or a separate relation
    */
-  async getClientTransactions(clientId: string, options?: {
-    type?: string;
-    startDate?: Date;
-    endDate?: Date;
-    limit?: number;
-    offset?: number;
-  }) {
+  async getClientTransactions(
+    clientId: string,
+    options?: {
+      type?: string;
+      startDate?: Date;
+      endDate?: Date;
+      limit?: number;
+      offset?: number;
+    }
+  ) {
     try {
       const { type, startDate, endDate, limit = 50, offset = 0 } = options || {};
 
@@ -333,12 +347,14 @@ export class ClientService {
           invoices: {
             where: {
               status: 'paid',
-              ...(startDate || endDate ? {
-                paidAt: {
-                  ...(startDate && { gte: startDate }),
-                  ...(endDate && { lte: endDate }),
-                },
-              } : {}),
+              ...(startDate || endDate
+                ? {
+                    paidAt: {
+                      ...(startDate && { gte: startDate }),
+                      ...(endDate && { lte: endDate }),
+                    },
+                  }
+                : {}),
             },
             skip: offset,
             take: limit,

@@ -42,7 +42,7 @@ class IntegrationService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = '/integrations';
+    this.baseURL = '/integrations'; // Fixed: axios already adds /api prefix
   }
 
   async getIntegrationTypes(category?: string): Promise<IntegrationType[]> {
@@ -61,7 +61,7 @@ class IntegrationService {
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
       if (integrationType) params.append('integrationType', integrationType);
-      
+
       const response = await api.get(`${this.baseURL}/configs?${params.toString()}`);
       return response.data.data;
     } catch (error) {
@@ -70,7 +70,11 @@ class IntegrationService {
     }
   }
 
-  async getConfig(integrationType: string, configKey: string, userId?: string): Promise<string | null> {
+  async getConfig(
+    integrationType: string,
+    configKey: string,
+    userId?: string
+  ): Promise<string | null> {
     try {
       const params = userId ? `?userId=${userId}` : '';
       const response = await api.get(
@@ -99,8 +103,8 @@ class IntegrationService {
   }
 
   async updateConfig(
-    integrationType: string, 
-    configKey: string, 
+    integrationType: string,
+    configKey: string,
     configValue: string,
     userId?: string,
     description?: string
@@ -109,7 +113,7 @@ class IntegrationService {
       await api.put(`${this.baseURL}/configs/${integrationType}/${configKey}`, {
         configValue,
         userId,
-        description
+        description,
       });
     } catch (error) {
       console.error('Error updating config:', error);
@@ -135,14 +139,17 @@ class IntegrationService {
     }
   }
 
-  async testConfig(integrationType: string, configs: Record<string, string>): Promise<{
+  async testConfig(
+    integrationType: string,
+    configs: Record<string, string>
+  ): Promise<{
     integrationType: string;
     isValid: boolean;
     message: string;
   }> {
     try {
       const response = await api.post(`${this.baseURL}/test/${integrationType}`, {
-        configs
+        configs,
       });
       return response.data.data;
     } catch (error) {
@@ -155,21 +162,21 @@ class IntegrationService {
   async getConfiguration(integrationType: string): Promise<Record<string, string>> {
     try {
       const types = await this.getIntegrationTypes();
-      const integType = types.find(t => t.type === integrationType);
-      
+      const integType = types.find((t) => t.type === integrationType);
+
       if (!integType) {
         throw new Error(`Integration type ${integrationType} not found`);
       }
 
       const config: Record<string, string> = {};
-      
+
       for (const configKey of integType.configKeys) {
         const value = await this.getConfig(integrationType, configKey.key);
         if (value !== null) {
           config[configKey.key] = value;
         }
       }
-      
+
       return config;
     } catch (error) {
       console.error('Error getting configuration:', error);
@@ -181,18 +188,18 @@ class IntegrationService {
   async setConfiguration(integrationType: string, configs: Record<string, string>): Promise<void> {
     try {
       const types = await this.getIntegrationTypes();
-      const integType = types.find(t => t.type === integrationType);
-      
+      const integType = types.find((t) => t.type === integrationType);
+
       if (!integType) {
         throw new Error(`Integration type ${integrationType} not found`);
       }
 
       for (const [key, value] of Object.entries(configs)) {
-        const configKey = integType.configKeys.find(ck => ck.key === key);
+        const configKey = integType.configKeys.find((ck) => ck.key === key);
         if (configKey) {
           // Check if config exists
           const existing = await this.getConfig(integrationType, key);
-          
+
           if (existing !== null) {
             await this.updateConfig(integrationType, key, value, undefined, configKey.description);
           } else {
@@ -202,7 +209,7 @@ class IntegrationService {
               configValue: value,
               isGlobal: true,
               description: configKey.description,
-              encrypt: configKey.encrypted
+              encrypt: configKey.encrypted,
             });
           }
         }

@@ -5,38 +5,43 @@ const workflowSchema = Joi.object({
   id: Joi.string().optional(),
   name: Joi.string().required().min(1).max(100),
   active: Joi.boolean().default(false),
-  nodes: Joi.array().items(
-    Joi.object({
-      id: Joi.string().required(),
-      name: Joi.string().required(),
-      type: Joi.string().required(),
-      typeVersion: Joi.number().default(1),
-      position: Joi.array().items(Joi.number()).length(2).required(),
-      parameters: Joi.object().optional(),
-      credentials: Joi.object().optional(),
-      webhookId: Joi.string().optional(),
-      disabled: Joi.boolean().default(false)
-    })
-  ).min(1).required(),
-  connections: Joi.object().pattern(
-    Joi.string(),
-    Joi.object().pattern(
+  nodes: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.string().required(),
+        name: Joi.string().required(),
+        type: Joi.string().required(),
+        typeVersion: Joi.number().default(1),
+        position: Joi.array().items(Joi.number()).length(2).required(),
+        parameters: Joi.object().optional(),
+        credentials: Joi.object().optional(),
+        webhookId: Joi.string().optional(),
+        disabled: Joi.boolean().default(false),
+      })
+    )
+    .min(1)
+    .required(),
+  connections: Joi.object()
+    .pattern(
       Joi.string(),
-      Joi.array().items(
-        Joi.object({
-          node: Joi.string().required(),
-          type: Joi.string().required(),
-          index: Joi.number().default(0)
-        })
+      Joi.object().pattern(
+        Joi.string(),
+        Joi.array().items(
+          Joi.object({
+            node: Joi.string().required(),
+            type: Joi.string().required(),
+            index: Joi.number().default(0),
+          })
+        )
       )
     )
-  ).optional(),
+    .optional(),
   settings: Joi.object({
     executionOrder: Joi.string().valid('v0', 'v1').default('v1'),
     saveManualExecutions: Joi.boolean().default(false),
     callerPolicy: Joi.string().optional(),
     errorWorkflow: Joi.string().optional(),
-    timezone: Joi.string().default('America/New_York')
+    timezone: Joi.string().default('America/New_York'),
   }).optional(),
   staticData: Joi.object().optional(),
   meta: Joi.object().optional(),
@@ -44,7 +49,7 @@ const workflowSchema = Joi.object({
   versionId: Joi.string().optional(),
   triggerCount: Joi.number().default(0),
   createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional()
+  updatedAt: Joi.date().optional(),
 });
 
 const SECURITY_POLICIES = {
@@ -67,7 +72,7 @@ const SECURITY_POLICIES = {
     'n8n-nodes-base.emailSend',
     'n8n-nodes-base.slack',
     'n8n-nodes-base.postgres',
-    'n8n-nodes-base.redis'
+    'n8n-nodes-base.redis',
   ],
   FORBIDDEN_FUNCTIONS: [
     'eval',
@@ -77,8 +82,8 @@ const SECURITY_POLICIES = {
     'process',
     'child_process',
     'fs',
-    'path'
-  ]
+    'path',
+  ],
 };
 
 interface ValidationResult {
@@ -91,7 +96,7 @@ export const validateWorkflow = (workflow: any): ValidationResult => {
   const result: ValidationResult = {
     isValid: true,
     errors: [],
-    warnings: []
+    warnings: [],
   };
 
   try {
@@ -99,7 +104,7 @@ export const validateWorkflow = (workflow: any): ValidationResult => {
     const { error } = workflowSchema.validate(workflow, { abortEarly: false });
     if (error) {
       result.isValid = false;
-      result.errors = error.details.map(detail => detail.message);
+      result.errors = error.details.map((detail) => detail.message);
       logger.error('Workflow validation failed:', error.details);
       return result;
     }
@@ -124,18 +129,17 @@ export const validateWorkflow = (workflow: any): ValidationResult => {
 
     logger.info(`Workflow validation completed: ${result.isValid ? 'PASSED' : 'FAILED'}`);
     return result;
-
   } catch (err: any) {
     logger.error('Validation error:', err.message);
     return {
       isValid: false,
       errors: [`Validation error: ${err.message}`],
-      warnings: []
+      warnings: [],
     };
   }
 };
 
-const validateSecurity = (workflow: any): { errors: string[], warnings: string[] } => {
+const validateSecurity = (workflow: any): { errors: string[]; warnings: string[] } => {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -174,15 +178,16 @@ const validateSecurity = (workflow: any): { errors: string[], warnings: string[]
   return { errors, warnings };
 };
 
-const validateBusinessLogic = (workflow: any): { errors: string[], warnings: string[] } => {
+const validateBusinessLogic = (workflow: any): { errors: string[]; warnings: string[] } => {
   const errors: string[] = [];
   const warnings: string[] = [];
 
   // Validar que hay al menos un nodo de inicio
-  const startNodes = workflow.nodes.filter((node: any) =>
-    node.type === 'n8n-nodes-base.start' ||
-    node.type === 'n8n-nodes-base.webhook' ||
-    node.type === 'n8n-nodes-base.cron'
+  const startNodes = workflow.nodes.filter(
+    (node: any) =>
+      node.type === 'n8n-nodes-base.start' ||
+      node.type === 'n8n-nodes-base.webhook' ||
+      node.type === 'n8n-nodes-base.cron'
   );
 
   if (startNodes.length === 0) {
@@ -228,19 +233,25 @@ const validateBusinessLogic = (workflow: any): { errors: string[], warnings: str
     }
   }
 
-  const disconnectedNodes = workflow.nodes.filter((node: any) =>
-    !connectedNodes.has(node.id) &&
-    !['n8n-nodes-base.start', 'n8n-nodes-base.webhook', 'n8n-nodes-base.cron'].includes(node.type)
+  const disconnectedNodes = workflow.nodes.filter(
+    (node: any) =>
+      !connectedNodes.has(node.id) &&
+      !['n8n-nodes-base.start', 'n8n-nodes-base.webhook', 'n8n-nodes-base.cron'].includes(node.type)
   );
 
   if (disconnectedNodes.length > 0) {
-    warnings.push(`Workflow has disconnected nodes: ${disconnectedNodes.map((n: any) => n.name).join(', ')}`);
+    warnings.push(
+      `Workflow has disconnected nodes: ${disconnectedNodes.map((n: any) => n.name).join(', ')}`
+    );
   }
 
   return { errors, warnings };
 };
 
-export const validateWorkflowUpdate = (existingWorkflow: any, updatedWorkflow: any): ValidationResult => {
+export const validateWorkflowUpdate = (
+  existingWorkflow: any,
+  updatedWorkflow: any
+): ValidationResult => {
   const result = validateWorkflow(updatedWorkflow);
 
   if (!result.isValid) {

@@ -1,0 +1,26 @@
+{
+  "name": "@ai/observability",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rimraf dist || true",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "prom-client": "^15.1.3",
+    "express": "^4.19.2",
+    "winston": "^3.17.0",
+    "uuid": "^11.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.1.0",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.8.3"
+  }
+}

@@ -3,7 +3,7 @@ import type {
   InvoiceAttachmentCreate as _CreateInvoiceAttachment,
   InvoiceAttachmentUpdate as _UpdateInvoiceAttachment,
   InvoiceAttachmentQuery as _InvoiceAttachmentQuery,
-  InvoiceAttachmentResponse as _InvoiceAttachmentWithRelations
+  InvoiceAttachmentResponse as _InvoiceAttachmentWithRelations,
 } from '../../packages/contracts/src/schemas/invoice-attachment';
 
 export type InvoiceAttachment = _InvoiceAttachment;

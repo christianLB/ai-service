@@ -6,7 +6,7 @@ import {
   InvoiceStats,
   ClientMetrics,
   TimeRange,
-  CategoryBreakdown
+  CategoryBreakdown,
 } from '../../types/financial/dashboard.types';
 
 export class FinancialDashboardService {
@@ -39,12 +39,12 @@ export class FinancialDashboardService {
         where: {
           createdAt: {
             gte: startDate,
-            lte: endDate
-          }
+            lte: endDate,
+          },
         },
         _count: { id: true },
         _sum: { total: true },
-        _avg: { total: true }
+        _avg: { total: true },
       }),
 
       // Paid invoices
@@ -53,11 +53,11 @@ export class FinancialDashboardService {
           status: 'PAID',
           paidDate: {
             gte: startDate,
-            lte: endDate
-          }
+            lte: endDate,
+          },
         },
         _count: { id: true },
-        _sum: { total: true }
+        _sum: { total: true },
       }),
 
       // Overdue invoices
@@ -65,12 +65,12 @@ export class FinancialDashboardService {
         where: {
           status: 'OVERDUE',
           dueDate: {
-            lt: new Date()
-          }
+            lt: new Date(),
+          },
         },
         _count: { id: true },
-        _sum: { total: true }
-      })
+        _sum: { total: true },
+      }),
     ]);
 
     return {
@@ -82,7 +82,7 @@ export class FinancialDashboardService {
       overdue: overdueStats._count?.id || 0,
       overdueAmount: overdueStats._sum?.total?.toNumber() || 0,
       pending: 0, // Will be calculated separately
-      pendingAmount: 0
+      pendingAmount: 0,
     };
   }
 
@@ -95,20 +95,20 @@ export class FinancialDashboardService {
           invoices: {
             some: {
               createdAt: {
-                gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) // Last 90 days
-              }
-            }
-          }
-        }
+                gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
+              },
+            },
+          },
+        },
       }),
 
       this.prisma.client.count({
         where: {
           createdAt: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
-          }
-        }
-      })
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+          },
+        },
+      }),
     ]);
 
     return {
@@ -116,7 +116,7 @@ export class FinancialDashboardService {
       active: activeClients,
       new: newClients,
       churned: 0, // Will be calculated with complex query
-      averageRevenue: 0 // Will be calculated with complex query
+      averageRevenue: 0, // Will be calculated with complex query
     };
   }
 
@@ -124,7 +124,10 @@ export class FinancialDashboardService {
   // HYBRID QUERIES - Prisma with raw SQL for complex operations
   // ============================================================================
 
-  async getRevenueMetrics(timeRange: TimeRange, currency: string = 'EUR'): Promise<RevenueMetric[]> {
+  async getRevenueMetrics(
+    timeRange: TimeRange,
+    currency: string = 'EUR'
+  ): Promise<RevenueMetric[]> {
     const { startDate, endDate } = timeRange;
 
     // Complex query with CTEs and window functions
@@ -267,7 +270,7 @@ export class FinancialDashboardService {
           operation,
           prismaResult: prismaResult,
           sqlResult: sqlResult,
-          differences: this.findDifferences(prismaResult, sqlResult)
+          differences: this.findDifferences(prismaResult, sqlResult),
         });
 
         // In production, we might want to use SQL result as fallback
@@ -346,32 +349,27 @@ export class FinancialDashboardService {
     currency: string = 'EUR'
   ): Promise<DashboardMetrics> {
     try {
-      const [
-        invoiceStats,
-        clientMetrics,
-        revenueMetrics,
-        categoryBreakdown,
-        topClients
-      ] = await Promise.all([
-        this.getBasicInvoiceStats(timeRange),
-        this.getBasicClientMetrics(),
-        this.getRevenueMetrics(timeRange, currency),
-        this.getCategoryBreakdown(timeRange),
-        this.getTopClients(10)
-      ]);
+      const [invoiceStats, clientMetrics, revenueMetrics, categoryBreakdown, topClients] =
+        await Promise.all([
+          this.getBasicInvoiceStats(timeRange),
+          this.getBasicClientMetrics(),
+          this.getRevenueMetrics(timeRange, currency),
+          this.getCategoryBreakdown(timeRange),
+          this.getTopClients(10),
+        ]);
 
       // Calculate pending invoices (complex status logic)
       const pendingStats = await this.prisma.invoice.aggregate({
         where: {
           status: {
-            in: ['SENT', 'PARTIALLY_PAID']
+            in: ['SENT', 'PARTIALLY_PAID'],
           },
           dueDate: {
-            gte: new Date()
-          }
+            gte: new Date(),
+          },
         },
         _count: { id: true },
-        _sum: { total: true }
+        _sum: { total: true },
       });
 
       invoiceStats.pending = pendingStats._count?.id || 0;
@@ -381,17 +379,17 @@ export class FinancialDashboardService {
         // Add dummy properties to satisfy type
         revenue: {
           total: invoiceStats.totalAmount,
-          changePercentage: 0
+          changePercentage: 0,
         },
         invoices: {
           total: invoiceStats.total,
           pending: invoiceStats.pending,
-          overdue: invoiceStats.overdue
+          overdue: invoiceStats.overdue,
         },
         clients: {
           total: clientMetrics.total,
           active: clientMetrics.active,
-          new: clientMetrics.new
+          new: clientMetrics.new,
         },
         // Legacy properties
         invoiceStats,
@@ -399,7 +397,7 @@ export class FinancialDashboardService {
         revenueMetrics,
         categoryBreakdown,
         topClients,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
       };
     } catch (error) {
       this.logger.error('Failed to get dashboard metrics', { error });
@@ -425,7 +423,7 @@ export class FinancialDashboardService {
       this.logger.info('Query performance', {
         query: queryName,
         duration: `${duration.toFixed(2)}ms`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Alert if query is slow
@@ -433,7 +431,7 @@ export class FinancialDashboardService {
         this.logger.warn('Slow query detected', {
           query: queryName,
           duration: `${duration.toFixed(2)}ms`,
-          threshold: '1000ms'
+          threshold: '1000ms',
         });
       }
 
@@ -445,7 +443,7 @@ export class FinancialDashboardService {
       this.logger.error('Query failed', {
         query: queryName,
         duration: `${duration.toFixed(2)}ms`,
-        error
+        error,
       });
 
       throw error;

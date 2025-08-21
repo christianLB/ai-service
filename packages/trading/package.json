@@ -1,0 +1,21 @@
+{
+  "name": "@ai/trading",
+  "version": "1.0.0",
+  "description": "Trading FSM and utilities",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bull": "^4.11.5",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "@types/bull": "^4.10.0",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -27,12 +27,12 @@ router.get('/version', (req: Request, res: Response, _next: NextFunction) => {
     nodeVersion: process.version,
     environment: process.env.NODE_ENV || 'development',
     uptime: process.uptime(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   res.json({
     success: true,
-    data: versionInfo
+    data: versionInfo,
   });
 });
 
@@ -51,7 +51,7 @@ router.post('/watchtower/notify', async (req: Request, res: Response, _next: Nex
     const versionInfo = {
       version: process.env.VERSION || 'unknown',
       commit: process.env.COMMIT_SHORT || 'unknown',
-      buildDate: process.env.BUILD_DATE || 'unknown'
+      buildDate: process.env.BUILD_DATE || 'unknown',
     };
 
     // Send Telegram notification
@@ -62,12 +62,13 @@ router.post('/watchtower/notify', async (req: Request, res: Response, _next: Nex
         res.json({
           success: true,
           message: 'Notification processed (Telegram unavailable)',
-          version: versionInfo
+          version: versionInfo,
         });
         return;
       }
 
-      const deployMessage = '🚀 Nueva Versión Desplegada\n\n' +
+      const deployMessage =
+        '🚀 Nueva Versión Desplegada\n\n' +
         `📦 Container: ${containerName}\n` +
         `🏷️ Versión: ${versionInfo.version}\n` +
         `📋 Commit: ${versionInfo.commit}\n` +
@@ -80,7 +81,7 @@ router.post('/watchtower/notify', async (req: Request, res: Response, _next: Nex
         type: 'system_error', // closest type available
         priority: 'medium',
         message: deployMessage,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       // Send to configured admin chat
@@ -97,14 +98,13 @@ router.post('/watchtower/notify', async (req: Request, res: Response, _next: Nex
     res.json({
       success: true,
       message: 'Notification processed successfully',
-      version: versionInfo
+      version: versionInfo,
     });
-
   } catch (error) {
     console.error('❌ Error processing Watchtower notification:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to process notification'
+      error: 'Failed to process notification',
     });
   }
 });
@@ -116,7 +116,7 @@ router.post('/test-notification', async (req: Request, res: Response, _next: Nex
     if (!telegramService) {
       res.status(503).json({
         success: false,
-        error: 'Telegram service not available'
+        error: 'Telegram service not available',
       });
       return;
     }
@@ -124,10 +124,11 @@ router.post('/test-notification', async (req: Request, res: Response, _next: Nex
     const versionInfo = {
       version: process.env.VERSION || 'development',
       commit: process.env.COMMIT_SHORT || 'unknown',
-      buildDate: process.env.BUILD_DATE || 'unknown'
+      buildDate: process.env.BUILD_DATE || 'unknown',
     };
 
-    const testMessage = '🧪 Test de Notificación\n\n' +
+    const testMessage =
+      '🧪 Test de Notificación\n\n' +
       '📦 Sistema: AI Service\n' +
       `🏷️ Versión: ${versionInfo.version}\n` +
       `📋 Commit: ${versionInfo.commit}\n` +
@@ -139,7 +140,7 @@ router.post('/test-notification', async (req: Request, res: Response, _next: Nex
       type: 'system_error',
       priority: 'low',
       message: testMessage,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     await telegramService.sendAlert(alert);
@@ -147,14 +148,13 @@ router.post('/test-notification', async (req: Request, res: Response, _next: Nex
     res.json({
       success: true,
       message: 'Test notification sent',
-      version: versionInfo
+      version: versionInfo,
     });
-
   } catch (error) {
     console.error('❌ Error sending test notification:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to send test notification'
+      error: 'Failed to send test notification',
     });
   }
 });

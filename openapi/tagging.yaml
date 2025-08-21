@@ -1,0 +1,1508 @@
+openapi: 3.0.3
+info:
+  title: Tagging Service API
+  version: 1.0.0
+  description: API for universal tagging system supporting AI-powered and pattern-based entity tagging
+
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Universal Tags
+  /api/tags:
+    get:
+      summary: List all tags
+      operationId: listTags
+      tags:
+        - Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Items per page
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in tag name, code, or description
+        - name: entityType
+          in: query
+          schema:
+            $ref: '#/components/schemas/EntityType'
+          description: Filter by entity type
+        - name: parentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by parent tag ID
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+          description: Filter by active status
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [name, code, usageCount, createdAt]
+            default: name
+          description: Sort field
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+          description: Sort order
+      responses:
+        '200':
+          description: List of tags with pagination
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagListResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create a new tag
+      operationId: createTag
+      tags:
+        - Tags
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTag'
+      responses:
+        '201':
+          description: Tag created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '400':
+          description: Invalid tag data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Tag code already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tags/search:
+    get:
+      summary: Search tags
+      operationId: searchTags
+      tags:
+        - Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: Search query
+        - name: entityType
+          in: query
+          schema:
+            $ref: '#/components/schemas/EntityType'
+          description: Filter by entity type
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          description: Maximum results to return
+      responses:
+        '200':
+          description: Search results with relevance scores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagSearchResponse'
+        '400':
+          description: Invalid search parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tags/{id}:
+    get:
+      summary: Get tag by ID
+      operationId: getTag
+      tags:
+        - Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Tag ID
+      responses:
+        '200':
+          description: Tag details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '404':
+          description: Tag not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update tag
+      operationId: updateTag
+      tags:
+        - Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Tag ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTag'
+      responses:
+        '200':
+          description: Tag updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '400':
+          description: Invalid tag data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Tag not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete tag
+      operationId: deleteTag
+      tags:
+        - Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Tag ID
+        - name: reassignTo
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Reassign existing entity tags to this tag ID
+      responses:
+        '204':
+          description: Tag deleted successfully
+        '400':
+          description: Cannot delete tag (has children or other constraints)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Tag not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Entity Tags
+  /api/entities/{type}/{id}/tags:
+    get:
+      summary: Get entity tags
+      operationId: getEntityTags
+      tags:
+        - Entity Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityType'
+          description: Entity type
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID
+      responses:
+        '200':
+          description: Entity tags
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityTagsResponse'
+        '404':
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Tag an entity
+      operationId: tagEntity
+      tags:
+        - Entity Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityType'
+          description: Entity type
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagEntityRequest'
+      responses:
+        '200':
+          description: Entity tagged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagEntityResponse'
+        '400':
+          description: Invalid tagging request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/entities/{type}/{id}/tags/{tagId}:
+    patch:
+      summary: Update entity tag
+      operationId: updateEntityTag
+      tags:
+        - Entity Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityType'
+          description: Entity type
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Tag ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEntityTag'
+      responses:
+        '200':
+          description: Entity tag updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityTagResponse'
+        '400':
+          description: Invalid update data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Entity or tag not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Remove tag from entity
+      operationId: removeTagFromEntity
+      tags:
+        - Entity Tags
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/EntityType'
+          description: Entity type
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Tag ID
+      responses:
+        '204':
+          description: Tag removed from entity successfully
+        '404':
+          description: Entity or tag not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Batch Operations
+  /api/tagging/batch:
+    post:
+      summary: Batch tag multiple entities
+      operationId: batchTagEntities
+      tags:
+        - Batch Operations
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchTagRequest'
+      responses:
+        '200':
+          description: Batch tagging results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchTagResponse'
+        '400':
+          description: Invalid batch request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tagging/retag:
+    post:
+      summary: Re-tag entities based on criteria
+      operationId: retagEntities
+      tags:
+        - Batch Operations
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReTagRequest'
+      responses:
+        '200':
+          description: Re-tagging results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReTagResponse'
+        '400':
+          description: Invalid retag request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tagging/feedback:
+    post:
+      summary: Submit feedback on tag accuracy
+      operationId: submitTagFeedback
+      tags:
+        - Feedback
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagFeedback'
+      responses:
+        '200':
+          description: Feedback submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Invalid feedback data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tagging/accuracy:
+    get:
+      summary: Get system accuracy metrics
+      operationId: getAccuracyMetrics
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: entityType
+          in: query
+          schema:
+            $ref: '#/components/schemas/EntityType'
+          description: Filter by entity type
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: month
+          description: Time period for metrics
+      responses:
+        '200':
+          description: Accuracy metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccuracyMetrics'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - message
+        - code
+      properties:
+        message:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+    StandardResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          description: Response data
+        message:
+          type: string
+          description: Success message
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+
+    PaginationMeta:
+      type: object
+      required:
+        - page
+        - limit
+        - total
+        - pages
+      properties:
+        page:
+          type: integer
+          description: Current page number
+        limit:
+          type: integer
+          description: Items per page
+        total:
+          type: integer
+          description: Total number of items
+        pages:
+          type: integer
+          description: Total number of pages
+        hasNext:
+          type: boolean
+          description: Has next page
+        hasPrev:
+          type: boolean
+          description: Has previous page
+
+    EntityType:
+      type: string
+      enum: [transaction, document, client, invoice]
+      description: Supported entity types for tagging
+
+    TagMethod:
+      type: string
+      enum: [AI, PATTERN, MANUAL, AUTO]
+      description: Method used to apply the tag
+
+    TagPatterns:
+      type: object
+      properties:
+        keywords:
+          type: array
+          items:
+            type: string
+          description: Keywords to match
+        merchants:
+          type: array
+          items:
+            type: string
+          description: Merchant names to match
+        categories:
+          type: array
+          items:
+            type: string
+          description: Categories to match
+        regex:
+          type: string
+          description: Regular expression pattern
+        customRules:
+          type: object
+          description: Custom matching rules
+
+    Tag:
+      type: object
+      required:
+        - id
+        - code
+        - name
+        - entityTypes
+        - path
+        - level
+        - isActive
+        - isSystem
+        - confidence
+        - usageCount
+        - successRate
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]*$'
+          description: Unique tag code (uppercase with underscores)
+        name:
+          type: string
+          description: Human-readable tag name
+        description:
+          type: string
+          nullable: true
+          description: Tag description
+        entityTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityType'
+          minItems: 1
+          description: Supported entity types
+        patterns:
+          $ref: '#/components/schemas/TagPatterns'
+          nullable: true
+        rules:
+          type: object
+          nullable: true
+          description: Custom tagging rules
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Default confidence for this tag
+        embeddingModel:
+          type: string
+          nullable: true
+          description: AI model used for embeddings
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent tag ID for hierarchy
+        path:
+          type: string
+          description: Hierarchical path
+        level:
+          type: integer
+          minimum: 0
+          description: Hierarchy level
+        color:
+          type: string
+          nullable: true
+          description: Display color (hex code)
+        icon:
+          type: string
+          nullable: true
+          description: Display icon
+        isActive:
+          type: boolean
+          description: Whether tag is active
+        isSystem:
+          type: boolean
+          description: Whether tag is system-defined
+        metadata:
+          type: object
+          nullable: true
+          description: Additional metadata
+        usageCount:
+          type: integer
+          minimum: 0
+          description: Number of times tag has been used
+        successRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Success rate based on feedback
+        lastUsed:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last time tag was used
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateTag:
+      type: object
+      required:
+        - code
+        - name
+        - entityTypes
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]*$'
+          description: Unique tag code (uppercase with underscores)
+        name:
+          type: string
+          minLength: 1
+          description: Human-readable tag name
+        description:
+          type: string
+          nullable: true
+          description: Tag description
+        entityTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityType'
+          minItems: 1
+          description: Supported entity types
+        patterns:
+          $ref: '#/components/schemas/TagPatterns'
+          nullable: true
+        rules:
+          type: object
+          nullable: true
+          description: Custom tagging rules
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.5
+          description: Default confidence for this tag
+        embeddingModel:
+          type: string
+          nullable: true
+          description: AI model used for embeddings
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent tag ID for hierarchy
+        color:
+          type: string
+          nullable: true
+          description: Display color (hex code)
+        icon:
+          type: string
+          nullable: true
+          description: Display icon
+        isActive:
+          type: boolean
+          default: true
+          description: Whether tag is active
+        isSystem:
+          type: boolean
+          default: false
+          description: Whether tag is system-defined
+        metadata:
+          type: object
+          nullable: true
+          description: Additional metadata
+
+    UpdateTag:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Human-readable tag name
+        description:
+          type: string
+          nullable: true
+          description: Tag description
+        entityTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityType'
+          minItems: 1
+          description: Supported entity types
+        patterns:
+          $ref: '#/components/schemas/TagPatterns'
+          nullable: true
+        rules:
+          type: object
+          nullable: true
+          description: Custom tagging rules
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Default confidence for this tag
+        embeddingModel:
+          type: string
+          nullable: true
+          description: AI model used for embeddings
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent tag ID for hierarchy
+        color:
+          type: string
+          nullable: true
+          description: Display color (hex code)
+        icon:
+          type: string
+          nullable: true
+          description: Display icon
+        isActive:
+          type: boolean
+          description: Whether tag is active
+        isSystem:
+          type: boolean
+          description: Whether tag is system-defined
+        metadata:
+          type: object
+          nullable: true
+          description: Additional metadata
+
+    EntityTag:
+      type: object
+      required:
+        - id
+        - entityType
+        - entityId
+        - tagId
+        - confidence
+        - method
+        - isVerified
+      properties:
+        id:
+          type: string
+          format: uuid
+        entityType:
+          $ref: '#/components/schemas/EntityType'
+        entityId:
+          type: string
+          description: ID of the tagged entity
+        tagId:
+          type: string
+          format: uuid
+          description: ID of the applied tag
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Confidence score for this tag assignment
+        method:
+          $ref: '#/components/schemas/TagMethod'
+        appliedAt:
+          type: string
+          format: date-time
+          description: When tag was applied
+        appliedBy:
+          type: string
+          description: User who applied the tag
+        isVerified:
+          type: boolean
+          description: Whether tag has been verified as correct
+        verifiedBy:
+          type: string
+          nullable: true
+          description: User who verified the tag
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When tag was verified
+        metadata:
+          type: object
+          nullable: true
+          description: Additional metadata for this tag assignment
+
+    EntityTagResponse:
+      allOf:
+        - $ref: '#/components/schemas/EntityTag'
+        - type: object
+          required:
+            - tagCode
+            - tagName
+          properties:
+            tagCode:
+              type: string
+              description: Tag code for display
+            tagName:
+              type: string
+              description: Tag name for display
+
+    UpdateEntityTag:
+      type: object
+      properties:
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Updated confidence score
+        isVerified:
+          type: boolean
+          description: Verification status
+
+    TagEntityRequest:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [auto, ai, pattern, manual]
+          default: auto
+          description: Tagging method to use
+        options:
+          type: object
+          properties:
+            aiProvider:
+              type: string
+              enum: [claude, openai]
+              description: AI provider for tagging
+            confidenceThreshold:
+              type: number
+              minimum: 0
+              maximum: 1
+              default: 0.7
+              description: Minimum confidence threshold
+            maxTags:
+              type: integer
+              minimum: 1
+              maximum: 10
+              default: 5
+              description: Maximum number of tags to apply
+            includeRelated:
+              type: boolean
+              default: false
+              description: Include related entity context
+            forceReTag:
+              type: boolean
+              default: false
+              description: Remove existing tags before applying new ones
+
+    BatchTagRequest:
+      type: object
+      required:
+        - entities
+      properties:
+        entities:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            required:
+              - type
+              - id
+            properties:
+              type:
+                $ref: '#/components/schemas/EntityType'
+              id:
+                type: string
+              content:
+                type: string
+                description: Optional content override
+              metadata:
+                type: object
+                description: Additional metadata
+        options:
+          type: object
+          properties:
+            aiProvider:
+              type: string
+              enum: [claude, openai]
+            confidenceThreshold:
+              type: number
+              minimum: 0
+              maximum: 1
+              default: 0.7
+            maxTags:
+              type: integer
+              minimum: 1
+              maximum: 10
+              default: 5
+            includeRelated:
+              type: boolean
+              default: false
+            forceReTag:
+              type: boolean
+              default: false
+
+    ReTagRequest:
+      type: object
+      required:
+        - filter
+      properties:
+        filter:
+          type: object
+          properties:
+            entityType:
+              $ref: '#/components/schemas/EntityType'
+            dateRange:
+              type: object
+              required:
+                - start
+                - end
+              properties:
+                start:
+                  type: string
+                  format: date
+                end:
+                  type: string
+                  format: date
+            tags:
+              type: array
+              items:
+                type: string
+              description: Filter by existing tags
+            hasNoTags:
+              type: boolean
+              description: Include only entities with no tags
+        options:
+          type: object
+          properties:
+            method:
+              type: string
+              enum: [ai, pattern]
+              default: ai
+            batchSize:
+              type: integer
+              minimum: 1
+              maximum: 1000
+              default: 100
+            dryRun:
+              type: boolean
+              default: false
+              description: Preview changes without applying
+
+    TagFeedback:
+      type: object
+      required:
+        - entityType
+        - entityId
+        - entityTagId
+        - feedback
+      properties:
+        entityType:
+          $ref: '#/components/schemas/EntityType'
+        entityId:
+          type: string
+        entityTagId:
+          type: string
+          format: uuid
+        feedback:
+          type: object
+          required:
+            - isCorrect
+          properties:
+            isCorrect:
+              type: boolean
+              description: Whether the tag is correct
+            suggestedTagId:
+              type: string
+              format: uuid
+              description: Alternative tag suggestion
+            reason:
+              type: string
+              description: Reason for feedback
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Confidence in feedback
+
+    TagResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Tag'
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+
+    TagListResponse:
+      type: object
+      required:
+        - success
+        - pagination
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    TagSearchResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/Tag'
+              - type: object
+                properties:
+                  path:
+                    type: string
+                    description: Hierarchical path for display
+                  score:
+                    type: number
+                    description: Relevance score
+
+    EntityTagsResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required:
+            - entity
+            - tags
+          properties:
+            entity:
+              type: object
+              required:
+                - type
+                - id
+              properties:
+                type:
+                  $ref: '#/components/schemas/EntityType'
+                id:
+                  type: string
+                preview:
+                  type: string
+                  description: Entity preview text
+            tags:
+              type: array
+              items:
+                $ref: '#/components/schemas/EntityTagResponse'
+
+    TagEntityResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required:
+            - entity
+            - tags
+            - processingTime
+          properties:
+            entity:
+              type: object
+              required:
+                - type
+                - id
+              properties:
+                type:
+                  $ref: '#/components/schemas/EntityType'
+                id:
+                  type: string
+            tags:
+              type: array
+              items:
+                $ref: '#/components/schemas/EntityTagResponse'
+            processingTime:
+              type: number
+              description: Processing time in milliseconds
+            aiProvider:
+              type: string
+              description: AI provider used
+
+    BatchTagResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required:
+            - results
+            - summary
+          properties:
+            results:
+              type: array
+              items:
+                type: object
+                required:
+                  - entityId
+                  - status
+                  - processingTime
+                properties:
+                  entityId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [success, failed, skipped]
+                  tags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EntityTagResponse'
+                  error:
+                    type: string
+                  processingTime:
+                    type: number
+            summary:
+              type: object
+              required:
+                - total
+                - successful
+                - failed
+                - skipped
+                - totalProcessingTime
+              properties:
+                total:
+                  type: integer
+                successful:
+                  type: integer
+                failed:
+                  type: integer
+                skipped:
+                  type: integer
+                totalProcessingTime:
+                  type: number
+
+    ReTagResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required:
+            - processed
+            - tagged
+            - failed
+            - skipped
+          properties:
+            processed:
+              type: integer
+              description: Total entities processed
+            tagged:
+              type: integer
+              description: Entities successfully tagged
+            failed:
+              type: integer
+              description: Entities that failed
+            skipped:
+              type: integer
+              description: Entities skipped
+            errors:
+              type: array
+              items:
+                type: object
+                required:
+                  - entityId
+                  - error
+                properties:
+                  entityId:
+                    type: string
+                  error:
+                    type: string
+
+    AccuracyMetrics:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required:
+            - overall
+            - byEntityType
+            - byMethod
+          properties:
+            overall:
+              type: object
+              required:
+                - accuracy
+                - totalTags
+                - verifiedTags
+                - correctTags
+              properties:
+                accuracy:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  description: Overall accuracy rate
+                totalTags:
+                  type: integer
+                  description: Total number of tags applied
+                verifiedTags:
+                  type: integer
+                  description: Number of verified tags
+                correctTags:
+                  type: integer
+                  description: Number of correct tags
+            byEntityType:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  accuracy:
+                    type: number
+                  totalTags:
+                    type: integer
+                  verifiedTags:
+                    type: integer
+                  correctTags:
+                    type: integer
+            byMethod:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  accuracy:
+                    type: number
+                  totalTags:
+                    type: integer
+                  verifiedTags:
+                    type: integer
+                  correctTags:
+                    type: integer

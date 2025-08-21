@@ -22,7 +22,7 @@ class PositionsController {
           unrealizedPnl: 1750,
           stopLoss: 63000,
           takeProfit: 70000,
-          openedAt: new Date('2024-01-15')
+          openedAt: new Date('2024-01-15'),
         },
         {
           id: '2',
@@ -38,8 +38,8 @@ class PositionsController {
           takeProfit: 3500,
           strategyId: 'trend-following',
           strategyName: 'Trend Following',
-          openedAt: new Date('2024-01-16')
-        }
+          openedAt: new Date('2024-01-16'),
+        },
       ];
 
       res.json(positions);
@@ -66,7 +66,7 @@ class PositionsController {
         unrealizedPnl: 1750,
         stopLoss: 63000,
         takeProfit: 70000,
-        openedAt: new Date('2024-01-15')
+        openedAt: new Date('2024-01-15'),
       };
 
       res.json(position);
@@ -87,7 +87,7 @@ class PositionsController {
         success: true,
         message: 'Position closed successfully',
         closedAt: new Date(),
-        finalPnl: 1750
+        finalPnl: 1750,
       });
     } catch (error) {
       logger.error('Failed to close position', error);
@@ -102,7 +102,7 @@ class PositionsController {
       res.json({
         success: true,
         message: 'All positions closed successfully',
-        positionsClosed: 2
+        positionsClosed: 2,
       });
     } catch (error) {
       logger.error('Failed to close all positions', error);
@@ -119,7 +119,7 @@ class PositionsController {
 
       res.json({
         success: true,
-        message: 'Stop loss and take profit updated successfully'
+        message: 'Stop loss and take profit updated successfully',
       });
     } catch (error) {
       logger.error('Failed to update SL/TP', error);

@@ -19,7 +19,7 @@ export const Login: React.FC = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
-  
+
   // Get redirect location from state
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
@@ -32,7 +32,7 @@ export const Login: React.FC = () => {
       } else {
         localStorage.removeItem('rememberMe');
       }
-      
+
       await login(values.email, values.password);
       message.success('Login successful!');
       navigate(from, { replace: true });
@@ -44,13 +44,15 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div style={{
-      height: '100vh',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      background: '#f0f2f5'
-    }}>
+    <div
+      style={{
+        height: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: '#f0f2f5',
+      }}
+    >
       <Card style={{ width: 400, boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={2}>AI Service</Title>
@@ -69,7 +71,7 @@ export const Login: React.FC = () => {
             name="email"
             rules={[
               { required: true, message: 'Please input your email!' },
-              { type: 'email', message: 'Please enter a valid email!' }
+              { type: 'email', message: 'Please enter a valid email!' },
             ]}
           >
             <Input
@@ -77,6 +79,7 @@ export const Login: React.FC = () => {
               placeholder="Email"
               size="large"
               autoComplete="email"
+              data-testid="login-email-input"
             />
           </Form.Item>
 
@@ -89,6 +92,7 @@ export const Login: React.FC = () => {
               placeholder="Password"
               size="large"
               autoComplete="current-password"
+              data-testid="login-password-input"
             />
           </Form.Item>
 
@@ -105,19 +109,22 @@ export const Login: React.FC = () => {
               size="large"
               loading={loading}
               block
+              data-testid="login-submit-button"
             >
               Sign In
             </Button>
           </Form.Item>
 
           {import.meta.env.DEV && (
-            <div style={{ 
-              marginTop: 16, 
-              padding: 12, 
-              background: '#f6ffed', 
-              border: '1px solid #b7eb8f',
-              borderRadius: 4 
-            }}>
+            <div
+              style={{
+                marginTop: 16,
+                padding: 12,
+                background: '#f6ffed',
+                border: '1px solid #b7eb8f',
+                borderRadius: 4,
+              }}
+            >
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 <strong>Development Mode:</strong> Use admin@ai-service.local / admin123
               </Typography.Text>

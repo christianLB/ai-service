@@ -7,45 +7,52 @@ import { SecurityLoggerService } from '../../services/security/security-logger.s
 import { Pool } from 'pg';
 import rateLimit from 'express-rate-limit';
 
-// Rate limiting for auth endpoints
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
-  message: 'Too many login attempts, please try again later',
-  standardHeaders: true,
-  legacyHeaders: false,
-  // Custom key generator to work with trust proxy
-  keyGenerator: (req) => {
-    // Use x-forwarded-for if available, otherwise fall back to req.ip
-    return req.headers['x-forwarded-for'] as string || req.ip || 'unknown';
-  },
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/health';
-  }
-});
+// Check if we're in development or test mode
+const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+
+// Rate limiting for auth endpoints - DISABLED in development and test
+const loginLimiter = isDev
+  ? (req: Request, res: Response, next: NextFunction) => next() // Skip entirely in development/test
+  : rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 5, // 5 attempts in production (was 50)
+      message: 'Too many login attempts, please try again later',
+      standardHeaders: true,
+      legacyHeaders: false,
+      // Custom key generator to work with trust proxy
+      keyGenerator: (req) => {
+        // Use x-forwarded-for if available, otherwise fall back to req.ip
+        return (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+      },
+      skip: (req) => {
+        // Skip rate limiting for health checks
+        return req.path === '/health';
+      },
+    });
 
 export function createAuthRoutes(pool: Pool): Router {
   const router = Router();
   const authService = new AuthService();
   const securityLogger = new SecurityLoggerService(pool);
 
-  // Brute force protection
-  const bruteForceProtection = createBruteForceProtection(pool, {
-    maxAttempts: 5,
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    blockDurationMs: 30 * 60 * 1000 // 30 minutes
-  });
+  // Check if we're in development or test mode
+  const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+
+  // Brute force protection - DISABLED in development and test
+  const bruteForceProtection = isDevelopment
+    ? (req: Request, res: Response, next: NextFunction) => next() // Skip in development/test
+    : createBruteForceProtection(pool, {
+        maxAttempts: 5,
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        blockDurationMs: 30 * 60 * 1000, // 30 minutes
+      });
 
   // Login endpoint
   router.post(
     '/login',
     loginLimiter,
     bruteForceProtection,
-    [
-      body('email').isEmail().normalizeEmail(),
-      body('password').notEmpty().trim()
-    ],
+    [body('email').isEmail().normalizeEmail(), body('password').notEmpty().trim()],
     async (req: Request, res: Response, _next: NextFunction) => {
       try {
         // Validate input
@@ -64,37 +71,43 @@ export function createAuthRoutes(pool: Pool): Router {
         try {
           tokens = await authService.login({ email, password });
         } catch (error: any) {
-          await pool.query(
-            'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
-            [email, ip, false]
-          );
+          // Only log login attempts in production
+          if (!isDevelopment) {
+            await pool.query(
+              'INSERT INTO auth.login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
+              [email, ip, false]
+            );
+          }
           await securityLogger.logSecurityEvent({
             event_type: 'login_failed',
             email,
             ip_address: ip,
             user_agent: userAgent,
             success: false,
-            details: { error: error.message }
+            details: { error: error.message },
           });
           throw error;
         }
 
-        await pool.query(
-          'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
-          [email, ip, true]
-        );
+        // Only log login attempts in production
+        if (!isDevelopment) {
+          await pool.query(
+            'INSERT INTO auth.login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
+            [email, ip, true]
+          );
+        }
         await securityLogger.logSecurityEvent({
           event_type: 'login_success',
           email,
           ip_address: ip,
           user_agent: userAgent,
-          success: true
+          success: true,
         });
 
         res.json({
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
-          tokenType: 'Bearer'
+          tokenType: 'Bearer',
         });
         return;
       } catch (error: any) {
@@ -106,20 +119,24 @@ export function createAuthRoutes(pool: Pool): Router {
   );
 
   // Logout endpoint
-  router.post('/logout', authMiddleware as any, (async (req: AuthRequest, res: Response) => {
-    try {
-      const refreshToken = req.body.refreshToken;
-      if (refreshToken && req.user) {
-        await authService.logout(req.user.userId, refreshToken);
+  router.post(
+    '/logout',
+    authMiddleware as any,
+    (async (req: AuthRequest, res: Response) => {
+      try {
+        const refreshToken = req.body.refreshToken;
+        if (refreshToken && req.user) {
+          await authService.logout(req.user.userId, refreshToken);
+        }
+        res.json({ message: 'Logged out successfully' });
+        return;
+      } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({ error: 'Logout failed' });
+        return;
       }
-      res.json({ message: 'Logged out successfully' });
-      return;
-    } catch (error) {
-      console.error('Logout error:', error);
-      res.status(500).json({ error: 'Logout failed' });
-      return;
-    }
-  }) as any);
+    }) as any
+  );
 
   // Refresh token endpoint
   router.post(
@@ -139,7 +156,7 @@ export function createAuthRoutes(pool: Pool): Router {
         res.json({
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
-          tokenType: 'Bearer'
+          tokenType: 'Bearer',
         });
         return;
       } catch (error: any) {
@@ -151,30 +168,34 @@ export function createAuthRoutes(pool: Pool): Router {
   );
 
   // Get current user endpoint
-  router.get('/me', authMiddleware as any, (async (req: AuthRequest, res: Response) => {
-    try {
-      if (!req.user) {
-        res.status(401).json({ error: 'Unauthorized' });
+  router.get(
+    '/me',
+    authMiddleware as any,
+    (async (req: AuthRequest, res: Response) => {
+      try {
+        if (!req.user) {
+          res.status(401).json({ error: 'Unauthorized' });
+          return;
+        }
+
+        // console.log('Getting user with ID:', req.user.userId);
+        const user = await authService.getCurrentUser(req.user.userId);
+        res.json({
+          id: user.id,
+          email: user.email,
+          fullName: user.full_name,
+          role: user.role,
+          isActive: user.is_active,
+        });
+        return;
+      } catch (error) {
+        console.error('Get user error:', error);
+        console.error('User ID was:', req.user?.userId);
+        res.status(500).json({ error: 'Failed to get user information' });
         return;
       }
-
-      // console.log('Getting user with ID:', req.user.userId);
-      const user = await authService.getCurrentUser(req.user.userId);
-      res.json({
-        id: user.id,
-        email: user.email,
-        fullName: user.full_name,
-        role: user.role,
-        isActive: user.is_active
-      });
-      return;
-    } catch (error) {
-      console.error('Get user error:', error);
-      console.error('User ID was:', req.user?.userId);
-      res.status(500).json({ error: 'Failed to get user information' });
-      return;
-    }
-  }) as any);
+    }) as any
+  );
 
   // Register endpoint (optional, can be disabled in production)
   if (process.env.ALLOW_REGISTRATION === 'true') {
@@ -183,7 +204,7 @@ export function createAuthRoutes(pool: Pool): Router {
       [
         body('email').isEmail().normalizeEmail(),
         body('password').isLength({ min: 8 }).trim(),
-        body('fullName').notEmpty().trim()
+        body('fullName').notEmpty().trim(),
       ],
       async (req: Request, res: Response, _next: NextFunction) => {
         try {
@@ -200,12 +221,13 @@ export function createAuthRoutes(pool: Pool): Router {
             id: user.id,
             email: user.email,
             fullName: user.full_name,
-            role: user.role
+            role: user.role,
           });
           return;
         } catch (error: any) {
           console.error('Registration error:', error);
-          if (error.code === '23505') { // Unique violation
+          if (error.code === '23505') {
+            // Unique violation
             res.status(409).json({ error: 'Email already exists' });
             return;
           } else {

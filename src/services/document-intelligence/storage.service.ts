@@ -29,9 +29,10 @@ export class DocumentStorageService {
   private generateThumbnails: boolean;
 
   constructor(options: StorageOptions = {}) {
-    this.basePath = options.basePath ||
-                   process.env.DOCUMENT_STORAGE_PATH ||
-                   path.join(process.cwd(), 'data', 'documents', 'storage');
+    this.basePath =
+      options.basePath ||
+      process.env.DOCUMENT_STORAGE_PATH ||
+      path.join(process.cwd(), 'data', 'documents', 'storage');
     this.maxFileSize = options.maxFileSize || 50 * 1024 * 1024; // 50MB default
     this.allowedTypes = options.allowedTypes || [
       'application/pdf',
@@ -46,7 +47,7 @@ export class DocumentStorageService {
       'image/jpeg',
       'image/png',
       'image/gif',
-      'image/bmp'
+      'image/bmp',
     ];
     this.generateThumbnails = options.generateThumbnails || false;
   }
@@ -86,7 +87,7 @@ export class DocumentStorageService {
         path: filePath,
         url: `/api/documents/files/${uniqueFileName}`,
         size: file.length,
-        mimeType
+        mimeType,
       };
     } catch (error: any) {
       console.error('❌ Failed to upload file:', error);
@@ -159,8 +160,12 @@ export class DocumentStorageService {
 
   async moveFile(sourcePath: string, destinationPath: string): Promise<void> {
     try {
-      const fullSourcePath = path.isAbsolute(sourcePath) ? sourcePath : path.join(this.basePath, sourcePath);
-      const fullDestPath = path.isAbsolute(destinationPath) ? destinationPath : path.join(this.basePath, destinationPath);
+      const fullSourcePath = path.isAbsolute(sourcePath)
+        ? sourcePath
+        : path.join(this.basePath, sourcePath);
+      const fullDestPath = path.isAbsolute(destinationPath)
+        ? destinationPath
+        : path.join(this.basePath, destinationPath);
 
       await fs.rename(fullSourcePath, fullDestPath);
     } catch (error: any) {
@@ -171,8 +176,12 @@ export class DocumentStorageService {
 
   async copyFile(sourcePath: string, destinationPath: string): Promise<void> {
     try {
-      const fullSourcePath = path.isAbsolute(sourcePath) ? sourcePath : path.join(this.basePath, sourcePath);
-      const fullDestPath = path.isAbsolute(destinationPath) ? destinationPath : path.join(this.basePath, destinationPath);
+      const fullSourcePath = path.isAbsolute(sourcePath)
+        ? sourcePath
+        : path.join(this.basePath, sourcePath);
+      const fullDestPath = path.isAbsolute(destinationPath)
+        ? destinationPath
+        : path.join(this.basePath, destinationPath);
 
       await fs.copyFile(fullSourcePath, fullDestPath);
     } catch (error: any) {
@@ -185,7 +194,7 @@ export class DocumentStorageService {
     try {
       const fullPath = path.join(this.basePath, directory);
       const files = await fs.readdir(fullPath);
-      return files.filter(file => !file.startsWith('.'));
+      return files.filter((file) => !file.startsWith('.'));
     } catch (error: any) {
       console.error('❌ Failed to list files:', error);
       throw new Error(`Failed to list files: ${error.message}`);
@@ -218,7 +227,7 @@ export class DocumentStorageService {
         totalFiles,
         totalSize,
         availableSpace: 0, // Would need to implement disk space checking
-        usedSpace: totalSize
+        usedSpace: totalSize,
       };
     } catch (error: any) {
       console.error('❌ Failed to get storage stats:', error);
@@ -258,7 +267,7 @@ export class DocumentStorageService {
     const payload = {
       filePath,
       expiresAt: Date.now() + expiresIn * 1000,
-      action
+      action,
     };
 
     return Buffer.from(JSON.stringify(payload)).toString('base64');
@@ -275,7 +284,7 @@ export class DocumentStorageService {
       return {
         isValid: true,
         filePath: payload.filePath,
-        action: payload.action
+        action: payload.action,
       };
     } catch (error) {
       return { isValid: false };

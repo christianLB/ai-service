@@ -9,7 +9,7 @@ import {
   InvoiceItem,
   TransactionInvoiceLink,
   ExchangeRate,
-  PaginatedResponse
+  PaginatedResponse,
 } from './types';
 
 export class FinancialDatabaseService {
@@ -77,14 +77,23 @@ export class FinancialDatabaseService {
     return result.rows[0] || null;
   }
 
-  async createCurrency(currency: Omit<Currency, 'id' | 'createdAt' | 'updatedAt'>): Promise<Currency> {
+  async createCurrency(
+    currency: Omit<Currency, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<Currency> {
     const query = `
       INSERT INTO financial.currencies (code, name, type, decimals, symbol, is_active)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id, code, name, type, decimals, symbol, is_active as "isActive",
                 created_at as "createdAt", updated_at as "updatedAt"
     `;
-    const values = [currency.code, currency.name, currency.type, currency.decimals, currency.symbol, currency.isActive];
+    const values = [
+      currency.code,
+      currency.name,
+      currency.type,
+      currency.decimals,
+      currency.symbol,
+      currency.isActive,
+    ];
     const result = await this.pool.query(query, values);
     return result.rows[0];
   }
@@ -116,7 +125,7 @@ export class FinancialDatabaseService {
       page,
       limit,
       hasNext: offset + limit < total,
-      hasPrev: page > 1
+      hasPrev: page > 1,
     };
   }
 
@@ -131,7 +140,9 @@ export class FinancialDatabaseService {
     return result.rows[0] || null;
   }
 
-  async createCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Customer> {
+  async createCustomer(
+    customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<Customer> {
     const query = `
       INSERT INTO financial.customers (name, email, tax_id, address, type, metadata, is_active)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -139,8 +150,13 @@ export class FinancialDatabaseService {
                 is_active as "isActive", created_at as "createdAt", updated_at as "updatedAt"
     `;
     const values = [
-      customer.name, customer.email, customer.taxId,
-      customer.address, customer.type, customer.metadata, customer.isActive
+      customer.name,
+      customer.email,
+      customer.taxId,
+      customer.address,
+      customer.type,
+      customer.metadata,
+      customer.isActive,
     ];
     const result = await this.pool.query(query, values);
     return result.rows[0];
@@ -193,10 +209,19 @@ export class FinancialDatabaseService {
                 metadata, created_at as "createdAt", updated_at as "updatedAt"
     `;
     const values = [
-      account.name, account.type, account.currencyId, account.accountId,
-      account.institutionId, account.requisitionId, account.iban,
-      account.walletAddress, account.chainId, account.exchangeName,
-      account.balance, account.isActive, account.metadata
+      account.name,
+      account.type,
+      account.currencyId,
+      account.accountId,
+      account.institutionId,
+      account.requisitionId,
+      account.iban,
+      account.walletAddress,
+      account.chainId,
+      account.exchangeName,
+      account.balance,
+      account.isActive,
+      account.metadata,
     ];
     const result = await this.pool.query(query, values);
     return result.rows[0];
@@ -211,7 +236,13 @@ export class FinancialDatabaseService {
   // TRANSACTION OPERATIONS
   // ============================================================================
 
-  async getTransactions(accountId?: string, page = 1, limit = 50, sortBy = 'date', sortOrder = 'desc'): Promise<PaginatedResponse<Transaction>> {
+  async getTransactions(
+    accountId?: string,
+    page = 1,
+    limit = 50,
+    sortBy = 'date',
+    sortOrder = 'desc'
+  ): Promise<PaginatedResponse<Transaction>> {
     const offset = (page - 1) * limit;
 
     let whereClause = '';
@@ -232,7 +263,7 @@ export class FinancialDatabaseService {
       amount: 'amount',
       description: 'description',
       status: 'status',
-      type: 'type'
+      type: 'type',
     };
 
     // Validate and sanitize sort column
@@ -261,7 +292,7 @@ export class FinancialDatabaseService {
       page,
       limit,
       hasNext: offset + limit < total,
-      hasPrev: page > 1
+      hasPrev: page > 1,
     };
   }
 
@@ -282,7 +313,9 @@ export class FinancialDatabaseService {
     return result.rows[0] || null;
   }
 
-  async createTransaction(transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
+  async createTransaction(
+    transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<Transaction> {
     const query = `
       INSERT INTO financial.transactions (
         transaction_id, account_id, type, status, amount, currency_id, description, reference, date,
@@ -301,12 +334,27 @@ export class FinancialDatabaseService {
                 created_at as "createdAt", updated_at as "updatedAt"
     `;
     const values = [
-      transaction.transactionId, transaction.accountId, transaction.type, transaction.status, transaction.amount,
-      transaction.currencyId, transaction.description, transaction.reference, transaction.date,
-      transaction.gocardlessData, transaction.transactionHash, transaction.blockNumber,
-      transaction.gasUsed, transaction.gasPrice, transaction.fromAddress, transaction.toAddress,
-      transaction.counterpartyName, transaction.counterpartyAccount, transaction.feeAmount,
-      transaction.feeCurrencyId, transaction.metadata
+      transaction.transactionId,
+      transaction.accountId,
+      transaction.type,
+      transaction.status,
+      transaction.amount,
+      transaction.currencyId,
+      transaction.description,
+      transaction.reference,
+      transaction.date,
+      transaction.gocardlessData,
+      transaction.transactionHash,
+      transaction.blockNumber,
+      transaction.gasUsed,
+      transaction.gasPrice,
+      transaction.fromAddress,
+      transaction.toAddress,
+      transaction.counterpartyName,
+      transaction.counterpartyAccount,
+      transaction.feeAmount,
+      transaction.feeCurrencyId,
+      transaction.metadata,
     ];
     const result = await this.pool.query(query, values);
     return result.rows[0];
@@ -321,7 +369,11 @@ export class FinancialDatabaseService {
   // INVOICE OPERATIONS
   // ============================================================================
 
-  async getInvoices(customerId?: string, page = 1, limit = 50): Promise<PaginatedResponse<Invoice>> {
+  async getInvoices(
+    customerId?: string,
+    page = 1,
+    limit = 50
+  ): Promise<PaginatedResponse<Invoice>> {
     const offset = (page - 1) * limit;
 
     let whereClause = '';
@@ -356,7 +408,7 @@ export class FinancialDatabaseService {
       page,
       limit,
       hasNext: offset + limit < total,
-      hasPrev: page > 1
+      hasPrev: page > 1,
     };
   }
 
@@ -376,10 +428,20 @@ export class FinancialDatabaseService {
                 created_at as "createdAt", updated_at as "updatedAt"
     `;
     const values = [
-      invoice.customerId, invoice.invoiceNumber, invoice.title, invoice.description,
-      invoice.subtotal, invoice.taxAmount, invoice.totalAmount, invoice.currencyId,
-      invoice.issueDate, invoice.dueDate, invoice.paidDate, invoice.status,
-      invoice.amountPaid, invoice.metadata
+      invoice.customerId,
+      invoice.invoiceNumber,
+      invoice.title,
+      invoice.description,
+      invoice.subtotal,
+      invoice.taxAmount,
+      invoice.totalAmount,
+      invoice.currencyId,
+      invoice.issueDate,
+      invoice.dueDate,
+      invoice.paidDate,
+      invoice.status,
+      invoice.amountPaid,
+      invoice.metadata,
     ];
     const result = await this.pool.query(query, values);
     return result.rows[0];
@@ -389,7 +451,9 @@ export class FinancialDatabaseService {
   // RECONCILIATION OPERATIONS
   // ============================================================================
 
-  async linkTransactionToInvoice(link: Omit<TransactionInvoiceLink, 'id' | 'createdAt'>): Promise<TransactionInvoiceLink> {
+  async linkTransactionToInvoice(
+    link: Omit<TransactionInvoiceLink, 'id' | 'createdAt'>
+  ): Promise<TransactionInvoiceLink> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -404,8 +468,12 @@ export class FinancialDatabaseService {
                   exchange_rate as "exchangeRate", notes, created_at as "createdAt"
       `;
       const linkResult = await client.query(linkQuery, [
-        link.transactionId, link.invoiceId, link.amountAllocated,
-        link.currencyId, link.exchangeRate, link.notes
+        link.transactionId,
+        link.invoiceId,
+        link.amountAllocated,
+        link.currencyId,
+        link.exchangeRate,
+        link.notes,
       ]);
 
       // Update invoice amount paid
@@ -494,7 +562,7 @@ export class FinancialDatabaseService {
       data.status,
       data.syncedTransactions,
       data.message || null,
-      data.operationType || 'full'
+      data.operationType || 'full',
     ];
     await this.pool.query(query, values);
   }

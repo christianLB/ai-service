@@ -1,0 +1,345 @@
+// Financial Service - Clients, Invoices, Accounts, Transactions
+// Generated from monolithic schema - 2025-08-20T15:03:01.745Z
+// DATABASE: postgresql://financial_user:financial_secure_2025@localhost:5435/financial_db
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============= MODELS =============
+
+model accounts {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id        String      @unique @db.VarChar(255)
+  name              String      @db.VarChar(255)
+  type              String      @db.VarChar(50)
+  currency_id       String?     @db.Uuid
+  balance           Decimal?    @default(0) @db.Decimal(20, 8)
+  available_balance Decimal?    @default(0) @db.Decimal(20, 8)
+  institution       String?     @db.VarChar(255)
+  institution_id    String?     @db.VarChar(255)
+  requisition_id    String?     @db.VarChar(255)
+  iban              String?     @db.VarChar(255)
+  wallet_address    String?     @db.VarChar(255)
+  chain_id          String?     @db.VarChar(50)
+  exchange_name     String?     @db.VarChar(100)
+  metadata          Json?       @default("{}")
+  is_active         Boolean?    @default(true)
+  last_sync         DateTime?   @db.Timestamptz(6)
+  created_at        DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?   @default(now()) @db.Timestamptz(6)
+  currencies        currencies? @relation(fields: [currency_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([institution_id], map: "idx_accounts_institution_id")
+}
+model categories {
+  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                        String                        @unique @db.VarChar(100)
+  type                        String?                       @db.VarChar(20)
+  parent_id                   String?                       @db.Uuid
+  color                       String?                       @db.VarChar(7)
+  icon                        String?                       @db.VarChar(50)
+  is_active                   Boolean?                      @default(true)
+  created_at                  DateTime?                     @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime?                     @default(now()) @db.Timestamptz(6)
+  categories                  categories?                   @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_categories            categories[]                  @relation("categoriesTocategories")
+  transaction_categorizations transaction_categorizations[]
+
+}
+model client_transaction_links {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id     String?       @unique @db.Uuid
+  client_id          String        @db.Uuid
+  match_type         String        @db.VarChar(20)
+  match_confidence   Decimal?      @default(1.00) @db.Decimal(3, 2)
+  matched_by         String?       @db.VarChar(255)
+  matched_at         DateTime?     @default(now()) @db.Timestamptz(6)
+  match_criteria     Json?
+  is_manual_override Boolean?      @default(false)
+  previous_link_id   String?       @db.Uuid
+  override_reason    String?
+  notes              String?
+  created_at         DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?     @default(now()) @db.Timestamptz(6)
+  transactions       transactions? @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([client_id], map: "idx_client_transaction_links_client_id")
+  @@index([match_type], map: "idx_client_transaction_links_match_type")
+  @@index([transaction_id], map: "idx_client_transaction_links_transaction_id")
+}
+model Client {
+  id                   String    @id @default(uuid()) @db.VarChar(255)
+  name                 String    @db.VarChar(255)
+  businessName         String?   @map("business_name") @db.VarChar(255)
+  taxId                String    @map("tax_id") @db.VarChar(100)
+  taxIdType            String    @default("OTHER") @map("tax_id_type") @db.VarChar(20)
+  email                String    @db.VarChar(255)
+  phone                String?   @db.VarChar(50)
+  address              Json?
+  clientType           String    @default("business") @map("client_type") @db.VarChar(20)
+  currency             String    @default("EUR") @db.VarChar(10)
+  language             String    @default("es") @db.VarChar(10)
+  timezone             String?   @db.VarChar(50)
+  paymentTerms         Int       @default(30) @map("payment_terms")
+  paymentMethod        String?   @map("payment_method") @db.VarChar(20)
+  bankAccount          String?   @map("bank_account") @db.VarChar(255)
+  creditLimit          Decimal?  @default(0) @map("credit_limit") @db.Decimal(15, 2)
+  status               String    @default("active") @db.VarChar(20)
+  totalRevenue         Decimal   @default(0) @map("total_revenue") @db.Decimal(15, 2)
+  totalInvoices        Int       @default(0) @map("total_invoices")
+  outstandingBalance   Decimal   @default(0) @map("outstanding_balance") @db.Decimal(15, 2)
+  lastInvoiceDate      DateTime? @map("last_invoice_date") @db.Timestamp(6)
+  averageInvoiceAmount Decimal?  @map("average_invoice_amount") @db.Decimal(15, 2)
+  customFields         Json?     @default("{}") @map("custom_fields")
+  tags                 String[]  @default([])
+  notes                String?
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
+  createdBy            String?   @map("created_by") @db.VarChar(255)
+  lastContactDate      DateTime? @map("last_contact_date") @db.Timestamp(6)
+  userId               String    @map("user_id") @db.Uuid
+  // Cross-service reference: User is in auth service
+  invoices             Invoice[]
+
+  @@index([email], map: "idx_clients_email")
+  @@index([status], map: "idx_clients_status")
+  @@index([taxId], map: "idx_clients_tax_id")
+  @@map("clients")
+}
+model currencies {
+  id                                                    String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                                                  String         @unique @db.VarChar(10)
+  name                                                  String         @db.VarChar(100)
+  type                                                  String         @db.VarChar(20)
+  decimals                                              Int?           @default(2)
+  symbol                                                String?        @db.VarChar(10)
+  is_active                                             Boolean?       @default(true)
+  created_at                                            DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at                                            DateTime?      @default(now()) @db.Timestamptz(6)
+  accounts                                              accounts[]
+  transactions_transactions_currency_idTocurrencies     transactions[] @relation("transactions_currency_idTocurrencies")
+  transactions_transactions_fee_currency_idTocurrencies transactions[] @relation("transactions_fee_currency_idTocurrencies")
+
+}
+model integration_configs {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String?  @db.Uuid
+  integration_type String   @db.VarChar(50)
+  config_key       String   @db.VarChar(100)
+  config_value     String
+  is_encrypted     Boolean  @default(true)
+  is_global        Boolean  @default(false)
+  description      String?
+  metadata         Json?    @default("{}")
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+  // Cross-service reference: User is in auth service
+
+  @@index([integration_type], map: "idx_integration_configs_type")
+}
+model invoice_sequences {
+  id             Int      @id @default(autoincrement())
+  prefix         String   @db.VarChar(20)
+  current_number Int      @default(0)
+  year           Int?
+  format         String   @default("PREFIX-YYYY-0000") @db.VarChar(50)
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+  updated_at     DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([prefix, year], map: "unique_sequence_prefix_year")
+}
+model Invoice {
+  id                    String    @id @default(uuid()) @db.VarChar(255)
+  invoiceNumber         String    @unique @map("invoice_number") @db.VarChar(50)
+  clientId              String?   @map("client_id") @db.VarChar(255)
+  clientName            String    @map("client_name") @db.VarChar(255)
+  clientTaxId           String    @map("client_tax_id") @db.VarChar(100)
+  clientAddress         Json?     @map("client_address")
+  type                  String    @default("invoice") @db.VarChar(20)
+  status                String    @default("draft") @db.VarChar(20)
+  issueDate             DateTime  @default(dbgenerated("CURRENT_DATE")) @map("issue_date") @db.Date
+  dueDate               DateTime  @map("due_date") @db.Date
+  paidDate              DateTime? @map("paid_date") @db.Date
+  serviceStartDate      DateTime? @map("service_start_date") @db.Date
+  serviceEndDate        DateTime? @map("service_end_date") @db.Date
+  currency              String    @default("EUR") @db.VarChar(10)
+  exchangeRate          Decimal?  @map("exchange_rate") @db.Decimal(10, 6)
+  items                 Json      @default("[]")
+  subtotal              Decimal   @default(0) @db.Decimal(15, 2)
+  taxAmount             Decimal   @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  taxRate               Decimal   @default(21) @map("tax_rate") @db.Decimal(5, 2)
+  taxType               String    @default("IVA") @map("tax_type") @db.VarChar(10)
+  discount              Decimal?  @db.Decimal(15, 2)
+  discountType          String?   @map("discount_type") @db.VarChar(10)
+  total                 Decimal   @default(0) @db.Decimal(15, 2)
+  paymentMethod         String?   @map("payment_method") @db.VarChar(20)
+  paymentTerms          Int       @default(30) @map("payment_terms")
+  bankAccount           String?   @map("bank_account") @db.VarChar(255)
+  paymentReference      String?   @map("payment_reference") @db.VarChar(255)
+  relatedDocuments      Json?     @default("[]") @map("related_documents")
+  relatedTransactionIds String[]  @default([]) @map("related_transaction_ids")
+  notes                 String?
+  termsAndConditions    String?   @map("terms_and_conditions")
+  customFields          Json?     @default("{}") @map("custom_fields")
+  tags                  String[]  @default([])
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
+  sentAt                DateTime? @map("sent_at") @db.Timestamp(6)
+  viewedAt              DateTime? @map("viewed_at") @db.Timestamp(6)
+  createdBy             String?   @map("created_by") @db.VarChar(255)
+  attachments           Json?     @default("[]")
+  pdfUrl                String?   @map("pdf_url") @db.VarChar(500)
+  isDeductible          Boolean?  @default(false) @map("is_deductible")
+  deductibleCategory    String?   @map("deductible_category") @db.VarChar(100)
+  deductiblePercentage  Decimal?  @map("deductible_percentage") @db.Decimal(5, 2)
+  userId                String    @map("user_id") @db.Uuid
+  templateId            String?   @map("template_id") @db.Uuid
+  client                Client?   @relation(fields: [clientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  // Cross-service reference: User is in auth service
+  invoiceAttachments    InvoiceAttachment[]
+
+  @@index([clientId], map: "idx_invoices_client_id")
+  @@index([invoiceNumber], map: "idx_invoices_invoice_number")
+  @@index([issueDate(sort: Desc)], map: "idx_invoices_issue_date")
+  @@index([status], map: "idx_invoices_status")
+  @@map("invoices")
+}
+model InvoiceAttachment {
+  id          String   @id @default(uuid()) @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.VarChar(255)
+  fileName    String   @map("file_name") @db.VarChar(255)
+  filePath    String   @map("file_path")
+  fileSize    BigInt   @map("file_size")
+  fileType    String   @map("file_type") @db.VarChar(100)
+  description String?
+  uploadedBy  String   @map("uploaded_by") @db.VarChar(255)
+  uploadedAt  DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy   String?  @map("deleted_by") @db.VarChar(255)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([invoiceId], map: "idx_invoice_attachments_invoice_id")
+  @@map("invoice_attachments")
+}
+model InvoiceTemplate {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  name         String   @db.VarChar(255)
+  description  String?
+  isDefault    Boolean  @default(false) @map("is_default")
+  templateType String   @default("invoice") @map("template_type") @db.VarChar(50)
+  htmlContent  String   @map("html_content")
+  variables    Json     @default("[]")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+  // Cross-service reference: User is in auth service
+
+  @@index([userId], map: "idx_invoice_templates_user_id")
+  @@index([templateType], map: "idx_invoice_templates_type")
+  @@index([isDefault], map: "idx_invoice_templates_default")
+  @@map("invoice_templates")
+}
+model transaction_categorizations {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id String?       @unique @db.Uuid
+  category_id    String?       @db.Uuid
+  confidence     Decimal?      @default(1.00) @db.Decimal(3, 2)
+  method         String?       @default("manual") @db.VarChar(50)
+  created_at     DateTime?     @default(now()) @db.Timestamptz(6)
+  ai_tag_id      String?       @db.Uuid
+  user_confirmed Boolean?      @default(false)
+  categories     categories?   @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  transactions   transactions? @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([category_id], map: "idx_transaction_categorizations_category_id")
+  @@index([transaction_id], map: "idx_transaction_categorizations_transaction_id")
+}
+model transaction_matching_patterns {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id       String    @db.Uuid
+  pattern_type    String    @db.VarChar(20)
+  pattern         String    @db.VarChar(500)
+  confidence      Decimal?  @default(0.80) @db.Decimal(3, 2)
+  amount_min      Decimal?  @db.Decimal(20, 8)
+  amount_max      Decimal?  @db.Decimal(20, 8)
+  day_of_month    Int?
+  frequency       String?   @db.VarChar(20)
+  is_active       Boolean?  @default(true)
+  match_count     Int?      @default(0)
+  last_matched_at DateTime? @db.Timestamptz(6)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([is_active], map: "idx_transaction_matching_patterns_active")
+  @@index([client_id], map: "idx_transaction_matching_patterns_client_id")
+  @@index([pattern_type], map: "idx_transaction_matching_patterns_pattern_type")
+}
+model transactions {
+  id                                                  String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id                                      String                       @unique @db.VarChar(255)
+  account_id                                          String                       @db.VarChar(255)
+  amount                                              Decimal                      @db.Decimal(20, 8)
+  currency_id                                         String?                      @db.Uuid
+  type                                                String                       @db.VarChar(50)
+  status                                              String?                      @default("confirmed") @db.VarChar(50)
+  description                                         String?
+  reference                                           String?                      @db.VarChar(255)
+  counterparty_name                                   String?                      @db.VarChar(255)
+  date                                                DateTime                     @db.Date
+  created_at                                          DateTime?                    @default(now()) @db.Timestamptz(6)
+  updated_at                                          DateTime?                    @default(now()) @db.Timestamptz(6)
+  metadata                                            Json?                        @default("{}")
+  tags                                                String[]
+  fee_amount                                          Decimal?                     @db.Decimal(20, 8)
+  fee_currency_id                                     String?                      @db.Uuid
+  gocardless_data                                     Json?
+  transaction_hash                                    String?                      @db.VarChar(255)
+  block_number                                        Int?
+  gas_used                                            String?                      @db.VarChar(255)
+  gas_price                                           String?                      @db.VarChar(255)
+  from_address                                        String?                      @db.VarChar(255)
+  to_address                                          String?                      @db.VarChar(255)
+  counterparty_account                                String?                      @db.VarChar(255)
+  client_transaction_links                            client_transaction_links?
+  transaction_categorizations                         transaction_categorizations?
+  currencies_transactions_currency_idTocurrencies     currencies?                  @relation("transactions_currency_idTocurrencies", fields: [currency_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  currencies_transactions_fee_currency_idTocurrencies currencies?                  @relation("transactions_fee_currency_idTocurrencies", fields: [fee_currency_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([account_id], map: "idx_transactions_account_id")
+  @@index([counterparty_name], map: "idx_transactions_counterparty")
+  @@index([date], map: "idx_transactions_date")
+  @@index([status], map: "idx_transactions_status")
+  @@index([transaction_hash], map: "idx_transactions_transaction_hash")
+}
+model sync_logs {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  account_id             String?
+  accounts_synced        Int       @default(0)
+  transactions_synced    Int       @default(0)
+  status                 String?
+  synced_transactions    Int?      @default(0)
+  message                String?
+  operation_type         String?   @default("full")
+  success                Boolean   @default(false)
+  attempts               Int       @default(1)
+  error                  String?
+  sync_duration_ms       Int?
+  created_at             DateTime? @default(now()) @db.Timestamptz(6)
+  rate_limited_endpoints Json?
+  rate_limit_resets      Json?
+
+  @@index([account_id], map: "idx_sync_logs_account_id")
+  @@index([created_at(sort: Desc)], map: "idx_sync_logs_created_at")
+  @@index([operation_type], map: "idx_sync_logs_operation_type")
+  @@index([success], map: "idx_sync_logs_success")
+}

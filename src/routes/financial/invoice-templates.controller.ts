@@ -3,7 +3,7 @@ import { invoiceTemplateService } from '../../services/invoice-template.service'
 import {
   createInvoiceTemplateSchema,
   updateInvoiceTemplateSchema,
-  invoiceTemplateQuerySchema
+  invoiceTemplateQuerySchema,
 } from '../../types/invoice-template.types';
 import logger from '../../utils/logger';
 

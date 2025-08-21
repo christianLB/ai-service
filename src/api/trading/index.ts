@@ -37,20 +37,20 @@ router.get('/ai-status', async (req, res) => {
         claude: {
           ready: claudeReady,
           model: claudeModel,
-          priority: 'primary'
+          priority: 'primary',
         },
         openai: {
           ready: aiProvider.includes('OpenAI'),
           model: 'gpt-4',
-          priority: 'fallback'
-        }
+          priority: 'fallback',
+        },
       },
-      status: claudeReady || aiProvider.includes('OpenAI') ? 'active' : 'limited'
+      status: claudeReady || aiProvider.includes('OpenAI') ? 'active' : 'limited',
     });
   } catch (error) {
     res.status(500).json({
       error: 'Failed to get AI status',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -75,13 +75,13 @@ router.get('/test-claude', async (req, res) => {
       technicalIndicators: {
         rsi: 65,
         trend: 'bullish',
-        macd: { value: 100, signal: 90, histogram: 10 }
+        macd: { value: 100, signal: 90, histogram: 10 },
       },
       orderBook: {
         bidDepth: 100000,
         askDepth: 100000,
-        spread: 0.1
-      }
+        spread: 0.1,
+      },
     };
 
     const decision = await claudeAIService.analyzeTradingOpportunity(testContext);
@@ -90,13 +90,13 @@ router.get('/test-claude', async (req, res) => {
       testResult: 'success',
       claudeReady: claudeAIService.isReady(),
       model: claudeAIService.getCurrentModel(),
-      decision: decision || 'No decision returned'
+      decision: decision || 'No decision returned',
     });
   } catch (error) {
     res.status(500).json({
       error: 'Failed to test Claude',
       message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 });

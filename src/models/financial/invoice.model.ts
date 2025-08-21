@@ -252,8 +252,8 @@ export class InvoiceModel implements Invoice {
       id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       ...item,
       amount: item.quantity * item.unitPrice,
-      taxAmount: item.taxRate ? (item.quantity * item.unitPrice * item.taxRate / 100) : 0,
-      total: 0
+      taxAmount: item.taxRate ? (item.quantity * item.unitPrice * item.taxRate) / 100 : 0,
+      total: 0,
     };
 
     // Calculate item total
@@ -275,7 +275,7 @@ export class InvoiceModel implements Invoice {
     this.relatedDocuments = this.relatedDocuments || [];
     this.relatedDocuments.push({
       ...document,
-      uploadedAt: new Date()
+      uploadedAt: new Date(),
     });
     this.updatedAt = new Date();
   }
@@ -332,7 +332,7 @@ export class InvoiceModel implements Invoice {
       pdfUrl: this.pdfUrl,
       isDeductible: this.isDeductible,
       deductibleCategory: this.deductibleCategory,
-      deductiblePercentage: this.deductiblePercentage
+      deductiblePercentage: this.deductiblePercentage,
     };
   }
 }

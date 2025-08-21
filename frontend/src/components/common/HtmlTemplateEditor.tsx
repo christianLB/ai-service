@@ -72,7 +72,7 @@ export const HtmlTemplateEditor: React.FC<HtmlTemplateEditorProps> = ({
       const range = quill.getSelection();
       if (range) {
         quill.insertText(range.index, variable);
-        quill.setSelection(range.index + variable.length);
+        quill.setSelection(range.index + variable.length, 0);
       } else {
         const length = quill.getLength();
         quill.insertText(length - 1, variable);

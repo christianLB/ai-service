@@ -1,0 +1,243 @@
+version: '3.8'
+
+# Base configuration for all environments
+# This file contains common service definitions that are shared across environments
+# Use this with docker-compose -f docker-compose.base.yml -f docker-compose.{env}.yml
+
+x-common-env: &common-env
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  JWT_SECRET: ${JWT_SECRET:-ultra_secure_production_jwt_secret_2025_min_32_chars}
+  OPENAI_API_KEY: ${OPENAI_API_KEY}
+  CLAUDE_API_KEY: ${CLAUDE_API_KEY}
+
+x-postgres-env: &postgres-env
+  <<: *common-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_service}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ${POSTGRES_DB:-ai_service}
+  POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+x-redis-env: &redis-env
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_URL: redis://redis:6379
+
+x-healthcheck-http: &healthcheck-http
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    <<: *restart-policy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_service}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_user} -d ${POSTGRES_DB:-ai_service}"]
+      <<: *healthcheck-http
+      start_period: 60s
+    networks:
+      - ai-service-network
+
+  redis:
+    image: redis:7-alpine
+    <<: *restart-policy
+    command: >
+      redis-server
+      --maxmemory 200mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *healthcheck-http
+    networks:
+      - ai-service-network
+
+  # ============================================
+  # Core Microservices
+  # ============================================
+  financial-svc:
+    <<: *restart-policy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3001
+      <<: [*postgres-env, *redis-env]
+      GOCARDLESS_SECRET_ID: ${GOCARDLESS_SECRET_ID}
+      GOCARDLESS_SECRET_KEY: ${GOCARDLESS_SECRET_KEY}
+      GOCARDLESS_ENV: ${GOCARDLESS_ENV:-sandbox}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health/ready"]
+      <<: *healthcheck-http
+      start_period: 60s
+    networks:
+      - ai-service-network
+
+  trading-svc:
+    <<: *restart-policy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3002
+      <<: [*postgres-env, *redis-env]
+      BINANCE_API_KEY: ${BINANCE_API_KEY}
+      BINANCE_SECRET_KEY: ${BINANCE_SECRET_KEY}
+      COINBASE_API_KEY: ${COINBASE_API_KEY}
+      COINBASE_API_SECRET: ${COINBASE_API_SECRET}
+      ALPACA_KEY_ID: ${ALPACA_KEY_ID}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3002/health/ready"]
+      <<: *healthcheck-http
+      start_period: 60s
+    networks:
+      - ai-service-network
+
+  ai-core:
+    <<: *restart-policy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3004
+      <<: [*common-env, *redis-env]
+      NODE_OPTIONS: "--max-old-space-size=1024"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3004/health/ready"]
+      <<: *healthcheck-http
+      start_period: 45s
+    networks:
+      - ai-service-network
+
+  comm-svc:
+    <<: *restart-policy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3003
+      <<: [*common-env, *redis-env]
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
+      TELEGRAM_ALERTS_ENABLED: ${TELEGRAM_ALERTS_ENABLED:-true}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3003/health/ready"]
+      <<: *healthcheck-http
+      start_period: 45s
+    networks:
+      - ai-service-network
+
+  # ============================================
+  # Gateway & Workers
+  # ============================================
+  api-gateway:
+    <<: *restart-policy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      <<: [*postgres-env, *redis-env]
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      # Service URLs for gateway routing
+      FINANCIAL_SVC_URL: http://financial-svc:3001
+      TRADING_SVC_URL: http://trading-svc:3002
+      COMM_SVC_URL: http://comm-svc:3003
+      AI_CORE_URL: http://ai-core:3004
+      # Metrics
+      ENABLE_METRICS: "true"
+      METRICS_PORT: 9090
+      NODE_OPTIONS: "--max-old-space-size=1024"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      financial-svc:
+        condition: service_healthy
+      trading-svc:
+        condition: service_healthy
+      ai-core:
+        condition: service_healthy
+      comm-svc:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health/ready"]
+      <<: *healthcheck-http
+      start_period: 90s
+    networks:
+      - ai-service-network
+
+  worker-financial:
+    <<: *restart-policy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3101
+      <<: [*postgres-env, *redis-env]
+    depends_on:
+      redis:
+        condition: service_healthy
+      financial-svc:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3101/health/ready"]
+      <<: *healthcheck-http
+      start_period: 60s
+    networks:
+      - ai-service-network
+
+  worker-trading:
+    <<: *restart-policy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3102
+      <<: [*postgres-env, *redis-env]
+      BINANCE_API_KEY: ${BINANCE_API_KEY}
+      BINANCE_SECRET_KEY: ${BINANCE_SECRET_KEY}
+      COINBASE_API_KEY: ${COINBASE_API_KEY}
+      COINBASE_API_SECRET: ${COINBASE_API_SECRET}
+    depends_on:
+      redis:
+        condition: service_healthy
+      trading-svc:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3102/health/ready"]
+      <<: *healthcheck-http
+      start_period: 60s
+    networks:
+      - ai-service-network
+
+networks:
+  ai-service-network:
+    name: ai-service-network
+    driver: bridge

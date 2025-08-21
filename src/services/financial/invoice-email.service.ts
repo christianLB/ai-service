@@ -59,12 +59,12 @@ export class InvoiceEmailService {
       secure: process.env.SMTP_SECURE === 'true',
       auth: {
         user: process.env.SMTP_USER || '',
-        pass: process.env.SMTP_PASS || ''
+        pass: process.env.SMTP_PASS || '',
       },
       from: {
         name: process.env.EMAIL_FROM_NAME || 'AI Service',
-        email: process.env.EMAIL_FROM || 'noreply@aiservice.com'
-      }
+        email: process.env.EMAIL_FROM || 'noreply@aiservice.com',
+      },
     };
   }
 
@@ -75,8 +75,8 @@ export class InvoiceEmailService {
       secure: this.config.secure,
       auth: this.config.auth,
       tls: {
-        rejectUnauthorized: false // For self-signed certificates
-      }
+        rejectUnauthorized: false, // For self-signed certificates
+      },
     });
   }
 
@@ -87,7 +87,7 @@ export class InvoiceEmailService {
         style: 'currency',
         currency: currency || 'EUR',
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
       });
       return formatter.format(amount);
     });
@@ -100,7 +100,7 @@ export class InvoiceEmailService {
       return dateObj.toLocaleDateString('es-ES', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       });
     });
   }
@@ -110,8 +110,8 @@ export class InvoiceEmailService {
 
     // Default templates
     const defaultTemplates: { [key: string]: { [lang: string]: EmailTemplate } } = {
-      'invoice': {
-        'es': {
+      invoice: {
+        es: {
           subject: 'Factura {{invoice.invoiceNumber}} - {{company.name}}',
           body: `
 Estimado/a {{client.name}},
@@ -143,9 +143,9 @@ Si tiene alguna pregunta sobre esta factura, no dude en contactarnos.
 Atentamente,
 {{company.name}}
 {{company.email}}
-{{company.phone}}`
+{{company.phone}}`,
         },
-        'en': {
+        en: {
           subject: 'Invoice {{invoice.invoiceNumber}} - {{company.name}}',
           body: `
 Dear {{client.name}},
@@ -177,11 +177,11 @@ If you have any questions about this invoice, please don't hesitate to contact u
 Best regards,
 {{company.name}}
 {{company.email}}
-{{company.phone}}`
-        }
+{{company.phone}}`,
+        },
       },
-      'reminder': {
-        'es': {
+      reminder: {
+        es: {
           subject: 'Recordatorio - Factura {{invoice.invoiceNumber}} pendiente de pago',
           body: `
 Estimado/a {{client.name}},
@@ -195,9 +195,9 @@ Le recordamos que la factura {{invoice.invoiceNumber}} con fecha de vencimiento 
 Le agradeceríamos que realizara el pago lo antes posible.
 
 Atentamente,
-{{company.name}}`
+{{company.name}}`,
         },
-        'en': {
+        en: {
           subject: 'Reminder - Invoice {{invoice.invoiceNumber}} payment pending',
           body: `
 Dear {{client.name}},
@@ -211,11 +211,11 @@ This is a reminder that invoice {{invoice.invoiceNumber}} with due date {{format
 We would appreciate if you could make the payment as soon as possible.
 
 Best regards,
-{{company.name}}`
-        }
+{{company.name}}`,
+        },
       },
-      'receipt': {
-        'es': {
+      receipt: {
+        es: {
           subject: 'Recibo de pago - Factura {{invoice.invoiceNumber}}',
           body: `
 Estimado/a {{client.name}},
@@ -230,9 +230,9 @@ Confirmamos la recepción del pago de la factura {{invoice.invoiceNumber}}.
 Gracias por su pago puntual.
 
 Atentamente,
-{{company.name}}`
+{{company.name}}`,
         },
-        'en': {
+        en: {
           subject: 'Payment receipt - Invoice {{invoice.invoiceNumber}}',
           body: `
 Dear {{client.name}},
@@ -247,12 +247,13 @@ We confirm receipt of payment for invoice {{invoice.invoiceNumber}}.
 Thank you for your prompt payment.
 
 Best regards,
-{{company.name}}`
-        }
-      }
+{{company.name}}`,
+        },
+      },
     };
 
-    const template = defaultTemplates[templateName]?.[language] || defaultTemplates[templateName]?.['en'];
+    const template =
+      defaultTemplates[templateName]?.[language] || defaultTemplates[templateName]?.['en'];
 
     if (!template) {
       throw new Error(`Email template '${templateName}' not found`);
@@ -273,14 +274,14 @@ Best regards,
         message: customMessage,
         cc,
         bcc,
-        replyTo
+        replyTo,
       } = options;
 
       // Load email template
       const template = await this.loadEmailTemplate('invoice', language);
 
       // Find bank account
-      const bankAccount = company.bankAccounts?.find(acc => acc.isDefault);
+      const bankAccount = company.bankAccounts?.find((acc) => acc.isDefault);
 
       // Prepare template data
       const templateData = {
@@ -289,7 +290,7 @@ Best regards,
         company,
         bankAccount,
         customMessage,
-        daysOverdue: this.calculateDaysOverdue(invoice.dueDate)
+        daysOverdue: this.calculateDaysOverdue(invoice.dueDate),
       };
 
       // Compile subject and body
@@ -306,15 +307,18 @@ Best regards,
         subject,
         html: htmlBody,
         cc,
-        bcc: [...(bcc || []), ...(company.emailSettings?.bccEmail ? [company.emailSettings.bccEmail] : [])],
+        bcc: [
+          ...(bcc || []),
+          ...(company.emailSettings?.bccEmail ? [company.emailSettings.bccEmail] : []),
+        ],
         replyTo: replyTo || company.emailSettings?.replyTo,
         attachments: [
           {
             filename: `${invoice.invoiceNumber}.pdf`,
             content: pdfBuffer,
-            contentType: 'application/pdf'
-          }
-        ]
+            contentType: 'application/pdf',
+          },
+        ],
       };
 
       // Send email
@@ -322,7 +326,6 @@ Best regards,
 
       logger.info(`Invoice email sent successfully: ${info.messageId}`);
       return true;
-
     } catch (error) {
       logger.error('Error sending invoice email:', error);
       return false;
@@ -336,13 +339,16 @@ Best regards,
     language?: string
   ): Promise<boolean> {
     try {
-      const template = await this.loadEmailTemplate('reminder', language || client.language || 'es');
+      const template = await this.loadEmailTemplate(
+        'reminder',
+        language || client.language || 'es'
+      );
 
       const templateData = {
         invoice,
         client,
         company,
-        daysOverdue: this.calculateDaysOverdue(invoice.dueDate)
+        daysOverdue: this.calculateDaysOverdue(invoice.dueDate),
       };
 
       const subjectTemplate = Handlebars.compile(template.subject);
@@ -356,14 +362,13 @@ Best regards,
         to: client.email,
         subject,
         html: htmlBody,
-        replyTo: company.emailSettings?.replyTo
+        replyTo: company.emailSettings?.replyTo,
       };
 
       const info = await this.transporter.sendMail(mailOptions);
 
       logger.info(`Payment reminder sent successfully: ${info.messageId}`);
       return true;
-
     } catch (error) {
       logger.error('Error sending payment reminder:', error);
       return false;
@@ -383,7 +388,7 @@ Best regards,
       const templateData = {
         invoice,
         client,
-        company
+        company,
       };
 
       const subjectTemplate = Handlebars.compile(template.subject);
@@ -397,23 +402,24 @@ Best regards,
         to: client.email,
         subject,
         html: htmlBody,
-        replyTo: company.emailSettings?.replyTo
+        replyTo: company.emailSettings?.replyTo,
       };
 
       // Attach receipt PDF if provided
       if (pdfBuffer) {
-        mailOptions.attachments = [{
-          filename: `Receipt_${invoice.invoiceNumber}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf'
-        }];
+        mailOptions.attachments = [
+          {
+            filename: `Receipt_${invoice.invoiceNumber}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ];
       }
 
       const info = await this.transporter.sendMail(mailOptions);
 
       logger.info(`Payment receipt sent successfully: ${info.messageId}`);
       return true;
-
     } catch (error) {
       logger.error('Error sending payment receipt:', error);
       return false;

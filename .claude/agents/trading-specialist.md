@@ -1,20 +1,8 @@
 ---
 name: trading-specialist
-description: "Expert in cryptocurrency and stock trading strategies, market analysis, arbitrage operations, and exchange integrations"
-tools: file_read,file_write,terminal,api
-priority: high
-environment: production
-patterns:
-  - "trading"
-  - "arbitrage"
-  - "market"
-  - "strategy"
-  - "exchange"
-  - "binance"
-  - "coinbase"
-  - "alpaca"
-  - "crypto"
-  - "backtest"
+description: Expert in cryptocurrency and stock trading strategies, market analysis, arbitrage operations, and exchange integrations
+tools: file_read, file_write, terminal, api
+model: opus
 ---
 
 # Trading Strategy Specialist

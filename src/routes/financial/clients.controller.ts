@@ -28,7 +28,7 @@ export class ClientsController {
       if (!clientData.name) {
         res.status(400).json({
           success: false,
-          error: 'Missing required field: name'
+          error: 'Missing required field: name',
         });
         return;
       }
@@ -37,19 +37,18 @@ export class ClientsController {
       const result = await this.clientService.createClient(clientData, userId);
 
       res.status(201).json(result);
-
     } catch (error: any) {
       logger.error('Error creating client:', error);
 
       if (error.message.includes('already exists')) {
         res.status(409).json({
           success: false,
-          error: error.message
+          error: error.message,
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to create client'
+          error: 'Failed to create client',
         });
       }
     }
@@ -66,12 +65,11 @@ export class ClientsController {
       const result = await this.clientService.getClientById(id, userId);
 
       res.json(result);
-
     } catch (error: any) {
       logger.error('Error getting client:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get client'
+        error: 'Failed to get client',
       });
     }
   }
@@ -85,29 +83,25 @@ export class ClientsController {
       const { taxId } = req.params;
       const { taxIdType } = req.query;
 
-      const client = await this.clientService.getClientByTaxId(
-        taxId,
-        taxIdType as string
-      );
+      const client = await this.clientService.getClientByTaxId(taxId, taxIdType as string);
 
       if (!client) {
         res.status(404).json({
           success: false,
-          error: 'Client not found'
+          error: 'Client not found',
         });
         return;
       }
 
       res.json({
         success: true,
-        data: { client }
+        data: { client },
       });
-
     } catch (error: any) {
       logger.error('Error getting client by tax ID:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get client'
+        error: 'Failed to get client',
       });
     }
   }
@@ -130,19 +124,18 @@ export class ClientsController {
       const result = await this.clientService.updateClient(id, updates, userId);
 
       res.json(result);
-
     } catch (error: any) {
       logger.error('Error updating client:', error);
 
       if (error.message === 'Client not found') {
         res.status(404).json({
           success: false,
-          error: 'Client not found'
+          error: 'Client not found',
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to update client'
+          error: 'Failed to update client',
         });
       }
     }
@@ -161,18 +154,18 @@ export class ClientsController {
         limit = '50',
         offset = '0',
         sortBy = 'created_at',
-        sortOrder = 'DESC'
+        sortOrder = 'DESC',
       } = req.query;
 
       // Parse tags if provided
       let parsedTags: string[] | undefined;
       if (tags) {
         try {
-          parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags as string[];
+          parsedTags = typeof tags === 'string' ? JSON.parse(tags) : (tags as string[]);
         } catch (e) {
           res.status(400).json({
             success: false,
-            error: 'Invalid tags format. Expected JSON array.'
+            error: 'Invalid tags format. Expected JSON array.',
           });
           return;
         }
@@ -187,18 +180,17 @@ export class ClientsController {
         limit: parseInt(limit as string),
         offset: parseInt(offset as string),
         sortBy: sortBy as string,
-        sortOrder: sortOrder as 'ASC' | 'DESC'
+        sortOrder: sortOrder as 'ASC' | 'DESC',
       };
 
       const result = await this.clientService.getClients(options);
 
       res.json(result);
-
     } catch (error: any) {
       logger.error('Error listing clients:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to list clients'
+        error: 'Failed to list clients',
       });
     }
   }
@@ -214,21 +206,20 @@ export class ClientsController {
 
       res.json({
         success: true,
-        data: { stats }
+        data: { stats },
       });
-
     } catch (error: any) {
       logger.error('Error getting client stats:', error);
 
       if (error.message === 'Client not found') {
         res.status(404).json({
           success: false,
-          error: 'Client not found'
+          error: 'Client not found',
         });
       } else {
         res.status(500).json({
           success: false,
-          error: 'Failed to get client statistics'
+          error: 'Failed to get client statistics',
         });
       }
     }
@@ -241,20 +232,14 @@ export class ClientsController {
   async getClientTransactions(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const {
-        type,
-        startDate,
-        endDate,
-        limit = '50',
-        offset = '0'
-      } = req.query;
+      const { type, startDate, endDate, limit = '50', offset = '0' } = req.query;
 
       const options = {
         type: type as string,
         startDate: startDate ? new Date(startDate as string) : undefined,
         endDate: endDate ? new Date(endDate as string) : undefined,
         limit: parseInt(limit as string),
-        offset: parseInt(offset as string)
+        offset: parseInt(offset as string),
       };
 
       const transactions = await this.clientService.getClientTransactions(id, options);
@@ -265,16 +250,15 @@ export class ClientsController {
           transactions,
           pagination: {
             limit: options.limit,
-            offset: options.offset
-          }
-        }
+            offset: options.offset,
+          },
+        },
       });
-
     } catch (error: any) {
       logger.error('Error getting client transactions:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get client transactions'
+        error: 'Failed to get client transactions',
       });
     }
   }
@@ -290,12 +274,11 @@ export class ClientsController {
       const result = await this.clientService.deleteClient(id, userId);
 
       res.json(result);
-
     } catch (error: any) {
       logger.error('Error deleting client:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to delete client'
+        error: 'Failed to delete client',
       });
     }
   }
@@ -312,7 +295,7 @@ export class ClientsController {
       if (!operation || !clientIds || !Array.isArray(clientIds)) {
         res.status(400).json({
           success: false,
-          error: 'Missing required fields: operation, clientIds'
+          error: 'Missing required fields: operation, clientIds',
         });
         return;
       }
@@ -324,16 +307,20 @@ export class ClientsController {
           if (!data?.status) {
             res.status(400).json({
               success: false,
-              error: 'Missing status for bulk update'
+              error: 'Missing status for bulk update',
             });
             return;
           }
 
           for (const clientId of clientIds) {
             try {
-              const result = await this.clientService.updateClient(clientId, {
-                status: data.status
-              }, userId);
+              const result = await this.clientService.updateClient(
+                clientId,
+                {
+                  status: data.status,
+                },
+                userId
+              );
               results.push({ clientId, success: true, client: result.data?.client });
             } catch (error: any) {
               results.push({ clientId, success: false, error: error.message });
@@ -345,7 +332,7 @@ export class ClientsController {
           if (!data?.tags || !Array.isArray(data.tags)) {
             res.status(400).json({
               success: false,
-              error: 'Missing tags array for bulk operation'
+              error: 'Missing tags array for bulk operation',
             });
             return;
           }
@@ -355,14 +342,18 @@ export class ClientsController {
               const currentClient = await this.clientService.getClient(clientId);
               if (currentClient) {
                 // Get existing tags from metadata
-                const customFields = currentClient.customFields as any || {};
+                const customFields = (currentClient.customFields as any) || {};
                 const currentTags = currentClient.tags || [];
                 const updatedTags = [...currentTags, ...data.tags];
                 const uniqueTags = [...new Set(updatedTags)];
 
-                const result = await this.clientService.updateClient(clientId, {
-                  tags: uniqueTags
-                }, userId);
+                const result = await this.clientService.updateClient(
+                  clientId,
+                  {
+                    tags: uniqueTags,
+                  },
+                  userId
+                );
                 results.push({ clientId, success: true, client: result.data?.client });
               } else {
                 results.push({ clientId, success: false, error: 'Client not found' });
@@ -376,7 +367,7 @@ export class ClientsController {
         default:
           res.status(400).json({
             success: false,
-            error: 'Invalid operation. Supported: update_status, add_tags'
+            error: 'Invalid operation. Supported: update_status, add_tags',
           });
           return;
       }
@@ -384,14 +375,13 @@ export class ClientsController {
       res.json({
         success: true,
         data: { results },
-        message: `Bulk ${operation} completed`
+        message: `Bulk ${operation} completed`,
       });
-
     } catch (error: any) {
       logger.error('Error in bulk operations:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to perform bulk operations'
+        error: 'Failed to perform bulk operations',
       });
     }
   }
@@ -408,7 +398,7 @@ export class ClientsController {
         limit = 50,
         offset = 0,
         sortBy = 'created_at',
-        sortOrder = 'DESC'
+        sortOrder = 'DESC',
       } = req.body;
 
       const searchOptions = {
@@ -420,7 +410,7 @@ export class ClientsController {
         limit,
         offset,
         sortBy,
-        sortOrder
+        sortOrder,
       };
 
       const result = await this.clientService.listClients(searchOptions);
@@ -435,16 +425,15 @@ export class ClientsController {
             total: result.data.total,
             limit,
             offset,
-            hasMore: result.data.total > (offset + limit)
-          }
-        }
+            hasMore: result.data.total > offset + limit,
+          },
+        },
       });
-
     } catch (error: any) {
       logger.error('Error searching clients:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to search clients'
+        error: 'Failed to search clients',
       });
     }
   }
@@ -458,7 +447,7 @@ export class ClientsController {
       if (!this.transactionMatchingService) {
         res.status(503).json({
           success: false,
-          error: 'Transaction matching service not initialized'
+          error: 'Transaction matching service not initialized',
         });
         return;
       }
@@ -476,15 +465,14 @@ export class ClientsController {
         success: true,
         data: {
           transactions,
-          count: transactions.length
-        }
+          count: transactions.length,
+        },
       });
-
     } catch (error: any) {
       logger.error('Error getting client linked transactions:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get client linked transactions'
+        error: 'Failed to get client linked transactions',
       });
     }
   }
@@ -498,7 +486,7 @@ export class ClientsController {
       if (!this.transactionMatchingService) {
         res.status(503).json({
           success: false,
-          error: 'Transaction matching service not initialized'
+          error: 'Transaction matching service not initialized',
         });
         return;
       }
@@ -510,21 +498,20 @@ export class ClientsController {
       if (!summary) {
         res.status(404).json({
           success: false,
-          error: 'Client not found or no transaction data'
+          error: 'Client not found or no transaction data',
         });
         return;
       }
 
       res.json({
         success: true,
-        data: { summary }
+        data: { summary },
       });
-
     } catch (error: any) {
       logger.error('Error getting client transaction summary:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get client transaction summary'
+        error: 'Failed to get client transaction summary',
       });
     }
   }

@@ -10,14 +10,14 @@ export const validate = (schema: AnyZodObject) => {
       await schema.parseAsync({
         body: req.body,
         query: req.query,
-        params: req.params
+        params: req.params,
       });
       _next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errorMessages = error.errors.map(issue => ({
+        const errorMessages = error.errors.map((issue) => ({
           path: issue.path.join('.'),
-          message: issue.message
+          message: issue.message,
         }));
 
         logger.warn('Validation failed:', errorMessages);
@@ -25,7 +25,7 @@ export const validate = (schema: AnyZodObject) => {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: errorMessages
+          details: errorMessages,
         });
         return;
       }
@@ -33,7 +33,7 @@ export const validate = (schema: AnyZodObject) => {
       logger.error('Unexpected validation error:', error);
       res.status(500).json({
         success: false,
-        error: 'An unexpected error occurred during validation'
+        error: 'An unexpected error occurred during validation',
       });
     }
   };

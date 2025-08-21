@@ -6,7 +6,11 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Invoice, InvoiceItem } from '../../models/financial/invoice.model';
 import { Client } from '../../models/financial/client.model';
-import { CompanyInfo, BankAccount, DEFAULT_COMPANY_CONFIG } from '../../models/financial/company.model';
+import {
+  CompanyInfo,
+  BankAccount,
+  DEFAULT_COMPANY_CONFIG,
+} from '../../models/financial/company.model';
 import { getInvoiceLabels, getInvoiceTypeLabel } from '../../templates/invoice/labels';
 import { logger } from '../../utils/log';
 import { prisma } from '../../lib/prisma';
@@ -45,7 +49,7 @@ export class InvoiceGenerationService {
         style: 'currency',
         currency: currency || 'EUR',
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
       });
       return formatter.format(amount);
     });
@@ -59,7 +63,7 @@ export class InvoiceGenerationService {
       return dateObj.toLocaleDateString('es-ES', {
         year: 'numeric',
         month: '2-digit',
-        day: '2-digit'
+        day: '2-digit',
       });
     });
 
@@ -78,7 +82,11 @@ export class InvoiceGenerationService {
       return this.templateCache.get(templateName)!;
     }
 
-    const templatePath = path.join(__dirname, '../../templates/invoice', `${templateName}.template.html`);
+    const templatePath = path.join(
+      __dirname,
+      '../../templates/invoice',
+      `${templateName}.template.html`
+    );
     const templateContent = await fs.readFile(templatePath, 'utf-8');
     const template = Handlebars.compile(templateContent);
 
@@ -89,7 +97,7 @@ export class InvoiceGenerationService {
   private async loadCustomTemplate(templateId: string): Promise<HandlebarsTemplateDelegate | null> {
     try {
       const customTemplate = await prisma.invoiceTemplate.findUnique({
-        where: { id: templateId }
+        where: { id: templateId },
       });
 
       if (!customTemplate) {
@@ -122,8 +130,8 @@ export class InvoiceGenerationService {
         margin: 1,
         color: {
           dark: '#000000',
-          light: '#FFFFFF'
-        }
+          light: '#FFFFFF',
+        },
       });
     } catch (error) {
       logger.error('Error generating QR code:', error);
@@ -156,7 +164,7 @@ export class InvoiceGenerationService {
       '', // Purpose
       invoice.invoiceNumber, // Reference
       '', // Remittance
-      `Payment for invoice ${invoice.invoiceNumber}` // Information
+      `Payment for invoice ${invoice.invoiceNumber}`, // Information
     ].join('\n');
 
     return qrData;
@@ -170,7 +178,7 @@ export class InvoiceGenerationService {
       language = client.language || 'es',
       showStatus = false,
       generateQR = true,
-      bankAccountId
+      bankAccountId,
     } = options;
 
     try {
@@ -202,9 +210,9 @@ export class InvoiceGenerationService {
       // Find the bank account
       let bankAccount: BankAccount | undefined;
       if (bankAccountId) {
-        bankAccount = company.bankAccounts?.find(acc => acc.id === bankAccountId);
+        bankAccount = company.bankAccounts?.find((acc) => acc.id === bankAccountId);
       } else {
-        bankAccount = company.bankAccounts?.find(acc => acc.isDefault);
+        bankAccount = company.bankAccounts?.find((acc) => acc.isDefault);
       }
 
       // Generate QR code if requested
@@ -224,13 +232,13 @@ export class InvoiceGenerationService {
         company,
         labels: {
           ...labels,
-          invoiceType: invoiceTypeLabel
+          invoiceType: invoiceTypeLabel,
         },
         language,
         showStatus,
         bankAccount,
         qrCode,
-        discountAmount
+        discountAmount,
       };
 
       // Render HTML
@@ -247,8 +255,8 @@ export class InvoiceGenerationService {
           '--disable-gpu',
           '--disable-web-security',
           '--disable-features=IsolateOrigins',
-          '--disable-site-isolation-trials'
-        ]
+          '--disable-site-isolation-trials',
+        ],
       });
 
       try {
@@ -256,7 +264,7 @@ export class InvoiceGenerationService {
 
         // Set content
         await page.setContent(html, {
-          waitUntil: 'networkidle0'
+          waitUntil: 'networkidle0',
         });
 
         // Set PDF options
@@ -267,8 +275,8 @@ export class InvoiceGenerationService {
             top: '20mm',
             right: '15mm',
             bottom: '20mm',
-            left: '15mm'
-          }
+            left: '15mm',
+          },
         });
 
         // Convert Uint8Array to Buffer
@@ -289,16 +297,16 @@ export class InvoiceGenerationService {
         return {
           pdfBuffer,
           fileName,
-          filePath
+          filePath,
         };
-
       } finally {
         await browser.close();
       }
-
     } catch (error) {
       logger.error('Error generating invoice PDF:', error);
-      throw new Error(`Failed to generate invoice PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to generate invoice PDF: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -326,7 +334,7 @@ export class InvoiceGenerationService {
       language = client.language || 'es',
       showStatus = true,
       generateQR = true,
-      bankAccountId
+      bankAccountId,
     } = options;
 
     // Load template
@@ -341,9 +349,9 @@ export class InvoiceGenerationService {
     // Find the bank account
     let bankAccount: BankAccount | undefined;
     if (bankAccountId) {
-      bankAccount = company.bankAccounts?.find(acc => acc.id === bankAccountId);
+      bankAccount = company.bankAccounts?.find((acc) => acc.id === bankAccountId);
     } else {
-      bankAccount = company.bankAccounts?.find(acc => acc.isDefault);
+      bankAccount = company.bankAccounts?.find((acc) => acc.isDefault);
     }
 
     // Generate QR code if requested
@@ -363,13 +371,13 @@ export class InvoiceGenerationService {
       company,
       labels: {
         ...labels,
-        invoiceType: invoiceTypeLabel
+        invoiceType: invoiceTypeLabel,
       },
       language,
       showStatus,
       bankAccount,
       qrCode,
-      discountAmount
+      discountAmount,
     };
 
     // Render and return HTML
@@ -381,7 +389,7 @@ export class InvoiceGenerationService {
     try {
       const files = await fs.readdir(this.outputDir);
       const now = Date.now();
-      const cutoffTime = now - (daysToKeep * 24 * 60 * 60 * 1000);
+      const cutoffTime = now - daysToKeep * 24 * 60 * 60 * 1000;
 
       for (const file of files) {
         if (file.endsWith('.pdf')) {

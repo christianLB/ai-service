@@ -155,7 +155,7 @@ export class ClientTransactionLinkModel implements ClientTransactionLink {
       overrideReason: this.overrideReason,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      notes: this.notes
+      notes: this.notes,
     };
   }
 }

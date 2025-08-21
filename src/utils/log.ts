@@ -9,8 +9,8 @@ const logTransports: any[] = [
       format.colorize(),
       format.timestamp(),
       format.printf(({ timestamp, level, message }) => `${timestamp} [${level}] ${message}`)
-    )
-  })
+    ),
+  }),
 ];
 
 // Solo agregar archivo de logs si no estamos en Docker o si el directorio existe
@@ -34,6 +34,5 @@ export const logger = createLogger({
     format.splat(),
     format.json()
   ),
-  transports: logTransports
+  transports: logTransports,
 });
-

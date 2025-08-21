@@ -44,7 +44,7 @@ export class FinancialSchedulerService {
     // console.log('Stopping financial scheduler...');
 
     // Clear all intervals
-    this.syncIntervals.forEach(interval => clearInterval(interval));
+    this.syncIntervals.forEach((interval) => clearInterval(interval));
     this.syncIntervals = [];
 
     this.isRunning = false;
@@ -86,7 +86,7 @@ export class FinancialSchedulerService {
 
     // Schedule first sync (whichever comes first)
     const firstSyncDelay = Math.min(msUntil8AM, msUntil8PM);
-    const firstSyncTime = msUntil8AM < msUntil8PM ? '8:00 AM' : '8:00 PM';
+    const _firstSyncTime = msUntil8AM < msUntil8PM ? '8:00 AM' : '8:00 PM';
 
     setTimeout(() => {
       this.executeSyncWithRetry();
@@ -101,12 +101,15 @@ export class FinancialSchedulerService {
     // Schedule sync every 12 hours (2x/day)
     const twelveHours = 12 * 60 * 60 * 1000;
 
-    const interval = setInterval(() => {
-      this.executeSyncWithRetry();
-    }, twelveHours);
+    // Don't create intervals in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      const interval = setInterval(() => {
+        this.executeSyncWithRetry();
+      }, twelveHours);
 
-    this.syncIntervals.push(interval);
-    // console.log('Regular 12-hour sync interval scheduled');
+      this.syncIntervals.push(interval);
+      // console.log('Regular 12-hour sync interval scheduled');
+    }
   }
 
   // ============================================================================
@@ -148,7 +151,7 @@ export class FinancialSchedulerService {
 
         for (const account of accountsNeedingSync.rows) {
           try {
-            const syncResult = await this.goCardless.syncTransactionsToDatabase(
+            const _syncResult = await this.goCardless.syncTransactionsToDatabase(
               account.account_id,
               account.id,
               90
@@ -175,7 +178,6 @@ export class FinancialSchedulerService {
         // console.log(`Found ${accountsWithOldSync.rows.length} accounts with outdated sync`);
         await this.executeSyncWithRetry();
       }
-
     } catch (error) {
       console.error('Initial sync check failed:', error);
     }
@@ -201,7 +203,7 @@ export class FinancialSchedulerService {
             balancesSynced: result.data!.balancesSynced,
             success: true,
             attempts,
-            errors: result.data!.errors
+            errors: result.data!.errors,
           });
 
           return; // Success, exit retry loop
@@ -215,7 +217,7 @@ export class FinancialSchedulerService {
               balancesSynced: 0,
               success: false,
               attempts,
-              error: result.error
+              error: result.error,
             });
           }
         }
@@ -229,7 +231,7 @@ export class FinancialSchedulerService {
             balancesSynced: 0,
             success: false,
             attempts,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       }
@@ -238,7 +240,7 @@ export class FinancialSchedulerService {
       if (attempts < maxRetries) {
         const delay = Math.pow(2, attempts) * 1000; // 2s, 4s, 8s
         // console.log(`Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
@@ -274,17 +276,20 @@ export class FinancialSchedulerService {
       `);
 
       // Insert sync log
-      await this.db.query(`
+      await this.db.query(
+        `
         INSERT INTO financial.sync_logs 
         (accounts_synced, transactions_synced, success, attempts, error)
         VALUES ($1, $2, $3, $4, $5)
-      `, [
-        metrics.accountsSynced,
-        metrics.transactionsSynced,
-        metrics.success,
-        metrics.attempts,
-        metrics.error
-      ]);
+      `,
+        [
+          metrics.accountsSynced,
+          metrics.transactionsSynced,
+          metrics.success,
+          metrics.attempts,
+          metrics.error,
+        ]
+      );
 
       // console.log('Sync metrics logged successfully');
     } catch (error) {
@@ -294,7 +299,8 @@ export class FinancialSchedulerService {
 
   async getSyncStats(days = 7): Promise<any> {
     try {
-      const stats = await this.db.query(`
+      const stats = await this.db.query(
+        `
         SELECT 
           COUNT(*) as total_syncs,
           COUNT(CASE WHEN success THEN 1 END) as successful_syncs,
@@ -305,9 +311,12 @@ export class FinancialSchedulerService {
           MAX(created_at) as last_sync
         FROM financial.sync_logs
         WHERE created_at > NOW() - INTERVAL '1 day' * $1
-      `, [days]);
+      `,
+        [days]
+      );
 
-      const recentSyncs = await this.db.query(`
+      const recentSyncs = await this.db.query(
+        `
         SELECT 
           accounts_synced,
           transactions_synced,
@@ -319,7 +328,9 @@ export class FinancialSchedulerService {
         WHERE created_at > NOW() - INTERVAL '1 day' * $1
         ORDER BY created_at DESC
         LIMIT 10
-      `, [days]);
+      `,
+        [days]
+      );
 
       // Get actual count of bank accounts
       const accountCount = await this.db.query(`
@@ -339,7 +350,7 @@ export class FinancialSchedulerService {
         summary: stats.rows[0],
         recentSyncs: recentSyncs.rows,
         totalAccounts: parseInt(accountCount.rows[0].count),
-        transactionsUpdatedToday: parseInt(todayTransactions.rows[0].count)
+        transactionsUpdatedToday: parseInt(todayTransactions.rows[0].count),
       };
     } catch (error) {
       console.error('Failed to get sync stats:', error);
@@ -361,7 +372,8 @@ export class FinancialSchedulerService {
       const hasCredentials = await this.goCardless.hasCredentials();
 
       if (!hasCredentials) {
-        const error = 'GoCardless credentials not configured. Please configure secret_id and secret_key in integration settings.';
+        const error =
+          'GoCardless credentials not configured. Please configure secret_id and secret_key in integration settings.';
         console.error(error);
 
         await this.logSyncMetrics({
@@ -370,13 +382,13 @@ export class FinancialSchedulerService {
           balancesSynced: 0,
           success: false,
           attempts: 1,
-          error: error
+          error: error,
         });
 
         return {
           success: false,
           error: error,
-          data: null
+          data: null,
         };
       }
 
@@ -395,13 +407,13 @@ export class FinancialSchedulerService {
           balancesSynced: 0,
           success: false,
           attempts: 1,
-          error: error
+          error: error,
         });
 
         return {
           success: false,
           error: error,
-          data: null
+          data: null,
         };
       }
 
@@ -416,7 +428,7 @@ export class FinancialSchedulerService {
         success: result.success,
         attempts: 1,
         error: result.error,
-        errors: result.data?.errors
+        errors: result.data?.errors,
       });
 
       return result;
@@ -429,7 +441,7 @@ export class FinancialSchedulerService {
         balancesSynced: 0,
         success: false,
         attempts: 1,
-        error: errorMessage
+        error: errorMessage,
       });
 
       throw error;
@@ -441,7 +453,7 @@ export class FinancialSchedulerService {
       isRunning: this.isRunning,
       activeIntervals: this.syncIntervals.length,
       nextSyncEstimate: this.getNextSyncEstimate(),
-      startedAt: this.isRunning ? new Date().toISOString() : null
+      startedAt: this.isRunning ? new Date().toISOString() : null,
     };
   }
 

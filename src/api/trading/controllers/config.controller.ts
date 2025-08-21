@@ -9,7 +9,7 @@ class ConfigController {
       const exchanges = [
         { id: 'binance', name: 'Binance', supported: true },
         { id: 'coinbase', name: 'Coinbase', supported: true },
-        { id: 'kraken', name: 'Kraken', supported: false }
+        { id: 'kraken', name: 'Kraken', supported: false },
       ];
 
       res.json(exchanges);
@@ -31,7 +31,7 @@ class ConfigController {
         'ADA/USDT',
         'DOT/USDT',
         'AVAX/USDT',
-        'MATIC/USDT'
+        'MATIC/USDT',
       ];
 
       res.json(symbols);
@@ -45,7 +45,12 @@ class ConfigController {
     try {
       const { maxPositionSize, maxDailyLoss, maxDrawdown, maxLeverage } = req.body;
 
-      logger.info('Updating risk parameters:', { maxPositionSize, maxDailyLoss, maxDrawdown, maxLeverage });
+      logger.info('Updating risk parameters:', {
+        maxPositionSize,
+        maxDailyLoss,
+        maxDrawdown,
+        maxLeverage,
+      });
 
       res.json({ success: true, message: 'Risk parameters updated successfully' });
     } catch (error) {
@@ -68,7 +73,7 @@ class ConfigController {
         message: 'Emergency stop executed',
         strategiesStopped: 3,
         ordersCancelled: 5,
-        positionsClosed: 2
+        positionsClosed: 2,
       });
     } catch (error) {
       logger.error('Failed to execute emergency stop', error);

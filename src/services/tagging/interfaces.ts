@@ -12,7 +12,7 @@ import {
   TagFeedback,
   TagLearning,
   DeleteTagOptions,
-  UpdateEntityTag
+  UpdateEntityTag,
 } from '../../types/tagging/tag.types';
 
 import {
@@ -29,7 +29,7 @@ import {
   RelationshipsResponse,
   FindEntitiesByTagResponse,
   FeedbackResponse,
-  LearningResponse
+  LearningResponse,
 } from '../../types/tagging/response.types';
 
 // Tag management service interface
@@ -62,10 +62,7 @@ export interface IEntityTaggingService {
     userId: string
   ): Promise<TagEntityResponse>;
 
-  getEntityTags(
-    entityType: EntityType,
-    entityId: string
-  ): Promise<EntityTagsResponse>;
+  getEntityTags(entityType: EntityType, entityId: string): Promise<EntityTagsResponse>;
 
   removeEntityTag(
     entityType: EntityType,
@@ -83,15 +80,9 @@ export interface IEntityTaggingService {
   ): Promise<EntityTagResponse>;
 
   // Batch operations
-  batchTagEntities(
-    request: BatchTagRequest,
-    userId: string
-  ): Promise<BatchTagResponse>;
+  batchTagEntities(request: BatchTagRequest, userId: string): Promise<BatchTagResponse>;
 
-  reTagEntities(
-    request: ReTagRequest,
-    userId: string
-  ): Promise<ReTagResponse>;
+  reTagEntities(request: ReTagRequest, userId: string): Promise<ReTagResponse>;
 
   // Search and discovery
   findEntitiesByTag(
@@ -100,10 +91,7 @@ export interface IEntityTaggingService {
     pagination?: { page: number; limit: number }
   ): Promise<FindEntitiesByTagResponse>;
 
-  discoverRelationships(
-    entityType: EntityType,
-    entityId: string
-  ): Promise<RelationshipsResponse>;
+  discoverRelationships(entityType: EntityType, entityId: string): Promise<RelationshipsResponse>;
 }
 
 // AI tagging service interface
@@ -118,11 +106,13 @@ export interface IAITaggingService {
       maxTags?: number;
       confidenceThreshold?: number;
     }
-  ): Promise<Array<{
-    tagId: string;
-    confidence: number;
-    reasoning?: string;
-  }>>;
+  ): Promise<
+    Array<{
+      tagId: string;
+      confidence: number;
+      reasoning?: string;
+    }>
+  >;
 
   // Auto-categorization
   autoCategorize(
@@ -149,12 +139,14 @@ export interface IAITaggingService {
       parallel?: boolean;
       batchSize?: number;
     }
-  ): Promise<Array<{
-    entityId: string;
-    status: 'success' | 'error';
-    tags?: Array<{ tagId: string; confidence: number; reasoning?: string }>;
-    error?: string;
-  }>>;
+  ): Promise<
+    Array<{
+      entityId: string;
+      status: 'success' | 'error';
+      tags?: Array<{ tagId: string; confidence: number; reasoning?: string }>;
+      error?: string;
+    }>
+  >;
 
   // Multi-language support
   getMultilingualSuggestions(
@@ -162,11 +154,16 @@ export interface IAITaggingService {
     entityType: EntityType,
     targetLanguages: string[],
     metadata?: Record<string, any>
-  ): Promise<Record<string, Array<{
-    tagId: string;
-    confidence: number;
-    reasoning?: string;
-  }>>>;
+  ): Promise<
+    Record<
+      string,
+      Array<{
+        tagId: string;
+        confidence: number;
+        reasoning?: string;
+      }>
+    >
+  >;
 
   // Contextual suggestions
   getContextualSuggestions(
@@ -178,11 +175,13 @@ export interface IAITaggingService {
       historicalPatterns?: Record<string, any>;
     },
     metadata?: Record<string, any>
-  ): Promise<Array<{
-    tagId: string;
-    confidence: number;
-    reasoning?: string;
-  }>>;
+  ): Promise<
+    Array<{
+      tagId: string;
+      confidence: number;
+      reasoning?: string;
+    }>
+  >;
 
   // Pattern learning
   learnFromFeedback(feedback: TagFeedback): Promise<FeedbackResponse>;
@@ -194,21 +193,19 @@ export interface IAITaggingService {
 
   // Analytics and insights
   getTagAnalytics(): Promise<any>;
-  improveTagPatterns(tagId: string, successfulExamples: string[], failedExamples: string[]): Promise<void>;
+  improveTagPatterns(
+    tagId: string,
+    successfulExamples: string[],
+    failedExamples: string[]
+  ): Promise<void>;
 }
 
 // Analytics service interface
 export interface ITagAnalyticsService {
   // Metrics
-  getTagMetrics(
-    tagId: string,
-    period?: { start: Date; end: Date }
-  ): Promise<TagMetricsResponse>;
+  getTagMetrics(tagId: string, period?: { start: Date; end: Date }): Promise<TagMetricsResponse>;
 
-  getSystemAccuracy(
-    period?: string,
-    entityType?: EntityType
-  ): Promise<AccuracyResponse>;
+  getSystemAccuracy(period?: string, entityType?: EntityType): Promise<AccuracyResponse>;
 
   // Reports
   generateUsageReport(
@@ -216,9 +213,7 @@ export interface ITagAnalyticsService {
     groupBy?: 'tag' | 'entity' | 'user'
   ): Promise<any>;
 
-  generateAccuracyReport(
-    period: { start: Date; end: Date }
-  ): Promise<any>;
+  generateAccuracyReport(period: { start: Date; end: Date }): Promise<any>;
 
   // Real-time metrics
   getRealtimeMetrics(): Promise<{
@@ -236,11 +231,13 @@ export interface IPatternMatchingService {
     content: string,
     entityType: EntityType,
     metadata?: Record<string, any>
-  ): Promise<Array<{
-    tagId: string;
-    confidence: number;
-    matchedPattern: string;
-  }>>;
+  ): Promise<
+    Array<{
+      tagId: string;
+      confidence: number;
+      matchedPattern: string;
+    }>
+  >;
 
   validatePattern(pattern: string): Promise<{ valid: boolean; error?: string }>;
 
@@ -269,7 +266,10 @@ export interface ITagCacheService {
 
   // Pattern cache
   getCachedPatternMatch(hash: string): Promise<Array<{ tagId: string; confidence: number }> | null>;
-  setCachedPatternMatch(hash: string, matches: Array<{ tagId: string; confidence: number }>): Promise<void>;
+  setCachedPatternMatch(
+    hash: string,
+    matches: Array<{ tagId: string; confidence: number }>
+  ): Promise<void>;
 
   // Bulk operations
   warmupCache(): Promise<void>;
@@ -284,5 +284,10 @@ export interface ITagEventService {
   publishTagDeleted(tagId: string): Promise<void>;
   publishEntityTagged(entityType: EntityType, entityId: string, tags: EntityTag[]): Promise<void>;
   publishEntityTagRemoved(entityType: EntityType, entityId: string, tagId: string): Promise<void>;
-  publishEntityTagVerified(entityType: EntityType, entityId: string, tagId: string, userId: string): Promise<void>;
+  publishEntityTagVerified(
+    entityType: EntityType,
+    entityId: string,
+    tagId: string,
+    userId: string
+  ): Promise<void>;
 }

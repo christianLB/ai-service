@@ -1,0 +1,23 @@
+{
+  "name": "@ai/contracts",
+  "version": "1.0.0",
+  "description": "OpenAPI contracts and generated types for AI Service",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "generate": "npm run generate:types",
+    "generate:types": "openapi-typescript ../../openapi/gateway.yaml -o src/generated/gateway.ts",
+    "clean": "rm -rf dist src/generated"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  },
+  "files": [
+    "dist",
+    "src/generated"
+  ],
+  "dependencies": {
+    "openapi-fetch": "^0.9.3"
+  }
+}

@@ -22,23 +22,25 @@ export const importTransactionSchema = z.object({
   gas_used: z.string().nullable().optional(),
   gas_price: z.string().nullable().optional(),
   from_address: z.string().nullable().optional(),
-  to_address: z.string().nullable().optional()
+  to_address: z.string().nullable().optional(),
 });
 
 // Schema for the import request
 export const transactionImportRequestSchema = z.object({
   accountId: z.string().uuid(),
-  transactions: z.array(importTransactionSchema).min(1).max(1000)
+  transactions: z.array(importTransactionSchema).min(1).max(1000),
 });
 
 // Schema for file upload (JSON structure)
 export const transactionImportFileSchema = z.object({
-  metadata: z.object({
-    account_id: z.string().uuid().optional(),
-    currency_id: z.string().optional(), // Can be UUID or currency code
-    total_transactions: z.number().optional()
-  }).optional(),
-  transactions: z.array(importTransactionSchema).min(1).max(1000)
+  metadata: z
+    .object({
+      account_id: z.string().uuid().optional(),
+      currency_id: z.string().optional(), // Can be UUID or currency code
+      total_transactions: z.number().optional(),
+    })
+    .optional(),
+  transactions: z.array(importTransactionSchema).min(1).max(1000),
 });
 
 // Types

@@ -12,7 +12,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 PROD_HOST="192.168.1.11"
-PROD_USER="synoadmin"
+PROD_USER="k2600x"
 PROD_PATH="/volume1/docker/ai-service"
 PROD_PASSWORD="${POSTGRES_PASSWORD:-ultra_secure_password_2025}"
 

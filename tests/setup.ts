@@ -1,6 +1,7 @@
 // Jest setup file
 import { config } from 'dotenv';
 import path from 'path';
+import { PrismaClient } from '@prisma/client';
 
 // Load test environment from .env.test
 config({ path: path.resolve(__dirname, '../.env.test') });
@@ -76,3 +77,19 @@ if (process.env.SHOW_TEST_LOGS !== 'true') {
     error: console.error,
   };
 }
+
+// Initialize Prisma client for tests
+declare global {
+  var testPrisma: PrismaClient | undefined;
+}
+
+global.testPrisma = global.testPrisma || new PrismaClient({
+  log: process.env.DEBUG ? ['query', 'error', 'warn'] : ['error'],
+});
+
+// Register Prisma cleanup
+registerCleanup(async () => {
+  if (global.testPrisma) {
+    await global.testPrisma.$disconnect();
+  }
+});

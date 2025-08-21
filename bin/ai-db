@@ -1,0 +1,3 @@
+#!/bin/bash
+# Database operations wrapper
+/home/k2600x/dev/ai-service/ai-cli.js db "$@"

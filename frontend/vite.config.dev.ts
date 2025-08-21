@@ -13,13 +13,13 @@ import react from '@vitejs/plugin-react'
  * - Use vite.config.ts with target: 'http://localhost:3001'
  * 
  * FOR DOCKER DEVELOPMENT:
- * - This file MUST use 'http://ai-service-api:3001'
+ * - This file MUST use 'http://api-gateway:3000'
  * - The browser accesses http://localhost:3030 (mapped port)
- * - Vite inside Docker proxies to the API container
+ * - Vite inside Docker proxies to the API Gateway container
  * 
  * DO NOT CONFUSE:
  * - Browser → Vite: http://localhost:3030 (port mapping)
- * - Vite → API: http://ai-service-api:3001 (container networking)
+ * - Vite → API Gateway: http://api-gateway:3000 (container networking)
  */
 export default defineConfig({
   plugins: [react()],
@@ -28,7 +28,7 @@ export default defineConfig({
     host: '0.0.0.0', // Listen on all interfaces for Docker
     proxy: {
       '/api': {
-        target: 'http://ai-service-api-dev:3001', // Container-to-container communication
+        target: 'http://ai-service-api:3001', // Container-to-container communication to API
         changeOrigin: true,
         secure: false,
       }

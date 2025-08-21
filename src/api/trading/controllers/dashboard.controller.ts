@@ -17,14 +17,14 @@ class DashboardController {
             BTC: 40,
             ETH: 30,
             BNB: 20,
-            OTHER: 10
-          }
+            OTHER: 10,
+          },
         },
         positions: {
           open: 5,
           profitable: 3,
           losing: 2,
-          totalPnL: 12500
+          totalPnL: 12500,
         },
         strategies: {
           active: 2,
@@ -32,23 +32,23 @@ class DashboardController {
           stopped: 1,
           performance: {
             'trend-following': 8.5,
-            'market-making': 5.2
-          }
+            'market-making': 5.2,
+          },
         },
         marketOverview: {
           btcPrice: 68500,
           btcChange24h: 2.5,
           marketCap: 1.35e12,
-          fearGreedIndex: 72
+          fearGreedIndex: 72,
         },
         alerts: [
           {
             id: '1',
             type: 'info',
             message: 'Market volatility increasing',
-            timestamp: new Date()
-          }
-        ]
+            timestamp: new Date(),
+          },
+        ],
       };
 
       res.json(overview);
@@ -67,7 +67,7 @@ class DashboardController {
         winRate: 0.65,
         avgWinLoss: 1.85,
         totalTrades: 342,
-        profitFactor: 2.1
+        profitFactor: 2.1,
       };
 
       res.json(metrics);

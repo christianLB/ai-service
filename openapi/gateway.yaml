@@ -1,0 +1,256 @@
+openapi: 3.0.3
+info:
+  title: AI Service API Gateway
+  version: 1.0.0
+  description: Central API Gateway that aggregates and routes to all AI Service domain APIs
+  contact:
+    name: AI Service Team
+    email: support@ai-service.local
+
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+  - url: https://api.ai-service.com
+    description: Production server
+
+tags:
+  - name: Health
+    description: Service health and monitoring
+  - name: Auth
+    description: Authentication and authorization
+  - name: Financial
+    description: Financial management operations
+  - name: Trading
+    description: Trading and market operations
+  - name: AI Core
+    description: AI and document intelligence
+  - name: Communication
+    description: Notifications and messaging
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health/live:
+    get:
+      summary: Liveness probe
+      operationId: getLiveness
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /health/ready:
+    get:
+      summary: Readiness probe
+      operationId: getReadiness
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '503':
+          description: Service not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      operationId: getMetrics
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  # Authentication service routes
+  /api/auth/register:
+    $ref: './auth.yaml#/paths/~1auth~1register'
+  
+  /api/auth/login:
+    $ref: './auth.yaml#/paths/~1auth~1login'
+  
+  /api/auth/refresh:
+    $ref: './auth.yaml#/paths/~1auth~1refresh'
+  
+  /api/auth/logout:
+    $ref: './auth.yaml#/paths/~1auth~1logout'
+  
+  /api/auth/profile:
+    $ref: './auth.yaml#/paths/~1auth~1profile'
+
+  # Trading service routes
+  /api/trading/strategies:
+    $ref: './trading.yaml#/paths/~1trading~1strategies'
+  
+  /api/trading/strategies/{strategyId}:
+    $ref: './trading.yaml#/paths/~1trading~1strategies~1{strategyId}'
+  
+  /api/trading/positions:
+    $ref: './trading.yaml#/paths/~1trading~1positions'
+  
+  /api/trading/execute:
+    $ref: './trading.yaml#/paths/~1trading~1execute'
+  
+  /api/arbitrage/deploy:
+    $ref: './trading.yaml#/paths/~1arbitrage~1deploy'
+
+  # AI Core service routes
+  /api/documents/upload:
+    $ref: './ai-core.yaml#/paths/~1documents~1upload'
+  
+  /api/documents:
+    $ref: './ai-core.yaml#/paths/~1documents'
+  
+  /api/documents/{documentId}:
+    $ref: './ai-core.yaml#/paths/~1documents~1{documentId}'
+  
+  /api/documents/search:
+    $ref: './ai-core.yaml#/paths/~1documents~1search'
+
+  # Communication service routes
+  /api/telegram/webhook:
+    $ref: './comm.yaml#/paths/~1telegram~1webhook'
+  
+  /api/telegram/send-message:
+    $ref: './comm.yaml#/paths/~1telegram~1send-message'
+  
+  /api/email/send-invoice:
+    $ref: './comm.yaml#/paths/~1email~1send-invoice'
+  
+  /api/alerts:
+    $ref: './comm.yaml#/paths/~1alerts'
+
+  # Financial service proxies
+  /api/financial/accounts:
+    $ref: './financial.yaml#/paths/~1api~1financial~1accounts'
+  
+  /api/financial/accounts/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1accounts~1{id}'
+  
+  /api/financial/clients:
+    $ref: './financial.yaml#/paths/~1api~1financial~1clients'
+  
+  /api/financial/clients/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1clients~1{id}'
+  
+  /api/financial/invoices:
+    $ref: './financial.yaml#/paths/~1api~1financial~1invoices'
+  
+  /api/financial/invoices/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1invoices~1{id}'
+  
+  /api/financial/transactions:
+    $ref: './financial.yaml#/paths/~1api~1financial~1transactions'
+  
+  /api/financial/transactions/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1transactions~1{id}'
+  
+  /api/financial/transactions/export:
+    $ref: './financial.yaml#/paths/~1api~1financial~1transactions~1export'
+  
+  /api/financial/attachments:
+    $ref: './financial.yaml#/paths/~1api~1financial~1attachments'
+  
+  /api/financial/attachments/{id}:
+    $ref: './financial.yaml#/paths/~1api~1financial~1attachments~1{id}'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authorization header using the Bearer scheme
+
+  schemas:
+    # Common response schemas
+    SuccessResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          default: true
+        data:
+          type: object
+          description: Response data
+        meta:
+          type: object
+          description: Additional metadata
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+
+    # Import schemas from financial service
+    Error:
+      $ref: './financial.yaml#/components/schemas/Error'
+    PaginationInfo:
+      $ref: './financial.yaml#/components/schemas/PaginationInfo'
+    Account:
+      $ref: './financial.yaml#/components/schemas/Account'
+    AccountListResponse:
+      $ref: './financial.yaml#/components/schemas/AccountListResponse'
+    Client:
+      $ref: './financial.yaml#/components/schemas/Client'
+    ClientListResponse:
+      $ref: './financial.yaml#/components/schemas/ClientListResponse'
+    Invoice:
+      $ref: './financial.yaml#/components/schemas/Invoice'
+    InvoiceListResponse:
+      $ref: './financial.yaml#/components/schemas/InvoiceListResponse'
+    Transaction:
+      $ref: './financial.yaml#/components/schemas/Transaction'
+    TransactionListResponse:
+      $ref: './financial.yaml#/components/schemas/TransactionListResponse'
+    Attachment:
+      $ref: './financial.yaml#/components/schemas/Attachment'
+    AttachmentListResponse:
+      $ref: './financial.yaml#/components/schemas/AttachmentListResponse'

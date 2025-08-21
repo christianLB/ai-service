@@ -8,22 +8,22 @@ jest.mock('@prisma/client', () => {
     invoice: {
       aggregate: jest.fn(),
       count: jest.fn(),
-      findMany: jest.fn()
+      findMany: jest.fn(),
     },
     client: {
       count: jest.fn(),
-      findMany: jest.fn()
+      findMany: jest.fn(),
     },
     transaction: {
       findMany: jest.fn(),
-      aggregate: jest.fn()
+      aggregate: jest.fn(),
     },
     $queryRaw: jest.fn(),
-    $disconnect: jest.fn()
+    $disconnect: jest.fn(),
   };
 
   return {
-    PrismaClient: jest.fn(() => mockPrismaClient)
+    PrismaClient: jest.fn(() => mockPrismaClient),
   };
 });
 
@@ -33,7 +33,7 @@ describe('FinancialDashboardService', () => {
 
   const mockTimeRange: TimeRange = {
     startDate: new Date('2025-01-01'),
-    endDate: new Date('2025-01-31')
+    endDate: new Date('2025-01-31'),
   };
 
   beforeEach(() => {
@@ -53,15 +53,15 @@ describe('FinancialDashboardService', () => {
         .mockResolvedValueOnce({
           _count: { id: 100 },
           _sum: { totalAmount: 50000 },
-          _avg: { totalAmount: 500 }
+          _avg: { totalAmount: 500 },
         })
         .mockResolvedValueOnce({
           _count: { id: 80 },
-          _sum: { totalAmount: 40000 }
+          _sum: { totalAmount: 40000 },
         })
         .mockResolvedValueOnce({
           _count: { id: 5 },
-          _sum: { totalAmount: 2500 }
+          _sum: { totalAmount: 2500 },
         });
 
       const result = await service.getBasicInvoiceStats(mockTimeRange);
@@ -75,7 +75,7 @@ describe('FinancialDashboardService', () => {
         overdue: 5,
         overdueAmount: 2500,
         pending: 0,
-        pendingAmount: 0
+        pendingAmount: 0,
       });
 
       expect(prisma.invoice.aggregate).toHaveBeenCalledTimes(3);
@@ -85,7 +85,7 @@ describe('FinancialDashboardService', () => {
       prisma.invoice.aggregate.mockResolvedValue({
         _count: { id: null },
         _sum: { totalAmount: null },
-        _avg: { totalAmount: null }
+        _avg: { totalAmount: null },
       });
 
       const result = await service.getBasicInvoiceStats(mockTimeRange);
@@ -110,7 +110,7 @@ describe('FinancialDashboardService', () => {
         active: 120,
         new: 15,
         churned: 0,
-        averageRevenue: 0
+        averageRevenue: 0,
       });
 
       expect(prisma.client.count).toHaveBeenCalledTimes(3);
@@ -126,8 +126,8 @@ describe('FinancialDashboardService', () => {
           uniqueClients: 25,
           invoiceCount: 30,
           monthOverMonthGrowth: 10.5,
-          yearOverYearGrowth: 25.0
-        }
+          yearOverYearGrowth: 25.0,
+        },
       ];
 
       prisma.$queryRaw.mockResolvedValue(mockRevenueData);
@@ -153,7 +153,7 @@ describe('FinancialDashboardService', () => {
           transactionCount: 50,
           totalAmount: 5000,
           averageAmount: 100,
-          percentage: 45.5
+          percentage: 45.5,
         },
         {
           category: 'Hardware',
@@ -161,8 +161,8 @@ describe('FinancialDashboardService', () => {
           transactionCount: 30,
           totalAmount: 3000,
           averageAmount: 100,
-          percentage: 27.3
-        }
+          percentage: 27.3,
+        },
       ];
 
       prisma.$queryRaw.mockResolvedValue(mockCategoryData);
@@ -185,8 +185,8 @@ describe('FinancialDashboardService', () => {
           totalRevenue: 100000,
           revenueRank: 1,
           customerLifetimeDays: 365,
-          monthlyAverageRevenue: 8219.18
-        }
+          monthlyAverageRevenue: 8219.18,
+        },
       ];
 
       prisma.$queryRaw.mockResolvedValue(mockTopClients);
@@ -203,10 +203,7 @@ describe('FinancialDashboardService', () => {
       const mockResult = { data: 'test' };
       const queryFn = jest.fn().mockResolvedValue(mockResult);
 
-      const { result, duration } = await service.measureQueryPerformance(
-        'test-query',
-        queryFn
-      );
+      const { result, duration } = await service.measureQueryPerformance('test-query', queryFn);
 
       expect(result).toEqual(mockResult);
       expect(duration).toBeGreaterThan(0);
@@ -217,9 +214,9 @@ describe('FinancialDashboardService', () => {
       const error = new Error('Query failed');
       const queryFn = jest.fn().mockRejectedValue(error);
 
-      await expect(
-        service.measureQueryPerformance('test-query', queryFn)
-      ).rejects.toThrow('Query failed');
+      await expect(service.measureQueryPerformance('test-query', queryFn)).rejects.toThrow(
+        'Query failed'
+      );
     });
   });
 
@@ -235,7 +232,7 @@ describe('FinancialDashboardService', () => {
         pending: 0,
         pendingAmount: 0,
         overdue: 5,
-        overdueAmount: 2500
+        overdueAmount: 2500,
       });
 
       jest.spyOn(service, 'getBasicClientMetrics').mockResolvedValue({
@@ -243,7 +240,7 @@ describe('FinancialDashboardService', () => {
         active: 120,
         new: 15,
         churned: 0,
-        averageRevenue: 0
+        averageRevenue: 0,
       });
 
       jest.spyOn(service, 'getRevenueMetrics').mockResolvedValue([]);
@@ -252,7 +249,7 @@ describe('FinancialDashboardService', () => {
 
       prisma.invoice.aggregate.mockResolvedValue({
         _count: { id: 15 },
-        _sum: { totalAmount: 7500 }
+        _sum: { totalAmount: 7500 },
       });
 
       const result = await service.getDashboardMetrics(mockTimeRange, 'EUR');
@@ -306,14 +303,14 @@ describe('FinancialDashboardService', () => {
         name: 'John',
         age: 30,
         address: { city: 'NYC', zip: '10001' },
-        hobbies: ['reading', 'gaming']
+        hobbies: ['reading', 'gaming'],
       };
 
       const obj2 = {
         name: 'John',
         age: 31,
         address: { city: 'NYC', zip: '10002' },
-        hobbies: ['reading']
+        hobbies: ['reading'],
       };
 
       const differences = service['findDifferences'](obj1, obj2);
@@ -328,15 +325,15 @@ describe('FinancialDashboardService', () => {
     it('should handle database connection errors', async () => {
       prisma.invoice.aggregate.mockRejectedValue(new Error('Database connection failed'));
 
-      await expect(service.getBasicInvoiceStats(mockTimeRange))
-        .rejects.toThrow('Database connection failed');
+      await expect(service.getBasicInvoiceStats(mockTimeRange)).rejects.toThrow(
+        'Database connection failed'
+      );
     });
 
     it('should handle raw query errors', async () => {
       prisma.$queryRaw.mockRejectedValue(new Error('SQL syntax error'));
 
-      await expect(service.getRevenueMetrics(mockTimeRange))
-        .rejects.toThrow('SQL syntax error');
+      await expect(service.getRevenueMetrics(mockTimeRange)).rejects.toThrow('SQL syntax error');
     });
   });
 });

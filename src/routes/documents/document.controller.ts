@@ -14,7 +14,7 @@ export class DocumentController {
     this.ingestionService = new DocumentIngestionService();
     this.analysisService = new OpenAIAnalysisService();
     this.storageService = new DocumentStorageService({
-      basePath: process.env.DOCUMENT_STORAGE_PATH
+      basePath: process.env.DOCUMENT_STORAGE_PATH,
     });
   }
 
@@ -23,7 +23,7 @@ export class DocumentController {
       if (!req.file) {
         res.status(400).json({
           success: false,
-          error: 'No file provided'
+          error: 'No file provided',
         });
         return;
       }
@@ -35,14 +35,14 @@ export class DocumentController {
         fileName: req.file.originalname,
         source: DocumentSource.WEB,
         userId: req.body.userId || 'anonymous',
-        tags: req.body.tags ? JSON.parse(req.body.tags) : []
+        tags: req.body.tags ? JSON.parse(req.body.tags) : [],
       });
 
       // Auto-analyze if requested
       let analysis = undefined;
       if (req.body.autoAnalyze !== 'false') {
         const analysisResult = await this.analysisService.analyzeDocument(document, {
-          includeEmbedding: true
+          includeEmbedding: true,
         });
         analysis = analysisResult.analysis;
       }
@@ -54,15 +54,14 @@ export class DocumentController {
         data: {
           document,
           analysis,
-          processingTime
-        }
+          processingTime,
+        },
       });
-
     } catch (error: any) {
       logger.error('Error uploading document:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to upload document'
+        error: error.message || 'Failed to upload document',
       });
     }
   }
@@ -82,16 +81,15 @@ export class DocumentController {
           pagination: {
             limit,
             offset,
-            total: documents.length
-          }
-        }
+            total: documents.length,
+          },
+        },
       });
-
     } catch (error: any) {
       logger.error('Error listing documents:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to list documents'
+        error: error.message || 'Failed to list documents',
       });
     }
   }
@@ -105,21 +103,20 @@ export class DocumentController {
       if (!document) {
         res.status(404).json({
           success: false,
-          error: 'Document not found'
+          error: 'Document not found',
         });
         return;
       }
 
       res.json({
         success: true,
-        data: { document }
+        data: { document },
       });
-
     } catch (error: any) {
       logger.error('Error getting document:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to get document'
+        error: error.message || 'Failed to get document',
       });
     }
   }
@@ -133,7 +130,7 @@ export class DocumentController {
       if (!document) {
         res.status(404).json({
           success: false,
-          error: 'Document not found'
+          error: 'Document not found',
         });
         return;
       }
@@ -141,21 +138,20 @@ export class DocumentController {
       if (!document.analysis) {
         res.status(404).json({
           success: false,
-          error: 'Document analysis not found'
+          error: 'Document analysis not found',
         });
         return;
       }
 
       res.json({
         success: true,
-        data: { analysis: document.analysis }
+        data: { analysis: document.analysis },
       });
-
     } catch (error: any) {
       logger.error('Error getting document analysis:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to get document analysis'
+        error: error.message || 'Failed to get document analysis',
       });
     }
   }
@@ -169,14 +165,14 @@ export class DocumentController {
       if (!document) {
         res.status(404).json({
           success: false,
-          error: 'Document not found'
+          error: 'Document not found',
         });
         return;
       }
 
       const analysisResult = await this.analysisService.analyzeDocument(document, {
         includeEmbedding: req.body.includeEmbedding !== false,
-        profile: req.body.profile
+        profile: req.body.profile,
       });
 
       res.json({
@@ -184,15 +180,14 @@ export class DocumentController {
         data: {
           analysis: analysisResult.analysis,
           processingTime: analysisResult.processingTime,
-          tokenUsage: analysisResult.tokenUsage
-        }
+          tokenUsage: analysisResult.tokenUsage,
+        },
       });
-
     } catch (error: any) {
       logger.error('Error analyzing document:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to analyze document'
+        error: error.message || 'Failed to analyze document',
       });
     }
   }
@@ -200,17 +195,17 @@ export class DocumentController {
   async searchDocuments(req: Request, res: Response): Promise<void> {
     try {
       const searchRequest: SearchRequest = {
-        query: req.body.query || req.query.q as string,
-        limit: parseInt(req.body.limit || req.query.limit as string) || 10,
-        offset: parseInt(req.body.offset || req.query.offset as string) || 0,
-        userId: req.body.userId || req.query.userId as string,
-        filters: req.body.filters
+        query: req.body.query || (req.query.q as string),
+        limit: parseInt(req.body.limit || (req.query.limit as string)) || 10,
+        offset: parseInt(req.body.offset || (req.query.offset as string)) || 0,
+        userId: req.body.userId || (req.query.userId as string),
+        filters: req.body.filters,
       };
 
       if (!searchRequest.query) {
         res.status(400).json({
           success: false,
-          error: 'Query parameter is required'
+          error: 'Query parameter is required',
         });
         return;
       }
@@ -228,16 +223,15 @@ export class DocumentController {
           pagination: {
             limit: searchRequest.limit,
             offset: searchRequest.offset,
-            total: results.length
-          }
-        }
+            total: results.length,
+          },
+        },
       });
-
     } catch (error: any) {
       logger.error('Error searching documents:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to search documents'
+        error: error.message || 'Failed to search documents',
       });
     }
   }
@@ -250,7 +244,7 @@ export class DocumentController {
       if (!question) {
         res.status(400).json({
           success: false,
-          error: 'Question is required'
+          error: 'Question is required',
         });
         return;
       }
@@ -260,15 +254,12 @@ export class DocumentController {
       if (!document) {
         res.status(404).json({
           success: false,
-          error: 'Document not found'
+          error: 'Document not found',
         });
         return;
       }
 
-      const answer = await this.analysisService.answerQuestion(
-        question,
-        document.content.text
-      );
+      const answer = await this.analysisService.answerQuestion(question, document.content.text);
 
       res.json({
         success: true,
@@ -276,15 +267,14 @@ export class DocumentController {
           question,
           answer,
           documentId: id,
-          documentTitle: document.title
-        }
+          documentTitle: document.title,
+        },
       });
-
     } catch (error: any) {
       logger.error('Error answering question:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to answer question'
+        error: error.message || 'Failed to answer question',
       });
     }
   }
@@ -298,7 +288,7 @@ export class DocumentController {
       if (!document) {
         res.status(404).json({
           success: false,
-          error: 'Document not found'
+          error: 'Document not found',
         });
         return;
       }
@@ -307,14 +297,13 @@ export class DocumentController {
 
       res.json({
         success: true,
-        data: { message: 'Document deleted successfully' }
+        data: { message: 'Document deleted successfully' },
       });
-
     } catch (error: any) {
       logger.error('Error deleting document:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to delete document'
+        error: error.message || 'Failed to delete document',
       });
     }
   }
@@ -329,15 +318,14 @@ export class DocumentController {
         data: {
           analysis: analysisStats,
           storage: storageStats,
-          lastUpdated: new Date().toISOString()
-        }
+          lastUpdated: new Date().toISOString(),
+        },
       });
-
     } catch (error: any) {
       logger.error('Error getting document stats:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to get document stats'
+        error: error.message || 'Failed to get document stats',
       });
     }
   }
@@ -353,7 +341,7 @@ export class DocumentController {
         if (!isValid.isValid) {
           res.status(403).json({
             success: false,
-            error: 'Invalid or expired access token'
+            error: 'Invalid or expired access token',
           });
           return;
         }
@@ -361,7 +349,7 @@ export class DocumentController {
         if (parseInt(expires as string) < Date.now()) {
           res.status(403).json({
             success: false,
-            error: 'Access token expired'
+            error: 'Access token expired',
           });
           return;
         }
@@ -374,12 +362,11 @@ export class DocumentController {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
       res.send(fileBuffer);
-
     } catch (error: any) {
       logger.error('Error downloading file:', error);
       res.status(404).json({
         success: false,
-        error: 'File not found'
+        error: 'File not found',
       });
     }
   }
@@ -388,11 +375,11 @@ export class DocumentController {
     try {
       const { filename } = req.params;
       const expiresIn = parseInt(req.query.expiresIn as string) || 3600;
-      const action = req.query.action as 'read' | 'write' | 'delete' || 'read';
+      const action = (req.query.action as 'read' | 'write' | 'delete') || 'read';
 
       const signedUrl = await this.storageService.getSignedUrl(filename, {
         expiresIn,
-        action
+        action,
       });
 
       res.json({
@@ -400,15 +387,14 @@ export class DocumentController {
         data: {
           signedUrl,
           expiresIn,
-          expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString()
-        }
+          expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+        },
       });
-
     } catch (error: any) {
       logger.error('Error generating signed URL:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Failed to generate signed URL'
+        error: error.message || 'Failed to generate signed URL',
       });
     }
   }

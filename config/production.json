@@ -1,0 +1,55 @@
+{
+  "host": "192.168.1.11",
+  "user": "k2600x",
+  "path": "/volume1/docker/ai-service",
+  "database": {
+    "name": "ai_service",
+    "user": "ai_user",
+    "container": "ai-postgres"
+  },
+  "containers": {
+    "api": "ai-service",
+    "database": "ai-postgres",
+    "redis": "ai-redis"
+  },
+  "ports": {
+    "api": 3001,
+    "frontend": 3030,
+    "database": 5432
+  },
+  "backup": {
+    "directory": "/volume1/docker/ai-service/backups",
+    "retention": {
+      "days": 30,
+      "count": 100
+    }
+  },
+  "safety": {
+    "requireConfirmation": true,
+    "backupBeforeDestruction": true,
+    "maxRetries": 3,
+    "timeoutSeconds": 30,
+    "dangerousCommands": [
+      "reset",
+      "drop",
+      "delete",
+      "truncate",
+      "remove"
+    ]
+  },
+  "monitoring": {
+    "healthCheckInterval": 30,
+    "logRetentionDays": 7,
+    "alertThresholds": {
+      "diskUsage": 85,
+      "memoryUsage": 85,
+      "responseTime": 5000
+    }
+  },
+  "ssh": {
+    "connectionTimeout": 10,
+    "commandTimeout": 300,
+    "retryAttempts": 3,
+    "retryDelay": 1000
+  }
+}

@@ -9,8 +9,8 @@ export const standardRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     // Use x-forwarded-for if available, otherwise fall back to req.ip
-    return req.headers['x-forwarded-for'] as string || req.ip || 'unknown';
-  }
+    return (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+  },
 });
 
 // Database rate limit - 30 requests per minute for database-intensive operations
@@ -22,8 +22,8 @@ export const databaseRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     // Use x-forwarded-for if available, otherwise fall back to req.ip
-    return req.headers['x-forwarded-for'] as string || req.ip || 'unknown';
-  }
+    return (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+  },
 });
 
 // AI rate limit - 20 requests per minute
@@ -35,8 +35,8 @@ export const aiRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     // Use x-forwarded-for if available, otherwise fall back to req.ip
-    return req.headers['x-forwarded-for'] as string || req.ip || 'unknown';
-  }
+    return (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+  },
 });
 
 // Batch rate limit - 5 requests per minute
@@ -48,8 +48,8 @@ export const batchRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     // Use x-forwarded-for if available, otherwise fall back to req.ip
-    return req.headers['x-forwarded-for'] as string || req.ip || 'unknown';
-  }
+    return (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+  },
 });
 
 // Search rate limit - 50 requests per minute
@@ -61,8 +61,8 @@ export const searchRateLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     // Use x-forwarded-for if available, otherwise fall back to req.ip
-    return req.headers['x-forwarded-for'] as string || req.ip || 'unknown';
-  }
+    return (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+  },
 });
 
 // Dynamic rate limiter based on endpoint (for compatibility)
@@ -87,32 +87,32 @@ export const rateLimitInfo = {
     type: 'standard',
     limit: 100,
     window: '60 seconds',
-    blockDuration: 'none'
+    blockDuration: 'none',
   },
   database: {
     type: 'database',
     limit: 30,
     window: '60 seconds',
-    blockDuration: 'none'
+    blockDuration: 'none',
   },
   ai: {
     type: 'ai',
     limit: 20,
     window: '60 seconds',
-    blockDuration: 'none'
+    blockDuration: 'none',
   },
   batch: {
     type: 'batch',
     limit: 5,
     window: '60 seconds',
-    blockDuration: 'none'
+    blockDuration: 'none',
   },
   search: {
     type: 'search',
     limit: 50,
     window: '60 seconds',
-    blockDuration: 'none'
-  }
+    blockDuration: 'none',
+  },
 };
 
 // Helper function for compatibility

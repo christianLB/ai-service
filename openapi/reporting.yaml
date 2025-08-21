@@ -1,0 +1,568 @@
+openapi: 3.0.3
+info:
+  title: AI Service Reporting API
+  description: Report generation, management, and download endpoints for AI Service
+  version: 1.0.0
+  contact:
+    name: AI Service Reporting Team
+    email: reporting@ai-service.local
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development server
+  - url: https://api.ai-service.com/api
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Reports
+    description: Report management operations
+  - name: Generation
+    description: Report generation operations
+  - name: Downloads
+    description: Report download operations
+
+paths:
+  /reports:
+    get:
+      tags:
+        - Reports
+      summary: List all reports
+      description: Get a paginated list of all reports with optional filtering
+      operationId: listReports
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - in: query
+          name: type
+          schema:
+            $ref: '#/components/schemas/ReportType'
+          description: Filter by report type
+        - in: query
+          name: format
+          schema:
+            $ref: '#/components/schemas/ReportFormat'
+          description: Filter by report format
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/ReportStatus'
+          description: Filter by report status
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Filter reports created after this date
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: Filter reports created before this date
+        - in: query
+          name: createdBy
+          schema:
+            type: string
+          description: Filter by user who created the report
+      responses:
+        '200':
+          description: Reports retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /reports/generate:
+    post:
+      tags:
+        - Generation
+      summary: Generate a new report
+      description: Create and generate a new report based on provided parameters
+      operationId: generateReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateReportRequest'
+      responses:
+        '201':
+          description: Report generation started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: Invalid report parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reports/{id}:
+    get:
+      tags:
+        - Reports
+      summary: Get single report details
+      description: Retrieve detailed information about a specific report
+      operationId: getReport
+      parameters:
+        - $ref: '#/components/parameters/ReportIdParam'
+      responses:
+        '200':
+          description: Report retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Reports
+      summary: Delete report
+      description: Delete a specific report and its associated files
+      operationId: deleteReport
+      parameters:
+        - $ref: '#/components/parameters/ReportIdParam'
+      responses:
+        '200':
+          description: Report deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden - Cannot delete report (e.g., in use or shared)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /reports/download/{id}:
+    get:
+      tags:
+        - Downloads
+      summary: Download report file
+      description: Download the generated report file in its specified format
+      operationId: downloadReport
+      parameters:
+        - $ref: '#/components/parameters/ReportIdParam'
+        - in: query
+          name: inline
+          schema:
+            type: boolean
+            default: false
+          description: Whether to display inline or force download
+      responses:
+        '200':
+          description: Report file download
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                description: PDF report file
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+                description: Excel report file
+            text/csv:
+              schema:
+                type: string
+                format: binary
+                description: CSV report file
+            application/json:
+              schema:
+                type: object
+                description: JSON report data
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: Attachment filename
+            Content-Type:
+              schema:
+                type: string
+              description: File MIME type
+            Content-Length:
+              schema:
+                type: integer
+              description: File size in bytes
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: Report file no longer available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authorization header using the Bearer scheme
+
+  parameters:
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number for pagination
+
+    LimitParam:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Number of items per page
+
+    ReportIdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Report unique identifier
+
+  schemas:
+    ReportType:
+      type: string
+      enum:
+        - financial
+        - trading
+        - client
+        - tax
+        - custom
+      description: Type of report to generate
+
+    ReportFormat:
+      type: string
+      enum:
+        - PDF
+        - EXCEL
+        - CSV
+        - JSON
+      description: Output format for the report
+
+    ReportStatus:
+      type: string
+      enum:
+        - pending
+        - generating
+        - completed
+        - failed
+        - expired
+      description: Current status of the report
+
+    DateRange:
+      type: object
+      required:
+        - startDate
+        - endDate
+      properties:
+        startDate:
+          type: string
+          format: date
+          description: Start date for report data (YYYY-MM-DD)
+        endDate:
+          type: string
+          format: date
+          description: End date for report data (YYYY-MM-DD)
+
+    ReportFilters:
+      type: object
+      additionalProperties: true
+      description: Additional filters specific to report type
+      properties:
+        clientIds:
+          type: array
+          items:
+            type: string
+          description: Filter by specific client IDs (for client/financial reports)
+        exchangeIds:
+          type: array
+          items:
+            type: string
+          description: Filter by specific exchanges (for trading reports)
+        categoryIds:
+          type: array
+          items:
+            type: string
+          description: Filter by transaction categories (for financial reports)
+        includeDetails:
+          type: boolean
+          default: false
+          description: Include detailed transaction/trade data
+
+    GenerateReportRequest:
+      type: object
+      required:
+        - name
+        - type
+        - format
+        - dateRange
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable name for the report
+        description:
+          type: string
+          maxLength: 1000
+          description: Optional description of the report
+        type:
+          $ref: '#/components/schemas/ReportType'
+        format:
+          $ref: '#/components/schemas/ReportFormat'
+        dateRange:
+          $ref: '#/components/schemas/DateRange'
+        filters:
+          $ref: '#/components/schemas/ReportFilters'
+        schedule:
+          type: object
+          description: Optional scheduling for recurring reports
+          properties:
+            frequency:
+              type: string
+              enum:
+                - daily
+                - weekly
+                - monthly
+                - quarterly
+                - yearly
+            dayOfWeek:
+              type: integer
+              minimum: 0
+              maximum: 6
+              description: Day of week for weekly reports (0=Sunday)
+            dayOfMonth:
+              type: integer
+              minimum: 1
+              maximum: 31
+              description: Day of month for monthly reports
+        emailRecipients:
+          type: array
+          items:
+            type: string
+            format: email
+          description: Email addresses to send completed report to
+
+    Report:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - format
+        - status
+        - dateRange
+        - createdAt
+        - createdBy
+      properties:
+        id:
+          type: string
+          description: Unique report identifier
+        name:
+          type: string
+          description: Human-readable report name
+        description:
+          type: string
+          description: Report description
+        type:
+          $ref: '#/components/schemas/ReportType'
+        format:
+          $ref: '#/components/schemas/ReportFormat'
+        status:
+          $ref: '#/components/schemas/ReportStatus'
+        dateRange:
+          $ref: '#/components/schemas/DateRange'
+        filters:
+          $ref: '#/components/schemas/ReportFilters'
+        createdAt:
+          type: string
+          format: date-time
+          description: Report creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        completedAt:
+          type: string
+          format: date-time
+          description: Report completion timestamp
+        createdBy:
+          type: string
+          description: User ID who created the report
+        fileSize:
+          type: integer
+          description: Size of generated file in bytes
+        downloadCount:
+          type: integer
+          default: 0
+          description: Number of times report has been downloaded
+        expiresAt:
+          type: string
+          format: date-time
+          description: Report expiration timestamp
+        errorMessage:
+          type: string
+          description: Error message if report generation failed
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional report metadata
+
+    ReportResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          description: Operation success status
+        data:
+          $ref: '#/components/schemas/Report'
+
+    ReportListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Report'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    PaginationMeta:
+      type: object
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+      properties:
+        page:
+          type: integer
+          description: Current page number
+        limit:
+          type: integer
+          description: Items per page
+        total:
+          type: integer
+          description: Total number of items
+        totalPages:
+          type: integer
+          description: Total number of pages
+
+    MessageResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          description: Response message
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Error code
+            message:
+              type: string
+              description: Error message
+            details:
+              type: object
+              additionalProperties: true
+              description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Not found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    TooManyRequests:
+      description: Too many requests - Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

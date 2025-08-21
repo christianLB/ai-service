@@ -27,9 +27,9 @@ export interface Customer {
 }
 
 export type AccountType =
-  | 'bank_account'      // Traditional banking (GoCardless)
-  | 'crypto_wallet'     // Crypto wallets
-  | 'exchange_account'  // Crypto exchange accounts
+  | 'bank_account' // Traditional banking (GoCardless)
+  | 'crypto_wallet' // Crypto wallets
+  | 'exchange_account' // Crypto exchange accounts
   | 'payment_processor'; // PayPal, Stripe, etc.
 
 export interface Account {
@@ -39,18 +39,18 @@ export interface Account {
   currencyId: string;
 
   // Traditional banking (GoCardless)
-  accountId?: string;      // GoCardless account_id
-  institutionId?: string;  // Bank identifier
-  requisitionId?: string;  // GoCardless requisition
+  accountId?: string; // GoCardless account_id
+  institutionId?: string; // Bank identifier
+  requisitionId?: string; // GoCardless requisition
   iban?: string;
 
   // Crypto specific
-  walletAddress?: string;  // Crypto wallet address
-  chainId?: number;        // Blockchain network ID
-  exchangeName?: string;   // Binance, Coinbase, etc.
+  walletAddress?: string; // Crypto wallet address
+  chainId?: number; // Blockchain network ID
+  exchangeName?: string; // Binance, Coinbase, etc.
 
   // Common fields
-  balance: string;         // High precision decimal as string
+  balance: string; // High precision decimal as string
   isActive: boolean;
   metadata: Record<string, any>;
   createdAt: Date;
@@ -58,34 +58,30 @@ export interface Account {
 }
 
 export type TransactionType =
-  | 'bank_transfer'    // Traditional bank transfers
-  | 'crypto_send'      // Crypto outgoing
-  | 'crypto_receive'   // Crypto incoming
-  | 'exchange_trade'   // Crypto trading
-  | 'payment'          // Payment processing
-  | 'fee'             // Transaction fees
-  | 'conversion';     // Currency conversion
+  | 'bank_transfer' // Traditional bank transfers
+  | 'crypto_send' // Crypto outgoing
+  | 'crypto_receive' // Crypto incoming
+  | 'exchange_trade' // Crypto trading
+  | 'payment' // Payment processing
+  | 'fee' // Transaction fees
+  | 'conversion'; // Currency conversion
 
-export type TransactionStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'failed'
-  | 'cancelled';
+export type TransactionStatus = 'pending' | 'confirmed' | 'failed' | 'cancelled';
 
 export interface Transaction {
   id: string;
-  transactionId: string;   // Unique transaction identifier (required in DB)
+  transactionId: string; // Unique transaction identifier (required in DB)
   accountId: string;
   type: TransactionType;
   status: TransactionStatus;
 
   // Amount and currency
-  amount: string;          // High precision decimal as string
+  amount: string; // High precision decimal as string
   currencyId: string;
 
   // Transaction details
   description?: string;
-  reference?: string;      // External reference (GoCardless, txHash, etc.)
+  reference?: string; // External reference (GoCardless, txHash, etc.)
   date: Date;
 
   // Fiat specific (GoCardless)
@@ -93,11 +89,11 @@ export interface Transaction {
 
   // Crypto specific
   transactionHash?: string; // Blockchain tx hash
-  blockNumber?: number;     // Block number
-  gasUsed?: string;        // Gas consumed
-  gasPrice?: string;       // Gas price
-  fromAddress?: string;    // Sender address
-  toAddress?: string;      // Recipient address
+  blockNumber?: number; // Block number
+  gasUsed?: string; // Gas consumed
+  gasPrice?: string; // Gas price
+  fromAddress?: string; // Sender address
+  toAddress?: string; // Recipient address
 
   // Counterparty
   counterpartyName?: string;
@@ -113,13 +109,7 @@ export interface Transaction {
   updatedAt: Date;
 }
 
-export type InvoiceStatus =
-  | 'draft'
-  | 'sent'
-  | 'paid'
-  | 'partial_paid'
-  | 'overdue'
-  | 'cancelled';
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial_paid' | 'overdue' | 'cancelled';
 
 export interface Invoice {
   id: string;
@@ -274,8 +264,8 @@ export interface Category {
   id: string;
   name: string;
   description?: string;
-  color?: string;          // Hex color for UI
-  icon?: string;           // Icon identifier
+  color?: string; // Hex color for UI
+  icon?: string; // Icon identifier
   type: CategoryType;
   isActive: boolean;
   createdAt: Date;
@@ -298,14 +288,14 @@ export interface AITag {
   description?: string;
 
   // AI matching patterns
-  keywords: string[];              // Array of keywords to match
-  merchantPatterns: string[];      // Regex patterns for merchant names
+  keywords: string[]; // Array of keywords to match
+  merchantPatterns: string[]; // Regex patterns for merchant names
   amountPatterns?: Record<string, any>; // Min/max amounts, recurring patterns
 
   // Association strength
   categoryId?: string;
   subcategoryId?: string;
-  confidenceScore: number;         // 0.0 to 1.0
+  confidenceScore: number; // 0.0 to 1.0
 
   // Learning metadata
   matchCount: number;
@@ -327,11 +317,11 @@ export interface TransactionCategorization {
 
   // Categorization metadata
   method: CategorizationMethod;
-  confidenceScore?: number;        // AI confidence (0.0 to 1.0)
-  aiTagId?: string;               // Which AI tag triggered this
+  confidenceScore?: number; // AI confidence (0.0 to 1.0)
+  aiTagId?: string; // Which AI tag triggered this
 
   // User feedback for learning
-  userConfirmed?: boolean;         // null=no feedback, true=correct, false=incorrect
+  userConfirmed?: boolean; // null=no feedback, true=correct, false=incorrect
   userCorrectedCategoryId?: string;
   userCorrectedSubcategoryId?: string;
 
@@ -343,7 +333,7 @@ export interface TransactionCategorization {
 export interface CustomTag {
   id: string;
   name: string;
-  color?: string;                  // Hex color
+  color?: string; // Hex color
   description?: string;
   isActive: boolean;
   createdAt: Date;
@@ -490,9 +480,9 @@ export interface RealtimeMetrics {
   };
 
   trends: {
-    incomeChange: number;      // Percentage change
-    expenseChange: number;     // Percentage change
-    balanceChange: number;     // Percentage change
+    incomeChange: number; // Percentage change
+    expenseChange: number; // Percentage change
+    balanceChange: number; // Percentage change
   };
 
   topExpenseCategories: TopCategoryItem[];

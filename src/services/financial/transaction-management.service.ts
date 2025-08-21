@@ -18,7 +18,7 @@ export class TransactionManagementService {
 
       // First, verify the transaction exists
       const transaction = await prisma.transactions.findUnique({
-        where: { id: transactionId }
+        where: { id: transactionId },
       });
 
       if (!transaction) {
@@ -28,17 +28,17 @@ export class TransactionManagementService {
       // Delete related records first (due to foreign key constraints)
       // Delete client transaction links
       await prisma.client_transaction_links.deleteMany({
-        where: { transaction_id: transactionId }
+        where: { transaction_id: transactionId },
       });
 
       // Delete transaction categorizations
       await prisma.transaction_categorizations.deleteMany({
-        where: { transaction_id: transactionId }
+        where: { transaction_id: transactionId },
       });
 
       // Perform the deletion
       await prisma.transactions.delete({
-        where: { id: transactionId }
+        where: { id: transactionId },
       });
 
       // Log the deletion for audit purposes
@@ -47,9 +47,8 @@ export class TransactionManagementService {
         userId,
         amount: transaction.amount,
         date: transaction.date,
-        description: transaction.description
+        description: transaction.description,
       });
-
     } catch (error) {
       logger.error(`Failed to delete transaction ${transactionId}`, error);
       throw error;
@@ -63,7 +62,7 @@ export class TransactionManagementService {
    */
   async getTransaction(transactionId: string) {
     return prisma.transactions.findUnique({
-      where: { id: transactionId }
+      where: { id: transactionId },
     });
   }
 }

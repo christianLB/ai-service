@@ -27,6 +27,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { csrfProtection, csrfErrorHandler, sendCSRFToken } from './middleware/csrf';
 import { standardRateLimit } from './middleware/express-rate-limit.middleware';
+import { applyOpenApiValidation } from './middleware/openapi-validator';
 import { createAuthRoutes } from './routes/auth/auth.routes';
 import flowGen from './routes/flow-gen';
 import flowUpdate from './routes/flow-update';
@@ -38,9 +39,7 @@ import documentRoutes from './routes/documents';
 // import { createCryptoRoutes } from './routes/crypto.routes';
 import realEstateRoutes from './routes/real-estate';
 import integrationRoutes from './routes/integrations';
-// TODO: Fix tag service TypeScript errors before enabling
-// import taggingRoutes from './routes/tagging';
-// import { taggingErrorHandler } from './middleware/tagging-error.middleware';
+import taggingRoutes from './routes/tagging';
 // Trading module removed
 import { logger } from './utils/log';
 import { db } from './services/database';
@@ -103,6 +102,10 @@ app.use(cookieParser());
 
 // CSRF protection - MUST be after body parsing and cookie parsing
 app.use(csrfProtection);
+
+// OpenAPI validation middleware - validates requests/responses against OpenAPI specs
+// This ensures contract compliance and type safety
+applyOpenApiValidation(app);
 
 // Middleware de métricas (debe ir antes de las rutas)
 app.use(metricsService.createApiMetricsMiddleware());
@@ -274,6 +277,8 @@ app.use('/api', versionRoutes);
 app.use('/api', flowGen);
 app.use('/api', flowUpdate);
 app.use('/api', flowTest);
+// Use typed financial routes for contract compliance (Single Source of Truth)
+// The typed routes ensure all requests/responses match OpenAPI specifications
 app.use('/api/financial', financialRoutes);
 
 // const cryptoRoutes = createCryptoRoutes(db.pool);
@@ -285,8 +290,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/integrations', integrationRoutes);
 
 // Universal AI Tagging System routes
-// TODO: Fix tag service TypeScript errors before enabling
-// app.use('/api', taggingRoutes);
+app.use('/api', taggingRoutes);
 
 // Trading routes removed
 

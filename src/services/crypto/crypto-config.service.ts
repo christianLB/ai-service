@@ -22,7 +22,13 @@ export class CryptoConfigService {
     this.pool = pool;
   }
 
-  async upsertConfig(userId: string, provider: string, apiKey?: string, secretKey?: string, address?: string): Promise<void> {
+  async upsertConfig(
+    userId: string,
+    provider: string,
+    apiKey?: string,
+    secretKey?: string,
+    address?: string
+  ): Promise<void> {
     try {
       // Store in integration_configs table
       const promises = [];
@@ -35,7 +41,7 @@ export class CryptoConfigService {
             configKey: `${provider}_api_key`,
             configValue: apiKey,
             encrypt: true,
-            description: `${provider} API Key`
+            description: `${provider} API Key`,
           })
         );
       }
@@ -48,7 +54,7 @@ export class CryptoConfigService {
             configKey: `${provider}_secret_key`,
             configValue: secretKey,
             encrypt: true,
-            description: `${provider} Secret Key`
+            description: `${provider} Secret Key`,
           })
         );
       }
@@ -61,7 +67,7 @@ export class CryptoConfigService {
             configKey: `${provider}_address`,
             configValue: address,
             encrypt: false,
-            description: `${provider} Wallet Address`
+            description: `${provider} Wallet Address`,
           })
         );
       }
@@ -101,18 +107,19 @@ export class CryptoConfigService {
             user_id: userId,
             provider,
             created_at: new Date(),
-            updated_at: new Date()
+            updated_at: new Date(),
           });
         }
 
         const providerConfig = providerMap.get(provider);
-        const value = config.isEncrypted ?
-          await integrationConfigService.getConfig({
-            userId,
-            integrationType: 'crypto',
-            configKey: config.configKey,
-            decrypt: true
-          }) : config.configValue;
+        const value = config.isEncrypted
+          ? await integrationConfigService.getConfig({
+              userId,
+              integrationType: 'crypto',
+              configKey: config.configKey,
+              decrypt: true,
+            })
+          : config.configValue;
 
         if (keyType === 'api' && config.configKey.endsWith('_key')) {
           providerConfig.api_key = value;

@@ -10,7 +10,7 @@ async function addCrossExchangeArbitrageStrategy() {
 
     // Check if strategy already exists
     const existing = await db.pool.query(
-      'SELECT id FROM trading.strategies WHERE type = \'cross_exchange_arbitrage\' LIMIT 1'
+      "SELECT id FROM trading.strategies WHERE type = 'cross_exchange_arbitrage' LIMIT 1"
     );
 
     if (existing.rows.length > 0) {
@@ -102,7 +102,6 @@ async function addCrossExchangeArbitrageStrategy() {
     );
 
     logger.info('Strategy documentation added');
-
   } catch (error) {
     logger.error('Failed to add arbitrage strategy', error);
     throw error;

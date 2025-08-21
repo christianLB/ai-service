@@ -5,6 +5,5 @@ const apiKey = process.env.N8N_API_KEY || '';
 
 export const n8nClient = axios.create({
   baseURL,
-  headers: { 'X-N8N-API-KEY': apiKey }
+  headers: { 'X-N8N-API-KEY': apiKey },
 });
-

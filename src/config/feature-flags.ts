@@ -20,7 +20,7 @@ export class FeatureFlagService {
       USE_PRISMA_DASHBOARD: process.env.USE_PRISMA_DASHBOARD === 'true' || false,
       ENABLE_SQL_VALIDATION: process.env.ENABLE_SQL_VALIDATION === 'true' || false,
       LOG_QUERY_PERFORMANCE: process.env.LOG_QUERY_PERFORMANCE === 'true' || true,
-      ENABLE_PARALLEL_VALIDATION: process.env.ENABLE_PARALLEL_VALIDATION === 'true' || false
+      ENABLE_PARALLEL_VALIDATION: process.env.ENABLE_PARALLEL_VALIDATION === 'true' || false,
     };
   }
 
@@ -47,12 +47,12 @@ export class FeatureFlagService {
 
   // Check multiple flags at once
   areEnabled(...flags: (keyof FeatureFlags)[]): boolean {
-    return flags.every(flag => this.flags[flag]);
+    return flags.every((flag) => this.flags[flag]);
   }
 
   // Check if any of the flags are enabled
   anyEnabled(...flags: (keyof FeatureFlags)[]): boolean {
-    return flags.some(flag => this.flags[flag]);
+    return flags.some((flag) => this.flags[flag]);
   }
 }
 

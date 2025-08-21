@@ -83,13 +83,10 @@ export class InvoiceAttachmentService {
     }
   ) {
     this.prisma = prisma;
-    this.baseDir =
-      config?.baseDir ||
-      path.join(process.cwd(), 'storage', 'secure-attachments');
+    this.baseDir = config?.baseDir || path.join(process.cwd(), 'storage', 'secure-attachments');
     this.maxFileSize = config?.maxFileSize || 10 * 1024 * 1024; // 10MB default
     this.maxFilesPerInvoice = config?.maxFilesPerInvoice || 20;
-    this.maxTotalSizePerInvoice =
-      config?.maxTotalSizePerInvoice || 100 * 1024 * 1024; // 100MB per invoice
+    this.maxTotalSizePerInvoice = config?.maxTotalSizePerInvoice || 100 * 1024 * 1024; // 100MB per invoice
 
     this.allowedTypes = config?.allowedTypes || [
       'application/pdf',
@@ -135,9 +132,7 @@ export class InvoiceAttachmentService {
         );
       }
 
-      logger.info(
-        `Secure invoice attachment storage initialized at: ${this.baseDir}`
-      );
+      logger.info(`Secure invoice attachment storage initialized at: ${this.baseDir}`);
     } catch (error) {
       logger.error('Failed to initialize secure attachment storage:', error);
       throw new AppError('Failed to initialize attachment storage', 500);
@@ -147,27 +142,14 @@ export class InvoiceAttachmentService {
   /**
    * Securely upload an attachment for an invoice with comprehensive validation
    */
-  async uploadAttachment(
-    options: SecureAttachmentUploadOptions
-  ): Promise<InvoiceAttachment> {
-    const {
-      invoiceId,
-      fileName,
-      fileType,
-      fileBuffer,
-      description,
-      uploadedBy,
-      checksum,
-    } = options;
+  async uploadAttachment(options: SecureAttachmentUploadOptions): Promise<InvoiceAttachment> {
+    const { invoiceId, fileName, fileType, fileBuffer, description, uploadedBy, checksum } =
+      options;
 
     return this.prisma.$transaction(async (tx) => {
       try {
         // 1. Validate and authenticate user access to invoice
-        const invoice = await this.validateInvoiceAccess(
-          invoiceId,
-          uploadedBy,
-          tx
-        );
+        const invoice = await this.validateInvoiceAccess(invoiceId, uploadedBy, tx);
 
         // 2. Comprehensive file validation
         const validationResult = await this.validateFileSecurely(
@@ -178,9 +160,7 @@ export class InvoiceAttachmentService {
         );
         if (!validationResult.valid) {
           throw new AppError(
-            `File validation failed: ${
-              validationResult.errors?.join(', ') || 'Unknown error'
-            }`,
+            `File validation failed: ${validationResult.errors?.join(', ') || 'Unknown error'}`,
             400
           );
         }
@@ -214,11 +194,7 @@ export class InvoiceAttachmentService {
         const attachment = await tx.invoiceAttachment.create({
           data: {
             invoiceId,
-            fileName:
-              `${fileName} (${validationResult.secureFilename})`.substring(
-                0,
-                255
-              ), // Include secure name for reference
+            fileName: `${fileName} (${validationResult.secureFilename})`.substring(0, 255), // Include secure name for reference
             fileType: validationResult.mimeType,
             fileSize: BigInt(fileBuffer.length),
             filePath: secureFilePath.relativePath,
@@ -243,10 +219,7 @@ export class InvoiceAttachmentService {
           const tempPath = path.join(this.baseDir, 'temp', invoiceId);
           await fs.rm(tempPath, { recursive: true, force: true });
         } catch (cleanupError) {
-          logger.warn(
-            'Failed to cleanup temp files after error:',
-            cleanupError
-          );
+          logger.warn('Failed to cleanup temp files after error:', cleanupError);
         }
 
         if (error instanceof AppError) {
@@ -268,10 +241,7 @@ export class InvoiceAttachmentService {
   /**
    * Get all attachments for an invoice with user authorization
    */
-  async getInvoiceAttachments(
-    invoiceId: string,
-    userId: string
-  ): Promise<AttachmentListItem[]> {
+  async getInvoiceAttachments(invoiceId: string, userId: string): Promise<AttachmentListItem[]> {
     try {
       // Verify user has access to this invoice
       const invoice = await this.prisma.invoice.findFirst({
@@ -301,41 +271,36 @@ export class InvoiceAttachmentService {
       });
 
       // Parse and clean up response to remove sensitive metadata
-      const cleanAttachments: AttachmentListItem[] = attachments.map(
-        (attachment: any) => {
-          let userDescription = '';
-          let originalFileName = attachment.fileName;
+      const cleanAttachments: AttachmentListItem[] = attachments.map((attachment: any) => {
+        let userDescription = '';
+        let originalFileName = attachment.fileName;
 
-          try {
-            const metadata = JSON.parse(attachment.description || '{}');
-            userDescription = metadata.userDescription || '';
-            originalFileName = metadata.originalFileName || attachment.fileName;
-          } catch {
-            userDescription = attachment.description || '';
-          }
-
-          return {
-            id: attachment.id,
-            invoiceId: attachment.invoiceId,
-            fileName: attachment.fileName,
-            originalFileName,
-            fileType: attachment.fileType,
-            fileSize: Number(attachment.fileSize),
-            description: userDescription,
-            uploadedBy: attachment.uploadedBy,
-            uploadedAt: attachment.uploadedAt,
-          };
+        try {
+          const metadata = JSON.parse(attachment.description || '{}');
+          userDescription = metadata.userDescription || '';
+          originalFileName = metadata.originalFileName || attachment.fileName;
+        } catch {
+          userDescription = attachment.description || '';
         }
-      );
 
-      logger.info(
-        `Retrieved ${cleanAttachments.length} attachments for invoice ${invoiceId}`,
-        {
-          userId,
-          invoiceId,
-          attachmentCount: cleanAttachments.length,
-        }
-      );
+        return {
+          id: attachment.id,
+          invoiceId: attachment.invoiceId,
+          fileName: attachment.fileName,
+          originalFileName,
+          fileType: attachment.fileType,
+          fileSize: Number(attachment.fileSize),
+          description: userDescription,
+          uploadedBy: attachment.uploadedBy,
+          uploadedAt: attachment.uploadedAt,
+        };
+      });
+
+      logger.info(`Retrieved ${cleanAttachments.length} attachments for invoice ${invoiceId}`, {
+        userId,
+        invoiceId,
+        attachmentCount: cleanAttachments.length,
+      });
 
       return cleanAttachments;
     } catch (error) {
@@ -350,10 +315,7 @@ export class InvoiceAttachmentService {
   /**
    * Get a specific attachment by ID with user authorization
    */
-  async getAttachment(
-    attachmentId: string,
-    userId: string
-  ): Promise<InvoiceAttachment | null> {
+  async getAttachment(attachmentId: string, userId: string): Promise<InvoiceAttachment | null> {
     try {
       const attachment = await this.prisma.invoiceAttachment.findFirst({
         where: {
@@ -401,10 +363,7 @@ export class InvoiceAttachmentService {
       try {
         await fs.access(fullPath, fs.constants.F_OK | fs.constants.R_OK);
       } catch (accessError) {
-        logger.error(
-          `File not accessible: ${attachment.filePath}`,
-          accessError
-        );
+        logger.error(`File not accessible: ${attachment.filePath}`, accessError);
         throw new AppError('File not accessible', 404);
       }
 
@@ -420,19 +379,13 @@ export class InvoiceAttachmentService {
       }
 
       if (fileHash) {
-        const currentHash = crypto
-          .createHash('sha256')
-          .update(buffer)
-          .digest('hex');
+        const currentHash = crypto.createHash('sha256').update(buffer).digest('hex');
         if (currentHash !== fileHash) {
-          logger.error(
-            `File integrity check failed for attachment ${attachmentId}`,
-            {
-              expectedHash: fileHash,
-              actualHash: currentHash,
-              filePath: attachment.filePath,
-            }
-          );
+          logger.error(`File integrity check failed for attachment ${attachmentId}`, {
+            expectedHash: fileHash,
+            actualHash: currentHash,
+            filePath: attachment.filePath,
+          });
           throw new AppError('File integrity check failed', 500);
         }
       }
@@ -459,10 +412,7 @@ export class InvoiceAttachmentService {
   /**
    * Securely delete an attachment with proper authorization
    */
-  async deleteAttachment(
-    attachmentId: string,
-    deletedBy: string
-  ): Promise<boolean> {
+  async deleteAttachment(attachmentId: string, deletedBy: string): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
       try {
         // Get attachment with invoice info for authorization
@@ -739,11 +689,7 @@ export class InvoiceAttachmentService {
   /**
    * Validate user access to invoice
    */
-  private async validateInvoiceAccess(
-    invoiceId: string,
-    userId: string,
-    tx: any
-  ) {
+  private async validateInvoiceAccess(invoiceId: string, userId: string, tx: any) {
     const invoice = await tx.invoice.findFirst({
       where: {
         id: invoiceId,
@@ -767,11 +713,7 @@ export class InvoiceAttachmentService {
   /**
    * Validate quota limits for invoice
    */
-  private async validateQuotaLimits(
-    invoiceId: string,
-    newFileSize: number,
-    tx: any
-  ) {
+  private async validateQuotaLimits(invoiceId: string, newFileSize: number, tx: any) {
     const existingAttachments = await tx.invoiceAttachment.findMany({
       where: { invoiceId },
       select: {
@@ -781,10 +723,7 @@ export class InvoiceAttachmentService {
 
     // Check file count limit
     if (existingAttachments.length >= this.maxFilesPerInvoice) {
-      throw new AppError(
-        `Maximum ${this.maxFilesPerInvoice} files per invoice exceeded`,
-        400
-      );
+      throw new AppError(`Maximum ${this.maxFilesPerInvoice} files per invoice exceeded`, 400);
     }
 
     // Check total size limit
@@ -806,10 +745,7 @@ export class InvoiceAttachmentService {
   /**
    * Create secure file path structure
    */
-  private async createSecureFilePath(
-    invoiceId: string,
-    secureFileName: string
-  ) {
+  private async createSecureFilePath(invoiceId: string, secureFileName: string) {
     const yearMonth = new Date().toISOString().slice(0, 7);
     const attachmentDir = path.join(this.baseDir, yearMonth, invoiceId);
 
@@ -819,9 +755,7 @@ export class InvoiceAttachmentService {
     try {
       await fs.chmod(attachmentDir, 0o700);
     } catch (chmodError) {
-      logger.warn(
-        'Could not set directory permissions (may not be supported on this filesystem)'
-      );
+      logger.warn('Could not set directory permissions (may not be supported on this filesystem)');
     }
 
     const fullPath = path.join(attachmentDir, secureFileName);
@@ -833,11 +767,7 @@ export class InvoiceAttachmentService {
   /**
    * Write file securely with atomic operation and verification
    */
-  private async writeFileSecurely(
-    filePath: string,
-    buffer: Buffer,
-    expectedHash: string
-  ) {
+  private async writeFileSecurely(filePath: string, buffer: Buffer, expectedHash: string) {
     const tempPath = `${filePath}.tmp`;
 
     try {
@@ -846,10 +776,7 @@ export class InvoiceAttachmentService {
 
       // Verify written file integrity
       const writtenBuffer = await fs.readFile(tempPath);
-      const writtenHash = crypto
-        .createHash('sha256')
-        .update(writtenBuffer)
-        .digest('hex');
+      const writtenHash = crypto.createHash('sha256').update(writtenBuffer).digest('hex');
 
       if (writtenHash !== expectedHash) {
         throw new Error('File integrity verification failed after write');
@@ -862,9 +789,7 @@ export class InvoiceAttachmentService {
       try {
         await fs.chmod(filePath, 0o600);
       } catch (chmodError) {
-        logger.warn(
-          'Could not set file permissions (may not be supported on this filesystem)'
-        );
+        logger.warn('Could not set file permissions (may not be supported on this filesystem)');
       }
     } catch (error) {
       // Clean up temp file on error
@@ -905,10 +830,7 @@ export class InvoiceAttachmentService {
   /**
    * Generate a secure download URL with expiration
    */
-  generateDownloadUrl(
-    attachmentId: string,
-    expirationMinutes: number = 60
-  ): string {
+  generateDownloadUrl(attachmentId: string, expirationMinutes: number = 60): string {
     const expiresAt = Date.now() + expirationMinutes * 60 * 1000;
     const token = Buffer.from(
       JSON.stringify({

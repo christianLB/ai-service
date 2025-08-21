@@ -3,5 +3,5 @@ export type {
   ClaudeConfig,
   TradingContext,
   TradingDecision,
-  MarketAnalysis
+  MarketAnalysis,
 } from './claude.service';

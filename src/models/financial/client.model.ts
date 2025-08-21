@@ -183,7 +183,7 @@ export class ClientModel implements Client {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       createdBy: this.createdBy,
-      lastContactDate: this.lastContactDate
+      lastContactDate: this.lastContactDate,
     };
   }
 }

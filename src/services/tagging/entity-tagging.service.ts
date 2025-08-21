@@ -8,7 +8,7 @@ import {
   BatchTagRequest,
   ReTagRequest,
   UpdateEntityTag,
-  TagMethod
+  TagMethod,
 } from '../../types/tagging/tag.types';
 import {
   EntityTagResponse,
@@ -18,7 +18,7 @@ import {
   ReTagResponse,
   FindEntitiesByTagResponse,
   RelationshipsResponse,
-  BatchTagResult
+  BatchTagResult,
 } from '../../types/tagging/response.types';
 import { IEntityTaggingService, IAITaggingService, IPatternMatchingService } from './interfaces';
 import { EntityNotFoundError, TagNotFoundError, handleTaggingError } from './errors';
@@ -27,8 +27,10 @@ import logger from '../../utils/logger';
 @injectable()
 export class EntityTaggingService implements IEntityTaggingService {
   constructor(
-    @inject(TAGGING_SERVICE_IDENTIFIERS.AITaggingService) private aiTaggingService: IAITaggingService,
-    @inject(TAGGING_SERVICE_IDENTIFIERS.PatternMatchingService) private patternMatchingService: IPatternMatchingService
+    @inject(TAGGING_SERVICE_IDENTIFIERS.AITaggingService)
+    private aiTaggingService: IAITaggingService,
+    @inject(TAGGING_SERVICE_IDENTIFIERS.PatternMatchingService)
+    private patternMatchingService: IPatternMatchingService
   ) {}
 
   /**
@@ -56,7 +58,7 @@ export class EntityTaggingService implements IEntityTaggingService {
       // Remove existing tags if force re-tag is enabled
       if (request.options?.forceReTag) {
         await prisma.entityTag.deleteMany({
-          where: { entityType, entityId }
+          where: { entityType, entityId },
         });
       }
 
@@ -72,14 +74,16 @@ export class EntityTaggingService implements IEntityTaggingService {
           {
             provider: request.options?.aiProvider,
             maxTags: request.options?.maxTags,
-            confidenceThreshold: request.options?.confidenceThreshold
+            confidenceThreshold: request.options?.confidenceThreshold,
           }
         );
 
-        suggestedTags.push(...aiSuggestions.map(s => ({
-          ...s,
-          method: 'AI' as TagMethod
-        })));
+        suggestedTags.push(
+          ...aiSuggestions.map((s) => ({
+            ...s,
+            method: 'AI' as TagMethod,
+          }))
+        );
       }
 
       if (request.method === 'pattern' || request.method === 'auto') {
@@ -92,13 +96,15 @@ export class EntityTaggingService implements IEntityTaggingService {
 
         // Filter by confidence threshold
         const threshold = request.options?.confidenceThreshold || 0.7;
-        const filtered = patternMatches.filter(m => m.confidence >= threshold);
+        const filtered = patternMatches.filter((m) => m.confidence >= threshold);
 
-        suggestedTags.push(...filtered.map(m => ({
-          tagId: m.tagId,
-          confidence: m.confidence,
-          method: 'PATTERN' as TagMethod
-        })));
+        suggestedTags.push(
+          ...filtered.map((m) => ({
+            tagId: m.tagId,
+            confidence: m.confidence,
+            method: 'PATTERN' as TagMethod,
+          }))
+        );
       }
 
       // Deduplicate and sort by confidence
@@ -119,8 +125,8 @@ export class EntityTaggingService implements IEntityTaggingService {
             where: {
               entityType,
               entityId,
-              tagId: suggestion.tagId
-            }
+              tagId: suggestion.tagId,
+            },
           });
 
           if (!existing) {
@@ -132,11 +138,11 @@ export class EntityTaggingService implements IEntityTaggingService {
                 confidence: suggestion.confidence,
                 method: suggestion.method,
                 appliedBy: userId,
-                aiProvider: request.options?.aiProvider
+                aiProvider: request.options?.aiProvider,
               },
               include: {
-                universalTag: true
-              }
+                universalTag: true,
+              },
             });
 
             tags.push(entityTag);
@@ -146,8 +152,8 @@ export class EntityTaggingService implements IEntityTaggingService {
               where: { id: suggestion.tagId },
               data: {
                 usageCount: { increment: 1 },
-                lastUsed: new Date()
-              }
+                lastUsed: new Date(),
+              },
             });
           } else {
             // Update confidence if new one is higher
@@ -156,11 +162,11 @@ export class EntityTaggingService implements IEntityTaggingService {
                 where: { id: existing.id },
                 data: {
                   confidence: suggestion.confidence,
-                  method: suggestion.method
+                  method: suggestion.method,
                 },
                 include: {
-                  universalTag: true
-                }
+                  universalTag: true,
+                },
               });
 
               tags.push(updated);
@@ -178,7 +184,7 @@ export class EntityTaggingService implements IEntityTaggingService {
         entityId,
         tagCount: createdTags.length,
         processingTime,
-        userId
+        userId,
       });
 
       return {
@@ -187,8 +193,8 @@ export class EntityTaggingService implements IEntityTaggingService {
           entity: { type: entityType, id: entityId },
           tags: createdTags.map(this.mapToEntityTagResponse),
           processingTime,
-          aiProvider: request.options?.aiProvider
-        }
+          aiProvider: request.options?.aiProvider,
+        },
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -198,10 +204,7 @@ export class EntityTaggingService implements IEntityTaggingService {
   /**
    * Get tags for an entity
    */
-  async getEntityTags(
-    entityType: EntityType,
-    entityId: string
-  ): Promise<EntityTagsResponse> {
+  async getEntityTags(entityType: EntityType, entityId: string): Promise<EntityTagsResponse> {
     try {
       // Verify entity exists
       const entity = await this.getEntity(entityType, entityId);
@@ -212,7 +215,7 @@ export class EntityTaggingService implements IEntityTaggingService {
       const entityTags = await prisma.entityTag.findMany({
         where: { entityType, entityId },
         include: { universalTag: true },
-        orderBy: { confidence: 'desc' }
+        orderBy: { confidence: 'desc' },
       });
 
       const preview = this.getEntityPreview(entity, entityType);
@@ -223,10 +226,10 @@ export class EntityTaggingService implements IEntityTaggingService {
           entity: {
             type: entityType,
             id: entityId,
-            preview
+            preview,
           },
-          tags: entityTags.map(this.mapToEntityTagResponse)
-        }
+          tags: entityTags.map(this.mapToEntityTagResponse),
+        },
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -244,7 +247,7 @@ export class EntityTaggingService implements IEntityTaggingService {
   ): Promise<void> {
     try {
       const entityTag = await prisma.entityTag.findFirst({
-        where: { entityType, entityId, tagId }
+        where: { entityType, entityId, tagId },
       });
 
       if (!entityTag) {
@@ -254,13 +257,13 @@ export class EntityTaggingService implements IEntityTaggingService {
       await prisma.$transaction(async (tx) => {
         // Delete the entity tag
         await tx.entityTag.delete({
-          where: { id: entityTag.id }
+          where: { id: entityTag.id },
         });
 
         // Decrement tag usage count
         await tx.universalTag.update({
           where: { id: tagId },
-          data: { usageCount: { decrement: 1 } }
+          data: { usageCount: { decrement: 1 } },
         });
       });
 
@@ -268,7 +271,7 @@ export class EntityTaggingService implements IEntityTaggingService {
         entityType,
         entityId,
         tagId,
-        userId
+        userId,
       });
     } catch (error) {
       throw handleTaggingError(error);
@@ -287,7 +290,7 @@ export class EntityTaggingService implements IEntityTaggingService {
   ): Promise<EntityTagResponse> {
     try {
       const entityTag = await prisma.entityTag.findFirst({
-        where: { entityType, entityId, tagId }
+        where: { entityType, entityId, tagId },
       });
 
       if (!entityTag) {
@@ -300,12 +303,12 @@ export class EntityTaggingService implements IEntityTaggingService {
           ...data,
           ...(data.isVerified && {
             verifiedBy: userId,
-            verifiedAt: new Date()
+            verifiedAt: new Date(),
           }),
           verifiedBy: data.isVerified ? userId : entityTag.verifiedBy,
-          verifiedAt: data.isVerified ? new Date() : entityTag.verifiedAt
+          verifiedAt: data.isVerified ? new Date() : entityTag.verifiedAt,
         },
-        include: { universalTag: true }
+        include: { universalTag: true },
       });
 
       logger.info('Entity tag updated', {
@@ -313,7 +316,7 @@ export class EntityTaggingService implements IEntityTaggingService {
         entityId,
         tagId,
         updates: data,
-        userId
+        userId,
       });
 
       return this.mapToEntityTagResponse(updated);
@@ -325,10 +328,7 @@ export class EntityTaggingService implements IEntityTaggingService {
   /**
    * Batch tag multiple entities
    */
-  async batchTagEntities(
-    request: BatchTagRequest,
-    userId: string
-  ): Promise<BatchTagResponse> {
+  async batchTagEntities(request: BatchTagRequest, userId: string): Promise<BatchTagResponse> {
     const startTime = Date.now();
     const results: BatchTagResult[] = [];
     let successful = 0;
@@ -346,7 +346,7 @@ export class EntityTaggingService implements IEntityTaggingService {
             entityId: entity.id,
             status: 'skipped',
             error: 'Entity not found',
-            processingTime: Date.now() - entityStartTime
+            processingTime: Date.now() - entityStartTime,
           });
           skipped++;
           continue;
@@ -358,7 +358,7 @@ export class EntityTaggingService implements IEntityTaggingService {
           entity.id,
           {
             method: 'auto',
-            options: request.options
+            options: request.options,
           },
           userId
         );
@@ -367,7 +367,7 @@ export class EntityTaggingService implements IEntityTaggingService {
           entityId: entity.id,
           status: 'success',
           tags: tagResult.data?.tags,
-          processingTime: Date.now() - entityStartTime
+          processingTime: Date.now() - entityStartTime,
         });
         successful++;
       } catch (error: any) {
@@ -375,13 +375,13 @@ export class EntityTaggingService implements IEntityTaggingService {
           entityId: entity.id,
           status: 'failed',
           error: error.message,
-          processingTime: Date.now() - entityStartTime
+          processingTime: Date.now() - entityStartTime,
         });
         failed++;
 
         logger.error('Batch tag entity failed', {
           entityId: entity.id,
-          error: error.message
+          error: error.message,
         });
       }
     }
@@ -397,32 +397,29 @@ export class EntityTaggingService implements IEntityTaggingService {
           successful,
           failed,
           skipped,
-          totalProcessingTime
-        }
-      }
+          totalProcessingTime,
+        },
+      },
     };
   }
 
   /**
    * Re-tag entities based on filter criteria
    */
-  async reTagEntities(
-    request: ReTagRequest,
-    userId: string
-  ): Promise<ReTagResponse> {
+  async reTagEntities(request: ReTagRequest, userId: string): Promise<ReTagResponse> {
     const startTime = Date.now();
 
     try {
       // Build query based on filter
       const where: any = {
-        ...(request.filter.entityType && { entityType: request.filter.entityType })
+        ...(request.filter.entityType && { entityType: request.filter.entityType }),
       };
 
       // Add date range filter if provided
       if (request.filter.dateRange) {
         where.createdAt = {
           gte: request.filter.dateRange.start,
-          lte: request.filter.dateRange.end
+          lte: request.filter.dateRange.end,
         };
       }
 
@@ -431,22 +428,28 @@ export class EntityTaggingService implements IEntityTaggingService {
 
       if (request.filter.hasNoTags) {
         // Find entities without tags
+        const dateRange = request.filter.dateRange && 
+          request.filter.dateRange.start && 
+          request.filter.dateRange.end 
+          ? request.filter.dateRange as { start: Date; end: Date }
+          : undefined;
+        
         entityIds = await this.findEntitiesWithoutTags(
           request.filter.entityType!,
-          request.filter.dateRange
+          dateRange
         );
       } else if (request.filter.tags && request.filter.tags.length > 0) {
         // Find entities with specific tags
         const entityTags = await prisma.entityTag.findMany({
           where: {
             ...where,
-            tagId: { in: request.filter.tags }
+            tagId: { in: request.filter.tags },
           },
           select: { entityId: true },
-          distinct: ['entityId']
+          distinct: ['entityId'],
         });
 
-        entityIds = entityTags.map(et => et.entityId);
+        entityIds = entityTags.map((et) => et.entityId);
       }
 
       // Process in batches
@@ -464,16 +467,16 @@ export class EntityTaggingService implements IEntityTaggingService {
           // Process batch
           const batchResult = await this.batchTagEntities(
             {
-              entities: batch.map(id => ({
+              entities: batch.map((id) => ({
                 type: request.filter.entityType!,
-                id
+                id,
               })),
               options: {
                 forceReTag: true,
                 confidenceThreshold: 0.7,
                 maxTags: 5,
-                includeRelated: false
-              }
+                includeRelated: false,
+              },
             },
             userId
           );
@@ -484,12 +487,12 @@ export class EntityTaggingService implements IEntityTaggingService {
           skipped += batchResult.data!.summary.skipped;
 
           // Collect errors
-          batchResult.data!.results
-            .filter(r => r.status === 'failed')
-            .forEach(r => {
+          batchResult
+            .data!.results.filter((r) => r.status === 'failed')
+            .forEach((r) => {
               errors.push({
                 entityId: r.entityId,
-                error: r.error || 'Unknown error'
+                error: r.error || 'Unknown error',
               });
             });
         } else {
@@ -508,8 +511,8 @@ export class EntityTaggingService implements IEntityTaggingService {
           failed,
           skipped,
           errors,
-          estimatedTimeMs
-        }
+          estimatedTimeMs,
+        },
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -526,7 +529,7 @@ export class EntityTaggingService implements IEntityTaggingService {
   ): Promise<FindEntitiesByTagResponse> {
     try {
       const tag = await prisma.universalTag.findUnique({
-        where: { id: tagId }
+        where: { id: tagId },
       });
 
       if (!tag) {
@@ -538,9 +541,10 @@ export class EntityTaggingService implements IEntityTaggingService {
 
       const where: Prisma.EntityTagWhereInput = {
         tagId,
-        ...(types && types.length > 0 && {
-          entityType: { in: types }
-        })
+        ...(types &&
+          types.length > 0 && {
+            entityType: { in: types },
+          }),
       };
 
       const [entityTags, total] = await prisma.$transaction([
@@ -548,9 +552,9 @@ export class EntityTaggingService implements IEntityTaggingService {
           where,
           skip: (page - 1) * limit,
           take: limit,
-          orderBy: { createdAt: 'desc' }
+          orderBy: { createdAt: 'desc' },
         }),
-        prisma.entityTag.count({ where })
+        prisma.entityTag.count({ where }),
       ]);
 
       // Get entity previews
@@ -562,7 +566,7 @@ export class EntityTaggingService implements IEntityTaggingService {
             id: et.entityId,
             preview: this.getEntityPreview(entity, et.entityType as EntityType),
             taggedAt: et.createdAt.toISOString(),
-            confidence: et.confidence
+            confidence: et.confidence,
           };
         })
       );
@@ -573,7 +577,7 @@ export class EntityTaggingService implements IEntityTaggingService {
         tag: {
           id: tag.id,
           code: tag.code,
-          name: tag.name
+          name: tag.name,
         },
         pagination: {
           page,
@@ -581,8 +585,8 @@ export class EntityTaggingService implements IEntityTaggingService {
           total,
           pages: Math.ceil(total / limit),
           hasNext: page * limit < total,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -613,39 +617,39 @@ export class EntityTaggingService implements IEntityTaggingService {
       // Example: Find related entities through shared tags
       const entityTags = await prisma.entityTag.findMany({
         where: { entityType, entityId },
-        select: { tagId: true }
+        select: { tagId: true },
       });
 
       if (entityTags.length > 0) {
-        const tagIds = entityTags.map(et => et.tagId);
+        const tagIds = entityTags.map((et) => et.tagId);
 
         // Find other entities with same tags
         const relatedEntities = await prisma.entityTag.findMany({
           where: {
             tagId: { in: tagIds },
-            NOT: { entityId }
+            NOT: { entityId },
           },
           select: {
             entityType: true,
             entityId: true,
             tagId: true,
-            confidence: true
+            confidence: true,
           },
           distinct: ['entityId'],
-          take: 10
+          take: 10,
         });
 
         // Group by entity and calculate relationship confidence
         const entityMap = new Map<string, any>();
 
-        relatedEntities.forEach(re => {
+        relatedEntities.forEach((re) => {
           const key = `${re.entityType}:${re.entityId}`;
           if (!entityMap.has(key)) {
             entityMap.set(key, {
               targetType: re.entityType,
               targetId: re.entityId,
               sharedTags: [],
-              avgConfidence: 0
+              avgConfidence: 0,
             });
           }
 
@@ -664,8 +668,8 @@ export class EntityTaggingService implements IEntityTaggingService {
             discoveredBy: 'TAG_ANALYSIS',
             metadata: {
               sharedTagCount: value.sharedTags.length,
-              sharedTags: value.sharedTags
-            }
+              sharedTags: value.sharedTags,
+            },
           });
         });
       }
@@ -675,10 +679,10 @@ export class EntityTaggingService implements IEntityTaggingService {
         data: {
           entity: {
             type: entityType,
-            id: entityId
+            id: entityId,
           },
-          relationships
-        }
+          relationships,
+        },
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -729,7 +733,7 @@ export class EntityTaggingService implements IEntityTaggingService {
           date: entity.date,
           accountId: entity.account_id,
           type: entity.type,
-          status: entity.status
+          status: entity.status,
         };
       case 'document':
         // Document model doesn't exist yet
@@ -738,7 +742,7 @@ export class EntityTaggingService implements IEntityTaggingService {
         return {
           vatNumber: entity.vatNumber,
           email: entity.email,
-          taxId: entity.taxId
+          taxId: entity.taxId,
         };
       case 'invoice':
         return {
@@ -746,7 +750,7 @@ export class EntityTaggingService implements IEntityTaggingService {
           currency: entity.currency,
           status: entity.status,
           clientId: entity.clientId,
-          dueDate: entity.dueDate
+          dueDate: entity.dueDate,
         };
       default:
         return {};
@@ -778,19 +782,19 @@ export class EntityTaggingService implements IEntityTaggingService {
   ): Array<{ tagId: string; confidence: number; method: TagMethod }> {
     const map = new Map<string, { confidence: number; method: TagMethod }>();
 
-    tags.forEach(tag => {
+    tags.forEach((tag) => {
       const existing = map.get(tag.tagId);
       if (!existing || tag.confidence > existing.confidence) {
         map.set(tag.tagId, {
           confidence: tag.confidence,
-          method: tag.method
+          method: tag.method,
         });
       }
     });
 
     return Array.from(map.entries()).map(([tagId, data]) => ({
       tagId,
-      ...data
+      ...data,
     }));
   }
 

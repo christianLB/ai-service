@@ -5,7 +5,7 @@ import { FeedbackResponse, LearningResponse } from '../../types/tagging/response
 import { IAITaggingService } from './interfaces';
 import { AIProviderError, handleTaggingError } from './errors';
 import logger from '../../utils/logger';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { claudeAIService, TradingContext } from '../ai/claude.service';
 import { OpenAIAnalysisService } from '../document-intelligence/openai-analysis.service';
 
@@ -58,15 +58,15 @@ export class AITaggingService implements IAITaggingService {
       const availableTags = await prisma.universalTag.findMany({
         where: {
           isActive: true,
-          entityTypes: { has: entityType }
+          entityTypes: { has: entityType },
         },
         select: {
           id: true,
           code: true,
           name: true,
           description: true,
-          patterns: true
-        }
+          patterns: true,
+        },
       });
 
       if (availableTags.length === 0) {
@@ -83,15 +83,33 @@ export class AITaggingService implements IAITaggingService {
         if (provider === 'claude') {
           await this.initializeClaudeService();
           if (claudeAIService.isReady()) {
-            aiResponse = await this.getClaudeTagSuggestions(content, entityType, metadata, availableTags);
+            aiResponse = await this.getClaudeTagSuggestions(
+              content,
+              entityType,
+              metadata,
+              availableTags
+            );
           } else {
-            aiResponse = await this.getOpenAITagSuggestions(content, entityType, metadata, availableTags);
+            aiResponse = await this.getOpenAITagSuggestions(
+              content,
+              entityType,
+              metadata,
+              availableTags
+            );
           }
         } else {
-          aiResponse = await this.getOpenAITagSuggestions(content, entityType, metadata, availableTags);
+          aiResponse = await this.getOpenAITagSuggestions(
+            content,
+            entityType,
+            metadata,
+            availableTags
+          );
         }
       } catch (error: any) {
-        logger.warn(`Failed to get AI suggestions from ${provider}, falling back to pattern matching`, error);
+        logger.warn(
+          `Failed to get AI suggestions from ${provider}, falling back to pattern matching`,
+          error
+        );
         // Fallback to pattern-based matching
         aiResponse = await this.patternBasedTagging(content, availableTags, maxTags);
       }
@@ -100,7 +118,7 @@ export class AITaggingService implements IAITaggingService {
       const suggestions = this.parseAIResponse(aiResponse, availableTags);
 
       // Filter by confidence threshold
-      const filtered = suggestions.filter(s => s.confidence >= threshold);
+      const filtered = suggestions.filter((s) => s.confidence >= threshold);
 
       // Sort by confidence and limit
       filtered.sort((a, b) => b.confidence - a.confidence);
@@ -110,7 +128,7 @@ export class AITaggingService implements IAITaggingService {
         provider,
         entityType,
         suggestedCount: final.length,
-        contentLength: content.length
+        contentLength: content.length,
       });
 
       return final;
@@ -150,15 +168,15 @@ export class AITaggingService implements IAITaggingService {
       logger.info('Tag feedback processed', {
         entityType: feedback.entityType,
         entityId: feedback.entityId,
-        isCorrect: feedback.feedback.isCorrect
+        isCorrect: feedback.feedback.isCorrect,
       });
 
       return {
         success: true,
         data: {
           message: 'Feedback recorded successfully',
-          processed: true
-        }
+          processed: true,
+        },
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -189,7 +207,7 @@ export class AITaggingService implements IAITaggingService {
       if (learning.previousTagId) {
         // Decrease pattern confidence for incorrect tag
         const previousTag = await prisma.universalTag.findUnique({
-          where: { id: learning.previousTagId }
+          where: { id: learning.previousTagId },
         });
 
         if (previousTag && previousTag.patterns) {
@@ -207,7 +225,10 @@ export class AITaggingService implements IAITaggingService {
       // Also track incorrect patterns if previous tag exists
       if (learning.previousTagId) {
         const incorrectKey = `${learning.entityType}-${learning.previousTagId}`;
-        const incorrectPattern = this.learningPatterns.get(incorrectKey) || { correct: 0, incorrect: 0 };
+        const incorrectPattern = this.learningPatterns.get(incorrectKey) || {
+          correct: 0,
+          incorrect: 0,
+        };
         incorrectPattern.incorrect++;
         this.learningPatterns.set(incorrectKey, incorrectPattern);
       }
@@ -215,7 +236,7 @@ export class AITaggingService implements IAITaggingService {
       logger.info('Tag learning processed', {
         entityType: learning.entityType,
         entityId: learning.entityId,
-        correctTagId: learning.correctTagId
+        correctTagId: learning.correctTagId,
       });
 
       return {
@@ -223,8 +244,8 @@ export class AITaggingService implements IAITaggingService {
         data: {
           message: 'Learning processed successfully',
           patternsUpdated,
-          confidenceAdjusted
-        }
+          confidenceAdjusted,
+        },
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -237,7 +258,7 @@ export class AITaggingService implements IAITaggingService {
   async updateTagPatterns(tagId: string, entityExamples: string[]): Promise<void> {
     try {
       const tag = await prisma.universalTag.findUnique({
-        where: { id: tagId }
+        where: { id: tagId },
       });
 
       if (!tag) {
@@ -254,20 +275,20 @@ export class AITaggingService implements IAITaggingService {
         keywords: this.mergeKeywords(existingPatterns.keywords || [], patterns.keywords),
         merchants: this.mergeArrays(existingPatterns.merchants || [], patterns.merchants),
         learnedFrom: (existingPatterns.learnedFrom || 0) + entityExamples.length,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       };
 
       // Update tag patterns
       await prisma.universalTag.update({
         where: { id: tagId },
         data: {
-          patterns: updatedPatterns as any
-        }
+          patterns: updatedPatterns as any,
+        },
       });
 
       logger.info('Tag patterns updated', {
         tagId,
-        exampleCount: entityExamples.length
+        exampleCount: entityExamples.length,
       });
     } catch (error) {
       throw handleTaggingError(error);
@@ -283,7 +304,7 @@ export class AITaggingService implements IAITaggingService {
   ): Promise<{ matches: boolean; confidence: number }> {
     try {
       const tag = await prisma.universalTag.findUnique({
-        where: { id: tagId }
+        where: { id: tagId },
       });
 
       if (!tag || !tag.patterns) {
@@ -323,7 +344,7 @@ export class AITaggingService implements IAITaggingService {
 
       return {
         matches: confidence > 0.5,
-        confidence: Math.round(confidence * 100) / 100
+        confidence: Math.round(confidence * 100) / 100,
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -338,9 +359,9 @@ export class AITaggingService implements IAITaggingService {
     metadata: Record<string, any> | undefined,
     availableTags: any[]
   ): string {
-    const tagList = availableTags.map(t =>
-      `- ${t.code}: ${t.name}${t.description ? ` (${t.description})` : ''}`
-    ).join('\n');
+    const tagList = availableTags
+      .map((t) => `- ${t.code}: ${t.name}${t.description ? ` (${t.description})` : ''}`)
+      .join('\n');
 
     return `
 Analyze the following ${entityType} and suggest the most appropriate tags from the list below.
@@ -377,9 +398,7 @@ Response format:
       // Simple keyword matching for mock
       if (tag.patterns?.keywords) {
         const keywords = tag.patterns.keywords as string[];
-        const matches = keywords.filter((k: string) =>
-          contentLower.includes(k.toLowerCase())
-        );
+        const matches = keywords.filter((k: string) => contentLower.includes(k.toLowerCase()));
         confidence = matches.length / keywords.length;
       }
 
@@ -395,7 +414,7 @@ Response format:
         suggestions.push({
           code: tag.code,
           confidence,
-          reasoning: `Content matches ${Math.round(confidence * 100)}% of tag patterns`
+          reasoning: `Content matches ${Math.round(confidence * 100)}% of tag patterns`,
         });
       }
     }
@@ -409,7 +428,7 @@ Response format:
     aiResponse: any,
     availableTags: any[]
   ): Array<{ tagId: string; confidence: number; reasoning?: string }> {
-    const tagMap = new Map(availableTags.map(t => [t.code, t.id]));
+    const tagMap = new Map(availableTags.map((t) => [t.code, t.id]));
     const suggestions = [];
 
     for (const suggestion of aiResponse) {
@@ -418,7 +437,7 @@ Response format:
         suggestions.push({
           tagId,
           confidence: suggestion.confidence,
-          reasoning: suggestion.reasoning
+          reasoning: suggestion.reasoning,
         });
       }
     }
@@ -434,7 +453,7 @@ Response format:
       switch (entityType) {
         case 'transaction': {
           const transaction = await prisma.transactions.findUnique({
-            where: { id: entityId }
+            where: { id: entityId },
           });
           if (!transaction) {
             return null;
@@ -446,14 +465,14 @@ Response format:
               amount: transaction.amount,
               date: transaction.date,
               counterpartyName: transaction.counterparty_name,
-              type: transaction.type
-            }
+              type: transaction.type,
+            },
           };
         }
 
         case 'client': {
           const client = await prisma.client.findUnique({
-            where: { id: entityId }
+            where: { id: entityId },
           });
           if (!client) {
             return null;
@@ -465,14 +484,14 @@ Response format:
               clientType: client.clientType,
               language: client.language,
               currency: client.currency,
-              status: client.status
-            }
+              status: client.status,
+            },
           };
         }
 
         case 'invoice': {
           const invoice = await prisma.invoice.findUnique({
-            where: { id: entityId }
+            where: { id: entityId },
           });
           if (!invoice) {
             return null;
@@ -486,8 +505,8 @@ Response format:
               amount: invoice.total,
               currency: invoice.currency,
               date: invoice.issueDate,
-              clientId: invoice.clientId
-            }
+              clientId: invoice.clientId,
+            },
           };
         }
 
@@ -496,7 +515,7 @@ Response format:
           // Placeholder for now
           return {
             content: `Document ${entityId}`,
-            metadata: {}
+            metadata: {},
           };
         }
 
@@ -516,10 +535,10 @@ Response format:
     const keywords = new Set<string>();
     const merchants = new Set<string>();
 
-    examples.forEach(example => {
+    examples.forEach((example) => {
       // Extract potential keywords (simple implementation)
       const words = example.toLowerCase().split(/\s+/);
-      words.forEach(word => {
+      words.forEach((word) => {
         if (word.length > 3 && !this.isCommonWord(word)) {
           keywords.add(word);
         }
@@ -528,7 +547,7 @@ Response format:
       // Extract potential merchant names (simplified)
       const upperWords = example.match(/[A-Z][A-Za-z]+/g);
       if (upperWords) {
-        upperWords.forEach(word => {
+        upperWords.forEach((word) => {
           if (word.length > 3) {
             merchants.add(word);
           }
@@ -538,7 +557,7 @@ Response format:
 
     return {
       keywords: Array.from(keywords),
-      merchants: Array.from(merchants)
+      merchants: Array.from(merchants),
     };
   }
 
@@ -570,11 +589,11 @@ Response format:
       content,
       entityType,
       metadata,
-      availableTags: availableTags.map(t => ({
+      availableTags: availableTags.map((t) => ({
         code: t.code,
         name: t.name,
-        description: t.description
-      }))
+        description: t.description,
+      })),
     };
 
     // Create a trading-like context to use the existing Claude service method
@@ -586,7 +605,7 @@ Response format:
       volume24h: 0,
       volatility: 0,
       orderBook: { bidDepth: 0, askDepth: 0, spread: 0 },
-      technicalIndicators: tagContext
+      technicalIndicators: tagContext,
     };
 
     await this.initializeClaudeService();
@@ -618,12 +637,14 @@ Response format:
     const suggestions = [];
 
     for (const tag of availableTags) {
-      if (reasoning.includes(tag.code.toLowerCase()) ||
-          reasoning.includes(tag.name.toLowerCase())) {
+      if (
+        reasoning.includes(tag.code.toLowerCase()) ||
+        reasoning.includes(tag.name.toLowerCase())
+      ) {
         suggestions.push({
           code: tag.code,
           confidence: decision.confidence || 0.7,
-          reasoning: `Mentioned in analysis: ${tag.name}`
+          reasoning: `Mentioned in analysis: ${tag.name}`,
         });
       }
     }
@@ -656,19 +677,19 @@ Response format:
         const learningScore = this.getLearningScore(entityType, tag.id);
 
         // Combined confidence (weighted average)
-        const confidence = (similarity * 0.5) + (patternScore.confidence * 0.3) + (learningScore * 0.2);
+        const confidence = similarity * 0.5 + patternScore.confidence * 0.3 + learningScore * 0.2;
 
         return {
           code: tag.code,
           confidence,
-          reasoning: `Semantic similarity: ${(similarity * 100).toFixed(0)}%, Pattern match: ${(patternScore.confidence * 100).toFixed(0)}%, Learning score: ${(learningScore * 100).toFixed(0)}%`
+          reasoning: `Semantic similarity: ${(similarity * 100).toFixed(0)}%, Pattern match: ${(patternScore.confidence * 100).toFixed(0)}%, Learning score: ${(learningScore * 100).toFixed(0)}%`,
         };
       })
     );
 
     // Sort by confidence and return top results
     return tagSimilarities
-      .filter(s => s.confidence > 0.3)
+      .filter((s) => s.confidence > 0.3)
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 5);
   }
@@ -742,9 +763,9 @@ Response format:
     metadata: Record<string, any> | undefined,
     availableTags: any[]
   ): string {
-    const tagList = availableTags.map(t =>
-      `- ${t.code}: ${t.name}${t.description ? ` (${t.description})` : ''}`
-    ).join('\n');
+    const tagList = availableTags
+      .map((t) => `- ${t.code}: ${t.name}${t.description ? ` (${t.description})` : ''}`)
+      .join('\n');
 
     let contextInfo = '';
     if (metadata) {
@@ -793,15 +814,13 @@ Return up to 5 most relevant tags with confidence scores.`;
         suggestions.push({
           code: tag.code,
           confidence: Math.max(patternResult.confidence, learningScore),
-          reasoning: `Pattern-based matching: ${(patternResult.confidence * 100).toFixed(0)}%, Historical accuracy: ${(learningScore * 100).toFixed(0)}%`
+          reasoning: `Pattern-based matching: ${(patternResult.confidence * 100).toFixed(0)}%, Historical accuracy: ${(learningScore * 100).toFixed(0)}%`,
         });
       }
     }
 
     // Sort by confidence and limit
-    return suggestions
-      .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, maxTags);
+    return suggestions.sort((a, b) => b.confidence - a.confidence).slice(0, maxTags);
   }
 
   /**
@@ -819,12 +838,14 @@ Return up to 5 most relevant tags with confidence scores.`;
       parallel?: boolean;
       batchSize?: number;
     }
-  ): Promise<Array<{
-    entityId: string;
-    status: 'success' | 'error';
-    tags?: Array<{ tagId: string; confidence: number; reasoning?: string }>;
-    error?: string;
-  }>> {
+  ): Promise<
+    Array<{
+      entityId: string;
+      status: 'success' | 'error';
+      tags?: Array<{ tagId: string; confidence: number; reasoning?: string }>;
+      error?: string;
+    }>
+  > {
     const batchSize = options?.batchSize || 10;
     const results = [];
 
@@ -845,13 +866,13 @@ Return up to 5 most relevant tags with confidence scores.`;
             return {
               entityId: item.entityId,
               status: 'success' as const,
-              tags: suggestions
+              tags: suggestions,
             };
           } catch (error: any) {
             return {
               entityId: item.entityId,
               status: 'error' as const,
-              error: error.message
+              error: error.message,
             };
           }
         })
@@ -881,19 +902,19 @@ Return up to 5 most relevant tags with confidence scores.`;
   }> {
     try {
       // Detect language if not provided
-      const detectedLanguage = language || await this.detectLanguage(content);
+      const detectedLanguage = language || (await this.detectLanguage(content));
 
       // Get all categories from tags
       const tags = await prisma.universalTag.findMany({
         where: {
           isActive: true,
-          entityTypes: { has: entityType }
-        }
+          entityTypes: { has: entityType },
+        },
       });
 
       // Group tags by category (using path as category)
       const categories = new Map<string, any[]>();
-      tags.forEach(tag => {
+      tags.forEach((tag) => {
         const category = tag.path.split('/')[1] || tag.name || 'uncategorized';
         if (!categories.has(category)) {
           categories.set(category, []);
@@ -904,13 +925,13 @@ Return up to 5 most relevant tags with confidence scores.`;
       // Get AI suggestions
       const suggestions = await this.suggestTags(content, entityType, {
         ...context,
-        language: detectedLanguage
+        language: detectedLanguage,
       });
 
       // Determine primary category based on suggestions
       const categoryScores = new Map<string, number>();
-      suggestions.forEach(suggestion => {
-        const tag = tags.find(t => t.id === suggestion.tagId);
+      suggestions.forEach((suggestion) => {
+        const tag = tags.find((t) => t.id === suggestion.tagId);
         if (tag) {
           // Use the tag name or first level of path as category
           const category = tag.path.split('/')[1] || tag.name || 'uncategorized';
@@ -920,17 +941,16 @@ Return up to 5 most relevant tags with confidence scores.`;
       });
 
       // Sort categories by score
-      const sortedCategories = Array.from(categoryScores.entries())
-        .sort((a, b) => b[1] - a[1]);
+      const sortedCategories = Array.from(categoryScores.entries()).sort((a, b) => b[1] - a[1]);
 
       const primaryCategory = sortedCategories[0]?.[0] || 'uncategorized';
-      const subCategories = sortedCategories.slice(1, 4).map(c => c[0]);
+      const subCategories = sortedCategories.slice(1, 4).map((c) => c[0]);
       const confidence = sortedCategories[0]?.[1] || 0;
 
       return {
         category: primaryCategory,
         confidence: Math.min(1, confidence),
-        reasoning: `Categorized based on ${suggestions.length} AI tag suggestions`
+        reasoning: `Categorized based on ${suggestions.length} AI tag suggestions`,
       };
     } catch (error) {
       throw handleTaggingError(error);
@@ -949,11 +969,23 @@ Return up to 5 most relevant tags with confidence scores.`;
       // For now, simple detection based on common words
       const lowerContent = content.toLowerCase();
 
-      if (lowerContent.includes('the') || lowerContent.includes('and') || lowerContent.includes('for')) {
+      if (
+        lowerContent.includes('the') ||
+        lowerContent.includes('and') ||
+        lowerContent.includes('for')
+      ) {
         return 'en';
-      } else if (lowerContent.includes('el') || lowerContent.includes('la') || lowerContent.includes('de')) {
+      } else if (
+        lowerContent.includes('el') ||
+        lowerContent.includes('la') ||
+        lowerContent.includes('de')
+      ) {
         return 'es';
-      } else if (lowerContent.includes('le') || lowerContent.includes('de') || lowerContent.includes('et')) {
+      } else if (
+        lowerContent.includes('le') ||
+        lowerContent.includes('de') ||
+        lowerContent.includes('et')
+      ) {
         return 'fr';
       }
 
@@ -973,20 +1005,23 @@ Return up to 5 most relevant tags with confidence scores.`;
     targetLanguages: string[],
     metadata?: Record<string, any>
   ): Promise<Record<string, Array<{ tagId: string; confidence: number; reasoning?: string }>>> {
-    const results: Record<string, Array<{ tagId: string; confidence: number; reasoning?: string }>> = {};
+    const results: Record<
+      string,
+      Array<{ tagId: string; confidence: number; reasoning?: string }>
+    > = {};
 
     for (const lang of targetLanguages) {
       try {
         // Get suggestions in target language
         const suggestions = await this.suggestTags(content, entityType, {
-          language: lang
+          language: lang,
         });
 
         // Add translations if needed
         const enhancedSuggestions = await Promise.all(
           suggestions.map(async (suggestion) => {
             const tag = await prisma.universalTag.findUnique({
-              where: { id: suggestion.tagId }
+              where: { id: suggestion.tagId },
             });
 
             if (tag && tag.metadata && typeof tag.metadata === 'object' && tag.metadata !== null) {
@@ -995,7 +1030,7 @@ Return up to 5 most relevant tags with confidence scores.`;
               if (translations && translations[lang]) {
                 return {
                   ...suggestion,
-                  translation: translations[lang]
+                  translation: translations[lang],
                 };
               }
             }
@@ -1004,10 +1039,10 @@ Return up to 5 most relevant tags with confidence scores.`;
           })
         );
 
-        results[lang] = enhancedSuggestions.map(s => ({
+        results[lang] = enhancedSuggestions.map((s) => ({
           tagId: s.tagId,
           confidence: s.confidence,
-          reasoning: (s as any).translation || s.reasoning
+          reasoning: (s as any).translation || s.reasoning,
         }));
       } catch (error) {
         logger.warn(`Failed to get suggestions for language ${lang}`, error);
@@ -1028,7 +1063,7 @@ Return up to 5 most relevant tags with confidence scores.`;
   ): Promise<void> {
     try {
       const tag = await prisma.universalTag.findUnique({
-        where: { id: tagId }
+        where: { id: tagId },
       });
 
       if (!tag) {
@@ -1039,9 +1074,10 @@ Return up to 5 most relevant tags with confidence scores.`;
       const positivePatterns = this.extractPatterns(successfulExamples);
 
       // Extract negative patterns from failed examples
-      const negativePatterns = failedExamples.length > 0
-        ? this.extractPatterns(failedExamples)
-        : { keywords: [], merchants: [] };
+      const negativePatterns =
+        failedExamples.length > 0
+          ? this.extractPatterns(failedExamples)
+          : { keywords: [], merchants: [] };
 
       // Update patterns with positive/negative reinforcement
       const existingPatterns = (tag.patterns as any) || {};
@@ -1059,61 +1095,53 @@ Return up to 5 most relevant tags with confidence scores.`;
         ),
         positiveExamples: [
           ...(existingPatterns.positiveExamples || []),
-          ...successfulExamples.slice(0, 5)
+          ...successfulExamples.slice(0, 5),
         ].slice(-20), // Keep last 20 examples
         negativeExamples: [
           ...(existingPatterns.negativeExamples || []),
-          ...failedExamples.slice(0, 5)
+          ...failedExamples.slice(0, 5),
         ].slice(-10), // Keep last 10 negative examples
         confidence: this.calculatePatternConfidence(
           successfulExamples.length,
           failedExamples.length,
           existingPatterns.confidence || 0.5
         ),
-        lastImproved: new Date().toISOString()
+        lastImproved: new Date().toISOString(),
       };
 
       await prisma.universalTag.update({
         where: { id: tagId },
         data: {
-          patterns: updatedPatterns as any
-        }
+          patterns: updatedPatterns as any,
+        },
       });
 
       logger.info('Tag patterns improved', {
         tagId,
         positiveExamples: successfulExamples.length,
         negativeExamples: failedExamples.length,
-        newConfidence: updatedPatterns.confidence
+        newConfidence: updatedPatterns.confidence,
       });
     } catch (error) {
       throw handleTaggingError(error);
     }
   }
 
-  private refineKeywords(
-    existing: string[],
-    positive: string[],
-    negative: string[]
-  ): string[] {
+  private refineKeywords(existing: string[], positive: string[], negative: string[]): string[] {
     // Add positive keywords
     const refined = new Set(existing);
-    positive.forEach(k => refined.add(k));
+    positive.forEach((k) => refined.add(k));
 
     // Remove keywords that appear in negative examples
-    negative.forEach(k => refined.delete(k));
+    negative.forEach((k) => refined.delete(k));
 
     return Array.from(refined);
   }
 
-  private refineMerchants(
-    existing: string[],
-    positive: string[],
-    negative: string[]
-  ): string[] {
+  private refineMerchants(existing: string[], positive: string[], negative: string[]): string[] {
     const refined = new Set(existing);
-    positive.forEach(m => refined.add(m));
-    negative.forEach(m => refined.delete(m));
+    positive.forEach((m) => refined.add(m));
+    negative.forEach((m) => refined.delete(m));
     return Array.from(refined);
   }
 
@@ -1131,7 +1159,7 @@ Return up to 5 most relevant tags with confidence scores.`;
     const weight = Math.min(1, total / 20); // More examples = more weight
 
     // Weighted average of current confidence and new success rate
-    const newConfidence = (currentConfidence * (1 - weight)) + (successRate * weight);
+    const newConfidence = currentConfidence * (1 - weight) + successRate * weight;
 
     return Math.round(newConfidence * 100) / 100;
   }
@@ -1169,12 +1197,12 @@ Return up to 5 most relevant tags with confidence scores.`;
         for (const entityId of context.relatedEntities) {
           const relatedTags = await prisma.entityTag.findMany({
             where: {
-              entityId: entityId
+              entityId: entityId,
             },
-            select: { tagId: true }
+            select: { tagId: true },
           });
 
-          relatedTags.forEach(rt => {
+          relatedTags.forEach((rt) => {
             const currentScore = contextualScores.get(rt.tagId) || 0;
             contextualScores.set(rt.tagId, currentScore + 0.15); // Related entity boost
           });
@@ -1182,14 +1210,15 @@ Return up to 5 most relevant tags with confidence scores.`;
       }
 
       // Merge base suggestions with contextual scores
-      const enhancedSuggestions = baseSuggestions.map(suggestion => {
+      const enhancedSuggestions = baseSuggestions.map((suggestion) => {
         const contextBoost = contextualScores.get(suggestion.tagId) || 0;
         return {
           ...suggestion,
           confidence: Math.min(1, suggestion.confidence + contextBoost),
-          reasoning: contextBoost > 0
-            ? `${suggestion.reasoning || ''} (Context boost: +${(contextBoost * 100).toFixed(0)}%)`
-            : suggestion.reasoning
+          reasoning:
+            contextBoost > 0
+              ? `${suggestion.reasoning || ''} (Context boost: +${(contextBoost * 100).toFixed(0)}%)`
+              : suggestion.reasoning,
         };
       });
 
@@ -1213,23 +1242,25 @@ Return up to 5 most relevant tags with confidence scores.`;
   }> {
     // Get all tags
     const tags = await prisma.universalTag.findMany({
-      where: { isActive: true }
+      where: { isActive: true },
     });
 
     // Calculate accuracy for each tag
-    const accuracyByTag = tags.map(tag => {
-      const key = `transaction-${tag.id}`; // Assuming transaction entity type
-      const pattern = this.learningPatterns.get(key) || { correct: 0, incorrect: 0 };
-      const total = pattern.correct + pattern.incorrect;
-      const accuracy = total > 0 ? pattern.correct / total : 0;
+    const accuracyByTag = tags
+      .map((tag) => {
+        const key = `transaction-${tag.id}`; // Assuming transaction entity type
+        const pattern = this.learningPatterns.get(key) || { correct: 0, incorrect: 0 };
+        const total = pattern.correct + pattern.incorrect;
+        const accuracy = total > 0 ? pattern.correct / total : 0;
 
-      return {
-        tagId: tag.id,
-        tagCode: tag.code,
-        accuracy,
-        total
-      };
-    }).filter(t => t.total > 0)
+        return {
+          tagId: tag.id,
+          tagCode: tag.code,
+          accuracy,
+          total,
+        };
+      })
+      .filter((t) => t.total > 0)
       .sort((a, b) => b.accuracy - a.accuracy);
 
     // Calculate average confidence from recent suggestions
@@ -1244,9 +1275,9 @@ Return up to 5 most relevant tags with confidence scores.`;
       providerPerformance: {
         claude: 0.85, // Placeholder - would track actual performance
         openai: 0.82, // Placeholder - would track actual performance
-        pattern: averageConfidence
+        pattern: averageConfidence,
       },
-      averageConfidence
+      averageConfidence,
     };
   }
 }

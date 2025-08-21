@@ -1,0 +1,1155 @@
+openapi: 3.0.3
+info:
+  title: AI Service Core AI API
+  description: Document intelligence, AI providers, and intelligent processing endpoints
+  version: 1.0.0
+  contact:
+    name: AI Service AI Team
+    email: ai@ai-service.local
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development server
+  - url: https://api.ai-service.com/api
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Documents
+    description: Document intelligence and analysis
+  - name: Claude AI
+    description: Claude AI trading integration
+  - name: AI Providers
+    description: AI provider management
+  - name: Categorization
+    description: AI-powered categorization
+
+paths:
+  /documents/upload:
+    post:
+      tags:
+        - Documents
+      summary: Upload and analyze document
+      operationId: uploadDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Document file (PDF, DOCX, TXT)
+                autoAnalyze:
+                  type: boolean
+                  default: true
+                  description: Automatically analyze after upload
+      responses:
+        '201':
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /documents:
+    get:
+      tags:
+        - Documents
+      summary: List documents
+      operationId: listDocuments
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - in: query
+          name: analyzed
+          schema:
+            type: boolean
+          description: Filter by analysis status
+      responses:
+        '200':
+          description: Documents retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /documents/{documentId}:
+    get:
+      tags:
+        - Documents
+      summary: Get document details
+      operationId: getDocument
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+      responses:
+        '200':
+          description: Document retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Documents
+      summary: Delete document
+      operationId: deleteDocument
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+      responses:
+        '200':
+          description: Document deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{documentId}/analyze:
+    post:
+      tags:
+        - Documents
+      summary: Analyze document
+      operationId: analyzeDocument
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeDocumentRequest'
+      responses:
+        '200':
+          description: Analysis completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentAnalysisResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{documentId}/analysis:
+    get:
+      tags:
+        - Documents
+      summary: Get document analysis
+      operationId: getDocumentAnalysis
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+      responses:
+        '200':
+          description: Analysis retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentAnalysisResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{documentId}/question:
+    post:
+      tags:
+        - Documents
+      summary: Ask question about document
+      operationId: questionDocument
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentQuestionRequest'
+      responses:
+        '200':
+          description: Question answered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentAnswerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/search:
+    post:
+      tags:
+        - Documents
+      summary: Semantic search across documents
+      operationId: searchDocuments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentSearchRequest'
+      responses:
+        '200':
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /documents/stats/overview:
+    get:
+      tags:
+        - Documents
+      summary: Get document statistics
+      operationId: getDocumentStats
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentStatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /trading/ai-status:
+    get:
+      tags:
+        - Claude AI
+      summary: Get AI provider status
+      operationId: getAIStatus
+      responses:
+        '200':
+          description: AI status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /trading/test-claude:
+    get:
+      tags:
+        - Claude AI
+      summary: Test Claude integration
+      operationId: testClaude
+      responses:
+        '200':
+          description: Claude test successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaudeTestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Claude service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /trading/strategies/generate:
+    post:
+      tags:
+        - Claude AI
+      summary: Generate trading strategy with AI
+      operationId: generateStrategy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateStrategyRequest'
+      responses:
+        '200':
+          description: Strategy generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedStrategyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /trading/analyze:
+    post:
+      tags:
+        - Claude AI
+      summary: Analyze trading opportunity
+      operationId: analyzeTradingOpportunity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeTradingRequest'
+      responses:
+        '200':
+          description: Analysis completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradingAnalysisResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /trading/market-analysis:
+    post:
+      tags:
+        - Claude AI
+      summary: Analyze market conditions
+      operationId: analyzeMarket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarketAnalysisRequest'
+      responses:
+        '200':
+          description: Market analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketAnalysisResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/configs:
+    get:
+      tags:
+        - AI Providers
+      summary: List AI provider configurations
+      operationId: listAIConfigs
+      responses:
+        '200':
+          description: Configurations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIConfigListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - AI Providers
+      summary: Update AI provider configuration
+      operationId: updateAIConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAIConfigRequest'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIConfigResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/configs/claude/{configKey}:
+    get:
+      tags:
+        - AI Providers
+      summary: Get Claude configuration
+      operationId: getClaudeConfig
+      parameters:
+        - in: path
+          name: configKey
+          required: true
+          schema:
+            type: string
+          description: Configuration key
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/configs/openai/{configKey}:
+    get:
+      tags:
+        - AI Providers
+      summary: Get OpenAI configuration
+      operationId: getOpenAIConfig
+      parameters:
+        - in: path
+          name: configKey
+          required: true
+          schema:
+            type: string
+          description: Configuration key
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /financial/transactions/categorize:
+    post:
+      tags:
+        - Categorization
+      summary: Categorize financial transactions
+      operationId: categorizeTransactions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorizeTransactionsRequest'
+      responses:
+        '200':
+          description: Categorization completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategorizationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /financial/ai/learning-stats:
+    get:
+      tags:
+        - Categorization
+      summary: Get AI learning statistics
+      operationId: getAILearningStats
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AILearningStatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /financial/ai/feedback:
+    post:
+      tags:
+        - Categorization
+      summary: Provide categorization feedback
+      operationId: provideFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorizationFeedbackRequest'
+      responses:
+        '200':
+          description: Feedback recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number
+    
+    LimitParam:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Items per page
+    
+    DocumentIdParam:
+      in: path
+      name: documentId
+      required: true
+      schema:
+        type: string
+      description: Document identifier
+
+  schemas:
+    Document:
+      type: object
+      required:
+        - id
+        - filename
+        - mimeType
+        - size
+        - createdAt
+      properties:
+        id:
+          type: string
+        filename:
+          type: string
+        mimeType:
+          type: string
+        size:
+          type: integer
+        analyzed:
+          type: boolean
+        analysis:
+          $ref: '#/components/schemas/DocumentAnalysis'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DocumentAnalysis:
+      type: object
+      properties:
+        summary:
+          type: string
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entity'
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/Topic'
+        sentiment:
+          $ref: '#/components/schemas/Sentiment'
+        language:
+          type: string
+
+    Entity:
+      type: object
+      properties:
+        text:
+          type: string
+        type:
+          type: string
+          enum: [person, organization, location, date, money, other]
+        confidence:
+          type: number
+
+    Topic:
+      type: object
+      properties:
+        name:
+          type: string
+        confidence:
+          type: number
+
+    Sentiment:
+      type: object
+      properties:
+        score:
+          type: number
+        label:
+          type: string
+          enum: [positive, negative, neutral]
+
+    AnalyzeDocumentRequest:
+      type: object
+      properties:
+        extractEntities:
+          type: boolean
+          default: true
+        detectTopics:
+          type: boolean
+          default: true
+        analyzeSentiment:
+          type: boolean
+          default: true
+
+    DocumentQuestionRequest:
+      type: object
+      required:
+        - question
+      properties:
+        question:
+          type: string
+          description: Question to ask about the document
+
+    DocumentSearchRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: Search query
+        limit:
+          type: integer
+          default: 10
+        threshold:
+          type: number
+          default: 0.7
+          description: Similarity threshold
+
+    DocumentSearchResult:
+      type: object
+      properties:
+        documentId:
+          type: string
+        filename:
+          type: string
+        snippet:
+          type: string
+        score:
+          type: number
+
+    GenerateStrategyRequest:
+      type: object
+      required:
+        - marketConditions
+        - riskTolerance
+      properties:
+        marketConditions:
+          type: string
+          description: Current market conditions
+        riskTolerance:
+          type: string
+          enum: [low, medium, high]
+        targetReturn:
+          type: number
+        timeHorizon:
+          type: string
+          enum: [short, medium, long]
+
+    GeneratedStrategy:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        parameters:
+          type: object
+          additionalProperties: true
+        riskScore:
+          type: number
+        expectedReturn:
+          type: number
+        reasoning:
+          type: string
+
+    AnalyzeTradingRequest:
+      type: object
+      required:
+        - symbol
+        - data
+      properties:
+        symbol:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+        strategy:
+          type: string
+
+    TradingAnalysis:
+      type: object
+      properties:
+        recommendation:
+          type: string
+          enum: [buy, sell, hold]
+        confidence:
+          type: number
+        reasoning:
+          type: string
+        riskLevel:
+          type: string
+          enum: [low, medium, high]
+        suggestedAction:
+          type: object
+          additionalProperties: true
+
+    MarketAnalysisRequest:
+      type: object
+      required:
+        - symbols
+      properties:
+        symbols:
+          type: array
+          items:
+            type: string
+        timeframe:
+          type: string
+          enum: [1h, 4h, 1d, 1w]
+
+    MarketAnalysis:
+      type: object
+      properties:
+        overallTrend:
+          type: string
+          enum: [bullish, bearish, neutral]
+        volatility:
+          type: string
+          enum: [low, medium, high]
+        opportunities:
+          type: array
+          items:
+            type: object
+            properties:
+              symbol:
+                type: string
+              action:
+                type: string
+              reasoning:
+                type: string
+
+    AIConfig:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [openai, claude, anthropic]
+        model:
+          type: string
+        apiKey:
+          type: string
+        settings:
+          type: object
+          additionalProperties: true
+        isActive:
+          type: boolean
+
+    UpdateAIConfigRequest:
+      type: object
+      required:
+        - provider
+        - config
+      properties:
+        provider:
+          type: string
+          enum: [openai, claude, anthropic]
+        config:
+          type: object
+          additionalProperties: true
+
+    CategorizeTransactionsRequest:
+      type: object
+      required:
+        - transactions
+      properties:
+        transactions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              description:
+                type: string
+              amount:
+                type: number
+              date:
+                type: string
+                format: date
+
+    CategorizationResult:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        category:
+          type: string
+        confidence:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+
+    CategorizationFeedbackRequest:
+      type: object
+      required:
+        - transactionId
+        - correctCategory
+      properties:
+        transactionId:
+          type: string
+        correctCategory:
+          type: string
+        feedback:
+          type: string
+
+    AILearningStats:
+      type: object
+      properties:
+        totalCategorized:
+          type: integer
+        accuracy:
+          type: number
+        confidenceAverage:
+          type: number
+        categoriesUsed:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              count:
+                type: integer
+
+    AIStatus:
+      type: object
+      properties:
+        providers:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [active, inactive, error]
+              model:
+                type: string
+              lastUsed:
+                type: string
+                format: date-time
+
+    # Response schemas
+    DocumentResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Document'
+
+    DocumentListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    DocumentAnalysisResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/DocumentAnalysis'
+
+    DocumentAnswerResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            answer:
+              type: string
+            confidence:
+              type: number
+            sources:
+              type: array
+              items:
+                type: string
+
+    DocumentSearchResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentSearchResult'
+
+    DocumentStatsResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            totalDocuments:
+              type: integer
+            analyzedDocuments:
+              type: integer
+            totalSize:
+              type: integer
+            averageAnalysisTime:
+              type: number
+
+    AIStatusResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/AIStatus'
+
+    ClaudeTestResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+            response:
+              type: string
+            model:
+              type: string
+
+    GeneratedStrategyResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/GeneratedStrategy'
+
+    TradingAnalysisResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/TradingAnalysis'
+
+    MarketAnalysisResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/MarketAnalysis'
+
+    AIConfigResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/AIConfig'
+
+    AIConfigListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIConfig'
+
+    CategorizationResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorizationResult'
+
+    AILearningStatsResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/AILearningStats'
+
+    MessageResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    PaginationMeta:
+      type: object
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

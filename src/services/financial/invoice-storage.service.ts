@@ -58,11 +58,7 @@ export class InvoiceStoragePrismaService {
     fileName: string,
     options: InvoiceStorageOptions = {}
   ): Promise<StoredInvoice> {
-    const {
-      storageType = 'local',
-      expirationDays,
-      generatePublicUrl = false
-    } = options;
+    const { storageType = 'local', expirationDays, generatePublicUrl = false } = options;
 
     try {
       // Ensure storage directory exists
@@ -107,8 +103,8 @@ export class InvoiceStoragePrismaService {
           storage_type: storageType,
           url,
           expires_at: expires_at,
-          metadata: {}
-        }
+          metadata: {},
+        },
       });
 
       logger.info(`Invoice stored successfully: ${uniqueFileName}`);
@@ -125,12 +121,13 @@ export class InvoiceStoragePrismaService {
         url: stored_invoices.url || undefined,
         metadata: stored_invoices.metadata as Record<string, any> | undefined,
         createdAt: stored_invoices.created_at || new Date(),
-        expiresAt: stored_invoices.expires_at || undefined
+        expiresAt: stored_invoices.expires_at || undefined,
       };
-
     } catch (error) {
       logger.error('Error storing invoice:', error);
-      throw new Error(`Failed to store invoice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to store invoice: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -145,11 +142,11 @@ export class InvoiceStoragePrismaService {
       // Get metadata from database
       const stored_invoices = await this.prisma.stored_invoices.findFirst({
         where: {
-          invoice_id: invoiceId
+          invoice_id: invoiceId,
         },
         orderBy: {
-          created_at: 'desc'
-        }
+          created_at: 'desc',
+        },
       });
 
       if (!stored_invoices) {
@@ -178,14 +175,13 @@ export class InvoiceStoragePrismaService {
         url: stored_invoices.url || undefined,
         metadata: stored_invoices.metadata as Record<string, any> | undefined,
         createdAt: stored_invoices.created_at || new Date(),
-        expiresAt: stored_invoices.expires_at || undefined
+        expiresAt: stored_invoices.expires_at || undefined,
       };
 
       return {
         metadata,
-        buffer
+        buffer,
       };
-
     } catch (error) {
       logger.error('Error retrieving invoice:', error);
       return null;
@@ -202,11 +198,11 @@ export class InvoiceStoragePrismaService {
     try {
       const stored_invoices = await this.prisma.stored_invoices.findFirst({
         where: {
-          invoice_number: invoiceNumber
+          invoice_number: invoiceNumber,
         },
         orderBy: {
-          created_at: 'desc'
-        }
+          created_at: 'desc',
+        },
       });
 
       if (!stored_invoices) {
@@ -228,14 +224,13 @@ export class InvoiceStoragePrismaService {
         url: stored_invoices.url || undefined,
         metadata: stored_invoices.metadata as Record<string, any> | undefined,
         createdAt: stored_invoices.created_at || new Date(),
-        expiresAt: stored_invoices.expires_at || undefined
+        expiresAt: stored_invoices.expires_at || undefined,
       };
 
       return {
         metadata,
-        buffer
+        buffer,
       };
-
     } catch (error) {
       logger.error('Error retrieving invoice by number:', error);
       return null;
@@ -267,10 +262,10 @@ export class InvoiceStoragePrismaService {
       const stored_invoices = await this.prisma.stored_invoices.findMany({
         where,
         orderBy: {
-          created_at: 'desc'
+          created_at: 'desc',
         },
         skip: filters?.offset,
-        take: filters?.limit
+        take: filters?.limit,
       });
 
       return stored_invoices.map((invoice: any) => ({
@@ -285,9 +280,8 @@ export class InvoiceStoragePrismaService {
         url: invoice.url || undefined,
         metadata: invoice.metadata as Record<string, any> | undefined,
         createdAt: invoice.created_at || new Date(),
-        expiresAt: invoice.expires_at || undefined
+        expiresAt: invoice.expires_at || undefined,
       }));
-
     } catch (error) {
       logger.error('Error listing invoices:', error);
       throw new Error('Failed to list invoices');
@@ -317,13 +311,12 @@ export class InvoiceStoragePrismaService {
       // Delete from database
       await this.prisma.stored_invoices.deleteMany({
         where: {
-          invoice_id: invoiceId
-        }
+          invoice_id: invoiceId,
+        },
       });
 
       logger.info(`Invoice deleted: ${invoiceId}`);
       return true;
-
     } catch (error) {
       logger.error('Error deleting invoice:', error);
       return false;
@@ -340,9 +333,9 @@ export class InvoiceStoragePrismaService {
         where: {
           expires_at: {
             not: null,
-            lt: new Date()
-          }
-        }
+            lt: new Date(),
+          },
+        },
       });
 
       let deletedCount = 0;
@@ -364,15 +357,14 @@ export class InvoiceStoragePrismaService {
           where: {
             expires_at: {
               not: null,
-              lt: new Date()
-            }
-          }
+              lt: new Date(),
+            },
+          },
         });
       }
 
       logger.info(`Cleaned up ${deletedCount} expired invoices`);
       return deletedCount;
-
     } catch (error) {
       logger.error('Error cleaning up expired invoices:', error);
       return 0;
@@ -395,17 +387,17 @@ export class InvoiceStoragePrismaService {
       const aggregateStats = await this.prisma.stored_invoices.aggregate({
         _count: true,
         _sum: {
-          file_size: true
+          file_size: true,
         },
         _avg: {
-          file_size: true
+          file_size: true,
         },
         _min: {
-          created_at: true
+          created_at: true,
         },
         _max: {
-          created_at: true
-        }
+          created_at: true,
+        },
       });
 
       // Get monthly statistics using raw query
@@ -425,12 +417,11 @@ export class InvoiceStoragePrismaService {
         averageSize: Number(aggregateStats._avg?.file_size) || 0,
         oldestInvoice: aggregateStats._min?.created_at || undefined,
         newestInvoice: aggregateStats._max?.created_at || undefined,
-        invoicesByMonth: monthlyStats.map(stat => ({
+        invoicesByMonth: monthlyStats.map((stat) => ({
           month: stat.month,
-          count: Number(stat.count)
-        }))
+          count: Number(stat.count),
+        })),
       };
-
     } catch (error) {
       logger.error('Error getting storage statistics:', error);
       throw new Error('Failed to get storage statistics');
@@ -477,9 +468,8 @@ export class InvoiceStoragePrismaService {
       return {
         url,
         token,
-        expires_at: expiresAt
+        expires_at: expiresAt,
       };
-
     } catch (error) {
       logger.error('Error generating temporary link:', error);
       return null;
@@ -489,22 +479,18 @@ export class InvoiceStoragePrismaService {
   /**
    * Update invoice metadata
    */
-  async updateMetadata(
-    invoiceId: string,
-    metadata: Record<string, any>
-  ): Promise<boolean> {
+  async updateMetadata(invoiceId: string, metadata: Record<string, any>): Promise<boolean> {
     try {
       const result = await this.prisma.stored_invoices.updateMany({
         where: {
-          invoice_id: invoiceId
+          invoice_id: invoiceId,
         },
         data: {
-          metadata
-        }
+          metadata,
+        },
       });
 
       return result.count > 0;
-
     } catch (error) {
       logger.error('Error updating invoice metadata:', error);
       return false;
@@ -514,19 +500,23 @@ export class InvoiceStoragePrismaService {
   /**
    * Get storage usage by client
    */
-  async getStorageByClient(): Promise<Array<{
-    clientId: string;
-    clientName: string;
-    invoiceCount: number;
-    totalSize: number;
-  }>> {
+  async getStorageByClient(): Promise<
+    Array<{
+      clientId: string;
+      clientName: string;
+      invoiceCount: number;
+      totalSize: number;
+    }>
+  > {
     try {
-      const results = await this.prisma.$queryRaw<Array<{
-        client_id: string;
-        client_name: string;
-        invoice_count: bigint;
-        total_size: bigint;
-      }>>`
+      const results = await this.prisma.$queryRaw<
+        Array<{
+          client_id: string;
+          client_name: string;
+          invoice_count: bigint;
+          total_size: bigint;
+        }>
+      >`
         SELECT 
           i.client_id,
           c.name as client_name,
@@ -539,13 +529,12 @@ export class InvoiceStoragePrismaService {
         ORDER BY total_size DESC
       `;
 
-      return results.map(result => ({
+      return results.map((result) => ({
         clientId: result.client_id,
         clientName: result.client_name,
         invoiceCount: Number(result.invoice_count),
-        totalSize: Number(result.total_size)
+        totalSize: Number(result.total_size),
       }));
-
     } catch (error) {
       logger.error('Error getting storage by client:', error);
       throw new Error('Failed to get storage by client');

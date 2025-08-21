@@ -1,10 +1,14 @@
 -- Migration: Create integration_configs table
 -- Description: Centralized storage for all API keys and integration configurations
+-- Note: This migration is superseded by 010-fix-integration-configs-no-fk.sql which removes FK dependency
+
+-- Create financial schema if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS financial;
 
 -- Create integration_configs table
 CREATE TABLE IF NOT EXISTS financial.integration_configs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE, -- NULL for global configs
+    user_id UUID, -- No FK to users table to avoid dependency issues, NULL for global configs
     integration_type VARCHAR(50) NOT NULL, -- telegram, gocardless, openai, email, slack, crypto, etc.
     config_key VARCHAR(100) NOT NULL, -- bot_token, api_key, smtp_host, webhook_url, etc.
     config_value TEXT NOT NULL, -- Encrypted value for sensitive data

@@ -1,4 +1,12 @@
-import { Document, DocumentContent, DocumentMetadata, DocumentType, FileFormat, DocumentSource, FileMetadata } from '../../models/documents/types';
+import {
+  Document,
+  DocumentContent,
+  DocumentMetadata,
+  DocumentType,
+  FileFormat,
+  DocumentSource,
+  FileMetadata,
+} from '../../models/documents/types';
 import { DocumentModel } from '../../models/documents/document.model';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs/promises';
@@ -43,7 +51,7 @@ export class DocumentIngestionService {
         text: extractedContent.text,
         pages: extractedContent.pages,
         wordCount: extractedContent.wordCount || extractedContent.text.split(/\s+/).length,
-        language: extractedContent.language || 'en'
+        language: extractedContent.language || 'en',
       };
 
       // 6. Create document metadata
@@ -55,7 +63,7 @@ export class DocumentIngestionService {
         userId: metadata.userId,
         tags: metadata.tags || [],
         parentId: metadata.parentId,
-        version: 1
+        version: 1,
       };
 
       // 7. Create document model
@@ -80,7 +88,6 @@ export class DocumentIngestionService {
 
       // console.log(`📄 Document ingested successfully: ${title} (${Date.now() - startTime}ms)`);
       return document.toJSON();
-
     } catch (error: any) {
       console.error('❌ Error ingesting document:', error);
       throw new Error(`Failed to ingest document: ${error.message}`);
@@ -108,7 +115,7 @@ export class DocumentIngestionService {
       '.jpeg': FileFormat.IMAGE,
       '.png': FileFormat.IMAGE,
       '.gif': FileFormat.IMAGE,
-      '.bmp': FileFormat.IMAGE
+      '.bmp': FileFormat.IMAGE,
     };
 
     return formatMap[extension] || FileFormat.TXT;
@@ -125,8 +132,9 @@ export class DocumentIngestionService {
       [FileFormat.MARKDOWN]: 'text/markdown',
       [FileFormat.CSV]: 'text/csv',
       [FileFormat.XLSX]: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      [FileFormat.PPTX]: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      [FileFormat.IMAGE]: 'image/jpeg'
+      [FileFormat.PPTX]:
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      [FileFormat.IMAGE]: 'image/jpeg',
     };
 
     return mimeMap[format] || 'application/octet-stream';
@@ -164,7 +172,7 @@ export class DocumentIngestionService {
       return {
         text: text.trim(),
         pages: pages,
-        wordCount: text.split(/\s+/).length
+        wordCount: text.split(/\s+/).length,
       };
     } catch (error: any) {
       console.warn('PDF parsing failed, using fallback:', error.message);
@@ -178,7 +186,7 @@ Content extraction failed with error: ${error.message}`;
       return {
         text: text.trim(),
         pages: 1,
-        wordCount: text.split(/\s+/).length
+        wordCount: text.split(/\s+/).length,
       };
     }
   }
@@ -189,7 +197,7 @@ Content extraction failed with error: ${error.message}`;
 
     return {
       text: text.trim(),
-      wordCount: text.split(/\s+/).length
+      wordCount: text.split(/\s+/).length,
     };
   }
 
@@ -198,24 +206,30 @@ Content extraction failed with error: ${error.message}`;
 
     return {
       text: text.trim(),
-      wordCount: text.split(/\s+/).length
+      wordCount: text.split(/\s+/).length,
     };
   }
 
   private async extractHTMLContent(file: Buffer): Promise<ExtractedContent> {
     const html = file.toString('utf-8');
     // Simple HTML tag removal
-    const text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    const text = html
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
     return {
       text,
-      wordCount: text.split(/\s+/).length
+      wordCount: text.split(/\s+/).length,
     };
   }
 
   private generateTitle(fileName: string, content: string): string {
     // Try to extract title from content first
-    const lines = content.split('\n').map(line => line.trim()).filter(line => line);
+    const lines = content
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line);
 
     if (lines.length > 0) {
       const firstLine = lines[0];
@@ -268,7 +282,8 @@ Content extraction failed with error: ${error.message}`;
   private async storeFile(file: Buffer, documentId: string, format: FileFormat): Promise<string> {
     const extension = this.getFileExtension(format);
     const fileName = `${documentId}.${extension}`;
-    const basePath = process.env.DOCUMENT_STORAGE_PATH || path.join(process.cwd(), 'data', 'documents', 'storage');
+    const basePath =
+      process.env.DOCUMENT_STORAGE_PATH || path.join(process.cwd(), 'data', 'documents', 'storage');
     const filePath = path.join(basePath, fileName);
 
     await fs.writeFile(filePath, file);
@@ -287,7 +302,7 @@ Content extraction failed with error: ${error.message}`;
       [FileFormat.CSV]: 'csv',
       [FileFormat.XLSX]: 'xlsx',
       [FileFormat.PPTX]: 'pptx',
-      [FileFormat.IMAGE]: 'jpg'
+      [FileFormat.IMAGE]: 'jpg',
     };
 
     return extensionMap[format] || 'txt';
@@ -320,21 +335,24 @@ Content extraction failed with error: ${error.message}`;
       `);
 
       // Insert document
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO documents.documents (
           id, title, type, format, content, metadata, analysis, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [
-        document.id,
-        document.title,
-        document.type,
-        document.format,
-        JSON.stringify(document.content),
-        JSON.stringify(document.metadata),
-        document.analysis ? JSON.stringify(document.analysis) : null,
-        document.createdAt,
-        document.updatedAt
-      ]);
+      `,
+        [
+          document.id,
+          document.title,
+          document.type,
+          document.format,
+          JSON.stringify(document.content),
+          JSON.stringify(document.metadata),
+          document.analysis ? JSON.stringify(document.analysis) : null,
+          document.createdAt,
+          document.updatedAt,
+        ]
+      );
 
       await client.query('COMMIT');
     } catch (error: any) {
@@ -349,15 +367,14 @@ Content extraction failed with error: ${error.message}`;
     const client = await this.database.pool.connect();
 
     try {
-      await client.query(`
+      await client.query(
+        `
         UPDATE documents.documents 
         SET content = $1, updated_at = $2
         WHERE id = $3
-      `, [
-        JSON.stringify(document.content),
-        document.updatedAt,
-        document.id
-      ]);
+      `,
+        [JSON.stringify(document.content), document.updatedAt, document.id]
+      );
     } finally {
       client.release();
     }
@@ -367,9 +384,12 @@ Content extraction failed with error: ${error.message}`;
     const client = await this.database.pool.connect();
 
     try {
-      const result = await client.query(`
+      const result = await client.query(
+        `
         SELECT * FROM documents.documents WHERE id = $1
-      `, [id]);
+      `,
+        [id]
+      );
 
       if (result.rows.length === 0) {
         return null;
@@ -385,14 +405,18 @@ Content extraction failed with error: ${error.message}`;
         metadata: row.metadata,
         analysis: row.analysis,
         createdAt: row.created_at,
-        updatedAt: row.updated_at
+        updatedAt: row.updated_at,
       };
     } finally {
       client.release();
     }
   }
 
-  async listDocuments(userId?: string, limit: number = 50, offset: number = 0): Promise<Document[]> {
+  async listDocuments(
+    userId?: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<Document[]> {
     const client = await this.database.pool.connect();
 
     try {
@@ -421,7 +445,7 @@ Content extraction failed with error: ${error.message}`;
         metadata: row.metadata,
         analysis: row.analysis,
         createdAt: row.created_at,
-        updatedAt: row.updated_at
+        updatedAt: row.updated_at,
       }));
     } finally {
       client.release();
@@ -435,9 +459,12 @@ Content extraction failed with error: ${error.message}`;
       await client.query('BEGIN');
 
       // Get document to find file path
-      const result = await client.query(`
+      const result = await client.query(
+        `
         SELECT content FROM documents.documents WHERE id = $1
-      `, [id]);
+      `,
+        [id]
+      );
 
       if (result.rows.length > 0) {
         const content = result.rows[0].content;
@@ -451,9 +478,12 @@ Content extraction failed with error: ${error.message}`;
       }
 
       // Delete from database
-      await client.query(`
+      await client.query(
+        `
         DELETE FROM documents.documents WHERE id = $1
-      `, [id]);
+      `,
+        [id]
+      );
 
       await client.query('COMMIT');
     } catch (error: any) {

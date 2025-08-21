@@ -93,9 +93,9 @@ describe('TransactionManagementService', () => {
       mockPrismaClient.transactions.findUnique.mockResolvedValue(null);
 
       // Act & Assert
-      await expect(service.deleteTransaction(transactionId, userId))
-        .rejects
-        .toThrow('Transaction not found');
+      await expect(service.deleteTransaction(transactionId, userId)).rejects.toThrow(
+        'Transaction not found'
+      );
 
       expect(mockPrismaClient.transactions.findUnique).toHaveBeenCalledWith({
         where: { id: transactionId },
@@ -156,7 +156,7 @@ describe('TransactionManagementService', () => {
       expect(callOrder).toEqual([
         'client_transaction_links',
         'transaction_categorizations',
-        'transactions'
+        'transactions',
       ]);
     });
 
@@ -169,9 +169,9 @@ describe('TransactionManagementService', () => {
       mockPrismaClient.transactions.findUnique.mockRejectedValue(dbError);
 
       // Act & Assert
-      await expect(service.deleteTransaction(transactionId, userId))
-        .rejects
-        .toThrow('Database connection failed');
+      await expect(service.deleteTransaction(transactionId, userId)).rejects.toThrow(
+        'Database connection failed'
+      );
     });
   });
 

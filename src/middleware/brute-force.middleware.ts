@@ -23,7 +23,7 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
       // Check recent failed attempts for this email/IP combination
       const checkQuery = `
         SELECT COUNT(*) as failed_attempts
-        FROM login_attempts
+        FROM auth.login_attempts
         WHERE (email = $1 OR ip_address = $2::inet)
           AND success = false
           AND attempted_at > NOW() - INTERVAL '${windowMs} milliseconds'
@@ -36,7 +36,7 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
         // Check if user is currently blocked
         const blockCheckQuery = `
           SELECT COUNT(*) as is_blocked
-          FROM login_attempts
+          FROM auth.login_attempts
           WHERE (email = $1 OR ip_address = $2::inet)
             AND success = false
             AND attempted_at > NOW() - INTERVAL '${blockDurationMs} milliseconds'
@@ -48,7 +48,7 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
         if (blockResult.rows.length > 0) {
           // Log the blocked attempt
           await pool.query(
-            'INSERT INTO login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
+            'INSERT INTO auth.login_attempts (email, ip_address, success) VALUES ($1, $2, $3)',
             [email, ip, false]
           );
 
@@ -73,7 +73,7 @@ export function createBruteForceProtection(pool: Pool, options: BruteForceOption
 export async function cleanupLoginAttempts(pool: Pool, retentionDays: number = 7) {
   try {
     const query = `
-      DELETE FROM login_attempts
+      DELETE FROM auth.login_attempts
       WHERE attempted_at < NOW() - INTERVAL '${retentionDays} days'
     `;
 

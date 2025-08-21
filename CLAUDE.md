@@ -5,6 +5,7 @@ Este documento proporciona contexto esencial para Claude Code. Se carga automát
 ## 🎉 MAJOR ACHIEVEMENT: SQL to Prisma Migration COMPLETE (August 2025)
 
 ### 🏆 Technical Debt Fully Resolved
+
 - **✅ 51/51 services** migrated from SQL to Prisma ORM
 - **✅ Zero data loss, zero downtime** during migration
 - **✅ 100% type safety** with Prisma generated types
@@ -17,6 +18,7 @@ This represents the **largest technical debt resolution** in the project's histo
 ## 🆕 Latest Updates (January 2025)
 
 ### Trading Intelligence v3.0
+
 - **Claude AI Integration**: Now using Anthropic's Claude as primary AI provider
 - **Alpaca Connector**: Full support for US stocks and crypto trading
 - **Cross-Exchange Arbitrage**: Automated bot targeting $500-$1,000/month
@@ -24,6 +26,7 @@ This represents the **largest technical debt resolution** in the project's histo
 - **Zero TypeScript Errors**: All compilation issues resolved
 
 ### Quick Commands
+
 ```bash
 # Deploy arbitrage bot
 curl -X POST http://localhost:3001/api/arbitrage/deploy -H "Authorization: Bearer TOKEN"
@@ -37,7 +40,7 @@ curl -X POST http://localhost:3001/api/connectors/alpaca/configure -H "Authoriza
 
 ## 🏗️ Project Structure
 
-```
+````
 /src
   /services              # Business logic (30+ services)
     /financial          # Banking, clients, invoices (Prisma-based)
@@ -82,56 +85,97 @@ curl -X POST http://localhost:3001/api/connectors/alpaca/configure -H "Authoriza
 
 ## 🎯 Core Features
 
-1. **Financial Module**: 
+1. **Financial Module**:
    - GoCardless integration for real banking data
    - AI-powered transaction categorization (90%+ accuracy)
    - Client & Invoice management (Prisma-based)
    - Multi-currency support (EUR primary)
 
-2. **Trading Module**: 
+2. **Trading Module**:
    - Multi-exchange support (Binance, Coinbase)
    - AI trading strategies with backtesting
    - Risk management system
    - Real-time market data with InfluxDB
 
-3. **Document Intelligence**: 
+3. **Document Intelligence**:
    - Multi-format ingestion (PDF, DOCX, TXT)
    - Semantic search with embeddings
    - Q&A system via Telegram bot
 
-4. **MCP Bridge**: 
+4. **MCP Bridge**:
    - URL: https://mcp.anaxi.net
    - 25 AI tools exposed via REST API
    - Financial, Document, and System tools
 
 ## 🔑 Key Development Workflows
 
-### ⚡ Quick Commands
+### 🎉 NEW: Unified CLI Tool (Replaces broken Makefiles!)
 ```bash
-# Development
-make dev-up              # Start development environment
-make dev-status          # Check container health
-make dev-logs            # View logs
-make db-studio           # Open Prisma Studio (visual DB)
+# ✅ WORKING TOKEN GENERATION (No more subshell issues!)
+npx ts-node scripts/token.ts              # Get auth token directly
+./ai-cli.js token                         # Or use the new CLI
 
-# Database
-make db-backup           # Backup before changes!
-make db-migrate          # Apply pending migrations
-make db-migrate-status   # Check migration status
-make db-migrate-create NAME=description  # Create new migration
+# Development Environment
+./ai-cli.js dev start                     # Start all services
+./ai-cli.js dev stop                      # Stop all services
+./ai-cli.js dev status                    # Check service status
+./ai-cli.js dev logs [service]            # View logs
 
-# Code Generation (Automated with Validation)
-npm run generate:crud:auto ModelName     # Generate complete CRUD
-npm run generate:crud:auto ModelName --schema trading  # With specific schema
-npm run generate:crud:auto ModelName --features list,api  # Specific features
+# Database Operations
+./ai-cli.js db status                     # Check migration status
+./ai-cli.js db migrate                    # Apply migrations (auto-backup)
+./ai-cli.js db backup [name]              # Create backup
+./ai-cli.js db studio                     # Open Prisma Studio
 
-# IMPORTANT: Model must exist in prisma/schema.prisma first!
-# The generator now validates and provides helpful error messages
+# Testing
+./ai-cli.js test                          # Run all tests
+./ai-cli.js test unit                     # Unit tests only
+./ai-cli.js test e2e                      # E2E tests only
+
+# Help
+./ai-cli.js --help                        # Show all commands
+````
+
+### 📦 CLI Installation
+
+```bash
+# The CLI is located at: /home/k2600x/dev/ai-service/ai-cli.js
+# It's already executable and ready to use!
+
+# For global access, add to PATH or create alias:
+alias ai='/home/k2600x/dev/ai-service/ai-cli.js'
+```
+
+### 🔧 Using Tokens with APIs (Finally Working!)
+
+```bash
+# Get token (works with jq!)
+TOKEN=$(npx ts-node scripts/token.ts 2>/dev/null | tail -1)
+
+# Use with any API endpoint
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/health | jq
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/dashboard/summary | jq
+
+# Or save to file (workaround for complex commands)
+npx ts-node scripts/token.ts 2>/dev/null | tail -1 > /tmp/token
+curl -H "Authorization: Bearer $(cat /tmp/token)" http://localhost:3001/api/health | jq
+```
+
+### ⚡ Legacy Make Commands (Still work but deprecated)
+
+```bash
+# These redirect to the new CLI
+make dev-up              # → ./ai-cli.js dev start
+make dev-status          # → ./ai-cli.js dev status
+make dev-logs            # → ./ai-cli.js dev logs
+make db-migrate          # → ./ai-cli.js db migrate
+make auth-token          # → ./ai-cli.js token
 ```
 
 ### 🚀 Adding New Features
 
 1. **For new database models (Correct Order)**:
+
    ```bash
    # 1. FIRST: Add model to prisma/schema.prisma
    # 2. Generate Prisma types
@@ -179,31 +223,40 @@ This philosophy has been proven through real challenges (like achieving 100% Cod
 ### The Five Pillars of Success
 
 **1. Complete Understanding Before Action**
+
 - NEVER start fixing until you understand the ENTIRE problem
 - Document everything in a tracking file - what you don't write down, you'll miss
 - Use systematic discovery: search ALL files, check ALL patterns, find ALL instances
 - Create `docs/TECH-DEBT-*.md` files for complex challenges
 
 **2. Systemic Solutions Over Patches**
+
 - Look for root causes, not symptoms
 - One elegant solution beats 10 workarounds
 - Global middleware > individual route fixes
 - Architectural solutions > quick hacks
 
 **3. Binary Commitment - 100% or 0%**
+
 - NO "should", "might", "probably", or "most"
 - Either it's DONE or it's NOT
 - Partial solutions create technical debt and false confidence
 - If you can't do it completely, don't do it at all
 
 **4. Verification is Non-Negotiable**
+
 - Test EVERYTHING you claim
 - Numbers don't lie - get metrics
 - `npm run typecheck` = 0 errors (not "mostly passing")
 - `npm run build` must succeed
 - "Works on my machine" isn't verification
+- **ENFORCEMENT**: Claude MUST spawn qa-specialist in parallel for EVERY code change
+- qa-specialist runs: typecheck, lint, build
+- If qa-specialist reports ANY issues → FIX before continuing
+- NO EXCEPTIONS - broken builds are unacceptable
 
 **5. Atomic, Complete Deliveries**
+
 - One cohesive solution, not fragments
 - One commit that solves the ENTIRE problem
 - Document what you did and why
@@ -212,6 +265,7 @@ This philosophy has been proven through real challenges (like achieving 100% Cod
 ### Application Examples
 
 **🛡️ Security Issues (Proven Success)**
+
 ```
 1. Document ALL vulnerabilities first
 2. Implement global solutions (middleware)
@@ -221,6 +275,7 @@ This philosophy has been proven through real challenges (like achieving 100% Cod
 ```
 
 **🚀 Feature Development**
+
 ```
 1. Understand ALL requirements upfront
 2. Design complete architecture
@@ -230,6 +285,7 @@ This philosophy has been proven through real challenges (like achieving 100% Cod
 ```
 
 **🐛 Bug Fixing**
+
 ```
 1. Find ALL instances of the bug pattern
 2. Identify root cause (not symptoms)
@@ -239,6 +295,7 @@ This philosophy has been proven through real challenges (like achieving 100% Cod
 ```
 
 **📈 Performance Optimization**
+
 ```
 1. Measure EVERYTHING first
 2. Find systemic bottlenecks
@@ -263,27 +320,76 @@ UNDERSTAND COMPLETELY → PLAN SYSTEMICALLY → EXECUTE FULLY → VERIFY THOROUG
 
 **Remember**: This philosophy turned 5 failed security attempts into one complete success. Apply it to EVERY challenge.
 
+## 🚨 MANDATORY QUALITY GATES - NO EXCEPTIONS
+
+### BEFORE marking ANY task complete:
+
+1. **Run TypeScript check**: `npm run typecheck` MUST return 0 errors
+2. **Run ESLint**: `npm run lint` MUST pass without warnings
+3. **Check unused imports**: No unused imports allowed
+4. **Ban 'any' types**: Replace ALL 'any' with proper types
+5. **Run build**: `npm run build` MUST succeed
+
+### PARALLEL QA EXECUTION (REQUIRED):
+
+When writing code, ALWAYS spawn qa-specialist in parallel:
+
+- Task 1: Main development work
+- Task 2: qa-specialist running lint/typecheck/build in parallel
+- NEVER mark complete until qa-specialist confirms clean build
+
+### FAILURE = INCOMPLETE
+
+If ANY of these fail, the task is NOT complete:
+
+- TypeScript errors > 0 → FIX IMMEDIATELY
+- ESLint warnings > 0 → FIX IMMEDIATELY
+- Build fails → FIX IMMEDIATELY
+- Any 'any' types → REPLACE WITH PROPER TYPES
+- Unused imports → REMOVE IMMEDIATELY
+
+### Quality Check Commands:
+
+```bash
+# Backend quality checks
+npm run typecheck       # Must return 0 errors
+npm run lint           # Must pass without warnings
+npm run build          # Must succeed
+
+# Frontend quality checks
+cd frontend && npm run typecheck  # Must return 0 errors
+cd frontend && npm run lint       # Must pass without warnings
+cd frontend && npm run build      # Must succeed
+
+# Parallel execution (ALWAYS use this):
+npm run typecheck & npm run lint & (cd frontend && npm run typecheck) & (cd frontend && npm run lint) & wait
+```
+
 ## 🔒 Critical Safety Rules
 
 ### NEVER disable functionality without explicit authorization:
+
 - **NEVER comment out or disable working code** → Features must remain functional
 - **NEVER use placeholder returns** → Always use actual service implementations
 - **NEVER temporarily disable endpoints** → If something needs fixing, fix it properly
 - **ALWAYS keep features enabled** → Users depend on the application working
 
 ### NEVER delete or revert changes without explicit permission:
+
 - **NEVER use `git checkout HEAD -- <file>`** → This loses uncommitted work
 - **NEVER assume changes are "unrelated"** → Ask before removing anything
 - **NEVER make decisions about what to include/exclude** → Follow instructions exactly
 - **ALWAYS include everything requested** → When told "everything except X", that means EVERYTHING except X
 
 ### NEVER execute these commands:
+
 - `docker-compose down -v` → **DESTROYS ALL DATA**
 - `DROP SCHEMA/TABLE` → Permanent data loss
 - `prisma db push --force-reset` → Recreates schema from scratch
 - Direct SQL without backup → Use migrations instead
 
 ### NEVER change these configurations:
+
 - **Frontend proxy targets** → Different for Docker vs local development:
   - `vite.config.dev.ts` (Docker): MUST be `http://ai-service-api:3001`
   - `vite.config.ts` (local): MUST be `http://localhost:3001`
@@ -291,6 +397,7 @@ UNDERSTAND COMPLETELY → PLAN SYSTEMICALLY → EXECUTE FULLY → VERIFY THOROUG
   - The proxy runs INSIDE containers, not in your browser
 
 ### ALWAYS follow these practices:
+
 - Use `make` commands exclusively (no direct docker/npm/prisma)
 - Run `make db-backup` before schema changes
 - Use `make db-migrate` instead of `prisma db push`
@@ -323,34 +430,43 @@ make dev-status && make check-db
 ## 🤖 Claude Code Configuration
 
 ### MCP Servers Configuration
+
 Claude Code is configured with advanced MCP (Model Context Protocol) servers:
 
-1. **Context7** (Documentation & Patterns)
+1. **AI Service CLI** (Development Operations) 🆕
+   - **Enabled**: ✅ Available at `/home/k2600x/dev/ai-service/ai-cli-mcp.js`
+   - **Use cases**: Token generation, environment management, database operations
+   - **Tools**: get_token, dev_start/stop/status, db_migrate/backup, test_run
+   - **Reliability**: Replaces unreliable Makefile commands with working CLI
+
+2. **Context7** (Documentation & Patterns)
    - **Enabled**: ✅ Auto-detects when using Prisma, React, Express, TypeScript
    - **Use cases**: Library docs, best practices, code patterns
    - **Libraries**: prisma, react, express, typescript, tailwindcss, tanstack-query
 
-2. **Sequential** (Complex Analysis)
+3. **Sequential** (Complex Analysis)
    - **Enabled**: ✅ Auto-activates for complex problems
    - **Use cases**: Trading strategies, performance analysis, debugging
    - **Triggers**: `--think`, `--think-hard`, complex architecture
 
-3. **Magic** (UI Generation)
+4. **Magic** (UI Generation)
    - **Enabled**: ✅ Auto-activates for frontend work
    - **Use cases**: React components, Tailwind UI, dashboard elements
    - **Frameworks**: React + Tailwind CSS
 
-4. **Playwright** (Testing)
+5. **Playwright** (Testing)
    - **Enabled**: ❌ (Can be enabled for E2E testing)
    - **Use cases**: Automated testing, cross-browser validation
 
 ### Custom Commands
+
 - `/db-safe` - Safe database operations with automatic backup
 - `/financial-audit` - Comprehensive financial module security audit
 - `/trading-optimize` - Optimize trading strategies and performance
 - `/frontend-enhance` - Enhance UI components with Magic
 
 ### Performance Optimizations
+
 - **Token compression**: Auto-enabled at 75% usage
 - **Caching**: Session and MCP server results cached
 - **Parallel operations**: Up to 3 concurrent operations
@@ -370,6 +486,7 @@ Claude Code is configured with advanced MCP (Model Context Protocol) servers:
 ## 🆕 Recent Improvements (Jan 2025)
 
 ### Automated CRUD Generation System Enhanced
+
 The CRUD generator now includes:
 
 - **Pre-validation**: Checks model exists in Prisma before generating
@@ -379,19 +496,23 @@ The CRUD generator now includes:
 - **Template Fixes**: Proper Handlebars escape for JSX/TypeScript
 
 **Documentation**:
+
 - Complete guide: [AUTOMATED-DEVELOPMENT-STACK.md](docs/AUTOMATED-DEVELOPMENT-STACK.md)
 - Issues & solutions: [AUTOMATED-DEVELOPMENT-STACK-ISSUES.md](docs/AUTOMATED-DEVELOPMENT-STACK-ISSUES.md)
 
 ## 🔍 Development Reminders
 
 - recuerda siempre verificar make dev-refresh
-- CRUD generation: Model → Prisma generate → Migration → CRUD generate
+- **CONTRACT-FIRST**: OpenAPI spec → Prisma schema → Database (NOT the other way!)
+- CRUD generation: OpenAPI → Prisma generate → Migration → CRUD generate
+- See: `/docs/CONTRACT_FIRST_SCHEMA_GENERATION.md` for schema generation
 
 ## 🔌 MCP Local Server
 
 Local MCP server for direct Claude Code integration:
 
 **Quick Start**:
+
 ```bash
 cd mcp-local
 make quick-setup          # First time setup
@@ -400,11 +521,13 @@ make claude-config        # Install Claude Code config
 ```
 
 **Usage in Claude Code**:
+
 - Financial queries: "Show me financial summary for last month"
 - Document search: "Search for invoices related to software"
 - System health: "Check system health status"
 
 **Features**:
+
 - 🚀 Zero latency (local execution)
 - 📦 25+ tools from production bridge
 - 🔄 Auto-caching (5 min TTL)
@@ -414,15 +537,35 @@ make claude-config        # Install Claude Code config
 **Location**: `/mcp-local/` - Complete local MCP implementation
 **Docs**: See `mcp-local/README.md` for detailed setup
 
+## ⚠️ CRITICAL INCIDENT - LESSON LEARNED (2025-08-15)
+
+**What happened**: During a push attempt, I saw TypeScript build errors and immediately tried to DELETE files (`git rm`) that were causing issues, without understanding that:
+
+- These were NEW files added as part of the feature being committed
+- The errors were due to missing dependencies, NOT bad code
+- Deleting files loses important work
+
+**The lesson**:
+
+- **NEVER DELETE FILES TO "FIX" BUILD ERRORS** - Understand the root cause first
+- **CHECK DEPENDENCIES FIRST** - Build errors often mean missing packages, not bad code
+- **PRESERVE WORK AT ALL COSTS** - User's code is sacred, never delete without explicit permission
+- **THINK BEFORE ACTING** - Quick "fixes" that delete code are NEVER the solution
+- **ADD MISSING DEPENDENCIES** - If imports fail, add the packages, don't delete the files
+
+This was completely unprofessional. The correct approach: Add missing dependencies, fix actual errors, preserve all work.
+
 ## ⚠️ CRITICAL INCIDENT - LESSON LEARNED (2025-07-30)
 
 **What happened**: During a PR preparation, I was explicitly told to include "EVERYTHING ON THE BRANCH EXCEPT THE TEST SCRIPTS". Instead of following these clear instructions, I:
+
 - Removed CLAUDE.md changes thinking they were "unrelated"
 - Removed other files without permission
 - Made assumptions about what should/shouldn't be included
 - Caused the user to lose important work after hours of frustrating debugging
 
-**The lesson**: 
+**The lesson**:
+
 - **READ INSTRUCTIONS CAREFULLY** - "Everything except X" means EXACTLY that
 - **NEVER MAKE ASSUMPTIONS** - If unsure, ASK
 - **NEVER DELETE WITHOUT PERMISSION** - Using `git checkout HEAD --` loses work

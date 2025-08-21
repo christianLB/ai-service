@@ -29,16 +29,24 @@ interface ExecutionRecord {
 }
 
 class DatabaseService {
-  public pool: Pool;  // Changed from private to public for health check statistics
+  public pool: Pool; // Changed from private to public for health check statistics
   private initialized = false;
 
   constructor() {
     // Validate required environment variables
-    const requiredEnvVars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD'];
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    const requiredEnvVars = [
+      'POSTGRES_HOST',
+      'POSTGRES_PORT',
+      'POSTGRES_DB',
+      'POSTGRES_USER',
+      'POSTGRES_PASSWORD',
+    ];
+    const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
 
     if (missingVars.length > 0) {
-      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}. Please set them in .env.local`);
+      throw new Error(
+        `Missing required environment variables: ${missingVars.join(', ')}. Please set them in .env.local`
+      );
     }
 
     this.pool = new Pool({
@@ -72,14 +80,18 @@ class DatabaseService {
         port: process.env.POSTGRES_PORT,
         database: process.env.POSTGRES_DB,
         user: process.env.POSTGRES_USER,
-        NODE_ENV: process.env.NODE_ENV
+        NODE_ENV: process.env.NODE_ENV,
       });
 
       // Add timeout to the entire initialization
       const initPromise = this.createTables();
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          reject(new Error(`Database initialization timeout after 10 seconds. Check if database is running on ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}`));
+          reject(
+            new Error(
+              `Database initialization timeout after 10 seconds. Check if database is running on ${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}`
+            )
+          );
         }, 10000); // 10 second timeout
       });
 
@@ -96,7 +108,7 @@ class DatabaseService {
         host: process.env.POSTGRES_HOST,
         port: process.env.POSTGRES_PORT,
         database: process.env.POSTGRES_DB,
-        user: process.env.POSTGRES_USER
+        user: process.env.POSTGRES_USER,
       });
       throw error;
     }
@@ -114,7 +126,7 @@ class DatabaseService {
         }, 10000);
       });
 
-      client = await Promise.race([connectPromise, timeoutPromise]) as PoolClient;
+      client = (await Promise.race([connectPromise, timeoutPromise])) as PoolClient;
       // console.log('[DB] Pool connection obtained!');
     } catch (error: any) {
       console.error('[DB] Failed to get pool connection:', error.message);
@@ -181,7 +193,6 @@ class DatabaseService {
 
       // Create financial schema if it doesn't exist
       await this.createFinancialSchema(client);
-
     } finally {
       if (client) {
         client.release();
@@ -231,7 +242,11 @@ class DatabaseService {
 
       const verification = verifyCheck.rows[0];
 
-      if (!verification.has_wallet_address || !verification.has_categories_table || !verification.has_categorizations_table) {
+      if (
+        !verification.has_wallet_address ||
+        !verification.has_categories_table ||
+        !verification.has_categorizations_table
+      ) {
         logger.error('CRITICAL: Schema verification failed!', verification);
         throw new Error('Migration incomplete - critical tables or columns missing');
       }
@@ -239,7 +254,8 @@ class DatabaseService {
       logger.info('✅ Financial schema migration completed and verified');
     } catch (error: any) {
       // If schema already exists, that's fine
-      if (error.code !== '42P06') { // 42P06 = schema already exists
+      if (error.code !== '42P06') {
+        // 42P06 = schema already exists
         logger.error('Error creating financial schema:', error.message);
         throw error;
       }
@@ -247,7 +263,9 @@ class DatabaseService {
   }
 
   // CRUD Operations para Workflows
-  async createWorkflow(workflow: Omit<WorkflowRecord, 'id' | 'created_at' | 'updated_at' | 'version'>): Promise<string> {
+  async createWorkflow(
+    workflow: Omit<WorkflowRecord, 'id' | 'created_at' | 'updated_at' | 'version'>
+  ): Promise<string> {
     const client = await this.pool.connect();
     const id = uuidv4();
 
@@ -265,7 +283,7 @@ class DatabaseService {
         workflow.active,
         JSON.stringify(workflow.workflow_data),
         workflow.created_by || null,
-        workflow.tags || []
+        workflow.tags || [],
       ];
 
       await client.query(query, values);
@@ -308,7 +326,10 @@ class DatabaseService {
     }
   }
 
-  async updateWorkflow(id: string, updates: Partial<Omit<WorkflowRecord, 'id' | 'created_at' | 'updated_at'>>): Promise<boolean> {
+  async updateWorkflow(
+    id: string,
+    updates: Partial<Omit<WorkflowRecord, 'id' | 'created_at' | 'updated_at'>>
+  ): Promise<boolean> {
     const client = await this.pool.connect();
 
     try {
@@ -369,7 +390,7 @@ class DatabaseService {
         id,
         execution.workflow_id,
         execution.status,
-        execution.input_data ? JSON.stringify(execution.input_data) : null
+        execution.input_data ? JSON.stringify(execution.input_data) : null,
       ];
 
       await client.query(query, values);
@@ -379,7 +400,10 @@ class DatabaseService {
     }
   }
 
-  async updateExecution(id: string, updates: Partial<Omit<ExecutionRecord, 'id' | 'workflow_id' | 'start_time'>>): Promise<boolean> {
+  async updateExecution(
+    id: string,
+    updates: Partial<Omit<ExecutionRecord, 'id' | 'workflow_id' | 'start_time'>>
+  ): Promise<boolean> {
     const client = await this.pool.connect();
 
     try {
@@ -398,7 +422,11 @@ class DatabaseService {
         paramCount++;
       });
 
-      if (updates.status === 'success' || updates.status === 'error' || updates.status === 'timeout') {
+      if (
+        updates.status === 'success' ||
+        updates.status === 'error' ||
+        updates.status === 'timeout'
+      ) {
         setParts.push('end_time = NOW()');
       }
 
@@ -431,7 +459,12 @@ class DatabaseService {
   }
 
   // Sistema de Métricas
-  async recordMetric(name: string, value: number, type: string, tags?: Record<string, any>): Promise<void> {
+  async recordMetric(
+    name: string,
+    value: number,
+    type: string,
+    tags?: Record<string, any>
+  ): Promise<void> {
     const client = await this.pool.connect();
 
     try {
@@ -469,21 +502,22 @@ class DatabaseService {
     const client = await this.pool.connect();
 
     try {
-      const [totalWorkflows, activeWorkflows, totalExecutions, recentExecutions] = await Promise.all([
-        client.query('SELECT COUNT(*) as count FROM workflows'),
-        client.query('SELECT COUNT(*) as count FROM workflows WHERE active = true'),
-        client.query('SELECT COUNT(*) as count FROM executions'),
-        client.query(`
+      const [totalWorkflows, activeWorkflows, totalExecutions, recentExecutions] =
+        await Promise.all([
+          client.query('SELECT COUNT(*) as count FROM workflows'),
+          client.query('SELECT COUNT(*) as count FROM workflows WHERE active = true'),
+          client.query('SELECT COUNT(*) as count FROM executions'),
+          client.query(`
           SELECT COUNT(*) as count FROM executions 
           WHERE start_time > NOW() - INTERVAL '24 hours'
-        `)
-      ]);
+        `),
+        ]);
 
       return {
         total_workflows: parseInt(totalWorkflows.rows[0].count),
         active_workflows: parseInt(activeWorkflows.rows[0].count),
         total_executions: parseInt(totalExecutions.rows[0].count),
-        executions_last_24h: parseInt(recentExecutions.rows[0].count)
+        executions_last_24h: parseInt(recentExecutions.rows[0].count),
       };
     } finally {
       client.release();
@@ -504,7 +538,7 @@ class DatabaseService {
       );
 
       const connectPromise = this.pool.connect();
-      client = await Promise.race([connectPromise, timeoutPromise]) as PoolClient;
+      client = (await Promise.race([connectPromise, timeoutPromise])) as PoolClient;
 
       await client.query('SELECT 1');
       return true;

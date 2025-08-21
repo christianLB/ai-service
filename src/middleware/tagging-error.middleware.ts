@@ -20,7 +20,7 @@ export function taggingErrorHandler(
     body: req.body,
     query: req.query,
     params: req.params,
-    user: (req as any).user?.userId
+    user: (req as any).user?.userId,
   });
 
   // Handle TaggingError instances
@@ -29,10 +29,10 @@ export function taggingErrorHandler(
       error: {
         code: error.code,
         message: error.message,
-        details: error.details
+        details: error.details,
       },
       timestamp: new Date().toISOString(),
-      path: req.path
+      path: req.path,
     });
     return;
   }
@@ -70,10 +70,10 @@ export function taggingErrorHandler(
       error: {
         code,
         message,
-        details: error.meta
+        details: error.meta,
       },
       timestamp: new Date().toISOString(),
-      path: req.path
+      path: req.path,
     });
     return;
   }
@@ -84,10 +84,10 @@ export function taggingErrorHandler(
       error: {
         code: 'VALIDATION_ERROR',
         message: error.message,
-        details: error.details || {}
+        details: error.details || {},
       },
       timestamp: new Date().toISOString(),
-      path: req.path
+      path: req.path,
     });
     return;
   }
@@ -99,9 +99,9 @@ export function taggingErrorHandler(
     error: {
       code: 'INTERNAL_ERROR',
       message: isDevelopment ? error.message : 'An unexpected error occurred',
-      ...(isDevelopment && { stack: error.stack })
+      ...(isDevelopment && { stack: error.stack }),
     },
     timestamp: new Date().toISOString(),
-    path: req.path
+    path: req.path,
   });
 }

@@ -8,7 +8,8 @@
 
 # Variables
 COMPOSE_FILE ?= docker-compose.yml
-COMPOSE_DEV_FILE ?= docker-compose.dev.yml
+# Point dev compose to infra path
+COMPOSE_DEV_FILE ?= infra/compose/docker-compose.dev.yml
 COMPOSE_PROD_FILE ?= docker-compose.production.yml
 PROJECT_NAME ?= ai-service
 
@@ -26,7 +27,7 @@ NC := \033[0m
 .PHONY: dev-up
 dev-up: ## Start development environment
 	@echo "$(BLUE)Starting development environment...$(NC)"
-	@docker-compose -f $(COMPOSE_DEV_FILE) up -d
+	@docker compose -f $(COMPOSE_DEV_FILE) up -d
 	@echo "$(GREEN)✓ Development environment started$(NC)"
 	@echo "$(YELLOW)Frontend: http://localhost:3000$(NC)"
 	@echo "$(YELLOW)Backend: http://localhost:3001$(NC)"
@@ -35,7 +36,7 @@ dev-up: ## Start development environment
 .PHONY: dev-down
 dev-down: ## Stop development environment
 	@echo "$(YELLOW)Stopping development environment...$(NC)"
-	@docker-compose -f $(COMPOSE_DEV_FILE) down
+	@docker compose -f $(COMPOSE_DEV_FILE) down
 	@echo "$(GREEN)✓ Development environment stopped$(NC)"
 
 .PHONY: dev-restart
@@ -46,31 +47,31 @@ dev-restart: ## Restart development environment
 
 .PHONY: dev-logs
 dev-logs: ## Show development logs (live)
-	@docker-compose -f $(COMPOSE_DEV_FILE) logs -f
+	@docker compose -f $(COMPOSE_DEV_FILE) logs -f
 
 .PHONY: dev-logs-api
 dev-logs-api: ## Show API logs only
-	@docker-compose -f $(COMPOSE_DEV_FILE) logs -f api
+	@docker compose -f $(COMPOSE_DEV_FILE) logs -f api
 
 .PHONY: dev-logs-frontend
 dev-logs-frontend: ## Show frontend logs only
-	@docker-compose -f $(COMPOSE_DEV_FILE) logs -f frontend
+	@docker compose -f $(COMPOSE_DEV_FILE) logs -f frontend
 
 .PHONY: dev-status
 dev-status: ## Show development container status
 	@echo "$(BLUE)Development Environment Status:$(NC)"
-	@docker-compose -f $(COMPOSE_DEV_FILE) ps
+	@docker compose -f $(COMPOSE_DEV_FILE) ps
 
 .PHONY: dev-shell
 dev-shell: ## Open shell in API container
-	@docker-compose -f $(COMPOSE_DEV_FILE) exec api sh
+	@docker compose -f $(COMPOSE_DEV_FILE) exec api sh
 
 .PHONY: dev-refresh
 dev-refresh: ## Complete refresh of dev environment
 	@echo "$(BLUE)Refreshing development environment...$(NC)"
-	@docker-compose -f $(COMPOSE_DEV_FILE) down -v
-	@docker-compose -f $(COMPOSE_DEV_FILE) build --no-cache
-	@docker-compose -f $(COMPOSE_DEV_FILE) up -d
+	@docker compose -f $(COMPOSE_DEV_FILE) down -v
+	@docker compose -f $(COMPOSE_DEV_FILE) build --no-cache
+	@docker compose -f $(COMPOSE_DEV_FILE) up -d
 	@echo "$(GREEN)✓ Development environment refreshed$(NC)"
 
 # =============================================================================
@@ -80,30 +81,30 @@ dev-refresh: ## Complete refresh of dev environment
 .PHONY: prod-up
 prod-up: ## Start production containers
 	@echo "$(BLUE)Starting production environment...$(NC)"
-	@docker-compose -f $(COMPOSE_PROD_FILE) up -d
+	@docker compose -f $(COMPOSE_PROD_FILE) up -d
 	@echo "$(GREEN)✓ Production environment started$(NC)"
 
 .PHONY: prod-down
 prod-down: ## Stop production containers
 	@echo "$(YELLOW)⚠️  Stopping PRODUCTION environment$(NC)"
 	@read -p "Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 1
-	@docker-compose -f $(COMPOSE_PROD_FILE) down
+	@docker compose -f $(COMPOSE_PROD_FILE) down
 	@echo "$(GREEN)✓ Production environment stopped$(NC)"
 
 .PHONY: prod-restart
 prod-restart: ## Restart production containers
 	@echo "$(YELLOW)Restarting production containers...$(NC)"
-	@docker-compose -f $(COMPOSE_PROD_FILE) restart
+	@docker compose -f $(COMPOSE_PROD_FILE) restart
 	@echo "$(GREEN)✓ Production containers restarted$(NC)"
 
 .PHONY: prod-logs
 prod-logs: ## Show production logs
-	@docker-compose -f $(COMPOSE_PROD_FILE) logs -f --tail=100
+	@docker compose -f $(COMPOSE_PROD_FILE) logs -f --tail=100
 
 .PHONY: prod-status
 prod-status: ## Show production container status
 	@echo "$(BLUE)Production Environment Status:$(NC)"
-	@docker-compose -f $(COMPOSE_PROD_FILE) ps
+	@docker compose -f $(COMPOSE_PROD_FILE) ps
 
 # =============================================================================
 # 🔨 BUILD OPERATIONS
@@ -112,31 +113,31 @@ prod-status: ## Show production container status
 .PHONY: build
 build: ## Build all images
 	@echo "$(BLUE)Building all images...$(NC)"
-	@docker-compose build
+	@docker compose build
 	@echo "$(GREEN)✓ All images built$(NC)"
 
 .PHONY: build-api
 build-api: ## Build API image only
 	@echo "$(BLUE)Building API image...$(NC)"
-	@docker-compose build api
+	@docker compose build api
 	@echo "$(GREEN)✓ API image built$(NC)"
 
 .PHONY: build-frontend
 build-frontend: ## Build frontend image only
 	@echo "$(BLUE)Building frontend image...$(NC)"
-	@docker-compose build frontend
+	@docker compose build frontend
 	@echo "$(GREEN)✓ Frontend image built$(NC)"
 
 .PHONY: build-nocache
 build-nocache: ## Build all images without cache
 	@echo "$(BLUE)Building all images (no cache)...$(NC)"
-	@docker-compose build --no-cache
+	@docker compose build --no-cache
 	@echo "$(GREEN)✓ All images rebuilt$(NC)"
 
 .PHONY: build-prod
 build-prod: ## Build production images
 	@echo "$(BLUE)Building production images...$(NC)"
-	@docker-compose -f $(COMPOSE_PROD_FILE) build
+	@docker compose -f $(COMPOSE_PROD_FILE) build
 	@echo "$(GREEN)✓ Production images built$(NC)"
 
 # =============================================================================
@@ -217,26 +218,26 @@ docker-stats: ## Show container resource usage
 
 .PHONY: compose-config
 compose-config: ## Validate and view effective compose configuration
-	@docker-compose config
+	@docker compose config
 
 .PHONY: compose-pull
 compose-pull: ## Pull all images defined in compose
 	@echo "$(BLUE)Pulling images...$(NC)"
-	@docker-compose pull
+	@docker compose pull
 	@echo "$(GREEN)✓ Images pulled$(NC)"
 
 .PHONY: compose-push
 compose-push: ## Push built images to registry
 	@echo "$(BLUE)Pushing images to registry...$(NC)"
-	@docker-compose push
+	@docker compose push
 	@echo "$(GREEN)✓ Images pushed$(NC)"
 
 .PHONY: compose-validate
 compose-validate: ## Validate docker-compose files
 	@echo "$(BLUE)Validating compose files...$(NC)"
-	@docker-compose -f $(COMPOSE_FILE) config -q && echo "$(GREEN)✓ docker-compose.yml valid$(NC)" || echo "$(RED)✗ docker-compose.yml invalid$(NC)"
-	@docker-compose -f $(COMPOSE_DEV_FILE) config -q && echo "$(GREEN)✓ docker-compose.dev.yml valid$(NC)" || echo "$(RED)✗ docker-compose.dev.yml invalid$(NC)"
-	@docker-compose -f $(COMPOSE_PROD_FILE) config -q && echo "$(GREEN)✓ docker-compose.production.yml valid$(NC)" || echo "$(RED)✗ docker-compose.production.yml invalid$(NC)"
+	@docker compose -f $(COMPOSE_FILE) config -q && echo "$(GREEN)✓ docker-compose.yml valid$(NC)" || echo "$(RED)✗ docker-compose.yml invalid$(NC)"
+	@docker compose -f $(COMPOSE_DEV_FILE) config -q && echo "$(GREEN)✓ docker-compose.dev.yml valid$(NC)" || echo "$(RED)✗ docker-compose.dev.yml invalid$(NC)"
+	@docker compose -f $(COMPOSE_PROD_FILE) config -q && echo "$(GREEN)✓ docker-compose.production.yml valid$(NC)" || echo "$(RED)✗ docker-compose.production.yml invalid$(NC)"
 
 # =============================================================================
 # 🐋 DOCKER HEALTH CHECKS
@@ -248,7 +249,7 @@ docker-health: ## Check Docker daemon health
 	@echo -n "Docker daemon: "
 	@docker version > /dev/null 2>&1 && echo "$(GREEN)✓ Running$(NC)" || echo "$(RED)✗ Not running$(NC)"
 	@echo -n "Docker compose: "
-	@docker-compose version > /dev/null 2>&1 && echo "$(GREEN)✓ Available$(NC)" || echo "$(RED)✗ Not available$(NC)"
+	@docker compose version > /dev/null 2>&1 && echo "$(GREEN)✓ Available$(NC)" || echo "$(RED)✗ Not available$(NC)"
 	@echo ""
 	@echo "$(BLUE)Resource Usage:$(NC)"
 	@docker system df
@@ -269,3 +270,51 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}' | \
 		sort
+
+# =============================================================================
+# 🔌 GATEWAY HELPERS (DEV)
+# =============================================================================
+
+.PHONY: dev-build-gateway
+dev-build-gateway: ## Build api-gateway image
+	@docker compose -f $(COMPOSE_DEV_FILE) build --no-cache api-gateway
+
+.PHONY: dev-up-gateway
+dev-up-gateway: ## Recreate api-gateway container
+	@docker compose -f $(COMPOSE_DEV_FILE) up -d api-gateway
+
+.PHONY: dev-logs-gateway
+dev-logs-gateway: ## Tail api-gateway logs
+	@docker compose -f $(COMPOSE_DEV_FILE) logs --no-log-prefix --tail=200 -f api-gateway
+
+.PHONY: dev-exec-gateway
+dev-exec-gateway: ## Exec into api-gateway (sh)
+	@docker compose -f $(COMPOSE_DEV_FILE) exec api-gateway sh
+
+.PHONY: dev-ready-gateway
+dev-ready-gateway: ## Wait for gateway readiness
+	@echo "Checking http://localhost:3005/health/ready" && for i in $$(seq 1 60); do curl -sf http://localhost:3005/health/ready >/dev/null && echo READY && exit 0 || sleep 1; done; echo "Not ready"; exit 1
+
+# =============================================================================
+# 💸 FINANCIAL-SVC HELPERS (DEV)
+# =============================================================================
+
+.PHONY: dev-build-financial
+dev-build-financial: ## Build financial-svc image
+	@docker compose -f $(COMPOSE_DEV_FILE) build --no-cache financial-svc
+
+.PHONY: dev-up-financial
+dev-up-financial: ## Recreate financial-svc container
+	@docker compose -f $(COMPOSE_DEV_FILE) up -d financial-svc
+
+.PHONY: dev-logs-financial
+dev-logs-financial: ## Tail financial-svc logs
+	@docker compose -f $(COMPOSE_DEV_FILE) logs --no-log-prefix --tail=200 -f financial-svc
+
+.PHONY: dev-exec-financial
+dev-exec-financial: ## Exec into financial-svc (sh)
+	@docker compose -f $(COMPOSE_DEV_FILE) exec financial-svc sh
+
+.PHONY: dev-ready-financial
+dev-ready-financial: ## Wait for financial-svc readiness
+	@echo "Checking http://localhost:3001/health/ready" && for i in $$(seq 1 60); do docker compose -f $(COMPOSE_DEV_FILE) exec financial-svc node -e "fetch('http://localhost:3001/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1 && echo READY && exit 0 || sleep 1; done; echo "Not ready"; exit 1

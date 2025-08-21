@@ -20,7 +20,7 @@ import {
   Subcategory,
   AITag,
   TransactionCategorization,
-  CategorizationMethod
+  CategorizationMethod,
 } from './types';
 
 export class FinancialReportingService {
@@ -72,9 +72,7 @@ export class FinancialReportingService {
    * Auto-categorize transactions using AI tags
    */
   async autoCategorizeTransactions(transactionIds?: string[]): Promise<number> {
-    const whereClause = transactionIds?.length
-      ? 'AND t.id = ANY($1)'
-      : '';
+    const whereClause = transactionIds?.length ? 'AND t.id = ANY($1)' : '';
     const params = transactionIds?.length ? [transactionIds] : [];
 
     // Get uncategorized transactions
@@ -180,7 +178,13 @@ export class FinancialReportingService {
     `;
 
     const result = await this.pool.query(query, [
-      transactionId, categoryId, subcategoryId, method, confidenceScore, aiTagId, notes
+      transactionId,
+      categoryId,
+      subcategoryId,
+      method,
+      confidenceScore,
+      aiTagId,
+      notes,
     ]);
 
     return this.mapCategorizationRow(result.rows[0]);
@@ -193,7 +197,10 @@ export class FinancialReportingService {
   /**
    * Generate yearly financial report with income/expense matrix by category and month
    */
-  async getYearlyFinancialReport(year: number, currency = 'EUR'): Promise<{
+  async getYearlyFinancialReport(
+    year: number,
+    currency = 'EUR'
+  ): Promise<{
     year: number;
     currency: string;
     categories: {
@@ -279,7 +286,7 @@ export class FinancialReportingService {
           categoryName: row.category_name,
           categoryColor: row.category_color,
           monthlyData: {},
-          total: 0
+          total: 0,
         });
 
         // Initialize all months with zero
@@ -309,19 +316,19 @@ export class FinancialReportingService {
     const expenseCategoriesArray = Array.from(expenseCategories.values());
 
     // Calculate total for percentages
-    incomeCategoriesArray.forEach(cat => {
+    incomeCategoriesArray.forEach((cat) => {
       yearIncomeTotal += cat.total;
     });
-    expenseCategoriesArray.forEach(cat => {
+    expenseCategoriesArray.forEach((cat) => {
       yearExpenseTotal += cat.total;
     });
 
     // Add percentages and format totals
-    incomeCategoriesArray.forEach(cat => {
+    incomeCategoriesArray.forEach((cat) => {
       cat.percentage = yearIncomeTotal > 0 ? (cat.total / yearIncomeTotal) * 100 : 0;
       cat.total = cat.total.toFixed(2);
     });
-    expenseCategoriesArray.forEach(cat => {
+    expenseCategoriesArray.forEach((cat) => {
       cat.percentage = yearExpenseTotal > 0 ? (cat.total / yearExpenseTotal) * 100 : 0;
       cat.total = cat.total.toFixed(2);
     });
@@ -353,18 +360,18 @@ export class FinancialReportingService {
       currency,
       categories: {
         income: incomeCategoriesArray,
-        expense: expenseCategoriesArray
+        expense: expenseCategoriesArray,
       },
       monthlyTotals: {
         income: formattedMonthlyIncome,
         expense: formattedMonthlyExpense,
-        balance: monthlyBalance
+        balance: monthlyBalance,
       },
       yearTotals: {
         income: yearIncomeTotal.toFixed(2),
         expense: yearExpenseTotal.toFixed(2),
-        balance: (yearIncomeTotal - yearExpenseTotal).toFixed(2)
-      }
+        balance: (yearIncomeTotal - yearExpenseTotal).toFixed(2),
+      },
     };
   }
 
@@ -394,13 +401,13 @@ export class FinancialReportingService {
       period: {
         start,
         end,
-        type: periodType
+        type: periodType,
       },
       summary,
       byCategory,
       trends,
       currency,
-      generatedAt: new Date()
+      generatedAt: new Date(),
     };
   }
 
@@ -426,7 +433,12 @@ export class FinancialReportingService {
     const trends = this.calculateTrends(currentMonth, previousMonth);
 
     // Get top expense categories
-    const topExpenseCategories = await this.getTopCategories(currentStart, currentEnd, 'expense', currency);
+    const topExpenseCategories = await this.getTopCategories(
+      currentStart,
+      currentEnd,
+      'expense',
+      currency
+    );
 
     // Get recent transactions
     const recentTransactions = await this.getRecentCategorizedTransactions(10, currency);
@@ -441,7 +453,7 @@ export class FinancialReportingService {
       topExpenseCategories,
       recentTransactions,
       alerts,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
   }
 
@@ -460,7 +472,7 @@ export class FinancialReportingService {
       accountId,
       currency,
       limit = 50,
-      offset = 0
+      offset = 0,
     } = params;
 
     const whereConditions = ['1=1'];
@@ -511,12 +523,12 @@ export class FinancialReportingService {
 
     const [transactions, countResult] = await Promise.all([
       this.pool.query(query, queryParams),
-      this.pool.query(countQuery, queryParams.slice(2)) // Skip limit/offset for count
+      this.pool.query(countQuery, queryParams.slice(2)), // Skip limit/offset for count
     ]);
 
     return {
       transactions: transactions.rows.map(this.mapCategorizedTransactionRow),
-      total: parseInt(countResult.rows[0].total)
+      total: parseInt(countResult.rows[0].total),
     };
   }
 
@@ -586,7 +598,7 @@ export class FinancialReportingService {
       totalIncome,
       totalExpenses,
       netAmount,
-      transactionCount: totalTransactions
+      transactionCount: totalTransactions,
     };
   }
 
@@ -644,7 +656,7 @@ export class FinancialReportingService {
           subcategoryName: row.subcategory_name,
           amount: amount.toString(),
           percentage: 0, // Will calculate after totals
-          transactionCount: count
+          transactionCount: count,
         });
       }
     }
@@ -675,12 +687,12 @@ export class FinancialReportingService {
         amount: totals.amount.toString(),
         percentage: (totals.amount / typeTotal) * 100,
         transactionCount: totals.count,
-        subcategories: categorySubcategories.get(categoryId) || []
+        subcategories: categorySubcategories.get(categoryId) || [],
       };
 
       // Update subcategory percentages
       if (categoryItem.subcategories) {
-        categoryItem.subcategories.forEach(sub => {
+        categoryItem.subcategories.forEach((sub) => {
           sub.percentage = (parseFloat(sub.amount) / totals.amount) * 100;
         });
       }
@@ -728,7 +740,7 @@ export class FinancialReportingService {
       const trend = {
         month: row.month,
         amount: row.amount,
-        transactionCount: parseInt(row.transaction_count)
+        transactionCount: parseInt(row.transaction_count),
       };
 
       if (row.type === 'income') {
@@ -744,7 +756,7 @@ export class FinancialReportingService {
     return {
       monthlyIncome,
       monthlyExpenses,
-      topCategories
+      topCategories,
     };
   }
 
@@ -774,12 +786,12 @@ export class FinancialReportingService {
     const params = type ? [start, end, currency, type] : [start, end, currency];
     const result = await this.pool.query(query, params);
 
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       categoryId: row.category_id,
       categoryName: row.category_name,
       amount: row.amount,
       trend: 'stable' as const, // TODO: Calculate actual trend
-      trendPercentage: 0
+      trendPercentage: 0,
     }));
   }
 
@@ -818,7 +830,7 @@ export class FinancialReportingService {
       income,
       expenses,
       balance,
-      transactionCount
+      transactionCount,
     };
   }
 
@@ -833,11 +845,14 @@ export class FinancialReportingService {
     return {
       incomeChange: calculateChange(parseFloat(current.income), parseFloat(previous.income)),
       expenseChange: calculateChange(parseFloat(current.expenses), parseFloat(previous.expenses)),
-      balanceChange: calculateChange(parseFloat(current.balance), parseFloat(previous.balance))
+      balanceChange: calculateChange(parseFloat(current.balance), parseFloat(previous.balance)),
     };
   }
 
-  private async getRecentCategorizedTransactions(limit: number, currency?: string): Promise<CategorizedTransaction[]> {
+  private async getRecentCategorizedTransactions(
+    limit: number,
+    currency?: string
+  ): Promise<CategorizedTransaction[]> {
     const query = `
       SELECT * FROM financial.categorized_transactions
       ${currency ? 'WHERE currency_code = $2' : ''}
@@ -889,7 +904,7 @@ export class FinancialReportingService {
       userCorrectedSubcategoryId: row.user_corrected_subcategory_id,
       notes: row.notes,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
     };
   }
 
@@ -915,7 +930,7 @@ export class FinancialReportingService {
       categorizationMethod: row.categorization_method,
       confidenceScore: row.confidence_score,
       userConfirmed: row.user_confirmed,
-      createdAt: row.created_at
+      createdAt: row.created_at,
     };
   }
 
@@ -930,7 +945,7 @@ export class FinancialReportingService {
       totalAmount: row.total_amount,
       avgAmount: row.avg_amount,
       minAmount: row.min_amount,
-      maxAmount: row.max_amount
+      maxAmount: row.max_amount,
     };
   }
 
@@ -942,7 +957,7 @@ export class FinancialReportingService {
       currencyCode: row.currency_code,
       transactions30d: parseInt(row.transactions_30d || '0'),
       income30d: row.income_30d,
-      expenses30d: row.expenses_30d
+      expenses30d: row.expenses_30d,
     };
   }
 }

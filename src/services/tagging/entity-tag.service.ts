@@ -4,7 +4,7 @@ import {
   CreateEntityTag,
   UpdateEntityTag,
   EntityTagQuery,
-  EntityTagWithRelations
+  EntityTagWithRelations,
 } from '../../types/entity-tag.types';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../utils/errors';
@@ -117,14 +117,13 @@ export class EntityTagService {
    */
   async create(data: CreateEntityTag, userId?: string): Promise<EntityTag> {
     try {
-
       const entityTag = await prisma.entityTag.create({
         data: {
           ...data,
         },
       });
 
-      logger.info(`EntityTag created: ${ entityTag.id }`);
+      logger.info(`EntityTag created: ${entityTag.id}`);
       return convertDecimals(entityTag);
     } catch (error) {
       logger.error('Error in EntityTagService.create:', error);
@@ -176,7 +175,6 @@ export class EntityTagService {
         throw new AppError('EntityTag not found', 404);
       }
 
-
       await prisma.entityTag.delete({
         where: { id },
       });
@@ -190,9 +188,6 @@ export class EntityTagService {
       throw new AppError('Failed to delete entitytag', 500);
     }
   }
-
-
-
 }
 
 // Export singleton instance

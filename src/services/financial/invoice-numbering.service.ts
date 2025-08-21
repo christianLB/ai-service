@@ -34,7 +34,6 @@ export class InvoiceNumberingService {
   private defaultFormat: string;
   private yearlyReset: boolean;
 
-
   constructor(
     prisma: PrismaClient,
     config?: {
@@ -58,25 +57,28 @@ export class InvoiceNumberingService {
       series = 'DEFAULT',
       prefix = this.defaultPrefix,
       format = this.defaultFormat,
-      year = new Date().getFullYear()
+      year = new Date().getFullYear(),
     } = options;
 
     try {
       // Use Prisma transaction with explicit locking
-      const result = await this.prisma.$transaction(async (tx) => {
-        // First, try to find and lock the existing sequence
-        const existingSequenceRaw = await tx.$queryRaw<Array<{
-          id: string;
-          series: string;
-          prefix: string;
-          current_number: number;
-          current_year: number;
-          format: string;
-          yearly_reset: boolean;
-          last_used: Date | null;
-          created_at: Date | null;
-          updated_at: Date | null;
-        }>>`
+      const result = await this.prisma.$transaction(
+        async (tx) => {
+          // First, try to find and lock the existing sequence
+          const existingSequenceRaw = await tx.$queryRaw<
+            Array<{
+              id: string;
+              series: string;
+              prefix: string;
+              current_number: number;
+              current_year: number;
+              format: string;
+              yearly_reset: boolean;
+              last_used: Date | null;
+              created_at: Date | null;
+              updated_at: Date | null;
+            }>
+          >`
           SELECT * FROM public."invoice_numbering_sequences"
           WHERE series = ${series} 
             AND prefix = ${prefix} 
@@ -84,92 +86,93 @@ export class InvoiceNumberingService {
           FOR UPDATE
         `;
 
-        const existingSequence: NumberingSequence[] = existingSequenceRaw.map(seq => ({
-          id: seq.id,
-          series: seq.series,
-          prefix: seq.prefix,
-          currentNumber: seq.current_number,
-          currentYear: seq.current_year,
-          format: seq.format,
-          yearlyReset: seq.yearly_reset,
-          lastUsed: seq.last_used,
-          createdAt: seq.created_at,
-          updatedAt: seq.updated_at
-        }));
+          const existingSequence: NumberingSequence[] = existingSequenceRaw.map((seq) => ({
+            id: seq.id,
+            series: seq.series,
+            prefix: seq.prefix,
+            currentNumber: seq.current_number,
+            currentYear: seq.current_year,
+            format: seq.format,
+            yearlyReset: seq.yearly_reset,
+            lastUsed: seq.last_used,
+            createdAt: seq.created_at,
+            updatedAt: seq.updated_at,
+          }));
 
-        let sequence: NumberingSequence;
-        let nextNumber: number;
+          let sequence: NumberingSequence;
+          let nextNumber: number;
 
-        if (existingSequence.length === 0) {
-          // Create new sequence
-          nextNumber = 1;
-
-          const newSequence = await tx.invoice_numbering_sequences.create({
-            data: {
-              series,
-              prefix,
-              current_number: nextNumber,
-              current_year: year,
-              format,
-              yearly_reset: this.yearlyReset,
-              last_used: new Date()
-            }
-          });
-
-          sequence = {
-            id: newSequence.id,
-            series: newSequence.series,
-            prefix: newSequence.prefix,
-            currentNumber: newSequence.current_number,
-            currentYear: newSequence.current_year,
-            format: newSequence.format,
-            yearlyReset: newSequence.yearly_reset,
-            lastUsed: newSequence.last_used,
-            createdAt: newSequence.created_at,
-            updatedAt: newSequence.updated_at
-          };
-        } else {
-          // Update existing sequence
-          sequence = existingSequence[0];
-
-          // Check if we need to reset for new year
-          if (this.yearlyReset && sequence.currentYear < year) {
+          if (existingSequence.length === 0) {
+            // Create new sequence
             nextNumber = 1;
 
-            await tx.invoice_numbering_sequences.update({
-              where: { id: sequence.id },
+            const newSequence = await tx.invoice_numbering_sequences.create({
               data: {
+                series,
+                prefix,
                 current_number: nextNumber,
                 current_year: year,
+                format,
+                yearly_reset: this.yearlyReset,
                 last_used: new Date(),
-                updated_at: new Date()
-              }
+              },
             });
+
+            sequence = {
+              id: newSequence.id,
+              series: newSequence.series,
+              prefix: newSequence.prefix,
+              currentNumber: newSequence.current_number,
+              currentYear: newSequence.current_year,
+              format: newSequence.format,
+              yearlyReset: newSequence.yearly_reset,
+              lastUsed: newSequence.last_used,
+              createdAt: newSequence.created_at,
+              updatedAt: newSequence.updated_at,
+            };
           } else {
-            nextNumber = sequence.currentNumber + 1;
+            // Update existing sequence
+            sequence = existingSequence[0];
 
-            await tx.invoice_numbering_sequences.update({
-              where: { id: sequence.id },
-              data: {
-                current_number: nextNumber,
-                last_used: new Date(),
-                updated_at: new Date()
-              }
-            });
+            // Check if we need to reset for new year
+            if (this.yearlyReset && sequence.currentYear < year) {
+              nextNumber = 1;
+
+              await tx.invoice_numbering_sequences.update({
+                where: { id: sequence.id },
+                data: {
+                  current_number: nextNumber,
+                  current_year: year,
+                  last_used: new Date(),
+                  updated_at: new Date(),
+                },
+              });
+            } else {
+              nextNumber = sequence.currentNumber + 1;
+
+              await tx.invoice_numbering_sequences.update({
+                where: { id: sequence.id },
+                data: {
+                  current_number: nextNumber,
+                  last_used: new Date(),
+                  updated_at: new Date(),
+                },
+              });
+            }
           }
-        }
 
-        return nextNumber;
-      }, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
-      });
+          return nextNumber;
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        }
+      );
 
       // Format the invoice number
       const invoiceNumber = this.formatInvoiceNumber(result, year, prefix, format);
 
       logger.info(`Generated invoice number: ${invoiceNumber} (series: ${series})`);
       return invoiceNumber;
-
     } catch (error) {
       logger.error('Error generating invoice number:', error);
       throw new Error('Failed to generate invoice number');
@@ -219,10 +222,7 @@ export class InvoiceNumberingService {
     try {
       const sequences = await this.prisma.invoice_numbering_sequences.findMany({
         where: { series },
-        orderBy: [
-          { current_year: 'desc' },
-          { prefix: 'asc' }
-        ]
+        orderBy: [{ current_year: 'desc' }, { prefix: 'asc' }],
       });
 
       return sequences.map((seq: any) => ({
@@ -235,7 +235,7 @@ export class InvoiceNumberingService {
         yearlyReset: seq.yearly_reset,
         lastUsed: seq.last_used,
         createdAt: seq.created_at,
-        updatedAt: seq.updated_at
+        updatedAt: seq.updated_at,
       }));
     } catch (error) {
       logger.error('Error getting sequence info:', error);
@@ -249,11 +249,7 @@ export class InvoiceNumberingService {
   async getAllSequences(): Promise<NumberingSequence[]> {
     try {
       const sequences = await this.prisma.invoice_numbering_sequences.findMany({
-        orderBy: [
-          { series: 'asc' },
-          { current_year: 'desc' },
-          { prefix: 'asc' }
-        ]
+        orderBy: [{ series: 'asc' }, { current_year: 'desc' }, { prefix: 'asc' }],
       });
 
       return sequences.map((seq: any) => ({
@@ -266,7 +262,7 @@ export class InvoiceNumberingService {
         yearlyReset: seq.yearly_reset,
         lastUsed: seq.last_used,
         createdAt: seq.created_at,
-        updatedAt: seq.updated_at
+        updatedAt: seq.updated_at,
       }));
     } catch (error) {
       logger.error('Error getting all sequences:', error);
@@ -286,15 +282,17 @@ export class InvoiceNumberingService {
         where: {
           series,
           prefix,
-          current_year: currentYear
+          current_year: currentYear,
         },
         data: {
           current_number: 0,
-          updated_at: new Date()
-        }
+          updated_at: new Date(),
+        },
       });
 
-      logger.warn(`Reset invoice sequence for series: ${series}, prefix: ${prefix}, year: ${currentYear}`);
+      logger.warn(
+        `Reset invoice sequence for series: ${series}, prefix: ${prefix}, year: ${currentYear}`
+      );
     } catch (error) {
       logger.error('Error resetting sequence:', error);
       throw new Error('Failed to reset sequence');
@@ -320,12 +318,12 @@ export class InvoiceNumberingService {
           series_prefix_current_year: {
             series,
             prefix,
-            current_year: currentYear
-          }
+            current_year: currentYear,
+          },
         },
         update: {
           current_number: nextNumber - 1, // Subtract 1 because getNextInvoiceNumber will increment
-          updated_at: new Date()
+          updated_at: new Date(),
         },
         create: {
           series,
@@ -334,11 +332,13 @@ export class InvoiceNumberingService {
           current_year: currentYear,
           format: this.defaultFormat,
           yearly_reset: this.yearlyReset,
-          last_used: new Date()
-        }
+          last_used: new Date(),
+        },
       });
 
-      logger.info(`Set next invoice number for ${series}/${prefix}/${currentYear} to ${nextNumber}`);
+      logger.info(
+        `Set next invoice number for ${series}/${prefix}/${currentYear} to ${nextNumber}`
+      );
     } catch (error) {
       logger.error('Error setting next number:', error);
       throw new Error('Failed to set next number');
@@ -352,8 +352,8 @@ export class InvoiceNumberingService {
     try {
       const count = await this.prisma.invoice.count({
         where: {
-          invoiceNumber: invoiceNumber
-        }
+          invoiceNumber: invoiceNumber,
+        },
       });
 
       return count === 0;
@@ -399,14 +399,14 @@ export class InvoiceNumberingService {
 
       return {
         totalSequences,
-        sequencesByYear: yearStats.map(stat => ({
+        sequencesByYear: yearStats.map((stat) => ({
           year: stat.year,
-          count: Number(stat.count)
+          count: Number(stat.count),
         })),
-        mostUsedSeries: seriesStats.map(stat => ({
+        mostUsedSeries: seriesStats.map((stat) => ({
           series: stat.series,
-          count: Number(stat.count)
-        }))
+          count: Number(stat.count),
+        })),
       };
     } catch (error) {
       logger.error('Error getting statistics:', error);
@@ -426,7 +426,7 @@ export class InvoiceNumberingService {
       const currentYear = year || new Date().getFullYear();
       const where: any = {
         series,
-        current_year: currentYear
+        current_year: currentYear,
       };
 
       if (prefix) {
@@ -436,8 +436,8 @@ export class InvoiceNumberingService {
       const sequence = await this.prisma.invoice_numbering_sequences.findFirst({
         where,
         orderBy: {
-          last_used: 'desc'
-        }
+          last_used: 'desc',
+        },
       });
 
       if (!sequence || sequence.current_number === 0) {
@@ -459,10 +459,10 @@ export class InvoiceNumberingService {
 
 // Export standard invoice number formats
 export const INVOICE_NUMBER_FORMATS = {
-  SPANISH_STANDARD: 'PREFIX-YYYY-0000',  // FAC-2024-0001
-  SPANISH_SLASH: 'PREFIX/YYYY/0000',     // FAC/2024/0001
-  SEQUENTIAL_ONLY: 'PREFIX-000000',      // FAC-000001
-  YEAR_PREFIX: 'YYYY-PREFIX-0000',       // 2024-FAC-0001
-  COMPACT: 'PREFIXYYYYY00000',           // FAC240001
-  CUSTOM: 'PREFIX-YY-00000'              // FAC-24-00001
+  SPANISH_STANDARD: 'PREFIX-YYYY-0000', // FAC-2024-0001
+  SPANISH_SLASH: 'PREFIX/YYYY/0000', // FAC/2024/0001
+  SEQUENTIAL_ONLY: 'PREFIX-000000', // FAC-000001
+  YEAR_PREFIX: 'YYYY-PREFIX-0000', // 2024-FAC-0001
+  COMPACT: 'PREFIXYYYYY00000', // FAC240001
+  CUSTOM: 'PREFIX-YY-00000', // FAC-24-00001
 };

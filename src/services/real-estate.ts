@@ -7,7 +7,9 @@ export class RealEstateService {
   constructor(private pool: Pool) {}
 
   async listProperties(): Promise<Property[]> {
-    const res = await this.pool.query('SELECT * FROM real_estate.properties ORDER BY created_at DESC');
+    const res = await this.pool.query(
+      'SELECT * FROM real_estate.properties ORDER BY created_at DESC'
+    );
     return res.rows;
   }
 

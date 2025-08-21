@@ -1,0 +1,22 @@
+// Minimal test schema for trading service
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trade {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exchange         String   @db.VarChar(50)
+  symbol           String   @db.VarChar(50)
+  side             String   @db.VarChar(10)
+  quantity         Decimal  @db.Decimal(20, 8)
+  price            Decimal  @db.Decimal(20, 8)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  
+  @@map("trades")
+}

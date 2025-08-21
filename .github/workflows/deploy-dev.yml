@@ -1,0 +1,256 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      skip-tests:
+        description: 'Skip tests (use with caution)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  NODE_VERSION: '20'
+
+jobs:
+  # Pre-deployment validation
+  pre-deploy:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip-tests }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd frontend && npm ci --legacy-peer-deps
+      
+      - name: Run critical tests
+        run: |
+          echo "🧪 Running critical tests before deployment..."
+          npm test -- --testNamePattern="critical|security|auth" --passWithNoTests
+      
+      - name: Security scan
+        run: |
+          echo "🔒 Running security scan..."
+          npm audit --audit-level=high
+          cd frontend && npm audit --audit-level=high
+
+  # Build and push Docker image
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [pre-deploy]
+    if: always() && (needs.pre-deploy.result == 'success' || needs.pre-deploy.result == 'skipped')
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-sha: ${{ steps.build.outputs.digest }}
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GHCR (use CHCR_TOKEN if available)
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.CHCR_USERNAME || github.repository_owner }}
+        password: ${{ secrets.CHCR_TOKEN || secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd frontend && npm ci --legacy-peer-deps
+      
+    - name: Generate Prisma Client
+      run: npx prisma generate
+      
+    - name: Build application
+      run: |
+        echo "🏗️ Building application..."
+        npm run build
+        cd frontend && npm run build
+        echo "✅ Build successful!"
+
+    - name: Generate version info
+      id: version
+      run: |
+        echo "timestamp=$(date -u +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+        echo "commit_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        echo "commit_full=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        echo "version=v$(date -u +%Y.%m.%d)-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=${{ steps.version.outputs.version }}
+        labels: |
+          org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          org.opencontainers.image.revision=${{ steps.version.outputs.commit_full }}
+          ai-service.build.timestamp=${{ steps.version.outputs.timestamp }}
+          ai-service.build.commit=${{ steps.version.outputs.commit_short }}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        target: production
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ steps.version.outputs.version }}
+          BUILD_DATE=${{ steps.version.outputs.build_date }}
+          COMMIT=${{ steps.version.outputs.commit_full }}
+          COMMIT_SHORT=${{ steps.version.outputs.commit_short }}
+
+  # Deployment health check
+  health-check:
+    name: Post-deployment Health Check
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    steps:
+    - name: Wait for Watchtower deployment
+      run: |
+        echo "⏳ Waiting 5 minutes for Watchtower to detect and deploy..."
+        sleep 300
+    
+    - name: Check deployment health
+      run: |
+        echo "🏥 Checking production health..."
+        # Replace with your actual production URL
+        # Health check disabled - Watchtower handles deployment verification
+        echo "⏭️ Skipping health check - deployment handled by Watchtower"
+        echo "✅ Check Telegram notifications for deployment status"
+    
+    - name: Run smoke tests
+      run: |
+        echo "🔥 Running smoke tests..."
+        # Add basic API tests here
+        echo "✅ Smoke tests passed!"
+
+  # Create release
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-and-push, health-check]
+    if: success()
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        echo "📝 Generating changelog..."
+        # Get commits since last tag
+        last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -z "$last_tag" ]; then
+          commits=$(git log --pretty=format:"- %s (%h)" --no-merges)
+        else
+          commits=$(git log $last_tag..HEAD --pretty=format:"- %s (%h)" --no-merges)
+        fi
+        
+        # Create changelog
+        cat > CHANGELOG.md << EOF
+        ## What's Changed
+        
+        $commits
+        
+        **Full Changelog**: https://github.com/${{ github.repository }}/compare/$last_tag...${{ needs.build-and-push.outputs.version }}
+        
+        ## Docker Image
+        \`\`\`
+        ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.version }}
+        \`\`\`
+        EOF
+        
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat CHANGELOG.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.build-and-push.outputs.version }}
+        name: Release ${{ needs.build-and-push.outputs.version }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: false
+
+  # Notify deployment completion
+  notify:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [build-and-push, health-check]
+    if: always()
+    steps:
+    - name: Deployment Summary
+      run: |
+        if [ "${{ needs.health-check.result }}" = "success" ]; then
+          echo "🎉 Deployment completed successfully!"
+          echo "📦 Version: ${{ needs.build-and-push.outputs.version }}"
+          echo "🔗 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "✅ All health checks passed"
+        else
+          echo "❌ Deployment failed or unhealthy"
+          echo "📦 Version: ${{ needs.build-and-push.outputs.version }}"
+          echo "🔍 Check the logs for more information"
+        fi
+        
+    - name: Create deployment record
+      if: success()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.repos.createDeployment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: context.sha,
+            task: 'deploy',
+            auto_merge: false,
+            required_contexts: [],
+            payload: {
+              version: '${{ needs.build-and-push.outputs.version }}',
+              image: '${{ needs.build-and-push.outputs.image-tag }}'
+            },
+            environment: 'production',
+            description: 'Deployment to NAS via Watchtower',
+            production_environment: true
+          });

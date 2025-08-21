@@ -1,5 +1,13 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { TelegramConfig, FinancialAlert, TelegramCommand, SystemStatus, FinancialSummary, ReportType, AlertPriority } from './types';
+import {
+  TelegramConfig,
+  FinancialAlert,
+  TelegramCommand,
+  SystemStatus,
+  FinancialSummary,
+  ReportType,
+  AlertPriority,
+} from './types';
 import { FinancialDatabaseService } from '../financial/database.service';
 import { TelegramDocumentService } from '../document-intelligence/telegram-document.service';
 import { InvoiceManagementService } from '../financial/invoice-management.service';
@@ -37,7 +45,7 @@ export class TelegramService {
       // Get bot token from integration config only
       const botToken = await integrationConfigService.getConfig({
         integrationType: 'telegram',
-        configKey: 'bot_token'
+        configKey: 'bot_token',
       });
 
       if (!botToken) {
@@ -46,8 +54,8 @@ export class TelegramService {
       }
 
       this.bot = new TelegramBot(botToken, {
-        polling: false,  // Usaremos webhook
-        webHook: false
+        polling: false, // Usaremos webhook
+        webHook: false,
       });
 
       // Initialize document service
@@ -99,7 +107,7 @@ export class TelegramService {
       { command: 'strategies', description: 'Estado de estrategias' },
       { command: 'pnl', description: 'Ver P&L del día' },
       { command: 'stop_all', description: 'Detener todo el trading (emergencia)' },
-      { command: 'trade', description: 'Ejecutar trade manual' }
+      { command: 'trade', description: 'Ejecutar trade manual' },
     ]);
   }
 
@@ -120,7 +128,7 @@ export class TelegramService {
         configValue: url,
         encrypt: false,
         isGlobal: true,
-        description: 'Telegram webhook URL'
+        description: 'Telegram webhook URL',
       });
     } catch (error) {
       logger.error('Error configurando webhook:', error);
@@ -136,10 +144,12 @@ export class TelegramService {
 
     try {
       // Get chat ID from config if not provided
-      const targetChatId = chatId || await integrationConfigService.getConfig({
-        integrationType: 'telegram',
-        configKey: 'chat_id'
-      });
+      const targetChatId =
+        chatId ||
+        (await integrationConfigService.getConfig({
+          integrationType: 'telegram',
+          configKey: 'chat_id',
+        }));
 
       if (!targetChatId) {
         throw new Error('No chat ID configured');
@@ -147,7 +157,7 @@ export class TelegramService {
 
       await this.bot.sendMessage(targetChatId, message, {
         parse_mode: 'HTML',
-        ...options
+        ...options,
       });
       logger.info(`Mensaje enviado a ${targetChatId}`);
     } catch (error) {
@@ -160,7 +170,7 @@ export class TelegramService {
     // Check if alerts are enabled in integration config
     const alertsEnabled = await integrationConfigService.getConfig({
       integrationType: 'telegram',
-      configKey: 'alerts_enabled'
+      configKey: 'alerts_enabled',
     });
 
     if (alertsEnabled === 'false') {
@@ -174,7 +184,7 @@ export class TelegramService {
     try {
       const chatId = await integrationConfigService.getConfig({
         integrationType: 'telegram',
-        configKey: 'chat_id'
+        configKey: 'chat_id',
       });
 
       if (!chatId) {
@@ -191,11 +201,16 @@ export class TelegramService {
 
   private getAlertEmoji(priority: AlertPriority): string {
     switch (priority) {
-      case 'critical': return '🚨';
-      case 'high': return '⚠️';
-      case 'medium': return '🟡';
-      case 'low': return '🟢';
-      default: return '📊';
+      case 'critical':
+        return '🚨';
+      case 'high':
+        return '⚠️';
+      case 'medium':
+        return '🟡';
+      case 'low':
+        return '🟢';
+      default:
+        return '📊';
     }
   }
 
@@ -281,14 +296,15 @@ export class TelegramService {
         // Document Intelligence commands
         case '/upload':
           // Send upload instructions
-          await this.sendMessage(chatId,
+          await this.sendMessage(
+            chatId,
             '📄 *Document Upload*\n\n' +
-            'Send me any document (PDF, DOCX, TXT, etc.) and I\'ll:\n' +
-            '• Extract and analyze the content\n' +
-            '• Generate a summary\n' +
-            '• Extract key information\n' +
-            '• Make it searchable\n\n' +
-            'Just send the file directly!',
+              "Send me any document (PDF, DOCX, TXT, etc.) and I'll:\n" +
+              '• Extract and analyze the content\n' +
+              '• Generate a summary\n' +
+              '• Extract key information\n' +
+              '• Make it searchable\n\n' +
+              'Just send the file directly!',
             { parse_mode: 'Markdown' }
           );
           break;
@@ -298,18 +314,22 @@ export class TelegramService {
         case '/analyze':
         case '/dochelp':
           // These document commands require more context than available in webhook
-          await this.sendMessage(chatId,
+          await this.sendMessage(
+            chatId,
             '📄 *Document Commands*\n\n' +
-            'Los comandos de documentos están configurados pero requieren procesamiento especial.\n\n' +
-            'Para subir documentos:\n' +
-            '1. Usa `/upload` para ver instrucciones\n' +
-            '2. Envía tu archivo directamente\n\n' +
-            'Los comandos `/list`, `/search`, `/summary`, `/analyze` y `/dochelp` están en desarrollo.',
+              'Los comandos de documentos están configurados pero requieren procesamiento especial.\n\n' +
+              'Para subir documentos:\n' +
+              '1. Usa `/upload` para ver instrucciones\n' +
+              '2. Envía tu archivo directamente\n\n' +
+              'Los comandos `/list`, `/search`, `/summary`, `/analyze` y `/dochelp` están en desarrollo.',
             { parse_mode: 'Markdown' }
           );
           break;
         default:
-          await this.sendMessage(chatId, '❓ Comando no reconocido. Usa /help para ver los comandos disponibles.');
+          await this.sendMessage(
+            chatId,
+            '❓ Comando no reconocido. Usa /help para ver los comandos disponibles.'
+          );
       }
     } catch (error) {
       logger.error(`Error manejando comando ${name}:`, error);
@@ -497,7 +517,6 @@ ${summary.lastSync.toLocaleString()}
       // Generar reporte real
       const reporte = await this.generateReport(periodo);
       await this.sendMessage(chatId, reporte);
-
     } catch (error) {
       await this.sendMessage(chatId, '❌ Error generando reporte');
     }
@@ -509,11 +528,15 @@ ${summary.lastSync.toLocaleString()}
 
       // Verificar si hay cuentas configuradas
       const accounts = await this.financialService.getAccounts();
-      const bankAccounts = accounts.filter((acc: any) => acc.type === 'bank_account' && acc.is_active);
+      const bankAccounts = accounts.filter(
+        (acc: any) => acc.type === 'bank_account' && acc.is_active
+      );
 
       if (bankAccounts.length === 0) {
         // No hay cuentas, iniciar proceso de configuración
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ❌ <b>No hay cuentas bancarias configuradas</b>
 
 Para conectar tu banco necesitas:
@@ -523,24 +546,31 @@ Para conectar tu banco necesitas:
 3️⃣ Una vez autorizado, podrás sincronizar tus transacciones
 
 ¿Deseas configurar tu banco ahora? Usa /setup
-        `);
+        `
+        );
         return;
       }
 
       // Hay cuentas, realizar sincronización
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 📊 <b>Sincronizando ${bankAccounts.length} cuenta(s) bancaria(s)...</b>
 
 Esto puede tomar unos momentos...
-      `);
+      `
+      );
 
       try {
         // Llamar al endpoint de sync
         logger.info(`Iniciando sincronización bancaria para chat ${chatId}`);
-        const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/sync`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
+        const response = await fetch(
+          `http://localhost:${process.env.PORT || 3000}/api/financial/sync`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
 
         logger.info(`Respuesta del endpoint sync: ${response.status}`);
         const result = await response.json();
@@ -549,7 +579,9 @@ Esto puede tomar unos momentos...
         if (result.success) {
           const { accountsSynced, transactionsSynced } = result.data;
 
-          await this.sendMessage(chatId, `
+          await this.sendMessage(
+            chatId,
+            `
 ✅ <b>Sincronización completada</b>
 
 📊 Resumen:
@@ -558,19 +590,23 @@ Esto puede tomar unos momentos...
 
 Usa /balance para ver tu saldo actualizado
 Usa /gastos para ver tus gastos por categoría
-          `);
+          `
+          );
         } else {
           throw new Error(result.error || 'Error en sincronización');
         }
       } catch (error: any) {
         logger.error('Error en sincronización:', error);
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ⚠️ <b>Error en sincronización</b>
 
 ${error.message}
 
 Intenta nuevamente en unos minutos o contacta soporte.
-        `);
+        `
+        );
       }
     } catch (error) {
       logger.error('Error en comando sync:', error);
@@ -580,7 +616,9 @@ Intenta nuevamente en unos minutos o contacta soporte.
 
   private async handleSetupCommand(chatId: string): Promise<void> {
     try {
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 🏦 <b>Configuración de Conexión Bancaria</b>
 
 Vamos a conectar tu banco usando GoCardless (Open Banking seguro).
@@ -597,7 +635,8 @@ Vamos a conectar tu banco usando GoCardless (Open Banking seguro).
 • Para probar con una cuenta de prueba (Sandbox): /setup_sandbox
 
 ⚠️ <b>Importante:</b> Este proceso te redirigirá al sitio web de tu banco para autorizar el acceso de forma segura.
-      `);
+      `
+      );
     } catch (error) {
       logger.error('Error en comando setup:', error);
       await this.sendMessage(chatId, '❌ Error mostrando opciones de configuración');
@@ -609,17 +648,22 @@ Vamos a conectar tu banco usando GoCardless (Open Banking seguro).
       await this.sendMessage(chatId, '🏦 Iniciando configuración con BBVA...');
 
       // Llamar al endpoint de setup BBVA
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/setup-bbva`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/financial/setup-bbva`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
 
       const result = await response.json();
 
       if (result.success && result.data.requisition) {
         const { requisition } = result.data;
 
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ✅ <b>Proceso de autorización iniciado</b>
 
 🔗 <b>Enlace de autorización:</b>
@@ -636,13 +680,17 @@ ${requisition.link}
 
 Cuando hayas completado la autorización, usa el comando:
 /complete_setup ${requisition.id}
-        `, { parse_mode: 'HTML' });
+        `,
+          { parse_mode: 'HTML' }
+        );
       } else {
         throw new Error(result.error || 'Error iniciando configuración');
       }
     } catch (error: any) {
       logger.error('Error en setup BBVA:', error);
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 ❌ <b>Error configurando BBVA</b>
 
 ${error.message}
@@ -652,7 +700,8 @@ Posibles causas:
 • Error de conexión con el servicio
 
 Contacta al administrador del sistema.
-      `);
+      `
+      );
     }
   }
 
@@ -661,17 +710,22 @@ Contacta al administrador del sistema.
       await this.sendMessage(chatId, '🧪 Iniciando configuración con Sandbox...');
 
       // Llamar al endpoint de setup sandbox
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/setup-sandbox`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/financial/setup-sandbox`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
 
       const result = await response.json();
 
       if (result.success && result.data.requisition) {
         const { requisition } = result.data;
 
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ✅ <b>Proceso de autorización de Sandbox iniciado</b>
 
 🔗 <b>Enlace de autorización:</b>
@@ -687,13 +741,17 @@ ${requisition.link}
 
 Cuando hayas completado la autorización, usa el comando:
 /complete_setup ${requisition.id}
-        `, { parse_mode: 'HTML' });
+        `,
+          { parse_mode: 'HTML' }
+        );
       } else {
         throw new Error(result.error || 'Error iniciando configuración de Sandbox');
       }
     } catch (error: any) {
       logger.error('Error en setup Sandbox:', error);
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 ❌ <b>Error configurando Sandbox</b>
 
 ${error.message}
@@ -703,38 +761,48 @@ Posibles causas:
 • Error de conexión con el servicio
 
 Contacta al administrador del sistema.
-      `, { parse_mode: 'HTML' });
+      `,
+        { parse_mode: 'HTML' }
+      );
     }
   }
 
   private async handleCompleteSetupCommand(chatId: string, requisitionId?: string): Promise<void> {
     try {
       if (!requisitionId) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ❌ <b>Falta el ID de requisición</b>
 
 Uso correcto: /complete_setup [requisition_id]
 
 El ID te fue proporcionado cuando iniciaste la configuración.
-        `);
+        `
+        );
         return;
       }
 
       await this.sendMessage(chatId, '🔄 Verificando autorización...');
 
       // Llamar al endpoint de complete setup
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/financial/complete-setup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requisitionId })
-      });
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/financial/complete-setup`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requisitionId }),
+        }
+      );
 
       const result = await response.json();
 
       if (result.success) {
         const { accountsSaved } = result.data;
 
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ✅ <b>¡Configuración completada exitosamente!</b>
 
 🏦 Se han conectado ${accountsSaved} cuenta(s) bancaria(s).
@@ -746,18 +814,20 @@ Ahora puedes:
 • /dashboard - Acceder al dashboard web
 
 🎉 ¡Tu sistema financiero está listo!
-        `);
+        `
+        );
 
         // Iniciar una sincronización automática
         await this.sendMessage(chatId, '🔄 Iniciando primera sincronización...');
         setTimeout(() => this.handleSyncCommand(chatId), 1000);
-
       } else {
         throw new Error(result.error || 'Error completando configuración');
       }
     } catch (error: any) {
       logger.error('Error en complete setup:', error);
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 ❌ <b>Error completando configuración</b>
 
 ${error.message}
@@ -768,7 +838,8 @@ Posibles causas:
 • La autorización expiró
 
 Intenta iniciar el proceso nuevamente con /setup_bbva
-      `);
+      `
+      );
     }
   }
 
@@ -800,7 +871,7 @@ ${dashboardUrl}
       financialService: 'online',
       database: 'connected',
       memory: process.memoryUsage().heapUsed / 1024 / 1024,
-      uptime: process.uptime()
+      uptime: process.uptime(),
     };
   }
 
@@ -815,7 +886,7 @@ ${dashboardUrl}
         recentTransactions: transactions.total,
         lastSync: new Date(),
         categorizedTransactions: transactions.items.filter((t: any) => t.categoryId).length,
-        pendingCategorizations: transactions.items.filter((t: any) => !t.categoryId).length
+        pendingCategorizations: transactions.items.filter((t: any) => !t.categoryId).length,
       };
     } catch (error) {
       logger.error('Error obteniendo summary financiero:', error);
@@ -824,7 +895,7 @@ ${dashboardUrl}
         recentTransactions: 0,
         lastSync: new Date(),
         categorizedTransactions: 0,
-        pendingCategorizations: 0
+        pendingCategorizations: 0,
       };
     }
   }
@@ -858,9 +929,11 @@ ${dashboardUrl}
         .filter((t: any) => t.amount > 0)
         .reduce((sum: number, t: any) => sum + t.amount, 0);
 
-      const totalExpenses = Math.abs(transactions.items
-        .filter((t: any) => t.amount < 0)
-        .reduce((sum: number, t: any) => sum + t.amount, 0));
+      const totalExpenses = Math.abs(
+        transactions.items
+          .filter((t: any) => t.amount < 0)
+          .reduce((sum: number, t: any) => sum + t.amount, 0)
+      );
 
       return `
 📊 <b>Reporte ${type.toUpperCase()}</b>
@@ -898,7 +971,9 @@ ${dashboardUrl}
           await this.handleInvoiceSend(chatId, params.slice(1));
           break;
         default:
-          await this.sendMessage(chatId, `
+          await this.sendMessage(
+            chatId,
+            `
 💼 <b>Gestión de Facturas</b>
 
 Comandos disponibles:
@@ -907,7 +982,8 @@ Comandos disponibles:
 • /invoice send [ID]
 
 <i>Usa /help para ver ejemplos</i>
-          `);
+          `
+          );
       }
     } catch (error) {
       logger.error('Error en comando invoice:', error);
@@ -921,14 +997,17 @@ Comandos disponibles:
       const args = this.parseQuotedParams(params.join(' '));
 
       if (args.length < 3) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ❌ <b>Parámetros incorrectos</b>
 
 Uso: /invoice create "nombre cliente" cantidad "descripción"
 
 Ejemplo:
 /invoice create "Acme Corp" 1500 "Servicios de consultoría - Marzo 2024"
-        `);
+        `
+        );
         return;
       }
 
@@ -954,7 +1033,7 @@ Ejemplo:
           email: '',
           clientType: 'business',
           currency: 'EUR',
-          status: 'active'
+          status: 'active',
         };
         const userId = `telegram-${chatId}`;
         const result = await clientService.createClient(clientData, userId);
@@ -972,24 +1051,28 @@ Ejemplo:
         status: 'draft',
         issueDate: new Date(),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        items: [{
-          id: '1',
-          description,
-          quantity: 1,
-          unitPrice: amount,
-          amount,
-          total: amount * 1.21,
-          taxRate: 21,
-          taxAmount: amount * 0.21
-        }],
+        items: [
+          {
+            id: '1',
+            description,
+            quantity: 1,
+            unitPrice: amount,
+            amount,
+            total: amount * 1.21,
+            taxRate: 21,
+            taxAmount: amount * 0.21,
+          },
+        ],
         currency: 'EUR',
         taxRate: 21,
         taxType: 'IVA',
         paymentTerms: 30,
-        createdBy: `telegram-${chatId}`
+        createdBy: `telegram-${chatId}`,
       });
 
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 ✅ <b>Factura Creada</b>
 
 📄 <b>Número:</b> ${invoice.invoiceNumber}
@@ -1004,14 +1087,18 @@ Ejemplo:
 <b>Acciones disponibles:</b>
 • /invoice send ${invoice.id} - Enviar al cliente
 • /invoice list - Ver todas las facturas
-      `, {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '📤 Enviar', callback_data: `invoice_send_${invoice.id}` },
-            { text: '📋 Ver Lista', callback_data: 'invoice_list' }
-          ]]
+      `,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '📤 Enviar', callback_data: `invoice_send_${invoice.id}` },
+                { text: '📋 Ver Lista', callback_data: 'invoice_list' },
+              ],
+            ],
+          },
         }
-      });
+      );
     } catch (error: any) {
       logger.error('Error creando factura:', error);
       await this.sendMessage(chatId, `❌ Error al crear factura: ${error.message}`);
@@ -1034,17 +1121,20 @@ Ejemplo:
         clientId,
         limit: 10,
         sortBy: 'issue_date',
-        sortOrder: 'DESC'
+        sortOrder: 'DESC',
       });
 
       if (invoices.length === 0) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 📋 <b>No hay facturas</b>
 
 ${clientFilter ? `No se encontraron facturas para "${clientFilter}"` : 'No tienes facturas registradas'}
 
 Usa /invoice create para crear una nueva factura
-        `);
+        `
+        );
         return;
       }
 
@@ -1059,10 +1149,10 @@ Usa /invoice create para crear una nueva factura
         viewed: '👁️',
         paid: '✅',
         overdue: '⚠️',
-        cancelled: '❌'
+        cancelled: '❌',
       };
 
-      invoices.forEach(invoice => {
+      invoices.forEach((invoice) => {
         const emoji = statusEmoji[invoice.status as keyof typeof statusEmoji] || '📄';
         const isPaid = invoice.status === 'paid';
         const isOverdue = invoice.status !== 'paid' && new Date(invoice.dueDate) < new Date();
@@ -1087,7 +1177,7 @@ Usa /invoice create para crear una nueva factura
       // Calculate summary
       const totalAmount = invoices.reduce((sum, inv) => sum + inv.total, 0);
       const paidAmount = invoices
-        .filter(inv => inv.status === 'paid')
+        .filter((inv) => inv.status === 'paid')
         .reduce((sum, inv) => sum + inv.total, 0);
       const pendingAmount = totalAmount - paidAmount;
 
@@ -1108,13 +1198,16 @@ Usa /invoice create para crear una nueva factura
       const invoiceId = params[0];
 
       if (!invoiceId) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ❌ <b>Falta el ID de la factura</b>
 
 Uso: /invoice send [ID]
 
 Para ver los IDs usa: /invoice list
-        `);
+        `
+        );
         return;
       }
 
@@ -1128,7 +1221,9 @@ Para ver los IDs usa: /invoice list
       // Update invoice status to sent
       await this.invoiceService.updateInvoice(invoiceId, { status: 'sent' });
 
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 📤 <b>Factura Enviada</b>
 
 ✅ La factura ${invoice.invoiceNumber} ha sido marcada como enviada.
@@ -1138,7 +1233,8 @@ Para ver los IDs usa: /invoice list
 📅 <b>Vencimiento:</b> ${new Date(invoice.dueDate).toLocaleDateString()}
 
 <i>El cliente ha sido notificado (simulado)</i>
-      `);
+      `
+      );
     } catch (error) {
       logger.error('Error enviando factura:', error);
       await this.sendMessage(chatId, '❌ Error al enviar factura');
@@ -1149,7 +1245,7 @@ Para ver los IDs usa: /invoice list
     try {
       const subcommand = params[0] || 'today';
       const isBreakdown = subcommand === 'breakdown';
-      const period = isBreakdown ? (params[1] || 'month') : subcommand;
+      const period = isBreakdown ? params[1] || 'month' : subcommand;
 
       const { startDate, endDate } = this.getPeriodDates(period);
 
@@ -1198,13 +1294,11 @@ Para ver los IDs usa: /invoice list
           inline_keyboard: [
             [
               { text: '📊 Desglose', callback_data: `revenue_breakdown_${period}` },
-              { text: '⏳ Pendientes', callback_data: 'pending_list' }
+              { text: '⏳ Pendientes', callback_data: 'pending_list' },
             ],
-            [
-              { text: '📈 Dashboard', callback_data: 'open_dashboard' }
-            ]
-          ]
-        }
+            [{ text: '📈 Dashboard', callback_data: 'open_dashboard' }],
+          ],
+        },
       });
     } catch (error) {
       logger.error('Error en comando revenue:', error);
@@ -1225,36 +1319,42 @@ Para ver los IDs usa: /invoice list
       const overdueInvoices = await this.invoiceService.getOverdueInvoices();
       const { invoices: pendingInvoices } = await this.invoiceService.listInvoices({
         status: 'sent',
-        limit: 50
+        limit: 50,
       });
 
-      const allPending = [...overdueInvoices, ...pendingInvoices.filter(inv =>
-        !overdueInvoices.find(o => o.id === inv.id)
-      )];
+      const allPending = [
+        ...overdueInvoices,
+        ...pendingInvoices.filter((inv) => !overdueInvoices.find((o) => o.id === inv.id)),
+      ];
 
       if (allPending.length === 0) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ✅ <b>No hay pagos pendientes</b>
 
 Todas las facturas están al día.
 
 Usa /invoice create para crear nuevas facturas.
-        `);
+        `
+        );
         return;
       }
 
       let message = '⏳ <b>Pagos Pendientes</b>\n\n';
 
       // Group by status
-      const overdue = allPending.filter(inv => new Date(inv.dueDate) < new Date());
-      const upcoming = allPending.filter(inv => new Date(inv.dueDate) >= new Date());
+      const overdue = allPending.filter((inv) => new Date(inv.dueDate) < new Date());
+      const upcoming = allPending.filter((inv) => new Date(inv.dueDate) >= new Date());
 
       if (overdue.length > 0) {
         message += `⚠️ <b>VENCIDAS (${overdue.length}):</b>\n`;
         let totalOverdue = 0;
 
-        overdue.forEach(invoice => {
-          const daysOverdue = Math.floor((Date.now() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+        overdue.forEach((invoice) => {
+          const daysOverdue = Math.floor(
+            (Date.now() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24)
+          );
           message += `\n🔴 <b>${invoice.invoiceNumber}</b>\n`;
           message += `   👤 ${invoice.clientName}\n`;
           message += `   💰 €${invoice.total.toFixed(2)}\n`;
@@ -1272,8 +1372,10 @@ Usa /invoice create para crear nuevas facturas.
         upcoming
           .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
           .slice(0, 5)
-          .forEach(invoice => {
-            const daysUntil = Math.floor((new Date(invoice.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          .forEach((invoice) => {
+            const daysUntil = Math.floor(
+              (new Date(invoice.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            );
             message += `\n🟡 <b>${invoice.invoiceNumber}</b>\n`;
             message += `   👤 ${invoice.clientName}\n`;
             message += `   💰 €${invoice.total.toFixed(2)}\n`;
@@ -1319,11 +1421,11 @@ Usa /invoice create para crear nuevas facturas.
 
       const { invoices } = await this.invoiceService.listInvoices({
         clientId: client.id,
-        status: 'sent'
+        status: 'sent',
       });
 
-      const pendingInvoices = invoices.filter(inv =>
-        inv.status !== 'paid' && inv.status !== 'cancelled'
+      const pendingInvoices = invoices.filter(
+        (inv) => inv.status !== 'paid' && inv.status !== 'cancelled'
       );
 
       if (pendingInvoices.length === 0) {
@@ -1333,7 +1435,9 @@ Usa /invoice create para crear nuevas facturas.
 
       const totalPending = pendingInvoices.reduce((sum, inv) => sum + inv.total, 0);
 
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 📧 <b>Recordatorio Enviado</b>
 
 ✅ Se ha enviado un recordatorio de pago a ${clientName}
@@ -1342,7 +1446,8 @@ Usa /invoice create para crear nuevas facturas.
 💰 <b>Total pendiente:</b> €${totalPending.toFixed(2)}
 
 <i>El cliente ha sido notificado por email (simulado)</i>
-      `);
+      `
+      );
     } catch (error) {
       logger.error('Error enviando recordatorio:', error);
       await this.sendMessage(chatId, '❌ Error al enviar recordatorio');
@@ -1363,7 +1468,9 @@ Usa /invoice create para crear nuevas facturas.
         return;
       }
 
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 👥 <b>Gestión de Clientes</b>
 
 Comandos disponibles:
@@ -1371,7 +1478,8 @@ Comandos disponibles:
 • /client balance [nombre] - Ver balance del cliente
 
 <i>Usa /help para ver ejemplos</i>
-      `);
+      `
+      );
     } catch (error) {
       logger.error('Error en comando client:', error);
       await this.sendMessage(chatId, '❌ Error procesando comando de cliente');
@@ -1407,7 +1515,7 @@ Comandos disponibles:
 
       if (transactions.length > 0) {
         message += '📋 <b>Últimas transacciones:</b>\n';
-        transactions.forEach(tx => {
+        transactions.forEach((tx) => {
           const emoji = tx.type === 'payment' ? '💚' : '📄';
           const sign = tx.type === 'payment' ? '+' : '';
           message += `${emoji} ${sign}€${tx.amount.toFixed(2)} - ${tx.description}\n`;
@@ -1417,11 +1525,13 @@ Comandos disponibles:
 
       await this.sendMessage(chatId, message, {
         reply_markup: {
-          inline_keyboard: [[
-            { text: '📄 Ver Facturas', callback_data: `client_invoices_${client.id}` },
-            { text: '➕ Nueva Factura', callback_data: `invoice_create_${client.id}` }
-          ]]
-        }
+          inline_keyboard: [
+            [
+              { text: '📄 Ver Facturas', callback_data: `client_invoices_${client.id}` },
+              { text: '➕ Nueva Factura', callback_data: `invoice_create_${client.id}` },
+            ],
+          ],
+        },
       });
     } catch (error) {
       logger.error('Error obteniendo balance de cliente:', error);
@@ -1436,19 +1546,22 @@ Comandos disponibles:
         limit: 10,
         sortBy: 'createdAt',
         sortOrder: 'DESC',
-        userId: 'telegram-system' // System user for telegram
+        userId: 'telegram-system', // System user for telegram
       });
       const clients = result.data.clients;
       const total = result.data.total;
 
       if (clients.length === 0) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 👥 <b>No hay clientes registrados</b>
 
 Los clientes se crean automáticamente al generar facturas.
 
 Usa /invoice create para crear tu primera factura.
-        `);
+        `
+        );
         return;
       }
 
@@ -1491,7 +1604,9 @@ Usa /invoice create para crear tu primera factura.
   private async handlePaymentCommand(chatId: string, params: string[]): Promise<void> {
     try {
       if (params.length < 2) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 💳 <b>Registrar Pago</b>
 
 Uso: /payment record [cliente] [cantidad]
@@ -1500,13 +1615,17 @@ Ejemplo:
 /payment record "Acme Corp" 1500
 
 Esto marcará las facturas del cliente como pagadas por el importe indicado.
-        `);
+        `
+        );
         return;
       }
 
       const args = this.parseQuotedParams(params.join(' '));
       if (args.length < 2) {
-        await this.sendMessage(chatId, '❌ Faltan parámetros. Usa: /payment record "cliente" cantidad');
+        await this.sendMessage(
+          chatId,
+          '❌ Faltan parámetros. Usa: /payment record "cliente" cantidad'
+        );
         return;
       }
 
@@ -1527,11 +1646,11 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
       // Get unpaid invoices for the client
       const { invoices } = await this.invoiceService.listInvoices({
         clientId: client.id,
-        status: 'sent'
+        status: 'sent',
       });
 
       const unpaidInvoices = invoices
-        .filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled')
+        .filter((inv) => inv.status !== 'paid' && inv.status !== 'cancelled')
         .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
       if (unpaidInvoices.length === 0) {
@@ -1602,7 +1721,9 @@ Esto marcará las facturas del cliente como pagadas por el importe indicado.
 
   private async handleTradingCommand(chatId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/dashboard/overview`);
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/trading/dashboard/overview`
+      );
       const dashboard = await response.json();
 
       if (!dashboard || !dashboard.success) {
@@ -1643,13 +1764,18 @@ ${portfolioEmoji} P&L Diario: $${data.portfolio.dailyPnL.toFixed(2)} (${((data.p
       await this.sendMessage(chatId, message);
     } catch (error) {
       logger.error('Error in trading command:', error);
-      await this.sendMessage(chatId, '❌ Error obteniendo dashboard de trading. Asegúrate de que el servicio de trading esté activo.');
+      await this.sendMessage(
+        chatId,
+        '❌ Error obteniendo dashboard de trading. Asegúrate de que el servicio de trading esté activo.'
+      );
     }
   }
 
   private async handlePositionsCommand(chatId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/positions?status=open`);
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/trading/positions?status=open`
+      );
       const result = await response.json();
 
       if (!result || !result.success) {
@@ -1659,13 +1785,16 @@ ${portfolioEmoji} P&L Diario: $${data.portfolio.dailyPnL.toFixed(2)} (${((data.p
       const positions = result.data;
 
       if (positions.length === 0) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 📊 <b>Posiciones Abiertas</b>
 
 No hay posiciones abiertas en este momento.
 
 Usa /strategies para ver el estado de las estrategias de trading.
-        `);
+        `
+        );
         return;
       }
 
@@ -1703,7 +1832,9 @@ Usa /strategies para ver el estado de las estrategias de trading.
 
   private async handleStrategiesCommand(chatId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/strategies`);
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/trading/strategies`
+      );
       const result = await response.json();
 
       if (!result || !result.success) {
@@ -1715,8 +1846,8 @@ Usa /strategies para ver el estado de las estrategias de trading.
       let message = '🤖 <b>Estado de Estrategias</b>\n\n';
 
       strategies.forEach((strategy: any) => {
-        const statusEmoji = strategy.status === 'active' ? '▶️' :
-          strategy.status === 'paused' ? '⏸️' : '⏹️';
+        const statusEmoji =
+          strategy.status === 'active' ? '▶️' : strategy.status === 'paused' ? '⏸️' : '⏹️';
         const pnlEmoji = strategy.performance.totalPnL > 0 ? '💚' : '💔';
 
         message += `${statusEmoji} <b>${strategy.name}</b>\n`;
@@ -1744,7 +1875,9 @@ Usa /strategies para ver el estado de las estrategias de trading.
 
   private async handlePnLCommand(chatId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/performance/metrics?timeRange=1D`);
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/trading/performance/metrics?timeRange=1D`
+      );
       const result = await response.json();
 
       if (!result || !result.success) {
@@ -1793,7 +1926,9 @@ ${pnlEmoji} <b>Retorno Total:</b> $${metrics.totalReturn.toFixed(2)} (${metrics.
 
   private async handleStopAllCommand(chatId: string): Promise<void> {
     try {
-      await this.sendMessage(chatId, `
+      await this.sendMessage(
+        chatId,
+        `
 ⚠️ <b>CONFIRMACIÓN DE EMERGENCIA</b>
 
 ¿Estás seguro de que quieres detener TODO el trading?
@@ -1806,7 +1941,8 @@ Esto:
 Para confirmar, envía: /confirm_stop_all
 
 <i>Esta acción no se puede deshacer</i>
-      `);
+      `
+      );
     } catch (error) {
       logger.error('Error in stop all command:', error);
       await this.sendMessage(chatId, '❌ Error procesando comando de emergencia');
@@ -1815,16 +1951,21 @@ Para confirmar, envía: /confirm_stop_all
 
   private async handleConfirmStopAllCommand(chatId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/emergency/stop-all`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: `Emergency stop from Telegram by ${chatId}` })
-      });
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/trading/emergency/stop-all`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: `Emergency stop from Telegram by ${chatId}` }),
+        }
+      );
 
       const result = await response.json();
 
       if (result && result.success) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 🛑 <b>TRADING DETENIDO</b>
 
 ✅ Todas las estrategias han sido detenidas
@@ -1836,7 +1977,8 @@ Para ver posiciones abiertas: /positions
 Para reactivar estrategias: Usa el dashboard web
 
 <i>Razón: Parada de emergencia desde Telegram</i>
-        `);
+        `
+        );
       } else {
         throw new Error(result.error || 'Failed to stop trading');
       }
@@ -1849,7 +1991,9 @@ Para reactivar estrategias: Usa el dashboard web
   private async handleTradeCommand(chatId: string, params: string[]): Promise<void> {
     try {
       if (params.length < 3) {
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 💹 <b>Ejecutar Trade Manual</b>
 
 Uso: /trade <symbol> <side> <amount>
@@ -1864,7 +2008,8 @@ Ejemplos:
 • amount: Cantidad en moneda base
 
 ⚠️ <b>Nota:</b> Los trades manuales están sujetos a los límites de riesgo configurados.
-        `);
+        `
+        );
         return;
       }
 
@@ -1883,19 +2028,22 @@ Ejemplos:
 
       await this.sendMessage(chatId, '⏳ Ejecutando trade...');
 
-      const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/trading/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          exchange: 'binance', // Default exchange
-          symbol: symbol.toUpperCase(),
-          side: side.toLowerCase(),
-          amount,
-          type: 'market',
-          source: 'telegram',
-          userId: chatId
-        })
-      });
+      const response = await fetch(
+        `http://localhost:${process.env.PORT || 3000}/api/trading/execute`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            exchange: 'binance', // Default exchange
+            symbol: symbol.toUpperCase(),
+            side: side.toLowerCase(),
+            amount,
+            type: 'market',
+            source: 'telegram',
+            userId: chatId,
+          }),
+        }
+      );
 
       const result = await response.json();
 
@@ -1903,7 +2051,9 @@ Ejemplos:
         const trade = result.data;
         const sideEmoji = trade.side === 'buy' ? '🟢' : '🔴';
 
-        await this.sendMessage(chatId, `
+        await this.sendMessage(
+          chatId,
+          `
 ✅ <b>Trade Ejecutado</b>
 
 ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
@@ -1916,7 +2066,8 @@ ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
 ⏱️ Tiempo: ${new Date(trade.timestamp).toLocaleString()}
 
 <i>El trade ha sido ejecutado exitosamente</i>
-        `);
+        `
+        );
       } else {
         throw new Error(result.error || 'Failed to execute trade');
       }
@@ -1989,7 +2140,7 @@ ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
       today: 'Hoy',
       week: 'Esta Semana',
       month: 'Este Mes',
-      year: 'Este Año'
+      year: 'Este Año',
     };
     return periodMap[period.toLowerCase()] || period;
   }
@@ -2010,7 +2161,7 @@ ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
           logger.info('Document received via webhook, processing...', {
             fileName: message.document.file_name,
             fileSize: message.document.file_size,
-            chatId: message.chat.id
+            chatId: message.chat.id,
           });
           if (this.documentService) {
             await this.documentService.handleDocumentUpload(message);
@@ -2028,7 +2179,7 @@ ${sideEmoji} <b>${trade.symbol}</b> - ${trade.side.toUpperCase()}
             name: command,
             params,
             chatId: message.chat.id.toString(),
-            messageId: message.message_id
+            messageId: message.message_id,
           };
 
           await this.handleCommand(telegramCommand);

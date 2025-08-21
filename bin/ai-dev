@@ -1,0 +1,3 @@
+#!/bin/bash
+# Development environment wrapper
+/home/k2600x/dev/ai-service/ai-cli.js dev "$@"
