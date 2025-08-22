@@ -84,66 +84,11 @@ const AppLayout: React.FC = () => {
         },
       ],
     },
-    // Trading menu
-    {
-      key: '/trading',
-      icon: <LineChartOutlined />,
-      label: 'Trading',
-      children: [
-        {
-          key: '/trading',
-          icon: <FundOutlined />,
-          label: 'Dashboard',
-        },
-        {
-          key: '/trading/positions',
-          icon: <StockOutlined />,
-          label: 'Posiciones',
-        },
-        {
-          key: '/trading/strategies',
-          icon: <BulbOutlined />,
-          label: 'Estrategias',
-        },
-        {
-          key: '/trading/backtest',
-          icon: <ExperimentOutlined />,
-          label: 'Backtest',
-        },
-        {
-          key: '/trading/performance',
-          icon: <TrophyOutlined />,
-          label: 'Rendimiento',
-        },
-        {
-          key: '/trading/settings',
-          icon: <SettingOutlined />,
-          label: 'Configuración',
-        },
-      ],
-    },
     // Intelligence menu
     {
-      key: '/intelligence',
-      icon: <BulbOutlined />,
-      label: 'Inteligencia',
-      children: [
-        {
-          key: '/document-intelligence',
-          icon: <FileSearchOutlined />,
-          label: 'Document Intelligence',
-        },
-        {
-          key: '/trading-intelligence',
-          icon: <ThunderboltOutlined />,
-          label: 'Trading Intelligence',
-        },
-        {
-          key: '/tagging-intelligence',
-          icon: <RobotOutlined />,
-          label: 'AI Universal Tagging',
-        },
-      ],
+      key: '/tagging-intelligence',
+      icon: <RobotOutlined />,
+      label: 'AI Tagging',
     },
     {
       key: '/tags',

@@ -30,10 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
-    // Optionally reload the page
-    if (this.props.name === 'trading') {
-      window.location.href = '/';
-    }
+    window.location.href = '/';
   };
 
   public render() {
@@ -46,11 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <Result
           status="error"
           title="Something went wrong"
-          subTitle={
-            this.props.name === 'trading' 
-              ? "The trading section encountered an error. This might be due to connection issues or missing data."
-              : "An unexpected error occurred. Please try refreshing the page."
-          }
+          subTitle="An unexpected error occurred. Please try refreshing the page."
           extra={[
             <Button type="primary" onClick={this.handleReset} key="reset">
               Go to Dashboard

@@ -12,7 +12,7 @@ const logger = new Logger('IntegrationConfigService');
 
 interface IntegrationConfig {
   id?: string;
-  userId?: string;
+  userId?: string | null;  // Allow null for global configs
   integrationType: string;
   configKey: string;
   configValue: string;
@@ -23,7 +23,7 @@ interface IntegrationConfig {
 }
 
 interface GetConfigOptions {
-  userId?: string;
+  userId?: string | null;  // Allow null for global configs
   integrationType: string;
   configKey: string;
   decrypt?: boolean;
@@ -222,7 +222,7 @@ export class IntegrationConfigService {
         where: {
           integration_type: integrationType,
           config_key: configKey,
-          user_id: userId || null,
+          user_id: isGlobal ? null : (userId || null),  // Force null for global configs
         },
       });
 
@@ -239,7 +239,7 @@ export class IntegrationConfigService {
         // Create new config
         await prisma.integration_configs.create({
           data: {
-            user_id: userId || null,
+            user_id: isGlobal ? null : (userId || null),  // Force null for global configs
             integration_type: integrationType,
             config_key: configKey,
             ...dataFields,

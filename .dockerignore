@@ -7,7 +7,8 @@ yarn-error.log*
 
 # Build outputs
 dist/
-*/dist/
+# Keep frontend/dist for production
+!frontend/dist/
 build/
 */build/
 

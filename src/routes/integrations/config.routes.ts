@@ -127,7 +127,7 @@ router.post(
       const userId = req.user?.userId;
 
       await integrationConfigService.setConfig({
-        userId,
+        userId: isGlobal ? null : userId,  // Pass null for global configs
         integrationType,
         configKey,
         configValue,

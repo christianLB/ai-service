@@ -100,9 +100,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-// CSRF protection - MUST be after body parsing and cookie parsing
-app.use(csrfProtection);
-
 // OpenAPI validation middleware - validates requests/responses against OpenAPI specs
 // This ensures contract compliance and type safety
 applyOpenApiValidation(app);
@@ -272,6 +269,10 @@ app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 
 // Version routes - should be public
 app.use('/api', versionRoutes);
+
+// CSRF protection - Applied AFTER public endpoints but BEFORE protected routes
+// This allows /api/csrf-token to work without already having a token
+app.use(csrfProtection);
 
 // Protected API Routes - Some routes have built-in auth, others need it applied
 app.use('/api', flowGen);

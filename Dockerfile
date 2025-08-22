@@ -41,7 +41,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 # Stage de desarrollo
 FROM base AS development
-RUN npm ci
+RUN npm install --production=false
 COPY . .
 EXPOSE 3000
 USER node
@@ -53,19 +53,16 @@ FROM base AS builder
 RUN apk add --no-cache python3 make g++ git
 # Copiar esquema de Prisma antes de instalar para que @prisma/client postinstall funcione
 COPY prisma/ ./prisma/
-RUN npm ci
+RUN npm install --production=false
 
 # Copiar archivos del proyecto
 COPY . .
 # Generar Prisma Client (tipos y cliente)
 RUN npx prisma generate || echo "Prisma generate skipped"
 
-# Instalar dependencias del frontend y construir
-RUN cd frontend && npm ci && cd ..
 # Build backend (allow warnings/errors during CI container build)
 RUN npm run build:backend:nocheck
-# Build frontend
-RUN cd frontend && npm run build
+# Frontend is pre-built locally and will be copied later
 
 # Stage de producción
 FROM base AS production
@@ -75,7 +72,8 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
 # Copiar archivos construidos
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
+# Frontend is pre-built locally, copy directly
+COPY --chown=nodejs:nodejs frontend/dist ./frontend/dist
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 

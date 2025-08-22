@@ -79,3 +79,4 @@ scripts/test-*.sh
 # Historic transactions
 /historic_transactions
 e2e/playwright.env
+ai-service-latest.tar.gz

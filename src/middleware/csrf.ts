@@ -69,8 +69,8 @@ export const sendCSRFToken = (req: Request, res: Response): void => {
   // Set cookie with secure options
   res.cookie(CSRF_COOKIE_NAME, token, {
     httpOnly: false, // Must be readable by JavaScript
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production', // Enable for HTTPS production
+    sameSite: 'lax', // Changed from 'strict' to allow cross-site requests
     maxAge: 86400000, // 24 hours
     path: '/',
   });
