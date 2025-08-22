@@ -985,7 +985,7 @@ export class GoCardlessService {
 
   async syncAccountTransactions(
     accountId: string,
-    days = 7
+    days = 90
   ): Promise<
     FinancialApiResponse<{
       transactionsSynced: number;
@@ -1130,7 +1130,7 @@ export class GoCardlessService {
           }
 
           // Sync transactions from last 7 days
-          const transactionResult = await this.syncAccountTransactions(account.account_id, 7);
+          const transactionResult = await this.syncAccountTransactions(account.account_id, 90);
           if (transactionResult.success) {
             totalTransactionsSynced += transactionResult.data!.transactionsSynced;
             // console.log(`✓ Transactions synced for ${account.name}: ${transactionResult.data!.transactionsSynced} new`);

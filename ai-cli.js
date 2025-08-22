@@ -240,6 +240,10 @@ For detailed help: ai <command> --help
         case 'gocardless':
           await handleGoCardlessCommands(subArgs);
           break;
+        
+        case 'fix-gocardless-now':
+          await fixGoCardlessNow();
+          break;
           
         default:
           console.log('Unknown production command.');
@@ -308,6 +312,65 @@ async function handleAdminCommands(subArgs) {
 }
 
 // GoCardless command handlers
+async function fixGoCardlessNow() {
+  console.log('🔧 Applying GoCardless Fix to Production');
+  console.log('=========================================\n');
+  
+  const sqlFix = `
+-- Check current state
+SELECT user_id, config_key FROM financial.integration_configs WHERE integration_type = 'gocardless';
+
+-- Apply fix
+UPDATE financial.integration_configs 
+SET user_id = NULL, is_global = true, updated_at = NOW()
+WHERE integration_type = 'gocardless';
+
+-- Verify fix
+SELECT config_key, 
+  CASE WHEN user_id IS NULL THEN '✅ FIXED' ELSE '❌ NOT FIXED' END as status
+FROM financial.integration_configs WHERE integration_type = 'gocardless';`;
+
+  try {
+    // Write SQL to temp file
+    const tempFile = '/tmp/gocardless_fix.sql';
+    fs.writeFileSync(tempFile, sqlFix);
+    
+    console.log('📝 Applying SQL fix...');
+    
+    // Apply via SSH
+    try {
+      execSync(`ssh admin@192.168.1.11 'docker exec -i ai-service-prod psql -U ai_user -d ai_service' < ${tempFile}`, {
+        stdio: 'inherit'
+      });
+    } catch (sshError) {
+      // If SSH fails, try direct docker if we're on the production server
+      console.log('SSH failed, trying direct docker access...');
+      execSync(`docker exec -i ai-service-prod psql -U ai_user -d ai_service < ${tempFile}`, {
+        stdio: 'inherit'
+      });
+    }
+    
+    console.log('\n🔄 Restarting container...');
+    try {
+      execSync('ssh admin@192.168.1.11 docker restart ai-service-prod', { stdio: 'inherit' });
+    } catch {
+      execSync('docker restart ai-service-prod', { stdio: 'inherit' });
+    }
+    
+    console.log('\n✅ Fix Applied Successfully!');
+    console.log('\nTest at: https://ai-service.anaxi.net');
+    console.log('Navigate to: Financial > GoCardless Sync');
+    console.log('Click: Sync Now');
+    
+    // Clean up
+    fs.unlinkSync(tempFile);
+    
+  } catch (error) {
+    console.error('❌ Error applying fix:', error.message);
+    process.exit(1);
+  }
+}
+
 async function handleGoCardlessCommands(subArgs) {
   const gcCommand = subArgs[0];
   const readline = require('readline');
