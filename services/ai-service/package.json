@@ -1,0 +1,50 @@
+{
+  "name": "@k2600x/ai-service",
+  "version": "0.1.0",
+  "description": "Multi-provider LLM orchestration service",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "evals": "tsx src/evals/run.ts",
+    "cost": "tsx -e \"require('./dist/core/cost').printMonthly()\"",
+    "sdk:generate": "openapi-generator-cli generate -c openapi-generator-config.yaml",
+    "sdk:build": "npm run sdk:generate && cd sdk && npm install && npm run build",
+    "sdk:publish": "cd sdk && npm publish --registry http://192.168.1.11:4873"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.60.0",
+    "@fastify/cors": "^9.0.1",
+    "@fastify/env": "^4.3.0",
+    "@fastify/swagger": "^8.14.0",
+    "@fastify/swagger-ui": "^3.0.0",
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.2.3",
+    "fastify": "^4.26.0",
+    "ioredis": "^5.3.2",
+    "js-yaml": "^4.1.0",
+    "openai": "^4.47.0",
+    "pino": "^8.19.0",
+    "pino-pretty": "^10.3.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.19.17",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "eslint": "^8.56.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

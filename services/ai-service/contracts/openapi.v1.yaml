@@ -1,0 +1,437 @@
+openapi: 3.0.3
+info:
+  title: AI Service API
+  description: Multi-provider LLM orchestration service
+  version: 1.0.0
+  contact:
+    name: AI Service Team
+    email: ai-team@k2600x.com
+
+servers:
+  - url: http://localhost:4030
+    description: Development server
+  - url: http://ai-service:3000
+    description: Docker internal
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /ready:
+    get:
+      summary: Readiness probe
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+                  cache:
+                    type: object
+                  timestamp:
+                    type: string
+                    format: date-time
+        '503':
+          description: Service not ready
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /v1/summarize:
+    post:
+      summary: Summarize text
+      tags: [Operations]
+      parameters:
+        - $ref: '#/components/parameters/ServiceHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input:
+                  oneOf:
+                    - type: string
+                    - type: object
+                      properties:
+                        text:
+                          type: string
+                        docId:
+                          type: string
+                size:
+                  type: string
+                  enum: [short, medium, long]
+                  default: medium
+                style:
+                  type: string
+                  enum: [technical, executive, casual]
+      responses:
+        '200':
+          description: Summary generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/BudgetExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/classify:
+    post:
+      summary: Classify text
+      tags: [Operations]
+      parameters:
+        - $ref: '#/components/parameters/ServiceHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input:
+                  oneOf:
+                    - type: string
+                    - type: object
+                      properties:
+                        text:
+                          type: string
+                        docId:
+                          type: string
+                labels:
+                  type: array
+                  items:
+                    type: string
+                taxonomyId:
+                  type: string
+                autoTag:
+                  type: boolean
+                  default: false
+                threshold:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+      responses:
+        '200':
+          description: Classification complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassifyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/BudgetExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/extract:
+    post:
+      summary: Extract structured data
+      tags: [Operations]
+      parameters:
+        - $ref: '#/components/parameters/ServiceHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input, schema]
+              properties:
+                input:
+                  oneOf:
+                    - type: string
+                    - type: object
+                      properties:
+                        text:
+                          type: string
+                        docId:
+                          type: string
+                schema:
+                  type: object
+                  description: JSON Schema or Zod schema
+                examples:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Data extracted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/BudgetExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/embed:
+    post:
+      summary: Generate embeddings
+      tags: [Operations]
+      parameters:
+        - $ref: '#/components/parameters/ServiceHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input:
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+      responses:
+        '200':
+          description: Embeddings generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/BudgetExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/agent/run:
+    post:
+      summary: Run named agent
+      tags: [Operations]
+      parameters:
+        - $ref: '#/components/parameters/ServiceHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, input]
+              properties:
+                name:
+                  type: string
+                input:
+                  type: object
+                params:
+                  type: object
+                tools:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Agent execution complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/BudgetExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    ServiceHeader:
+      name: X-Service
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Service identifier for routing and budgeting
+
+  schemas:
+    SummarizeResponse:
+      type: object
+      properties:
+        summary:
+          type: string
+        tokens:
+          type: integer
+        provider:
+          type: string
+        model:
+          type: string
+
+    ClassifyResponse:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+        tagIds:
+          type: array
+          items:
+            type: string
+        provider:
+          type: string
+        model:
+          type: string
+
+    ExtractResponse:
+      type: object
+      properties:
+        data:
+          type: object
+        confidence:
+          type: number
+        provider:
+          type: string
+        model:
+          type: string
+
+    EmbedResponse:
+      type: object
+      properties:
+        vectors:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+        dimensions:
+          type: integer
+        provider:
+          type: string
+        model:
+          type: string
+
+    AgentResponse:
+      type: object
+      properties:
+        result:
+          type: object
+        logs:
+          type: array
+          items:
+            type: string
+        toolCalls:
+          type: array
+          items:
+            type: object
+        provider:
+          type: string
+        model:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    BudgetExceeded:
+      description: Budget exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              remaining:
+                type: number
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Health
+    description: Health and monitoring endpoints
+  - name: Operations
+    description: AI operations endpoints

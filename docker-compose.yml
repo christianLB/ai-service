@@ -1,0 +1,71 @@
+version: "3.9"
+
+networks:
+  ai_net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  ollama_models:
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - ai_net
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    networks:
+      - ai_net
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+  ai-service:
+    build: 
+      context: ./services/ai-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - ai_net
+    ports:
+      - "4030:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+      - OLLAMA_HOST=http://ollama:11434
+      - AI_POLICIES_DIR=/app/policies
+      - ALLOWED_SERVICES=test,finance,trading,content
+    env_file:
+      - ./services/ai-service/.env
+    volumes:
+      - ./services/ai-service/src/policies:/app/policies:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
